@@ -18,7 +18,7 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp
-    use tox_errors, only: set_ok, is_err, validate_in_range_int
+    use tox_errors, only: set_ok, is_err
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, pool_means_impl, &
                                                        sort_gene_means_per_study, sort_pooled_gene_means
     use tox_data_integration_js_comp_test_binning_impl, only: determine_fixed_k_point_bin_counts
@@ -28,7 +28,7 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
                                                              MAX_CANDIDATE_PAIRS, NOT_COMPUTED
     M_IMPLICIT_NONE
     private
-    public :: calc_js_comp_test_candidate_bounds, generate_js_comp_test_candidates_impl, &
+    public :: calc_js_comp_test_candidate_bounds_impl, generate_js_comp_test_candidates_impl, &
              run_js_comp_test_parameter_search_impl, calc_fixed_k_n_points_range, KX_FACTORS, MAX_POINTS, MIN_POINTS, &
              GAMMA, N_POINTS_HIGH_FACTOR, N_POINTS_LOW_FRACTION, MAX_POINT_CANDIDATES
 
@@ -51,18 +51,14 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
 
 contains
 
-    !> M_EXPORT_C
-    !| summary: Recommend upper bounds for the js-comp-test candidate-grid work arrays
+    !> summary: Recommend upper bounds for the js-comp-test candidate-grid work arrays
     !| AUTHOR_LASZLO_LANG
     !| For the candidate grid of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]:
     !| `max_n_points_candidate` is exactly its largest `n_points` candidate, and
     !| `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
-    !|
-    !| Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
-    !| left undefined.
-    pure subroutine calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, &
-                                                        max_n_neighbors_candidate, ierr)
+    pure subroutine calc_js_comp_test_candidate_bounds_impl(max_n_genes_all_studies, max_n_points_candidate, &
+                                                             max_n_neighbors_candidate)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! DM_MIN(1_int32)
@@ -70,19 +66,13 @@ contains
             !! Exact upper bound on the `n_points` candidate the grid ever produces
         integer(int32), intent(out) :: max_n_neighbors_candidate
             !! Safe upper bound on the `n_neighbors` candidate the grid ever produces
-        integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure
 
         integer(int32) :: n_points_low
-
-        call set_ok(ierr)
-        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
-        if (is_err(ierr)) return
 
         call calc_fixed_k_n_points_range(max_n_genes_all_studies, max_n_points_candidate, n_points_low)
         max_n_neighbors_candidate = max(1_int32, floor(real(max_n_genes_all_studies, real64)/ &
                                                         (KX_FACTORS(1)*real(n_points_low, real64)), kind=int32))
-    end subroutine calc_js_comp_test_candidate_bounds
+    end subroutine calc_js_comp_test_candidate_bounds_impl
 
     !> summary: The first `n_points` candidate of the fixed-k grid and the floor it stops at
     !| AUTHOR_LASZLO_LANG
@@ -92,7 +82,7 @@ contains
     !| `max_n_points_candidate` and `max_n_neighbors_candidate` write the same formula with the same
     !| constants, as a range expression cannot call a procedure; a test keeps the two in step). Internal helper, not published; public because the tests call it
     !| directly. `generate_js_comp_test_candidates_impl` starts its GAMMA decay from these
-    !| values and `calc_js_comp_test_candidate_bounds` sizes its bounds from them.
+    !| values and `calc_js_comp_test_candidate_bounds_impl` sizes its bounds from them.
     pure subroutine calc_fixed_k_n_points_range(max_n_genes_all_studies, n_points_high, n_points_low)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies (`G`), at least 1
@@ -324,12 +314,12 @@ contains
         integer(int32), intent(in) :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
             !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
-            !! DM_OUTPUT_FROM(max_n_points_candidate, calc_js_comp_test_candidate_bounds, tox_data_integration_js_comp_test_fixed_k_search_impl, JUST_INFO)
+            !! DM_OUTPUT_FROM(max_n_points_candidate, calc_js_comp_test_candidate_bounds, tox_data_integration_js_comp_test_fixed_k_search, JUST_INFO)
             !! DM_MIN(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
             !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
-            !! DM_OUTPUT_FROM(max_n_neighbors_candidate, calc_js_comp_test_candidate_bounds, tox_data_integration_js_comp_test_fixed_k_search_impl, JUST_INFO)
+            !! DM_OUTPUT_FROM(max_n_neighbors_candidate, calc_js_comp_test_candidate_bounds, tox_data_integration_js_comp_test_fixed_k_search, JUST_INFO)
             !! DM_MIN(max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)

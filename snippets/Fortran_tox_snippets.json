@@ -276,7 +276,30 @@
     "prefix": "tox:data_integration_js_comp_test_adaptive_search.use",
     "description": "use tox_data_integration_js_comp_test_adaptive_search, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test_adaptive_search, only: ${1|generate_adaptive_js_comp_test_candidates,run_js_comp_test_adaptive_parameter_search|}"
+      "use tox_data_integration_js_comp_test_adaptive_search, only: ${1|calc_adaptive_js_comp_test_bounds,generate_adaptive_js_comp_test_candidates,run_js_comp_test_adaptive_parameter_search|}"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
+    "body": [
+      "call calc_adaptive_js_comp_test_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call, checked)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds.checked",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of (with error check)",
+    "body": [
+      "call calc_adaptive_js_comp_test_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "generate_adaptive_js_comp_test_candidates (call)": {
@@ -448,36 +471,6 @@
       "    min_study_neighbors=${64:min_study_neighbors}, &",
       "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    ierr=${66:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "tox_data_integration_js_comp_test_adaptive_search_impl (use)": {
-    "prefix": "tox:data_integration_js_comp_test_adaptive_search_impl.use",
-    "description": "use tox_data_integration_js_comp_test_adaptive_search_impl, only: ...",
-    "body": [
-      "use tox_data_integration_js_comp_test_adaptive_search_impl, only: ${1|calc_adaptive_js_comp_test_bounds|}"
-    ]
-  },
-  "calc_adaptive_js_comp_test_bounds (call)": {
-    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
-    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
-    "body": [
-      "call calc_adaptive_js_comp_test_bounds( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    n_studies=${2:n_studies}, &",
-      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
-      "    ierr=${4:ierr})"
-    ]
-  },
-  "calc_adaptive_js_comp_test_bounds (call, checked)": {
-    "prefix": "tox:calc_adaptive_js_comp_test_bounds.checked",
-    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of (with error check)",
-    "body": [
-      "call calc_adaptive_js_comp_test_bounds( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    n_studies=${2:n_studies}, &",
-      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
-      "    ierr=${4:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -896,7 +889,30 @@
     "prefix": "tox:data_integration_js_comp_test_fixed_k_search.use",
     "description": "use tox_data_integration_js_comp_test_fixed_k_search, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test_fixed_k_search, only: ${1|generate_js_comp_test_candidates,run_js_comp_test_parameter_search|}"
+      "use tox_data_integration_js_comp_test_fixed_k_search, only: ${1|calc_js_comp_test_candidate_bounds,generate_js_comp_test_candidates,run_js_comp_test_parameter_search|}"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds",
+    "description": "For the candidate grid of",
+    "body": [
+      "call calc_js_comp_test_candidate_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call, checked)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds.checked",
+    "description": "For the candidate grid of (with error check)",
+    "body": [
+      "call calc_js_comp_test_candidate_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "generate_js_comp_test_candidates (call)": {
@@ -1044,36 +1060,6 @@
       "    random_seed=${53:random_seed}, &",
       "    bin_count_mode=${54|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    ierr=${55:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "tox_data_integration_js_comp_test_fixed_k_search_impl (use)": {
-    "prefix": "tox:data_integration_js_comp_test_fixed_k_search_impl.use",
-    "description": "use tox_data_integration_js_comp_test_fixed_k_search_impl, only: ...",
-    "body": [
-      "use tox_data_integration_js_comp_test_fixed_k_search_impl, only: ${1|calc_js_comp_test_candidate_bounds|}"
-    ]
-  },
-  "calc_js_comp_test_candidate_bounds (call)": {
-    "prefix": "tox:calc_js_comp_test_candidate_bounds",
-    "description": "For the candidate grid of",
-    "body": [
-      "call calc_js_comp_test_candidate_bounds( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
-      "    ierr=${4:ierr})"
-    ]
-  },
-  "calc_js_comp_test_candidate_bounds (call, checked)": {
-    "prefix": "tox:calc_js_comp_test_candidate_bounds.checked",
-    "description": "For the candidate grid of (with error check)",
-    "body": [
-      "call calc_js_comp_test_candidate_bounds( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
-      "    ierr=${4:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -2033,7 +2019,7 @@
     "prefix": "tox:data_integration_preprocessing.use",
     "description": "use tox_data_integration_preprocessing, only: ...",
     "body": [
-      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods|}"
+      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,gather_pooled_neighborhood_residuals,construct_adaptive_neighborhoods|}"
     ]
   },
   "compute_gene_means (call)": {
@@ -2274,6 +2260,37 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
+    "body": [
+      "call gather_pooled_neighborhood_residuals( &",
+      "    residuals=${1:residuals}, &",
+      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
+      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
+      "    pooled_residuals=${7:pooled_residuals}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "gather_pooled_neighborhood_residuals (call, checked)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals.checked",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat (with error check)",
+    "body": [
+      "call gather_pooled_neighborhood_residuals( &",
+      "    residuals=${1:residuals}, &",
+      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
+      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
+      "    pooled_residuals=${7:pooled_residuals}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "construct_adaptive_neighborhoods (call)": {
     "prefix": "tox:construct_adaptive_neighborhoods",
     "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
@@ -2337,7 +2354,7 @@
     "prefix": "tox:data_integration_preprocessing_impl.use",
     "description": "use tox_data_integration_preprocessing_impl, only: ...",
     "body": [
-      "use tox_data_integration_preprocessing_impl, only: ${1|calc_neighborhood_size,gather_pooled_neighborhood_residuals|}"
+      "use tox_data_integration_preprocessing_impl, only: ${1|calc_neighborhood_size|}"
     ]
   },
   "calc_neighborhood_size (call)": {
@@ -2350,37 +2367,6 @@
       "    n_genes_S=${4:n_genes_S}, &",
       "    mean_S=${5:mean_S}, &",
       "    desired_size=${6:desired_size})"
-    ]
-  },
-  "gather_pooled_neighborhood_residuals (call)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
-    "body": [
-      "call gather_pooled_neighborhood_residuals( &",
-      "    residuals=${1:residuals}, &",
-      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
-      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
-      "    n_neighbors=${4:n_neighbors}, &",
-      "    n_studies=${5:n_studies}, &",
-      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
-      "    pooled_residuals=${7:pooled_residuals}, &",
-      "    ierr=${8:ierr})"
-    ]
-  },
-  "gather_pooled_neighborhood_residuals (call, checked)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals.checked",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat (with error check)",
-    "body": [
-      "call gather_pooled_neighborhood_residuals( &",
-      "    residuals=${1:residuals}, &",
-      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
-      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
-      "    n_neighbors=${4:n_neighbors}, &",
-      "    n_studies=${5:n_studies}, &",
-      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
-      "    pooled_residuals=${7:pooled_residuals}, &",
-      "    ierr=${8:ierr})",
-      "if (is_err(ierr)) return"
     ]
   },
   "tox_data_integration_stats (use)": {
@@ -4354,7 +4340,7 @@
     "prefix": "tox:err",
     "description": "Pick a tox_errors code",
     "body": [
-      "${1|ERR_OK,ERR_FILE_OPEN,ERR_READ_MAGIC,ERR_READ_TYPE,ERR_READ_NDIMS,ERR_READ_DIMS,ERR_READ_CHARLEN,ERR_READ_DATA,ERR_WRITE_MAGIC,ERR_WRITE_TYPE,ERR_WRITE_NDIMS,ERR_WRITE_DIMS,ERR_WRITE_CHARLEN,ERR_WRITE_DATA,ERR_FILE_ADD,ERR_FILE_EXTRACT,ERR_FILE_CLOSE,ERR_INVALID_FORMAT,ERR_INVALID_INPUT,ERR_EMPTY_INPUT,ERR_DIM_MISMATCH,ERR_NAN_INF,ERR_UNSUPPORTED_TYPE,ERR_SIZE_MISMATCH,ERR_TYPE_MISMATCH,ERR_STRING_TOO_LONG,ERR_IDX_OUT_OF_BOUNDS,ERR_DIVISION_BY_ZERO,ERR_ALLOC_FAIL,ERR_POINTER_NULL,ERR_UNIT_NOT_CONNECTED,ERR_INTERNAL,ERR_UNKNOWN|}"
+      "${1|ERR_OK,ERR_FILE_OPEN,ERR_READ_MAGIC,ERR_READ_TYPE,ERR_READ_NDIMS,ERR_READ_DIMS,ERR_READ_CHARLEN,ERR_READ_DATA,ERR_WRITE_MAGIC,ERR_WRITE_TYPE,ERR_WRITE_NDIMS,ERR_WRITE_DIMS,ERR_WRITE_CHARLEN,ERR_WRITE_DATA,ERR_FILE_ADD,ERR_FILE_EXTRACT,ERR_FILE_CLOSE,ERR_INVALID_FORMAT,ERR_INVALID_INPUT,ERR_EMPTY_INPUT,ERR_DIM_MISMATCH,ERR_NAN_INF,ERR_UNSUPPORTED_TYPE,ERR_SIZE_MISMATCH,ERR_TYPE_MISMATCH,ERR_STRING_TOO_LONG,ERR_IDX_OUT_OF_BOUNDS,ERR_DIVISION_BY_ZERO,ERR_ALLOC_FAIL,ERR_POINTER_NULL,STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED,STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY,STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED,STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED,STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED,STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS,STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD,STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS,STAT_ADAPTIVE_STOP_TAU,STAT_ADAPTIVE_STOP_K_MAX,STAT_ADAPTIVE_STOP_RESIDUAL_CAP,STAT_ADAPTIVE_STOP_EXHAUSTED,STAT_ADAPTIVE_STOP_ZERO_DISPERSION,STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS,ERR_UNIT_NOT_CONNECTED,ERR_INTERNAL,ERR_UNKNOWN|}"
     ]
   }
 }

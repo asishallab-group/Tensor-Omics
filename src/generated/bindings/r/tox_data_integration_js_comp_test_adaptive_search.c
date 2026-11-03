@@ -6,8 +6,37 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
+void calc_adaptive_js_comp_test_bounds_c(const int*, const int*, int*, int*);
 void generate_adaptive_js_comp_test_candidates_c(const int*, const int*, int*, int*, int*);
 void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, int*);
+
+SEXP calc_adaptive_js_comp_test_bounds_call(SEXP max_n_genes_all_studies, SEXP n_studies) {
+    int nprot = 0;
+    // scalar inputs, pulled from their length-1 vectors
+    int max_n_genes_all_studies_v = Rf_asInteger(max_n_genes_all_studies);
+    int n_studies_v = Rf_asInteger(n_studies);
+
+    // outputs and work space
+    int max_n_points_candidate = 0;
+    int ierr = 0;
+
+    calc_adaptive_js_comp_test_bounds_c(
+        &max_n_genes_all_studies_v,
+        &n_studies_v,
+        &max_n_points_candidate,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(max_n_points_candidate));
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("max_n_points_candidate"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
 
 SEXP generate_adaptive_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP n_studies) {
     int nprot = 0;

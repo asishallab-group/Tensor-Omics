@@ -15,7 +15,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_random_gsl() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(23))
+        allocate (all_tests(16))
 
         all_tests(1) = test_case("test_create_rng_ok_and_reproducible", test_create_rng_ok_and_reproducible)
         all_tests(2) = test_case("test_reset_rng_restores_stream", test_reset_rng_restores_stream)
@@ -30,27 +30,13 @@ contains
         all_tests(10) = test_case("test_rand_range_bounds_and_rejects_nan", test_rand_range_bounds_and_rejects_nan)
         all_tests(11) = test_case("test_multinomial", test_multinomial)
         all_tests(12) = test_case("test_multiv_hypergeom", test_multiv_hypergeom)
-        all_tests(13) = test_case("test_multinomial_invalid_n_populations_arg_pos", &
-                                  test_multinomial_invalid_n_populations_arg_pos)
-        all_tests(14) = test_case("test_multinomial_invalid_population_sizes_arg_pos", &
-                                  test_multinomial_invalid_population_sizes_arg_pos)
-        all_tests(15) = test_case("test_multinomial_total_population_mismatch_arg_pos", &
-                                  test_multinomial_total_population_mismatch_arg_pos)
-        all_tests(16) = test_case("test_multiv_hypergeom_invalid_n_populations_arg_pos", &
-                                  test_multiv_hypergeom_invalid_n_populations_arg_pos)
-        all_tests(17) = test_case("test_multiv_hypergeom_invalid_population_sizes_arg_pos", &
-                                  test_multiv_hypergeom_invalid_population_sizes_arg_pos)
-        all_tests(18) = test_case("test_multiv_hypergeom_total_population_mismatch_arg_pos", &
-                                  test_multiv_hypergeom_total_population_mismatch_arg_pos)
-        all_tests(19) = test_case("test_multiv_hypergeom_reduces_every_population", &
+        all_tests(13) = test_case("test_multiv_hypergeom_reduces_every_population", &
                                   test_multiv_hypergeom_reduces_every_population)
-        all_tests(20) = test_case("test_multiv_hypergeom_sequential_draws_partition_pool", &
+        all_tests(14) = test_case("test_multiv_hypergeom_sequential_draws_partition_pool", &
                                   test_multiv_hypergeom_sequential_draws_partition_pool)
-        all_tests(21) = test_case("test_multiv_hypergeom_rejects_draw_larger_than_pool", &
-                                  test_multiv_hypergeom_rejects_draw_larger_than_pool)
-        all_tests(22) = test_case("test_multinomial_rejects_draws_from_empty_population", &
-                                  test_multinomial_rejects_draws_from_empty_population)
-        all_tests(23) = test_case("test_draw_nothing_from_empty_population_succeeds", &
+        all_tests(15) = test_case("test_multinomial_more_draws_than_population", &
+                                  test_multinomial_more_draws_than_population)
+        all_tests(16) = test_case("test_draw_nothing_from_empty_population_succeeds", &
                                   test_draw_nothing_from_empty_population_succeeds)
     end function get_all_tests_random_gsl
 
@@ -88,11 +74,11 @@ contains
     end subroutine test_reset_rng_restores_stream
 
     !> A freshly-declared `rng_t` default-initializes to a null handle, and every procedure that
-    !| takes one other than `create_rng` rejects it with `ERR_POINTER_NULL` at argument 1 rather
-    !| than dereferencing it.
+    !| takes one and an `ierr` rejects it with `ERR_POINTER_NULL` at argument 1 rather than
+    !| dereferencing it (the two multivariate draws take no `ierr` and leave this to the caller).
     subroutine test_uninitialized_rng_reports_pointer_null()
         type(rng_t) :: rng
-        integer(int32) :: ierr, n_drawn, pop(2), drawn(2)
+        integer(int32) :: ierr, n_drawn
         real(real64) :: r
 
         r = random_uniform(rng, ierr=ierr)
@@ -115,16 +101,6 @@ contains
 
         r = rand_range(rng, 0.0_real64, 1.0_real64, ierr=ierr)
         call assert_err(ierr, ERR_POINTER_NULL, "test_uninitialized_rng_reports_pointer_null: rand_range", &
-                        arg_pos=1_int32)
-
-        pop = [3, 4]
-        call random_multinomial(rng, 2_int32, pop, 7_int32, 5_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_POINTER_NULL, "test_uninitialized_rng_reports_pointer_null: random_multinomial", &
-                        arg_pos=1_int32)
-
-        pop = [3, 4]
-        call random_multiv_hypergeom(rng, 2_int32, pop, 7_int32, 5_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_POINTER_NULL, "test_uninitialized_rng_reports_pointer_null: random_multiv_hypergeom", &
                         arg_pos=1_int32)
     end subroutine test_uninitialized_rng_reports_pointer_null
 
@@ -269,8 +245,7 @@ contains
         n_to_draw = 12
 
         rng = create_rng(ierr=ierr)
-        call random_multinomial(rng, n_pop, pop, total_pop, n_to_draw, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multinomial: basic call succeeds")
+        call random_multinomial(rng, n_pop, pop, total_pop, n_to_draw, drawn)
         call assert_equal_int(sum(drawn), n_to_draw, "test_multinomial: basic sum(drawn) == n_to_draw")
         do i = 1, n_pop
             call assert_true(drawn(i) >= 0, "test_multinomial: basic no negative draws")
@@ -280,8 +255,7 @@ contains
         ! EDGE CASE: ZERO DRAWS
         ! ============================================================
         pop = [1, 2, 3, 4]
-        call random_multinomial(rng, n_pop, pop, sum(pop), 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multinomial: zero draws succeeds")
+        call random_multinomial(rng, n_pop, pop, sum(pop), 0_int32, drawn)
         call assert_equal_int(sum(drawn), 0, "test_multinomial: zero draws sum == 0")
 
         ! ============================================================
@@ -292,8 +266,7 @@ contains
         ! via a sequence of independent binomial splits -- n_to_draw == total_population does
         ! not make the outcome deterministic, only sum(drawn) == n_to_draw and non-negativity.
         pop = [4, 5, 6, 7]
-        call random_multinomial(rng, n_pop, pop, sum(pop), sum(pop), drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multinomial: full draw succeeds")
+        call random_multinomial(rng, n_pop, pop, sum(pop), sum(pop), drawn)
         call assert_equal_int(sum(drawn), sum(pop), "test_multinomial: full draw: sum(drawn) == n_to_draw")
         do i = 1, n_pop
             call assert_true(drawn(i) >= 0, "test_multinomial: full draw: no negative draws")
@@ -302,8 +275,7 @@ contains
         ! ============================================================
         ! EDGE CASE: SINGLE POPULATION
         ! ============================================================
-        call random_multinomial(rng, 1_int32, [10_int32], 10_int32, 7_int32, drawn(1:1), ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multinomial: single population succeeds")
+        call random_multinomial(rng, 1_int32, [10_int32], 10_int32, 7_int32, drawn(1:1))
         call assert_equal_int(drawn(1), 7, "test_multinomial: single population gets everything")
 
         ! ============================================================
@@ -313,8 +285,8 @@ contains
         rng1 = create_rng(seed=17_int32, ierr=ierr)
         rng2 = create_rng(seed=17_int32, ierr=ierr)
 
-        call random_multinomial(rng1, n_pop, pop, sum(pop), 12_int32, drawn, ierr=ierr)
-        call random_multinomial(rng2, n_pop, pop, sum(pop), 12_int32, drawn2, ierr=ierr)
+        call random_multinomial(rng1, n_pop, pop, sum(pop), 12_int32, drawn)
+        call random_multinomial(rng2, n_pop, pop, sum(pop), 12_int32, drawn2)
         call assert_equal_array_int(drawn, drawn2, n_pop, "test_multinomial: reproducibility with the same seed")
 
         ! ============================================================
@@ -323,7 +295,7 @@ contains
         pop = [3, 10, 2, 5]
         count_big = 0
         do iter = 1, 200
-            call random_multinomial(rng, n_pop, pop, sum(pop), 20_int32, drawn, ierr=ierr)
+            call random_multinomial(rng, n_pop, pop, sum(pop), 20_int32, drawn)
             if (drawn(2) >= max(drawn(1), drawn(3), drawn(4))) count_big = count_big + 1
         end do
         call assert_true(count_big > 80, "test_multinomial: statistical sanity check")
@@ -334,8 +306,7 @@ contains
         pop = [1000000, 2000000, 3000000, 4000000]
         total_pop = sum(pop)
         n_to_draw = 5000000
-        call random_multinomial(rng, n_pop, pop, total_pop, n_to_draw, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multinomial: large population succeeds")
+        call random_multinomial(rng, n_pop, pop, total_pop, n_to_draw, drawn)
         call assert_equal_int(sum(drawn), n_to_draw, "test_multinomial: large sum correct")
         do i = 1, n_pop
             call assert_true(drawn(i) >= 0, "test_multinomial: large no negative draws")
@@ -356,8 +327,7 @@ contains
         n_to_draw = 15
 
         rng = create_rng(ierr=ierr)
-        call random_multiv_hypergeom(rng, n_pop, pop, total_pop, n_to_draw, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom: basic call succeeds")
+        call random_multiv_hypergeom(rng, n_pop, pop, total_pop, n_to_draw, drawn)
         call assert_equal_int(sum(drawn), n_to_draw, "test_multiv_hypergeom: basic sum(drawn) == n_to_draw")
         do i = 1, n_pop
             call assert_true(drawn(i) >= 0, "test_multiv_hypergeom: basic no negative draws")
@@ -367,8 +337,7 @@ contains
         ! EDGE CASE: ZERO DRAWS
         ! ============================================================
         pop = [5, 7, 9, 3, 1]
-        call random_multiv_hypergeom(rng, n_pop, pop, sum(pop), 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom: zero draws succeeds")
+        call random_multiv_hypergeom(rng, n_pop, pop, sum(pop), 0_int32, drawn)
         call assert_equal_int(sum(drawn), 0, "test_multiv_hypergeom: zero draws sum == 0")
 
         ! ============================================================
@@ -376,16 +345,14 @@ contains
         ! ============================================================
         pop = [3, 4, 5, 6, 7]
         original_pop = pop
-        call random_multiv_hypergeom(rng, n_pop, pop, sum(pop), sum(pop), drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom: full draw succeeds")
+        call random_multiv_hypergeom(rng, n_pop, pop, sum(pop), sum(pop), drawn)
         call assert_equal_array_int(drawn, original_pop, n_pop, "test_multiv_hypergeom: full draw returns the population")
 
         ! ============================================================
         ! EDGE CASE: SINGLE POPULATION
         ! ============================================================
         pop(1:1) = [12]
-        call random_multiv_hypergeom(rng, 1_int32, pop(1:1), 12_int32, 7_int32, drawn(1:1), ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom: single population succeeds")
+        call random_multiv_hypergeom(rng, 1_int32, pop(1:1), 12_int32, 7_int32, drawn(1:1))
         call assert_equal_int(drawn(1), 7, "test_multiv_hypergeom: single population gets everything")
 
         ! ============================================================
@@ -396,9 +363,9 @@ contains
         rng1 = create_rng(seed=99_int32, ierr=ierr)
         rng2 = create_rng(seed=99_int32, ierr=ierr)
 
-        call random_multiv_hypergeom(rng1, n_pop, pop, sum(pop), 8_int32, drawn, ierr=ierr)
+        call random_multiv_hypergeom(rng1, n_pop, pop, sum(pop), 8_int32, drawn)
         pop = original_pop
-        call random_multiv_hypergeom(rng2, n_pop, pop, sum(pop), 8_int32, drawn2, ierr=ierr)
+        call random_multiv_hypergeom(rng2, n_pop, pop, sum(pop), 8_int32, drawn2)
         call assert_equal_array_int(drawn, drawn2, n_pop, "test_multiv_hypergeom: reproducibility with the same seed")
 
         ! ============================================================
@@ -408,8 +375,7 @@ contains
         original_pop = pop
         total_pop = sum(pop)
         n_to_draw = 1000000
-        call random_multiv_hypergeom(rng, n_pop, pop, total_pop, n_to_draw, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom: large population succeeds")
+        call random_multiv_hypergeom(rng, n_pop, pop, total_pop, n_to_draw, drawn)
         call assert_equal_int(sum(drawn), n_to_draw, "test_multiv_hypergeom: large sum correct")
         do i = 1, n_pop
             call assert_true(drawn(i) >= 0, "test_multiv_hypergeom: large no negative draws")
@@ -431,8 +397,7 @@ contains
         original_pop = pop
         rng = create_rng(ierr=ierr)
 
-        call random_multiv_hypergeom(rng, n_pop, pop, sum(original_pop), 25_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom_reduces_every_population: succeeds")
+        call random_multiv_hypergeom(rng, n_pop, pop, sum(original_pop), 25_int32, drawn)
 
         ! Guard against a vacuous pass: the last element is only tested meaningfully if
         ! something was actually drawn from it.
@@ -468,8 +433,7 @@ contains
         rng = create_rng(seed=2024_int32, ierr=ierr)
         drawn_total = 0_int32
         do i_draw = 1, n_draws
-            call random_multiv_hypergeom(rng, n_pop, pool, sum(pool), draw_sizes(i_draw), drawn, ierr=ierr)
-            call assert_err(ierr, ERR_OK, name//"every draw succeeds")
+            call random_multiv_hypergeom(rng, n_pop, pool, sum(pool), draw_sizes(i_draw), drawn)
             call assert_equal_int(sum(drawn), draw_sizes(i_draw), name//"every draw has the requested size")
             call assert_true(all(pool >= 0_int32), name//"no pool entry ever goes negative")
             drawn_total = drawn_total + drawn
@@ -480,173 +444,24 @@ contains
         call assert_equal_array_int(pool, [0_int32, 0_int32, 0_int32, 0_int32, 0_int32], n_pop, name//"the pool ends all zero")
     end subroutine test_multiv_hypergeom_sequential_draws_partition_pool
 
-    !> Regression test for a bug caught during this port: `random_multinomial`'s dummy list had
-    !| to be reordered (`n_populations` before `population_sizes`) so its declaration precedes
-    !| the array it sizes, and the very first attempt at that reorder left the `arg_pos=`
-    !| literals pointing at the *old* positions -- `n_populations`'s own bad-value check blamed
-    !| argument 3 (`population_sizes`'s new position) instead of its own, argument 2. Pins the
-    !| correct position so a future reordering cannot silently swap them back unnoticed.
-    subroutine test_multinomial_invalid_n_populations_arg_pos()
-        integer(int32) :: drawn(0), pop(0), ierr
-        type(rng_t) :: rng
-
-        rng = create_rng(ierr=ierr)
-
-        call random_multinomial(rng, 0_int32, pop, 0_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_EMPTY_INPUT, &
-            "test_multinomial_invalid_n_populations_arg_pos: n_populations == 0 blames argument 2", arg_pos=2_int32)
-
-        call random_multinomial(rng, -1_int32, pop, 0_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-            "test_multinomial_invalid_n_populations_arg_pos: n_populations < 0 blames argument 2", arg_pos=2_int32)
-    end subroutine test_multinomial_invalid_n_populations_arg_pos
-
-    !> Companion regression test: a negative element of `population_sizes` (`n_populations`
-    !| itself valid) must blame argument 3, `population_sizes`'s own, current position.
-    subroutine test_multinomial_invalid_population_sizes_arg_pos()
-        integer(int32), parameter :: n_pop = 3
-        integer(int32) :: pop(n_pop), drawn(n_pop), ierr
-        type(rng_t) :: rng
-
-        rng = create_rng(ierr=ierr)
-        pop = [1, -2, 3]
-
-        call random_multinomial(rng, n_pop, pop, sum(pop), 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-            "test_multinomial_invalid_population_sizes_arg_pos: negative element blames argument 3", arg_pos=3_int32)
-        call assert_equal_int(sum(drawn), 0_int32, "test_multinomial_invalid_population_sizes_arg_pos: drawn is zeroed")
-    end subroutine test_multinomial_invalid_population_sizes_arg_pos
-
-    !> `total_population` that does not equal `sum(population_sizes)` is a dimension mismatch,
-    !| not silently trusted -- the draw itself would otherwise read past the pool with no
-    !| diagnostic. Blames `total_population`'s own position (4), the derived cross-check value,
-    !| in the spirit of codegen_guide.md §5.3's `n_selected_<arg>` convention.
-    subroutine test_multinomial_total_population_mismatch_arg_pos()
-        integer(int32), parameter :: n_pop = 3
-        integer(int32) :: pop(n_pop), drawn(n_pop), ierr
-        type(rng_t) :: rng
-
-        rng = create_rng(ierr=ierr)
-        pop = [1, 2, 3]
-
-        call random_multinomial(rng, n_pop, pop, sum(pop) + 1_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-            "test_multinomial_total_population_mismatch_arg_pos: total_population /= sum(population_sizes)", &
-            arg_pos=4_int32)
-    end subroutine test_multinomial_total_population_mismatch_arg_pos
-
-    !> Same regression as `test_multinomial_invalid_n_populations_arg_pos`, for the multivariate
-    !| hypergeometric sibling.
-    subroutine test_multiv_hypergeom_invalid_n_populations_arg_pos()
-        integer(int32) :: drawn(0), pop(0), ierr
-        type(rng_t) :: rng
-
-        rng = create_rng(ierr=ierr)
-
-        call random_multiv_hypergeom(rng, 0_int32, pop, 0_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_EMPTY_INPUT, &
-            "test_multiv_hypergeom_invalid_n_populations_arg_pos: n_populations == 0 blames argument 2", arg_pos=2_int32)
-
-        call random_multiv_hypergeom(rng, -1_int32, pop, 0_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-            "test_multiv_hypergeom_invalid_n_populations_arg_pos: n_populations < 0 blames argument 2", arg_pos=2_int32)
-    end subroutine test_multiv_hypergeom_invalid_n_populations_arg_pos
-
-    !> Same regression as `test_multinomial_invalid_population_sizes_arg_pos`, for the
-    !| multivariate hypergeometric sibling.
-    subroutine test_multiv_hypergeom_invalid_population_sizes_arg_pos()
-        integer(int32), parameter :: n_pop = 3
-        integer(int32) :: pop(n_pop), drawn(n_pop), ierr
-        type(rng_t) :: rng
-
-        rng = create_rng(ierr=ierr)
-        pop = [1, -2, 3]
-
-        call random_multiv_hypergeom(rng, n_pop, pop, sum(pop), 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-            "test_multiv_hypergeom_invalid_population_sizes_arg_pos: negative element blames argument 3", &
-            arg_pos=3_int32)
-    end subroutine test_multiv_hypergeom_invalid_population_sizes_arg_pos
-
-    !> Same regression as `test_multinomial_total_population_mismatch_arg_pos`, for the
-    !| multivariate hypergeometric sibling.
-    subroutine test_multiv_hypergeom_total_population_mismatch_arg_pos()
-        integer(int32), parameter :: n_pop = 3
-        integer(int32) :: pop(n_pop), drawn(n_pop), ierr
-        type(rng_t) :: rng
-
-        rng = create_rng(ierr=ierr)
-        pop = [1, 2, 3]
-
-        call random_multiv_hypergeom(rng, n_pop, pop, sum(pop) + 1_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-            "test_multiv_hypergeom_total_population_mismatch_arg_pos: total_population /= sum(population_sizes)", &
-            arg_pos=4_int32)
-    end subroutine test_multiv_hypergeom_total_population_mismatch_arg_pos
-
-    !> Drawing more elements than the pool holds is impossible without replacement, so it is
-    !| rejected as invalid input on `n_to_draw` (argument 5), with `drawn` zeroed and the pool left
-    !| untouched. The draw used to be capped silently at `total_population`, which broke the
-    !| documented `sum(drawn) == n_to_draw` with `ierr` still OK. Controls: drawing exactly the whole
-    !| pool still succeeds and returns it, and a smaller draw still sums to `n_to_draw`.
-    subroutine test_multiv_hypergeom_rejects_draw_larger_than_pool()
+    !> Drawing with replacement may exceed a non-empty population: 5 draws from a population of 1
+    !| (beside an empty one) sum to `n_to_draw` and all land in the non-empty population.
+    subroutine test_multinomial_more_draws_than_population()
         integer(int32), parameter :: n_pop = 2
         integer(int32) :: pop(n_pop), drawn(n_pop), ierr
         type(rng_t) :: rng
-        character(len=*), parameter :: name = "test_multiv_hypergeom_rejects_draw_larger_than_pool: "
+        character(len=*), parameter :: name = "test_multinomial_more_draws_than_population: "
 
         rng = create_rng(seed=5_int32, ierr=ierr)
-
-        pop = [3_int32, 4_int32]
-        call random_multiv_hypergeom(rng, n_pop, pop, 7_int32, 8_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"n_to_draw > total_population blames argument 5", &
-                        arg_pos=5_int32)
-        call assert_equal_array_int(drawn, [0_int32, 0_int32], n_pop, name//"drawn is zeroed")
-        call assert_equal_array_int(pop, [3_int32, 4_int32], n_pop, name//"the pool is left untouched")
-
-        pop = [0_int32, 0_int32]
-        call random_multiv_hypergeom(rng, n_pop, pop, 0_int32, 4_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"a draw from an empty pool blames argument 5", &
-                        arg_pos=5_int32)
-
-        pop = [3_int32, 4_int32]
-        call random_multiv_hypergeom(rng, n_pop, pop, 7_int32, 7_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, name//"control: drawing exactly the whole pool succeeds")
-        call assert_equal_array_int(drawn, [3_int32, 4_int32], n_pop, name//"control: the whole pool is drawn")
-
-        pop = [3_int32, 4_int32]
-        call random_multiv_hypergeom(rng, n_pop, pop, 7_int32, 5_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, name//"control: a smaller draw succeeds")
-        call assert_equal_int(sum(drawn), 5_int32, name//"control: a smaller draw sums to n_to_draw")
-    end subroutine test_multiv_hypergeom_rejects_draw_larger_than_pool
-
-    !> With `total_population = 0` there is nothing to draw from, so asking for draws is rejected
-    !| as invalid input on `n_to_draw` (argument 5), with `drawn` zeroed. Every draw used to land
-    !| in the last, empty population (`drawn = [0, 5]`) with `ierr` OK. Control: drawing with
-    !| replacement may exceed a non-empty population, so 5 draws from a population of 1 still
-    !| succeed and sum to `n_to_draw`.
-    subroutine test_multinomial_rejects_draws_from_empty_population()
-        integer(int32), parameter :: n_pop = 2
-        integer(int32) :: pop(n_pop), drawn(n_pop), ierr
-        type(rng_t) :: rng
-        character(len=*), parameter :: name = "test_multinomial_rejects_draws_from_empty_population: "
-
-        rng = create_rng(seed=5_int32, ierr=ierr)
-
-        pop = [0_int32, 0_int32]
-        call random_multinomial(rng, n_pop, pop, 0_int32, 5_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"draws from an empty population blame argument 5", &
-                        arg_pos=5_int32)
-        call assert_equal_array_int(drawn, [0_int32, 0_int32], n_pop, name//"drawn is zeroed")
 
         pop = [1_int32, 0_int32]
-        call random_multinomial(rng, n_pop, pop, 1_int32, 5_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, name//"control: more draws than a non-empty population succeed")
-        call assert_equal_int(sum(drawn), 5_int32, name//"control: the draws sum to n_to_draw")
-    end subroutine test_multinomial_rejects_draws_from_empty_population
+        call random_multinomial(rng, n_pop, pop, 1_int32, 5_int32, drawn)
+        call assert_equal_int(sum(drawn), 5_int32, name//"the draws sum to n_to_draw")
+        call assert_equal_array_int(drawn, [5_int32, 0_int32], n_pop, name//"every draw lands in the non-empty population")
+    end subroutine test_multinomial_more_draws_than_population
 
-    !> Drawing nothing from an empty population is well defined and stays valid for both
-    !| routines: `ierr` OK and `drawn` all zero. Guards the new checks against rejecting too much.
+    !> Drawing nothing from an empty population is well defined for both routines: `drawn` comes
+    !| back all zero.
     subroutine test_draw_nothing_from_empty_population_succeeds()
         integer(int32), parameter :: n_pop = 2
         integer(int32) :: pop(n_pop), drawn(n_pop), ierr
@@ -657,14 +472,12 @@ contains
 
         pop = [0_int32, 0_int32]
         drawn = -1_int32
-        call random_multinomial(rng, n_pop, pop, 0_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, name//"random_multinomial: zero draws from an empty population succeed")
+        call random_multinomial(rng, n_pop, pop, 0_int32, 0_int32, drawn)
         call assert_equal_array_int(drawn, [0_int32, 0_int32], n_pop, name//"random_multinomial: drawn is all zero")
 
         pop = [0_int32, 0_int32]
         drawn = -1_int32
-        call random_multiv_hypergeom(rng, n_pop, pop, 0_int32, 0_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, name//"random_multiv_hypergeom: zero draws from an empty pool succeed")
+        call random_multiv_hypergeom(rng, n_pop, pop, 0_int32, 0_int32, drawn)
         call assert_equal_array_int(drawn, [0_int32, 0_int32], n_pop, name//"random_multiv_hypergeom: drawn is all zero")
     end subroutine test_draw_nothing_from_empty_population_succeeds
 

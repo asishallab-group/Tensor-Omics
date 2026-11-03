@@ -104,7 +104,17 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Adaptive Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test_adaptive_search import (",
-      "    ${1|generate_adaptive_js_comp_test_candidates,run_js_comp_test_adaptive_parameter_search|},",
+      "    ${1|calc_adaptive_js_comp_test_bounds,generate_adaptive_js_comp_test_candidates,run_js_comp_test_adaptive_parameter_search|},",
+      ")"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
+    "body": [
+      "${1:result} = calc_adaptive_js_comp_test_bounds(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    n_studies=${3:n_studies},",
       ")"
     ]
   },
@@ -148,25 +158,6 @@
       "    max_pooled_residuals=${24:0},",
       "    min_study_neighbors=${25:1},",
       "    bin_count_mode=${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      ")"
-    ]
-  },
-  "tox_data_integration_js_comp_test_adaptive_search_impl (import)": {
-    "prefix": "tox:data_integration_js_comp_test_adaptive_search_impl.setup",
-    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Adaptive Parameter Search",
-    "body": [
-      "from tensor_omics.tox_data_integration_js_comp_test_adaptive_search_impl import (",
-      "    ${1|calc_adaptive_js_comp_test_bounds|},",
-      ")"
-    ]
-  },
-  "calc_adaptive_js_comp_test_bounds (call)": {
-    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
-    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
-    "body": [
-      "${1:result} = calc_adaptive_js_comp_test_bounds(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      "    n_studies=${3:n_studies},",
       ")"
     ]
   },
@@ -314,7 +305,16 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Fixed-k Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test_fixed_k_search import (",
-      "    ${1|generate_js_comp_test_candidates,run_js_comp_test_parameter_search|},",
+      "    ${1|calc_js_comp_test_candidate_bounds,generate_js_comp_test_candidates,run_js_comp_test_parameter_search|},",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds",
+    "description": "For the candidate grid of",
+    "body": [
+      "${1:result} = calc_js_comp_test_candidate_bounds(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
       ")"
     ]
   },
@@ -354,24 +354,6 @@
       "    two_sided_bootstrapping_significance_level=${21:2.5},",
       "    random_seed=${22:42},",
       "    bin_count_mode=${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      ")"
-    ]
-  },
-  "tox_data_integration_js_comp_test_fixed_k_search_impl (import)": {
-    "prefix": "tox:data_integration_js_comp_test_fixed_k_search_impl.setup",
-    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Fixed-k Parameter Search",
-    "body": [
-      "from tensor_omics.tox_data_integration_js_comp_test_fixed_k_search_impl import (",
-      "    ${1|calc_js_comp_test_candidate_bounds|},",
-      ")"
-    ]
-  },
-  "calc_js_comp_test_candidate_bounds (call)": {
-    "prefix": "tox:calc_js_comp_test_candidate_bounds",
-    "description": "For the candidate grid of",
-    "body": [
-      "${1:result} = calc_js_comp_test_candidate_bounds(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
       ")"
     ]
   },
@@ -683,7 +665,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing import (",
-      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods|},",
+      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,gather_pooled_neighborhood_residuals,construct_adaptive_neighborhoods|},",
       ")"
     ]
   },
@@ -773,6 +755,16 @@
       ")"
     ]
   },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
+    "body": [
+      "${1:result} = gather_pooled_neighborhood_residuals(",
+      "    residuals=${2:residuals},",
+      "    neighborhood_indices_point=${3:neighborhood_indices_point},",
+      ")"
+    ]
+  },
   "construct_adaptive_neighborhoods (call)": {
     "prefix": "tox:construct_adaptive_neighborhoods",
     "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
@@ -795,7 +787,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing_impl import (",
-      "    ${1|calc_neighborhood_size,gather_pooled_neighborhood_residuals|},",
+      "    ${1|calc_neighborhood_size|},",
       ")"
     ]
   },
@@ -808,16 +800,6 @@
       "    n_points=${3:n_points},",
       "    mean_S=${4:mean_S},",
       "    desired_size=${5:1000},",
-      ")"
-    ]
-  },
-  "gather_pooled_neighborhood_residuals (call)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
-    "body": [
-      "${1:result} = gather_pooled_neighborhood_residuals(",
-      "    residuals=${2:residuals},",
-      "    neighborhood_indices_point=${3:neighborhood_indices_point},",
       ")"
     ]
   },

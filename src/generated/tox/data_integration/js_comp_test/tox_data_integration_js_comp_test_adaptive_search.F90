@@ -11,7 +11,8 @@
 !| the criteria of
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]] and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]];
-!| every candidate it tries is logged with an `ADAPTIVE_CANDIDATE_*` status.
+!| every candidate it tries is logged with a `STAT_ADAPTIVE_CANDIDATE_*` status of [[tox_errors(module)]], or
+!| `ERR_OK` when it was evaluated.
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
 !| builds the neighborhoods for the chosen knobs. `calc_adaptive_js_comp_test_bounds` sizes the
 !| work arrays for a caller that allocates its own.
@@ -19,7 +20,7 @@
 !| Generated from [[tox_data_integration_js_comp_test_adaptive_search_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test_adaptive_search
     use f42_safeguard
-    use tox_data_integration_js_comp_test_adaptive_search_impl, only: generate_adaptive_js_comp_test_candidates_impl, run_js_comp_test_adaptive_parameter_search_impl
+    use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds_impl, generate_adaptive_js_comp_test_candidates_impl, run_js_comp_test_adaptive_parameter_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -34,11 +35,62 @@ module tox_data_integration_js_comp_test_adaptive_search
     M_IMPLICIT_NONE
     private
 
+    public :: calc_adaptive_js_comp_test_bounds
     public :: generate_adaptive_js_comp_test_candidates
     public :: run_js_comp_test_adaptive_parameter_search
     public :: run_js_comp_test_adaptive_parameter_search_expert
 
 contains
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds_impl]].
+    !| Sizes the per-point work arrays of the adaptive parameter search over the candidates of
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]].
+    !| A candidate's reference-point count is only known after its neighborhoods are grown, so this
+    !| is a **practical capacity, not a proven bound**:
+    !| `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the factor 2 being
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_POINT_CAPACITY_FACTOR(variable)]],
+    !| `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the smallest
+    !| candidate `k_start`. The search rejects a candidate that exceeds it with a capacity status.
+    !|
+    !| Reports invalid input, naming neither argument since the bound is joint in both, for a
+    !| product `N` beyond the 32-bit range or a first candidate
+    !| `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
+    !| `floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]), so that its
+    !| `k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1)` fits; the output is then left undefined.
+    pure subroutine calc_adaptive_js_comp_test_bounds(&
+            max_n_genes_all_studies,&
+            n_studies,&
+            max_n_points_candidate,&
+            ierr&
+        )
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(out) :: max_n_points_candidate
+            !! Practical upper bound on the number of reference points any adaptive candidate is
+            !! allowed to emerge with
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, invalid input when the pool size or the first
+            !! candidate's `k_max` does not fit a 32-bit integer (see above)
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call calc_adaptive_js_comp_test_bounds_impl(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_studies = n_studies,&
+            max_n_points_candidate = max_n_points_candidate,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine calc_adaptive_js_comp_test_bounds
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_adaptive_search_impl(module):generate_adaptive_js_comp_test_candidates_impl]].
     !| The adaptive counterpart of
@@ -69,7 +121,7 @@ contains
     !|
     !| Not checked here: the values fit 32-bit integers only while
     !| `k_start_1 <= floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]);
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds_impl(interface)]]
     !| rejects inputs beyond that.
     pure subroutine generate_adaptive_js_comp_test_candidates(&
             max_n_genes_all_studies,&
@@ -138,16 +190,16 @@ contains
     !| **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
     !| `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
     !| failing check, in the order above:
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
     !| (too few means or residuals),
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
     !| (a study neighborhood below `min_study_neighbors`, or a study without a non-NaN residual at
     !| some point),
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]],
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]],
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]],
-    !| or else [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_EVALUATED(variable)]]
-    !| (admissible, with a trace column).
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]],
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]],
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]],
+    !| or else [[tox_errors(module):ERR_OK(variable)]]
+    !| (0, admissible, with a trace column).
     !|
     !| **Result**, one of three cases, as in the fixed-k search:
     !|
@@ -169,7 +221,7 @@ contains
     !| place of `trace_n_neighbors`; the per-point traces are jagged in the same way.
     !|
     !| **Memory.** The per-point arrays are sized by `max_n_points_candidate` (from
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]);
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds_impl(interface)]]);
     !| the construction buffers by `N = max_n_genes_all_studies * n_studies` (the largest,
     !| `tmp_n_neighbors_per_point`, `n_studies * N` integers); the pooling buffers hold
     !| `max_n_reps_all_studies * N` values each, the size of `residuals`.
@@ -257,7 +309,7 @@ contains
             !! Most reference points a candidate may emerge with; a candidate with more is rejected
             !! with the capacity status. The per-point outputs and traces below are sized by it, so
             !! the caller has to know it up front
-            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds]].
+            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_adaptive_search(module):calc_adaptive_js_comp_test_bounds]].
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Mean expression of every gene in every study, NaN for a missing gene
@@ -399,13 +451,14 @@ contains
             !! few means)
             !! The first `n_candidates_tried` elements will hold the results.
         integer(int32), dimension(16), intent(out) :: candidate_status
-            !! What happened to every tried candidate: `0_int32` evaluated,
-            !! `1_int32` construction failed,
-            !! `2_int32` a study neighborhood below `min_study_neighbors`
-            !! or a study without a non-NaN residual at some point,
-            !! `3_int32` capacity exceeded,
-            !! `4_int32` overlap gate failed,
-            !! `5_int32` consensus-pmf count gate failed
+            !! What happened to every tried candidate:
+            !! [[tox_errors(module):ERR_OK(variable)]] (0) evaluated,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]] construction failed,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]] a study neighborhood below
+            !! `min_study_neighbors` or a study without a non-NaN residual at some point,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]] capacity exceeded,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]] overlap gate failed,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]] consensus-pmf count gate failed
             !! The first `n_candidates_tried` elements will hold the results.
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum count every bin must reach, both in the bin-count search (the floor in every
@@ -800,16 +853,16 @@ contains
     !| **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
     !| `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
     !| failing check, in the order above:
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
     !| (too few means or residuals),
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
     !| (a study neighborhood below `min_study_neighbors`, or a study without a non-NaN residual at
     !| some point),
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]],
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]],
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]],
-    !| or else [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_EVALUATED(variable)]]
-    !| (admissible, with a trace column).
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]],
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]],
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]],
+    !| or else [[tox_errors(module):ERR_OK(variable)]]
+    !| (0, admissible, with a trace column).
     !|
     !| **Result**, one of three cases, as in the fixed-k search:
     !|
@@ -831,7 +884,7 @@ contains
     !| place of `trace_n_neighbors`; the per-point traces are jagged in the same way.
     !|
     !| **Memory.** The per-point arrays are sized by `max_n_points_candidate` (from
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]);
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds_impl(interface)]]);
     !| the construction buffers by `N = max_n_genes_all_studies * n_studies` (the largest,
     !| `tmp_n_neighbors_per_point`, `n_studies * N` integers); the pooling buffers hold
     !| `max_n_reps_all_studies * N` values each, the size of `residuals`.
@@ -967,7 +1020,7 @@ contains
             !! Most reference points a candidate may emerge with; a candidate with more is rejected
             !! with the capacity status. The per-point outputs and traces below are sized by it, so
             !! the caller has to know it up front
-            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds]].
+            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_adaptive_search(module):calc_adaptive_js_comp_test_bounds]].
             !! The minimum valid value is `1_int32`.
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)
@@ -1113,13 +1166,14 @@ contains
             !! few means)
             !! The first `n_candidates_tried` elements will hold the results.
         integer(int32), dimension(16), intent(out) :: candidate_status
-            !! What happened to every tried candidate: `0_int32` evaluated,
-            !! `1_int32` construction failed,
-            !! `2_int32` a study neighborhood below `min_study_neighbors`
-            !! or a study without a non-NaN residual at some point,
-            !! `3_int32` capacity exceeded,
-            !! `4_int32` overlap gate failed,
-            !! `5_int32` consensus-pmf count gate failed
+            !! What happened to every tried candidate:
+            !! [[tox_errors(module):ERR_OK(variable)]] (0) evaluated,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]] construction failed,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]] a study neighborhood below
+            !! `min_study_neighbors` or a study without a non-NaN residual at some point,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]] capacity exceeded,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]] overlap gate failed,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]] consensus-pmf count gate failed
             !! The first `n_candidates_tried` elements will hold the results.
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, as in the construction

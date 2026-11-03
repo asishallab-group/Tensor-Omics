@@ -11,7 +11,8 @@ and stops at the first admissible candidate whose bootstrapped JSDs have reached
 the criteria of
 :func:`tensor_omics.check_plateau_condition` and
 :func:`tensor_omics.check_effect_size_plateau_condition`;
-every candidate it tries is logged with an `ADAPTIVE_CANDIDATE_*` status.
+every candidate it tries is logged with a `STAT_ADAPTIVE_CANDIDATE_*` status of ``tox_errors``, or
+`ERR_OK` when it was evaluated.
 :func:`tensor_omics.construct_adaptive_neighborhoods`
 builds the neighborhoods for the chosen knobs. `calc_adaptive_js_comp_test_bounds` sizes the
 work arrays for a caller that allocates its own.
@@ -28,6 +29,17 @@ from .error_handling import check_err_code
 from .library import load_library, nullable
 
 _lib = load_library()
+
+_lib.calc_adaptive_js_comp_test_bounds_c.restype = None
+_lib.calc_adaptive_js_comp_test_bounds_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CALC_ADAPTIVE_JS_COMP_TEST_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "n_studies", "max_n_points_candidate", "ierr",)
 
 _lib.generate_adaptive_js_comp_test_candidates_c.restype = None
 _lib.generate_adaptive_js_comp_test_candidates_c.argtypes = (
@@ -115,6 +127,67 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
 _RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
+def calc_adaptive_js_comp_test_bounds(
+        max_n_genes_all_studies,
+        n_studies,
+):
+    r"""Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
+
+    Sizes the per-point work arrays of the adaptive parameter search over the candidates of
+    :func:`tensor_omics.generate_adaptive_js_comp_test_candidates`.
+    A candidate's reference-point count is only known after its neighborhoods are grown, so this
+    is a **practical capacity, not a proven bound**:
+    `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the factor 2 being
+    ``ADAPTIVE_POINT_CAPACITY_FACTOR``,
+    `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the smallest
+    candidate `k_start`. The search rejects a candidate that exceeds it with a capacity status.
+
+    Reports invalid input, naming neither argument since the bound is joint in both, for a
+    product `N` beyond the 32-bit range or a first candidate
+    `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
+    `floor(huge(1)/ADAPTIVE_K_MAX_FACTOR)` (``ADAPTIVE_K_MAX_FACTOR``), so that its
+    `k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1)` fits; the output is then left undefined.
+
+    Parameters
+    ----------
+    max_n_genes_all_studies : int
+        Maximum number of genes across all studies
+        The minimum valid value is `1`.
+    n_studies : int
+        Number of studies
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    max_n_points_candidate : int
+        Practical upper bound on the number of reference points any adaptive candidate is
+        allowed to emerge with
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test_adaptive_search::calc_adaptive_js_comp_test_bounds`, whose argument names are
+    the ones an error message reports.
+    """
+    # outputs and work arrays, which the caller never sees
+    max_n_points_candidate = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.calc_adaptive_js_comp_test_bounds_c(
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(max_n_points_candidate),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CALC_ADAPTIVE_JS_COMP_TEST_BOUNDS_ARGUMENTS)
+
+    return max_n_points_candidate.value
 
 def generate_adaptive_js_comp_test_candidates(
         max_n_genes_all_studies,
@@ -258,16 +331,16 @@ def run_js_comp_test_adaptive_parameter_search(
     **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
     `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
     failing check, in the order above:
-    ``ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED``
+    ``STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED``
     (too few means or residuals),
-    ``ADAPTIVE_CANDIDATE_EMPTY_STUDY``
+    ``STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY``
     (a study neighborhood below `min_study_neighbors`, or a study without a non-NaN residual at
     some point),
-    ``ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED``,
-    ``ADAPTIVE_CANDIDATE_OVERLAP_FAILED``,
-    ``ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED``,
-    or else ``ADAPTIVE_CANDIDATE_EVALUATED``
-    (admissible, with a trace column).
+    ``STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED``,
+    ``STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED``,
+    ``STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED``,
+    or else ``ERR_OK``
+    (0, admissible, with a trace column).
 
     **Result**, one of three cases, as in the fixed-k search:
 
@@ -563,13 +636,14 @@ def run_js_comp_test_adaptive_parameter_search(
             The first `n_candidates_tried` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         candidate_status : np.ndarray[np.int32] of shape (16,), read-only
-            What happened to every tried candidate: `0` evaluated,
-            `1` construction failed,
-            `2` a study neighborhood below `min_study_neighbors`
-            or a study without a non-NaN residual at some point,
-            `3` capacity exceeded,
-            `4` overlap gate failed,
-            `5` consensus-pmf count gate failed
+            What happened to every tried candidate:
+            ``ERR_OK`` (0) evaluated,
+            ``STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED`` construction failed,
+            ``STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY`` a study neighborhood below
+            `min_study_neighbors` or a study without a non-NaN residual at some point,
+            ``STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED`` capacity exceeded,
+            ``STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED`` overlap gate failed,
+            ``STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED`` consensus-pmf count gate failed
             The first `n_candidates_tried` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
 

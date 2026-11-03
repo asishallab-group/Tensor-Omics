@@ -43,7 +43,15 @@ from tensor_omics import (
     run_js_comp_test_adaptive,
     run_js_comp_test_adaptive_parameter_search,
 )
-from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
+from tensor_omics.error_handling import (
+    ERR_INVALID_INPUT, ERR_NAN_INF, ERR_OK,
+    STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY,
+    STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED,
+    STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS,
+    STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS,
+    STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_RESIDUAL_CAP,
+    STAT_ADAPTIVE_STOP_EXHAUSTED, STAT_ADAPTIVE_STOP_ZERO_DISPERSION, STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS,
+)
 
 TOL = 1e-12
 
@@ -724,7 +732,7 @@ def test_gather_pooled_neighborhood_residuals():
     assert pooled_residuals.shape == (max_n_reps_all_studies*n_neighbors*n_studies,), \
         f"expected shape ({max_n_reps_all_studies*n_neighbors*n_studies},), got {pooled_residuals.shape}"
 
-    # An out-of-range gene index must raise, confirming the new bounds check is wired through.
+    # An out-of-range gene index must raise, confirming the wrapper's gene-index bounds check is wired through.
     bad_indices = np.array([[1, max_n_genes_all_studies + 1], [2, 1]], dtype=np.int32)
     assert_error(lambda: gather_pooled_neighborhood_residuals(residuals, bad_indices),
                  "expected ERR_INVALID_INPUT for an out-of-range gene index", ERR_INVALID_INPUT)
@@ -1224,7 +1232,12 @@ def test_construct_adaptive_neighborhoods():
     for key in ("stop_reason", "neighborhood_dispersion", "neighborhood_mad"):
         assert result[key].shape == (n_points,), f"{key}: expected ({n_points},), got {result[key].shape}"
     assert result["stop_reason"].dtype == np.int32
-    assert isinstance(result["construction_status"], int) and 0 <= result["construction_status"] <= 3
+    stop_codes = (STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_RESIDUAL_CAP,
+                  STAT_ADAPTIVE_STOP_EXHAUSTED, STAT_ADAPTIVE_STOP_ZERO_DISPERSION, STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS)
+    assert np.all(np.isin(result["stop_reason"], stop_codes)), f"unexpected stop codes {result['stop_reason']}"
+    assert isinstance(result["construction_status"], int) and result["construction_status"] in (
+        ERR_OK, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS, STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD,
+        STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS)
     assert isinstance(result["max_n_neighbors"], int) and result["max_n_neighbors"] >= 1
     # structural: the per-study counts of a neighborhood partition its pooled range
     lengths = result["pooled_neighborhood_range"][1] - result["pooled_neighborhood_range"][0] + 1
@@ -1250,7 +1263,7 @@ def test_run_js_comp_test_adaptive():
     residuals = rng.normal(0.0, 1.0, size=(6, n_genes, n_studies))
     residuals[:, 7, 2] = np.nan
     construction = construct_adaptive_neighborhoods(gene_means, residuals, 6, 3, 12)
-    assert construction["construction_status"] == 0, "expected a construction without empty studies"
+    assert construction["construction_status"] == ERR_OK, "expected a construction without empty studies"
     ranges = construction["pooled_neighborhood_range"]
     n_points = ranges.shape[1]
 
@@ -1365,7 +1378,10 @@ def test_run_js_comp_test_adaptive_parameter_search():
     for key in ("candidate_k_start", "candidate_n_points"):
         assert result[key].shape == (n_tried,), f"{key}: wrong shape {result[key].shape}"
     assert result["candidate_status"].dtype == np.int32
-    assert np.all((result["candidate_status"] >= 0) & (result["candidate_status"] <= 5))
+    assert np.all(np.isin(result["candidate_status"], (
+        ERR_OK, STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY,
+        STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED,
+        STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED))), f"unexpected status codes {result['candidate_status']}"
 
     assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
                                                                     join_method='join_min', max_n_points_candidate=0),

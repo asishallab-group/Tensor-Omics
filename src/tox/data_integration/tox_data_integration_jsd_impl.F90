@@ -23,7 +23,7 @@ module tox_data_integration_jsd_impl
              build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
              jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
-             compute_consensus_divergences
+             compute_consensus_divergences, has_study_without_residuals
 
     ! `residual_range_quantile_level`'s default, shared by DM_DEFAULT and M_DEFAULT_VAL of both
     ! residual-range routines.
@@ -275,6 +275,35 @@ contains
             end do
         end do
     end subroutine calc_pmf_impl
+
+    !> summary: Whether some study has no included residual at some reference point
+    !| AUTHOR_LASZLO_LANG
+    !| `.true.` iff `included_n_reps(i_point, i_study) == 0` for some point and study. Such a study
+    !| would leave that point's equal-weight consensus pmf summing to less than 1, so the
+    !| JS-Comp-Test checks this before building the consensus. The scan stops at the first such
+    !| entry. Internal helper, not published; public because the final runs and the parameter
+    !| searches' candidate scoring call it.
+    pure logical(c_bool) function has_study_without_residuals(included_n_reps, n_points, n_studies) result(has_empty)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
+            !! Number of residuals each study contributes at each reference point
+
+        integer(int32) :: i_point, i_study
+
+        ! Sequential with an early exit: the first empty entry decides.
+        has_empty = .false._c_bool
+        do i_study = 1, n_studies
+            do i_point = 1, n_points
+                if (included_n_reps(i_point, i_study) == 0_int32) then
+                    has_empty = .true._c_bool
+                    return
+                end if
+            end do
+        end do
+    end function has_study_without_residuals
 
     !> summary: Compute the Jensen-Shannon divergence per reference point from two histograms
     !| AUTHOR_FRANZ_ERIC_SILL

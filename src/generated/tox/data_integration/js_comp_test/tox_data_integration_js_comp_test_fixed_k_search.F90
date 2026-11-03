@@ -17,7 +17,7 @@
 module tox_data_integration_js_comp_test_fixed_k_search
     use f42_safeguard
     use tox_data_integration_js_comp_test_fixed_k_search_impl, only: KX_FACTORS, MAX_POINTS, MIN_POINTS, N_POINTS_HIGH_FACTOR
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: N_POINTS_LOW_FRACTION, generate_js_comp_test_candidates_impl, run_js_comp_test_parameter_search_impl
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: N_POINTS_LOW_FRACTION, calc_js_comp_test_candidate_bounds_impl, generate_js_comp_test_candidates_impl, run_js_comp_test_parameter_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -32,11 +32,46 @@ module tox_data_integration_js_comp_test_fixed_k_search
     M_IMPLICIT_NONE
     private
 
+    public :: calc_js_comp_test_candidate_bounds
     public :: generate_js_comp_test_candidates
     public :: run_js_comp_test_parameter_search
     public :: run_js_comp_test_parameter_search_expert
 
 contains
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds_impl]].
+    !| For the candidate grid of
+    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]:
+    !| `max_n_points_candidate` is exactly its largest `n_points` candidate, and
+    !| `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
+    pure subroutine calc_js_comp_test_candidate_bounds(&
+            max_n_genes_all_studies,&
+            max_n_points_candidate,&
+            max_n_neighbors_candidate,&
+            ierr&
+        )
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(out) :: max_n_points_candidate
+            !! Exact upper bound on the `n_points` candidate the grid ever produces
+        integer(int32), intent(out) :: max_n_neighbors_candidate
+            !! Safe upper bound on the `n_neighbors` candidate the grid ever produces
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call calc_js_comp_test_candidate_bounds_impl(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            max_n_points_candidate = max_n_points_candidate,&
+            max_n_neighbors_candidate = max_n_neighbors_candidate&
+        )
+    end subroutine calc_js_comp_test_candidate_bounds
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl]].
     !| Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
@@ -181,7 +216,7 @@ contains
         integer(int32), intent(in) :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
             !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
-            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
@@ -203,7 +238,7 @@ contains
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
             !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
-            !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
         integer(int32), intent(out) :: n_points
             !! The finally chosen candidate's `n_points`
@@ -783,12 +818,12 @@ contains
         integer(int32), intent(in) :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
             !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
-            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
             !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
-            !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)

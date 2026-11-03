@@ -301,6 +301,45 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
     )
 }
 
+#' Pool one reference point's residuals across every neighbor and every study
+#'
+#' Gathers one reference point's residuals from every neighbor gene of every study into one flat
+#' array, given that point's per-study neighbor gene indices (one column of the
+#' `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)` of
+#' \code{\link{construct_neighborhoods_ranged}}).
+#' Study `s` fills pool block `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to
+#' `s*max_n_reps_all_studies*n_neighbors`. This is the pooling
+#' \code{\link{run_js_comp_test}} and
+#' \code{\link{run_js_comp_test_parameter_search}}
+#' feed to the bin-count search, so a caller can pass the same input to
+#' \code{\link{determine_bin_count_occupancy_exhaustive}}
+#' on real data.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::gather_pooled_neighborhood_residuals}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study, NaN for a missing value
+#'   NaN is permitted for this value.
+#' @param neighborhood_indices_point a integer matrix. Gene indices of one reference point's neighborhood, per study
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `max_n_genes_all_studies`.
+#' @return a numeric vector. This reference point's pooled residuals, laid out as a
+#'   (max_n_reps_all_studies, n_neighbors, n_studies) array
+#' @export
+gather_pooled_neighborhood_residuals <- function(residuals, neighborhood_indices_point) {
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    neighborhood_indices_point <- .tox_as_integer_matrix(neighborhood_indices_point, "neighborhood_indices_point")
+    if (dim(neighborhood_indices_point)[2] != dim(residuals)[3])
+        .tox_shape_error("neighborhood_indices_point", dim(neighborhood_indices_point)[2], "residuals", dim(residuals)[3])
+
+    .result <- .Call("gather_pooled_neighborhood_residuals_call", residuals, neighborhood_indices_point)
+    .arguments <- c("residuals", "max_n_reps_all_studies", "max_n_genes_all_studies", "n_neighbors", "n_studies", "neighborhood_indices_point", "pooled_residuals", "ierr")
+    .sources <- c(NA_character_, "residuals", "residuals", "neighborhood_indices_point", "residuals", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$pooled_residuals
+}
+
 #' Grow adaptive, dispersion-controlled neighborhoods over all studies' pooled gene means (Issue #217)
 #'
 #' Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual
@@ -322,21 +361,19 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #' 1. The first `k_start` entries join unconditionally. With fewer than
 #' \code{ADAPTIVE_MIN_VALID_RESIDUALS}
 #' (`10`) non-NaN residuals the neighborhood stops with
-#' \code{ADAPTIVE_STOP_TOO_FEW_RESIDUALS}
-#' (`6`); with all residuals zero, with
-#' \code{ADAPTIVE_STOP_ZERO_DISPERSION}
-#' (`5`).
+#' \code{STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS}; with all residuals
+#' zero, with \code{STAT_ADAPTIVE_STOP_ZERO_DISPERSION}.
 #' 2. Then rounds of the next `min(k_step, k_max - count)` entries: a round with
 #' `(S_new - S_old) / S_old > tau` is discarded and growth stops
-#' (\code{ADAPTIVE_STOP_TAU}, `1`);
+#' (\code{STAT_ADAPTIVE_STOP_TAU});
 #' otherwise it is committed. Growth also stops at `k_max` entries
-#' (\code{ADAPTIVE_STOP_K_MAX}, `2`,
+#' (\code{STAT_ADAPTIVE_STOP_K_MAX},
 #' checked first) or when no entry is left
-#' (\code{ADAPTIVE_STOP_EXHAUSTED}, `4`).
+#' (\code{STAT_ADAPTIVE_STOP_EXHAUSTED}).
 #' 3. With `max_pooled_residuals > 0`, a round stages whole entries only while the pool's
 #' non-NaN residuals stay within that cap (the `k_start` phase is not capped); a capped round
 #' is still evaluated, and growth then stops with
-#' \code{ADAPTIVE_STOP_RESIDUAL_CAP} (`3`).
+#' \code{STAT_ADAPTIVE_STOP_RESIDUAL_CAP}.
 #'
 #' **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
 #' sorted position `b`, the next seed is the first position after `b` whose mean is nearest
@@ -345,16 +382,14 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #' neighborhood that reaches the largest pooled mean.
 #'
 #' **Construction status.**
-#' \code{ADAPTIVE_STATUS_TOO_FEW_MEANS}
-#' (`1`) when fewer than `k_start` pooled means are non-NaN: nothing
-#' is built, `n_points` and `max_n_neighbors` are 0. Otherwise the construction always completes,
-#' and reports, in this priority,
-#' \code{ADAPTIVE_STATUS_TOO_FEW_RESIDUALS}
-#' (`3`) if any neighborhood stopped with too few residuals,
-#' \code{ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD}
-#' (`2`) if any has fewer than `min_study_neighbors`
-#' entries of some study, else
-#' \code{ADAPTIVE_STATUS_OK} (`0`).
+#' \code{STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS} when fewer than
+#' `k_start` pooled means are non-NaN: nothing is built, `n_points` and `max_n_neighbors` are 0.
+#' Otherwise the construction always completes, and reports, in this priority,
+#' \code{STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS} if any
+#' neighborhood stopped with too few residuals,
+#' \code{STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD} if any
+#' has fewer than `min_study_neighbors` entries of some study, else
+#' \code{ERR_OK} (0).
 #'
 #' Outputs sized by `N` are filled only for their first `n_points` reference points.
 #'
@@ -393,20 +428,25 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #'     The first `n_points` elements will hold the results.}
 #'   \item{n_neighbors_per_point}{a integer matrix. For each neighborhood, how many of its pooled entries belong to each study
 #'     The first `n_points` elements will hold the results.}
-#'   \item{stop_reason}{a integer vector. Why each neighborhood stopped growing: `1` tau exceeded,
-#'     `2` `k_max` reached, `3` residual cap
-#'     reached, `4` pool exhausted, `5`
-#'     zero dispersion, `6` too few residuals
+#'   \item{stop_reason}{a integer vector. Why each neighborhood stopped growing:
+#'     \code{STAT_ADAPTIVE_STOP_TAU} tau exceeded,
+#'     \code{STAT_ADAPTIVE_STOP_K_MAX} `k_max` reached,
+#'     \code{STAT_ADAPTIVE_STOP_RESIDUAL_CAP} residual cap reached,
+#'     \code{STAT_ADAPTIVE_STOP_EXHAUSTED} pool exhausted,
+#'     \code{STAT_ADAPTIVE_STOP_ZERO_DISPERSION} zero dispersion,
+#'     \code{STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS} too few residuals
 #'     The first `n_points` elements will hold the results.}
 #'   \item{neighborhood_dispersion}{a numeric vector. Mean absolute non-NaN residual of each final neighborhood; NaN without any
 #'     The first `n_points` elements will hold the results.}
 #'   \item{neighborhood_mad}{a numeric vector. Raw median absolute deviation of each final neighborhood's pooled means
 #'     The first `n_points` elements will hold the results.}
 #'   \item{max_n_neighbors}{a integer scalar. Largest number of entries one study has in one neighborhood; 0 without a neighborhood}
-#'   \item{construction_status}{a integer scalar. Overall outcome: `0` ok, `1` too few
-#'     means, `2` a study neighborhood below
-#'     `min_study_neighbors`, `3` a neighborhood with too
-#'     few residuals}
+#'   \item{construction_status}{a integer scalar. Overall outcome: \code{ERR_OK} (0) ok,
+#'     \code{STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS} too few means,
+#'     \code{STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD} a study
+#'     neighborhood below `min_study_neighbors`,
+#'     \code{STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS} a neighborhood
+#'     with too few residuals}
 #' @export
 construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_step, k_max, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L) {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")

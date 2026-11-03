@@ -46,8 +46,8 @@ contains
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
     !| is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
-    !| cannot be created. The p-values are then NaN. A failed draw later on is recorded (first
-    !| failure only) without stopping the remaining permutations.
+    !| cannot be created. The p-values are then NaN. The count check, together with the wrappers'
+    !| bounds on the counts, establishes every draw's preconditions, so no draw can fail later on.
     subroutine gjct_permutation_test_c(&
             n_permutations,&
             n_bins,&
@@ -154,8 +154,8 @@ contains
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
     !| is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
-    !| cannot be created. The p-values are then NaN. A failed draw later on is recorded (first
-    !| failure only) without stopping the remaining permutations.
+    !| cannot be created. The p-values are then NaN. The count check, together with the wrappers'
+    !| bounds on the counts, establishes every draw's preconditions, so no draw can fail later on.
     subroutine gjct_permutation_test_expert_c(&
             n_permutations,&
             n_bins,&
@@ -306,8 +306,9 @@ contains
     !| draw, when at some reference point the studies' counts do not add up to
     !| `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] produces
-    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. A failed draw
-    !| later on is recorded (first failure only) without stopping the bootstrap.
+    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
+    !| together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
+    !| no draw can fail later on.
     subroutine bootstrap_histogram_c(&
             n_bootstraps,&
             n_bins,&
@@ -405,8 +406,9 @@ contains
     !| draw, when at some reference point the studies' counts do not add up to
     !| `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] produces
-    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. A failed draw
-    !| later on is recorded (first failure only) without stopping the bootstrap.
+    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
+    !| together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
+    !| no draw can fail later on.
     subroutine bootstrap_histogram_expert_c(&
             n_bootstraps,&
             n_bins,&

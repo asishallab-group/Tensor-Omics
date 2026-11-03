@@ -26,6 +26,17 @@ from .library import load_library, nullable
 
 _lib = load_library()
 
+_lib.calc_js_comp_test_candidate_bounds_c.restype = None
+_lib.calc_js_comp_test_candidate_bounds_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate", "ierr",)
+
 _lib.generate_js_comp_test_candidates_c.restype = None
 _lib.generate_js_comp_test_candidates_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
@@ -100,6 +111,61 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
 _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
+def calc_js_comp_test_candidate_bounds(
+        max_n_genes_all_studies,
+):
+    r"""Recommend upper bounds for the js-comp-test candidate-grid work arrays
+
+    For the candidate grid of
+    :func:`tensor_omics.generate_js_comp_test_candidates`:
+    `max_n_points_candidate` is exactly its largest `n_points` candidate, and
+    `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
+
+    Parameters
+    ----------
+    max_n_genes_all_studies : int
+        Maximum number of genes across all studies
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        max_n_points_candidate : int
+            Exact upper bound on the `n_points` candidate the grid ever produces
+        max_n_neighbors_candidate : int
+            Safe upper bound on the `n_neighbors` candidate the grid ever produces
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test_fixed_k_search::calc_js_comp_test_candidate_bounds`, whose argument names are
+    the ones an error message reports.
+    """
+    # outputs and work arrays, which the caller never sees
+    max_n_points_candidate = ctypes.c_int(0)
+    max_n_neighbors_candidate = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.calc_js_comp_test_candidate_bounds_c(
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(max_n_points_candidate),
+        ctypes.byref(max_n_neighbors_candidate),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS)
+
+    return {
+        "max_n_points_candidate": max_n_points_candidate.value,
+        "max_n_neighbors_candidate": max_n_neighbors_candidate.value,
+    }
 
 def generate_js_comp_test_candidates(
         max_n_genes_all_studies,

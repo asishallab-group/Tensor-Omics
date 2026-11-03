@@ -7,7 +7,7 @@ module f42_stats_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf
     use f42_sort_impl, only: binary_search_insertion, init_perm, sort_array_heapsort
     use f42_math_impl, only: clamp
     M_IMPLICIT_NONE
@@ -242,30 +242,24 @@ contains
     !> summary: Count the non-NaN values of a NaN-last sorted permutation
     !| AUTHOR_LASZLO_LANG
     !| For a `perm` that orders `values` ascending with NaN last: the last position `i` with
-    !| `values(perm(i))` not NaN, found by scanning back from position `n_values` and stopping at the
-    !| first non-NaN value; 0 when every value is NaN. Every NaN then sits in `perm(i+1:n_values)`,
-    !| so the result is the `n_considered` of
-    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]] for a quantile of the non-NaN
-    !| values. Precondition, not checked: NaN sorts last under `perm`.
+    !| `values(perm(i))` not NaN, found in O(log n) by
+    !| [[f42_sort_impl(module):binary_search_insertion(function)]] as the insertion position of `+Inf`
+    !| minus one; 0 when every value is NaN. Every NaN then sits in `perm(i+1:n_values)`, so the
+    !| result is the `n_considered` of [[f42_stats_impl(module):calc_quantile_impl(interface)]] for a
+    !| quantile of the non-NaN values. Preconditions, not checked: `perm` orders `values` ascending
+    !| with NaN last (the binary search relies on the ascending order, not only on the NaN tail),
+    !| and no value is `+Inf` (a `+Inf` would be counted with the NaN, not as a valid value).
+    !| Outside them the result is undefined.
     pure integer(int32) function last_non_nan_position(values, n_values, perm) result(n_non_nan)
         integer(int32), intent(in) :: n_values
             !! Number of elements in `values` and `perm`
         real(real64), intent(in) :: values(n_values)
-            !! Values, NaN allowed
+            !! Values, NaN allowed, `+Inf` not
         integer(int32), intent(in) :: perm(n_values)
             !! Permutation ordering `values` ascending, NaN last
 
-        integer(int32) :: i_pos
-
-        ! Sequential: the scan stops at the first non-NaN value from the end.
-        n_non_nan = n_values
-        do i_pos = n_values, 1, -1
-            if (ieee_is_nan(values(perm(i_pos)))) then
-                n_non_nan = n_non_nan - 1_int32
-            else
-                exit
-            end if
-        end do
+        ! The first position whose value is not below +Inf is the first NaN when no +Inf occurs.
+        n_non_nan = binary_search_insertion(values, perm, M_POS_INF) - 1_int32
     end function last_non_nan_position
 
     !> summary: Median of a small array by heapsort and calc_quantile_impl

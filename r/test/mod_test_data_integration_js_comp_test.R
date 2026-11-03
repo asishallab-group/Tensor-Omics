@@ -653,7 +653,7 @@ test_gather_pooled_neighborhood_residuals <- function() {
   assert_equal_int(length(pooled_residuals), max_n_reps_all_studies*n_neighbors*n_studies,
                     "expected pooled_residuals of length max_n_reps_all_studies*n_neighbors*n_studies")
 
-  # An out-of-range gene index must raise, confirming the new bounds check is wired through.
+  # An out-of-range gene index must raise, confirming the wrapper's gene-index bounds check is wired through.
   bad_indices <- matrix(c(1L, 2L, max_n_genes_all_studies + 1L, 1L), nrow = n_neighbors, ncol = n_studies)
   assert_error(gather_pooled_neighborhood_residuals(residuals, bad_indices),
                "expected ERR_INVALID_INPUT for an out-of-range gene index", ERR_INVALID_INPUT)
@@ -1146,7 +1146,14 @@ test_construct_adaptive_neighborhoods <- function() {
   assert_equal_int(length(result$stop_reason), n_points, "stop_reason length")
   assert_equal_int(length(result$neighborhood_dispersion), n_points, "neighborhood_dispersion length")
   assert_equal_int(length(result$neighborhood_mad), n_points, "neighborhood_mad length")
-  assert_true(result$construction_status >= 0 && result$construction_status <= 3, "status in 0..3")
+  assert_true(all(result$stop_reason %in% c(STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX,
+                                            STAT_ADAPTIVE_STOP_RESIDUAL_CAP, STAT_ADAPTIVE_STOP_EXHAUSTED,
+                                            STAT_ADAPTIVE_STOP_ZERO_DISPERSION, STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS)),
+              "stop reasons are STAT_ADAPTIVE_STOP_* codes")
+  assert_true(result$construction_status %in% c(ERR_OK, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS,
+                                                STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD,
+                                                STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS),
+              "construction status is ERR_OK or a STAT_ADAPTIVE_CONSTRUCTION_* code")
   assert_true(result$max_n_neighbors >= 1, "max_n_neighbors >= 1")
   # structural: the per-study counts of a neighborhood partition its pooled range
   lengths <- result$pooled_neighborhood_range[2, ] - result$pooled_neighborhood_range[1, ] + 1L
@@ -1173,7 +1180,7 @@ test_run_js_comp_test_adaptive <- function() {
   residuals <- array(rnorm(6 * n_genes * n_studies), dim = c(6, n_genes, n_studies))
   residuals[, 8, 3] <- NaN
   construction <- construct_adaptive_neighborhoods(gene_means, residuals, 6L, 3L, 12L)
-  assert_true(construction$construction_status == 0, "expected a construction without empty studies")
+  assert_true(construction$construction_status == ERR_OK, "expected a construction without empty studies")
   ranges <- construction$pooled_neighborhood_range
   n_points <- ncol(ranges)
 
@@ -1296,7 +1303,12 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
   }
   assert_equal_int(length(result$candidate_k_start), n_tried, "candidate_k_start length")
   assert_equal_int(length(result$candidate_n_points), n_tried, "candidate_n_points length")
-  assert_true(all(result$candidate_status >= 0 & result$candidate_status <= 5), "status codes in 0..5")
+  assert_true(all(result$candidate_status %in% c(ERR_OK, STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED,
+                                                 STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY,
+                                                 STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED,
+                                                 STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED,
+                                                 STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED)),
+              "status codes are ERR_OK or STAT_ADAPTIVE_CANDIDATE_* codes")
 
   assert_error(run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
                                                           join_method = "join_min", max_n_points_candidate = 0L),

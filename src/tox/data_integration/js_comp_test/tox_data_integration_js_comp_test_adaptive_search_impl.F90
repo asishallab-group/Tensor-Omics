@@ -12,7 +12,8 @@
 !| the criteria of
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]] and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]];
-!| every candidate it tries is logged with an `ADAPTIVE_CANDIDATE_*` status.
+!| every candidate it tries is logged with a `STAT_ADAPTIVE_CANDIDATE_*` status of [[tox_errors(module)]], or
+!| `ERR_OK` when it was evaluated.
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
 !| builds the neighborhoods for the chosen knobs. `calc_adaptive_js_comp_test_bounds` sizes the
 !| work arrays for a caller that allocates its own.
@@ -20,9 +21,11 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use tox_errors, only: set_ok, set_err_once, is_err, validate_in_range_int, ERR_INVALID_INPUT
-    use tox_data_integration_preprocessing_impl, only: grow_adaptive_neighborhoods, ADAPTIVE_STATUS_OK, &
-                                                       ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, sort_pooled_gene_means
+    use tox_errors, only: set_ok, set_err_once, is_err, ERR_INVALID_INPUT, ERR_OK, &
+                          STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD, STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, &
+                          STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY, STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, &
+                          STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED, STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
+    use tox_data_integration_preprocessing_impl, only: grow_adaptive_neighborhoods, sort_pooled_gene_means
     use tox_data_integration_js_comp_test_binning_impl, only: determine_adaptive_point_bin_counts
     use tox_data_integration_js_comp_test_histograms_impl, only: build_adaptive_histograms
     use tox_data_integration_js_comp_test_search_impl, only: check_neighborhood_overlaps_impl, score_candidate_histograms, &
@@ -30,16 +33,13 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
                                                              MAX_CANDIDATE_PAIRS, NOT_COMPUTED
     M_IMPLICIT_NONE
     private
-    public :: calc_adaptive_js_comp_test_bounds, generate_adaptive_js_comp_test_candidates_impl, &
+    public :: calc_adaptive_js_comp_test_bounds_impl, generate_adaptive_js_comp_test_candidates_impl, &
              run_js_comp_test_adaptive_parameter_search_impl, &
              ADAPTIVE_START_FRACTION, ADAPTIVE_GAMMA, ADAPTIVE_K_STEP_FRACTION, ADAPTIVE_K_MAX_FACTOR, &
-             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR, &
-             ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
-             ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
-             ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
+             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR
 
     ! Tuning constants of the adaptive candidate sequence (generate_adaptive_js_comp_test_candidates_impl)
-    ! and its capacity (calc_adaptive_js_comp_test_bounds), relative to the padded pool size
+    ! and its capacity (calc_adaptive_js_comp_test_bounds_impl), relative to the padded pool size
     ! `N = max_n_genes_all_studies * n_studies`. Provisional, pending real-data validation.
     real(real64), parameter :: ADAPTIVE_START_FRACTION = 0.02_real64
         !! First (largest) candidate `k_start`, as a fraction of the padded pool size `N`
@@ -56,32 +56,9 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
         !! Safety factor of the practical reference-point capacity over the naive estimate
         !! `N / k_start`, in calc_adaptive_js_comp_test_bounds
 
-    ! Per-candidate status codes of run_js_comp_test_adaptive_parameter_search_impl's log
-    ! (output codes, CM_ macros first like construct_adaptive_neighborhoods_impl's).
-#define CM_ADAPTIVE_CANDIDATE_EVALUATED 0_int32
-#define CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED 1_int32
-#define CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY 2_int32
-#define CM_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED 3_int32
-#define CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED 4_int32
-#define CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED 5_int32
-    integer(int32), parameter :: ADAPTIVE_CANDIDATE_EVALUATED = CM_ADAPTIVE_CANDIDATE_EVALUATED
-        !! Candidate status: passed both admissibility gates and was bootstrapped
-    integer(int32), parameter :: ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED = CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED
-        !! Candidate status: the construction reported too few means or too few residuals
-    integer(int32), parameter :: ADAPTIVE_CANDIDATE_EMPTY_STUDY = CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY
-        !! Candidate status: some neighborhood has fewer than `min_study_neighbors` entries of some
-        !! study, or some study has no non-NaN residual in some neighborhood
-    integer(int32), parameter :: ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED = CM_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED
-        !! Candidate status: more reference points emerged than `max_n_points_candidate`
-    integer(int32), parameter :: ADAPTIVE_CANDIDATE_OVERLAP_FAILED = CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED
-        !! Candidate status: two consecutive neighborhoods overlap by less than `min_neighbor_overlap`
-    integer(int32), parameter :: ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED = CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
-        !! Candidate status: some bin of the consensus pmf has fewer than `min_residuals_per_bin` residuals
-
 contains
 
-    !> M_EXPORT_C
-    !| summary: Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
+    !> summary: Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
     !| AUTHOR_LASZLO_LANG
     !| Sizes the per-point work arrays of the adaptive parameter search over the candidates of
     !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]].
@@ -92,12 +69,12 @@ contains
     !| `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the smallest
     !| candidate `k_start`. The search rejects a candidate that exceeds it with a capacity status.
     !|
-    !| Rejects, with invalid input naming neither argument when the bound is joint, a
-    !| `max_n_genes_all_studies` or `n_studies` below 1, a product `N` beyond the 32-bit range, or a
-    !| first candidate `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
+    !| Reports invalid input, naming neither argument since the bound is joint in both, for a
+    !| product `N` beyond the 32-bit range or a first candidate
+    !| `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
     !| `floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]), so that its
     !| `k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1)` fits; the output is then left undefined.
-    pure subroutine calc_adaptive_js_comp_test_bounds(max_n_genes_all_studies, n_studies, max_n_points_candidate, ierr)
+    pure subroutine calc_adaptive_js_comp_test_bounds_impl(max_n_genes_all_studies, n_studies, max_n_points_candidate, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! DM_MIN(1_int32)
@@ -108,15 +85,13 @@ contains
             !! Practical upper bound on the number of reference points any adaptive candidate is
             !! allowed to emerge with
         integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure
+            !! Error code; zero on success, invalid input when the pool size or the first
+            !! candidate's `k_max` does not fit a 32-bit integer (see above)
 
         integer(int32) :: k_starts(MAX_CANDIDATE_PAIRS), n_k_starts
         integer(int64) :: n_pool, capacity
 
         call set_ok(ierr)
-        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
-        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
-        if (is_err(ierr)) return
         n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
         ! Joint bounds on (G, S), so no arg_pos: the pool size must fit a 32-bit integer (array
         ! extents derive from it), and so must the first candidate's
@@ -132,7 +107,7 @@ contains
         capacity = ceiling(ADAPTIVE_POINT_CAPACITY_FACTOR*real(n_pool, real64)/ &
                            real(k_starts(n_k_starts), real64), kind=int64) + 1_int64
         max_n_points_candidate = int(min(n_pool, capacity), kind=int32)
-    end subroutine calc_adaptive_js_comp_test_bounds
+    end subroutine calc_adaptive_js_comp_test_bounds_impl
 
     !> summary: Generate the ascending adaptive (k_start, k_step, k_max) candidate sequence
     !| AUTHOR_LASZLO_LANG
@@ -164,7 +139,7 @@ contains
     !|
     !| Not checked here: the values fit 32-bit integers only while
     !| `k_start_1 <= floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]);
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds_impl(interface)]]
     !| rejects inputs beyond that.
     pure subroutine generate_adaptive_js_comp_test_candidates_impl(max_n_genes_all_studies, n_studies, &
                                                                    candidates_k_start_k_step_k_max, n_candidates)
@@ -198,7 +173,7 @@ contains
     !| AUTHOR_LASZLO_LANG
     !| Shared by
     !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
-    !| and `calc_adaptive_js_comp_test_bounds`, so both see the same smallest `k_start`. No
+    !| and `calc_adaptive_js_comp_test_bounds_impl`, so both see the same smallest `k_start`. No
     !| deduplication is needed while `(1 - ADAPTIVE_GAMMA) * ADAPTIVE_K_START_MIN_ABS >= 1`: one
     !| decay step then lowers any `k_start >= floor_k` by at least 1
     !| (`test_adaptive_constants_preclude_dead_clamps` guards this). Each value is computed from
@@ -240,7 +215,7 @@ contains
     !> summary: The adaptive candidate sequence's first `k_start`, in 64-bit so it cannot overflow
     !| AUTHOR_LASZLO_LANG
     !| `max(floor_k, ceiling(0.02 * G * S))`; shared by the sequence and by the representability
-    !| check in `calc_adaptive_js_comp_test_bounds`.
+    !| check in `calc_adaptive_js_comp_test_bounds_impl`.
     pure integer(int64) function adaptive_k_start_1(max_n_genes_all_studies, n_studies) result(k_start_1)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies, at least 1
@@ -285,16 +260,16 @@ contains
     !| **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
     !| `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
     !| failing check, in the order above:
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
     !| (too few means or residuals),
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
     !| (a study neighborhood below `min_study_neighbors`, or a study without a non-NaN residual at
     !| some point),
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]],
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]],
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]],
-    !| or else [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_EVALUATED(variable)]]
-    !| (admissible, with a trace column).
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]],
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]],
+    !| [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]],
+    !| or else [[tox_errors(module):ERR_OK(variable)]]
+    !| (0, admissible, with a trace column).
     !|
     !| **Result**, one of three cases, as in the fixed-k search:
     !|
@@ -316,7 +291,7 @@ contains
     !| place of `trace_n_neighbors`; the per-point traces are jagged in the same way.
     !|
     !| **Memory.** The per-point arrays are sized by `max_n_points_candidate` (from
-    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]);
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds_impl(interface)]]);
     !| the construction buffers by `N = max_n_genes_all_studies * n_studies` (the largest,
     !| `tmp_n_neighbors_per_point`, `n_studies * N` integers); the pooling buffers hold
     !| `max_n_reps_all_studies * N` values each, the size of `residuals`.
@@ -404,7 +379,7 @@ contains
             !! Most reference points a candidate may emerge with; a candidate with more is rejected
             !! with the capacity status. The per-point outputs and traces below are sized by it, so
             !! the caller has to know it up front
-            !! DM_OUTPUT_FROM(max_n_points_candidate, calc_adaptive_js_comp_test_bounds, tox_data_integration_js_comp_test_adaptive_search_impl, JUST_INFO)
+            !! DM_OUTPUT_FROM(max_n_points_candidate, calc_adaptive_js_comp_test_bounds, tox_data_integration_js_comp_test_adaptive_search, JUST_INFO)
             !! DM_MIN(1_int32)
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)
@@ -533,13 +508,14 @@ contains
             !! few means)
             !! DM_RESULT_SIZE_IS(n_candidates_tried)
         integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: candidate_status
-            !! What happened to every tried candidate: `CM_ADAPTIVE_CANDIDATE_EVALUATED` evaluated,
-            !! `CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED` construction failed,
-            !! `CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY` a study neighborhood below `min_study_neighbors`
-            !! or a study without a non-NaN residual at some point,
-            !! `CM_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED` capacity exceeded,
-            !! `CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED` overlap gate failed,
-            !! `CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED` consensus-pmf count gate failed
+            !! What happened to every tried candidate:
+            !! [[tox_errors(module):ERR_OK(variable)]] (0) evaluated,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]] construction failed,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]] a study neighborhood below
+            !! `min_study_neighbors` or a study without a non-NaN residual at some point,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]] capacity exceeded,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]] overlap gate failed,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]] consensus-pmf count gate failed
             !! DM_RESULT_SIZE_IS(n_candidates_tried)
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, as in the construction
@@ -811,19 +787,19 @@ contains
             n_candidates_tried = i_candidate
             candidate_k_start(i_candidate) = k_start
             candidate_n_points(i_candidate) = n_points
-            candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_EVALUATED
+            candidate_status(i_candidate) = ERR_OK
 
             ! Construction status first: an empty study neighborhood leaves that study's pmf
             ! empty, and too few means/residuals means the growth did not run as specified.
-            if (construction_status == ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD) then
-                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_EMPTY_STUDY
+            if (construction_status == STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD) then
+                candidate_status(i_candidate) = STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY
                 cycle
-            else if (construction_status /= ADAPTIVE_STATUS_OK) then
-                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED
+            else if (construction_status /= ERR_OK) then
+                candidate_status(i_candidate) = STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED
                 cycle
             end if
             if (n_points > max_n_points_candidate) then
-                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED
+                candidate_status(i_candidate) = STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED
                 cycle
             end if
 
@@ -831,7 +807,7 @@ contains
             call check_neighborhood_overlaps_impl(tmp_pooled_neighborhood_range(1:2, 1:n_points), n_points, &
                                                    actual_min_neighbor_overlap, all_have_min_neighbor_overlap)
             if (.not. all_have_min_neighbor_overlap) then
-                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_OVERLAP_FAILED
+                candidate_status(i_candidate) = STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED
                 cycle
             end if
 
@@ -875,11 +851,11 @@ contains
                                             tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                             tmp_confidence_interval, has_empty_study, all_bins_have_min_count)
             if (has_empty_study) then
-                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_EMPTY_STUDY
+                candidate_status(i_candidate) = STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY
                 cycle
             end if
             if (.not. all_bins_have_min_count) then
-                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
+                candidate_status(i_candidate) = STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
                 cycle
             end if
 

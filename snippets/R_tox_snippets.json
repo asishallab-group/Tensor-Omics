@@ -81,6 +81,16 @@
       ")"
     ]
   },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
+    "body": [
+      "${1:result} <- calc_adaptive_js_comp_test_bounds(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  n_studies = ${3:n_studies}",
+      ")"
+    ]
+  },
   "generate_adaptive_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_adaptive_js_comp_test_candidates",
     "description": "The adaptive counterpart of",
@@ -121,16 +131,6 @@
       "  max_pooled_residuals = ${24:0L},",
       "  min_study_neighbors = ${25:1L},",
       "  bin_count_mode = ${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
-      ")"
-    ]
-  },
-  "calc_adaptive_js_comp_test_bounds (call)": {
-    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
-    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
-    "body": [
-      "${1:result} <- calc_adaptive_js_comp_test_bounds(",
-      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
-      "  n_studies = ${3:n_studies}",
       ")"
     ]
   },
@@ -264,6 +264,15 @@
       ")"
     ]
   },
+  "calc_js_comp_test_candidate_bounds (call)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds",
+    "description": "For the candidate grid of",
+    "body": [
+      "${1:result} <- calc_js_comp_test_candidate_bounds(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      ")"
+    ]
+  },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
     "description": "Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`",
@@ -300,15 +309,6 @@
       "  two_sided_bootstrapping_significance_level = ${21:2.5},",
       "  random_seed = ${22:42L},",
       "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
-      ")"
-    ]
-  },
-  "calc_js_comp_test_candidate_bounds (call)": {
-    "prefix": "tox:calc_js_comp_test_candidate_bounds",
-    "description": "For the candidate grid of",
-    "body": [
-      "${1:result} <- calc_js_comp_test_candidate_bounds(",
-      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
       ")"
     ]
   },
@@ -665,6 +665,16 @@
       ")"
     ]
   },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
+    "body": [
+      "${1:result} <- gather_pooled_neighborhood_residuals(",
+      "  residuals = ${2:residuals},",
+      "  neighborhood_indices_point = ${3:neighborhood_indices_point}",
+      ")"
+    ]
+  },
   "construct_adaptive_neighborhoods (call)": {
     "prefix": "tox:construct_adaptive_neighborhoods",
     "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
@@ -691,16 +701,6 @@
       "  n_points = ${3:n_points},",
       "  mean_S = ${4:mean_S},",
       "  desired_size = ${5:1000L}",
-      ")"
-    ]
-  },
-  "gather_pooled_neighborhood_residuals (call)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
-    "body": [
-      "${1:result} <- gather_pooled_neighborhood_residuals(",
-      "  residuals = ${2:residuals},",
-      "  neighborhood_indices_point = ${3:neighborhood_indices_point}",
       ")"
     ]
   },

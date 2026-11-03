@@ -143,36 +143,35 @@ contains
     end function binary_search
 
     !> AUTHOR_LASZLO_LANG
-    !| The first block `s` with `block_ends(s) >= idx`, by binary search over the ascending block
-    !| ends: the contiguous block holding index `idx`, for an array split into consecutive blocks
-    !| `block_ends(s-1)+1 .. block_ends(s)` (empty blocks allowed). Unlike
-    !| [[f42_sort_impl(module):binary_search_insertion(function)]] it searches integers directly,
-    !| without a permutation. Precondition, not checked: `n_blocks >= 1`, `block_ends` ascends and
-    !| `1 <= idx <= block_ends(n_blocks)`; outside it the result is `n_blocks` for an `idx` above
-    !| every block end and `1` for `n_blocks = 0`.
-    pure integer(int32) function block_containing_index(block_ends, n_blocks, idx) result(block_idx)
-        integer(int32), intent(in) :: n_blocks
-            !! Number of blocks
-        integer(int32), intent(in) :: block_ends(n_blocks)
-            !! Last index of each block, ascending
-        integer(int32), intent(in) :: idx
-            !! The index to locate
+    !| Function to find the position to place a value in an ascending integer array using binary
+    !| search: the first position `idx` with `arr(idx) >= value`. Unlike
+    !| [[f42_sort_impl(module):binary_search_insertion(function)]] it searches the array directly,
+    !| without a permutation. As there, a `value` above every element gives `n_elements + 1`, and an
+    !| empty array gives 1. Precondition, not checked: `arr` ascends.
+    pure integer(int32) function binary_search_insertion_no_perm(arr, n_elements, value) result(idx)
+        integer(int32), intent(in) :: n_elements
+            !! Number of elements in `arr`
+        integer(int32), intent(in) :: arr(n_elements)
+            !! Array of values, ascending
+        integer(int32), intent(in) :: value
+            !! Value to find
 
-        integer(int32) :: low_block, high_block, mid_block
+        integer(int32) :: lower_idx, upper_idx, mid_idx
 
-        ! Invariant: the answer lies in low_block..high_block.
-        low_block = 1_int32
-        high_block = n_blocks
-        do while (low_block < high_block)
-            mid_block = low_block + (high_block - low_block)/2_int32
-            if (block_ends(mid_block) >= idx) then
-                high_block = mid_block
+        ! Invariant: the answer lies in lower_idx..upper_idx, upper_idx = n_elements + 1 meaning
+        ! "after the last element".
+        lower_idx = 1_int32
+        upper_idx = n_elements + 1_int32
+        do while (lower_idx < upper_idx)
+            mid_idx = lower_idx + (upper_idx - lower_idx)/2_int32
+            if (arr(mid_idx) >= value) then
+                upper_idx = mid_idx
             else
-                low_block = mid_block + 1_int32
+                lower_idx = mid_idx + 1_int32
             end if
         end do
-        block_idx = low_block
-    end function block_containing_index
+        idx = lower_idx
+    end function binary_search_insertion_no_perm
 
     !> AUTHOR_VIVIAN_BASS
     !| Sort a real array indirectly using quicksort.

@@ -19,7 +19,7 @@ contains
 
         all_tests(1) = test_case("test_binary_search_insertion", test_binary_search_insertion)
         all_tests(2) = test_case("test_binary_search", test_binary_search)
-        all_tests(3) = test_case("test_block_containing_index", test_block_containing_index)
+        all_tests(3) = test_case("test_binary_search_insertion_no_perm", test_binary_search_insertion_no_perm)
     end function get_all_tests_binary_search
 
     subroutine test_binary_search_insertion()
@@ -111,28 +111,34 @@ contains
 
     end subroutine test_binary_search
 
-    !> block_containing_index on block ends `[3, 3, 4, 8, 8]` (block 2 and block 5 empty): every
-    !| index 1..8 lands in the first block whose end reaches it, so an empty block is never chosen
-    !| (index 4 skips block 2 for block 3, index 8 stays in block 4 rather than the empty block
-    !| 5). The first and last index exercise both ends of the search; a single block holds
-    !| everything.
-    subroutine test_block_containing_index()
-        character(len=*), parameter :: name = "test_block_containing_index: "
-        integer(int32), parameter :: ends(5) = [3_int32, 3_int32, 4_int32, 8_int32, 8_int32]
+    !> binary_search_insertion_no_perm on the ascending array `[3, 3, 4, 8, 8]` (with duplicates):
+    !| every value 1..8 lands on the first position whose element reaches it, so a duplicate is
+    !| never chosen over its first occurrence (values 1..3 land on position 1, value 4 on position
+    !| 3, value 8 on position 4 rather than 5). The first and last value exercise both ends of the
+    !| search; a single element holds everything. A value above the last element gives
+    !| `n_elements + 1`, and an empty array gives 1, as for binary_search_insertion.
+    subroutine test_binary_search_insertion_no_perm()
+        character(len=*), parameter :: name = "test_binary_search_insertion_no_perm: "
+        integer(int32), parameter :: arr(5) = [3_int32, 3_int32, 4_int32, 8_int32, 8_int32]
         integer(int32), parameter :: expected(8) = [1_int32, 1_int32, 1_int32, 3_int32, 4_int32, 4_int32, 4_int32, &
                                                     4_int32]
-        integer(int32) :: idx, got(8)
+        integer(int32) :: value, got(8)
 
-        do idx = 1, 8
-            got(idx) = block_containing_index(ends, 5_int32, idx)
+        do value = 1, 8
+            got(value) = binary_search_insertion_no_perm(arr, 5_int32, value)
         end do
-        call assert_equal_array_int(got, expected, 8_int32, name//"five blocks with two empty ones")
+        call assert_equal_array_int(got, expected, 8_int32, name//"five elements with duplicates")
 
-        call assert_equal_int(block_containing_index([6_int32], 1_int32, 1_int32), 1_int32, &
-                              name//"one block, first index")
-        call assert_equal_int(block_containing_index([6_int32], 1_int32, 6_int32), 1_int32, &
-                              name//"one block, last index")
-        call assert_equal_int(block_containing_index([1_int32, 2_int32], 2_int32, 2_int32), 2_int32, &
-                              name//"two blocks of one index, second")
-    end subroutine test_block_containing_index
+        call assert_equal_int(binary_search_insertion_no_perm([6_int32], 1_int32, 1_int32), 1_int32, &
+                              name//"one element, smallest value")
+        call assert_equal_int(binary_search_insertion_no_perm([6_int32], 1_int32, 6_int32), 1_int32, &
+                              name//"one element, equal value")
+        call assert_equal_int(binary_search_insertion_no_perm([1_int32, 2_int32], 2_int32, 2_int32), 2_int32, &
+                              name//"two elements, second")
+        call assert_equal_int(binary_search_insertion_no_perm(arr, 5_int32, 9_int32), 6_int32, &
+                              name//"above the last element")
+        call assert_equal_int(binary_search_insertion_no_perm([6_int32], 1_int32, 7_int32), 2_int32, &
+                              name//"one element, above it")
+        call assert_equal_int(binary_search_insertion_no_perm(arr, 0_int32, 4_int32), 1_int32, name//"empty")
+    end subroutine test_binary_search_insertion_no_perm
 end module mod_test_binary_search

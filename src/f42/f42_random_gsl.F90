@@ -13,7 +13,10 @@
 !| a derived-type argument outright), so nothing here is `M_EXPORT_C` and nothing generates a
 !| wrapper -- the same category as [[f42_safeguard(module)]] and [[f42_config(module)]]. Every
 !| procedure therefore validates its own inputs by hand and reports failure through its own
-!| `ierr`, using [[tox_errors(module)]] exactly as a generated wrapper would.
+!| `ierr`, using [[tox_errors(module)]] exactly as a generated wrapper would -- except the two
+!| multivariate draws, [[f42_random_gsl(module):random_multinomial(subroutine)]] and
+!| [[f42_random_gsl(module):random_multiv_hypergeom(subroutine)]], which run in their callers'
+!| innermost loops and leave their documented preconditions to the caller.
 !|
 !| Callers reach this only from other `_impl` modules (it sits on
 !| `Conventions.impl_import_whitelist`) or from Fortran test code; it is never called from C,
@@ -23,8 +26,8 @@ module f42_random_gsl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_ptr, c_null_ptr, c_associated, c_double, c_int, c_long
     use tox_errors, only: set_ok, set_err_once, is_err
-    use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
-    use tox_errors, only: ERR_POINTER_NULL, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    use tox_errors, only: validate_in_range_int, validate_in_range_real
+    use tox_errors, only: ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -116,8 +119,8 @@ module f42_random_gsl
 
     !> Opaque handle onto a GSL random number generator. Created by
     !| [[f42_random_gsl(module):create_rng(function)]]; every other procedure in this module
-    !| takes one and reports `ERR_POINTER_NULL` (at argument position 1) if it was never
-    !| initialized that way, instead of dereferencing a null `c_ptr`.
+    !| takes one, and all but the two multivariate draws report `ERR_POINTER_NULL` (at argument
+    !| position 1) if it was never initialized that way, instead of dereferencing a null `c_ptr`.
     type :: rng_t
         type(c_ptr), private :: rng = c_null_ptr
     end type rng_t
@@ -125,9 +128,9 @@ contains
 
     !> Checks that `rng` was produced by `create_rng` and not just default-initialized.
     !|
-    !| Private. Every public procedure below calls this first, at argument position 1 (`rng`
-    !| is always the first dummy here), and skips its computation -- returning a zeroed result
-    !| -- when it fails. This replaces what the upstream GSL wrapper this module was ported
+    !| Private. Every public procedure below that takes an `ierr` calls this first, at argument
+    !| position 1 (`rng` is always the first dummy here), and skips its computation -- returning a
+    !| zeroed result -- when it fails. This replaces what the upstream GSL wrapper this module was ported
     !| from did with `error stop`: that aborted the whole process, which made the failure
     !| untestable and took every other running test down with it.
     pure subroutine check_rng_initialized(rng, ierr)
@@ -282,50 +285,29 @@ contains
     end function rand_range
 
     !> Performs a binomial multivariate draw
-    subroutine random_multinomial(rng, n_populations, population_sizes, total_population, n_to_draw, drawn, ierr)
+    !|
+    !| Validates nothing and reports nothing: the draw sits in the innermost loop of its callers,
+    !| which establish its preconditions once beforehand. The caller guarantees that `rng` was
+    !| created by [[f42_random_gsl(module):create_rng(function)]], that `n_populations >= 1`, that
+    !| every `population_sizes(i)` is non-negative and their sum is `total_population`, and that
+    !| `n_to_draw` is non-negative and 0 when `total_population` is 0. Outside these the result is
+    !| undefined.
+    subroutine random_multinomial(rng, n_populations, population_sizes, total_population, n_to_draw, drawn)
         type(rng_t), intent(in) :: rng
             !! The rng, originally created by [[f42_random_gsl(module):create_rng(function)]]
         integer(int32), intent(in) :: n_populations
-            !! Number of variates/subpopulations; must be at least 1
+            !! Number of variates/subpopulations; at least 1
         integer(int32), dimension(n_populations), intent(in) :: population_sizes
-            !! Sizes of subpopulations; each must be non-negative and sum to `total_population`
+            !! Sizes of subpopulations; each non-negative, summing to `total_population`
         integer(int32), intent(in) :: total_population
             !! The total population size -> `sum(population_sizes)`
         integer(int32), intent(in) :: n_to_draw
-            !! Number of elements to draw in total; must be non-negative, and 0 when `total_population` is 0
+            !! Number of elements to draw in total; non-negative, and 0 when `total_population` is 0
         integer(int32), dimension(n_populations), intent(out) :: drawn
             !! Drawn sample for `population_sizes` with `sum(drawn) == n_to_draw`
-        integer(int32), intent(out) :: ierr
-            !! Error code; `ERR_POINTER_NULL` if `rng` was never initialized, `ERR_INVALID_INPUT`/`ERR_EMPTY_INPUT` for a bad size or count
 
         integer(int32) :: remaining_population, i_population, remaining_draws
         real(real64) :: p
-
-        call set_ok(ierr)
-        call check_rng_initialized(rng, ierr)
-        call validate_dimension_size(n_populations, ierr, arg_pos=2_int32)
-        call validate_in_range_int(total_population, ierr, arg_pos=4_int32, min=0_int32)
-        call validate_in_range_int(n_to_draw, ierr, arg_pos=5_int32, min=0_int32)
-        if (.not. is_err(ierr)) then
-            if (n_populations >= 1_int32) then
-                if (any(population_sizes < 0_int32)) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=3_int32)
-                ! Cross-check, in the spirit of a mask's `n_selected_<arg>` (codegen_guide.md
-                ! §5.3): `total_population` is documented as `sum(population_sizes)`, so a
-                ! mismatch blames the derived value's own position, not the array it was
-                ! supposed to summarize.
-                if (sum(population_sizes) /= total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
-            end if
-            ! An empty population has nothing to draw from: without this, every draw would land
-            ! in the last, empty population.
-            if (total_population == 0_int32 .and. n_to_draw > 0_int32) &
-                call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        end if
-        if (is_err(ierr)) then
-            ! Guarded: with a negative `n_populations`, ifx (2026.1) segfaults on assigning to
-            ! `drawn` although its extent is then zero.
-            if (n_populations > 0_int32) drawn = 0_int32
-            return
-        end if
 
         remaining_population = total_population
         remaining_draws = n_to_draw
@@ -356,51 +338,31 @@ contains
     end subroutine random_multinomial
 
     !> Performs a hypergeometric multivariate draw
-    subroutine random_multiv_hypergeom(rng, n_populations, population_sizes, total_population, n_to_draw, drawn, ierr)
+    !|
+    !| Validates nothing and reports nothing: the draw sits in the innermost loop of its callers,
+    !| which establish its preconditions once beforehand. The caller guarantees that `rng` was
+    !| created by [[f42_random_gsl(module):create_rng(function)]], that `n_populations >= 1`, that
+    !| every `population_sizes(i)` is non-negative and their sum is `total_population`, and that
+    !| `0 <= n_to_draw <= total_population` (without replacement, a larger draw is impossible).
+    !| Outside these the result is undefined.
+    subroutine random_multiv_hypergeom(rng, n_populations, population_sizes, total_population, n_to_draw, drawn)
         type(rng_t), intent(in) :: rng
             !! The rng, originally created by [[f42_random_gsl(module):create_rng(function)]]
         integer(int32), intent(in) :: n_populations
-            !! Number of variates/subpopulations; must be at least 1
+            !! Number of variates/subpopulations; at least 1
         integer(int32), dimension(n_populations), intent(inout) :: population_sizes
             !! Sizes of subpopulations (will be reduced by the number of drawn elements per population -> will be the remaining pool);
-            !! each must be non-negative and sum to `total_population`.
+            !! each non-negative, summing to `total_population`.
             !! Every population, the last one included, is reduced by its own draw, so on return this
             !! is the remaining pool: `population_sizes(i)` becomes `population_sizes(i) - drawn(i)`.
         integer(int32), intent(in) :: total_population
             !! The total population size -> `sum(population_sizes)`
         integer(int32), intent(in) :: n_to_draw
-            !! Number of elements to draw in total; must be non-negative and must not exceed `total_population`
+            !! Number of elements to draw in total; non-negative and at most `total_population`
         integer(int32), dimension(n_populations), intent(out) :: drawn
             !! Drawn sample for `population_sizes` with `sum(drawn) == n_to_draw`
-        integer(int32), intent(out) :: ierr
-            !! Error code; `ERR_POINTER_NULL` if `rng` was never initialized, `ERR_INVALID_INPUT`/`ERR_EMPTY_INPUT` for a bad size or count
 
         integer(int32) :: remaining_population, i_population, remaining_draws
-
-        call set_ok(ierr)
-        call check_rng_initialized(rng, ierr)
-        call validate_dimension_size(n_populations, ierr, arg_pos=2_int32)
-        call validate_in_range_int(total_population, ierr, arg_pos=4_int32, min=0_int32)
-        call validate_in_range_int(n_to_draw, ierr, arg_pos=5_int32, min=0_int32)
-        if (.not. is_err(ierr)) then
-            if (n_populations >= 1_int32) then
-                if (any(population_sizes < 0_int32)) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=3_int32)
-                ! Cross-check, in the spirit of a mask's `n_selected_<arg>` (codegen_guide.md
-                ! §5.3): `total_population` is documented as `sum(population_sizes)`, so a
-                ! mismatch blames the derived value's own position, not the array it was
-                ! supposed to summarize.
-                if (sum(population_sizes) /= total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
-            end if
-            ! Without replacement, a draw larger than the pool is impossible; reject it rather
-            ! than cap it, so `sum(drawn) == n_to_draw` holds whenever `ierr` is OK.
-            if (n_to_draw > total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
-        end if
-        if (is_err(ierr)) then
-            ! Guarded: with a negative `n_populations`, ifx (2026.1) segfaults on assigning to
-            ! `drawn` although its extent is then zero.
-            if (n_populations > 0_int32) drawn = 0_int32
-            return
-        end if
 
         remaining_population = total_population
         remaining_draws = n_to_draw

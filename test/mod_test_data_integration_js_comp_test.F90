@@ -22,12 +22,14 @@ module mod_test_data_integration_js_comp_test
                                                   run_js_comp_test_expert, &
                                                   run_js_comp_test_adaptive
     use tox_data_integration_js_comp_test_fixed_k_search, only: generate_js_comp_test_candidates, &
-                                                                run_js_comp_test_parameter_search
+                                                                run_js_comp_test_parameter_search, &
+                                                                calc_js_comp_test_candidate_bounds
     use tox_data_integration_js_comp_test_adaptive_search, only: generate_adaptive_js_comp_test_candidates, &
-                                                                 run_js_comp_test_adaptive_parameter_search
+                                                                 run_js_comp_test_adaptive_parameter_search, &
+                                                                 calc_adaptive_js_comp_test_bounds
     use tox_data_integration_jsd, only: create_mean_pmf, create_mean_pmf_only
     use tox_data_integration_stats, only: bootstrap_histogram
-    use tox_data_integration_preprocessing, only: construct_adaptive_neighborhoods
+    use tox_data_integration_preprocessing, only: construct_adaptive_neighborhoods, gather_pooled_neighborhood_residuals
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, &
@@ -35,28 +37,15 @@ module mod_test_data_integration_js_comp_test
                                                        group_sorted_perm_by_study, &
                                                        MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
-                                                       MAX_N_BINS, MAX_CANDIDATE_PAIRS, prepare_gene_means_perms, &
-                                                       run_js_comp_test_impl
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds, &
-                                                                     generate_js_comp_test_candidates_impl, &
+                                                       MAX_N_BINS, MAX_CANDIDATE_PAIRS, prepare_gene_means_perms
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: generate_js_comp_test_candidates_impl, &
                                                                      KX_FACTORS, MAX_POINT_CANDIDATES, &
                                                                      calc_fixed_k_n_points_range
-    use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
+    use tox_data_integration_js_comp_test_adaptive_search_impl, only: ADAPTIVE_GAMMA, &
                                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
-                                                                      ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
-                                                                      ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, &
-                                                                      ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
-                                                                      ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, &
-                                                                      ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
-                                                                      ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
+                                                                      ADAPTIVE_K_MAX_FACTOR
     use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
-    use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals, &
-                                                       ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &
-                                                       ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
-                                                       ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
-                                                       ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, &
-                                                       ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
-                                                       ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+    use tox_data_integration_preprocessing_impl, only: ADAPTIVE_MIN_VALID_RESIDUALS, &
                                                        materialize_pooled_neighborhood, sort_pooled_gene_means
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
@@ -139,7 +128,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(241))
+        allocate (all_tests(242))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -625,11 +614,13 @@ contains
                                    test_param_search_pads_unused_per_point_slots_with_zero)
         all_tests(238) = test_case("test_adaptive_search_pads_unused_per_point_slots_with_zero", &
                                    test_adaptive_search_pads_unused_per_point_slots_with_zero)
-        all_tests(239) = test_case("test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr", &
-                                   test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr)
-        all_tests(240) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
+        all_tests(239) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
                                    test_sort_pooled_gene_means_matches_heapsort)
-        all_tests(241) = test_case("test_calc_fixed_k_n_points_range", test_calc_fixed_k_n_points_range)
+        all_tests(240) = test_case("test_calc_fixed_k_n_points_range", test_calc_fixed_k_n_points_range)
+        all_tests(241) = test_case("test_gather_pooled_residuals_rejects_infinite_residual", &
+                                   test_gather_pooled_residuals_rejects_infinite_residual)
+        all_tests(242) = test_case("test_gather_pooled_residuals_accepts_nan_residual", &
+                                   test_gather_pooled_residuals_accepts_nan_residual)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2239,10 +2230,8 @@ contains
     !> The pool's total (`mean_pmf_included_n_reps = 3`) is not the sum of its bin counts
     !| (`[1, 1]`, so 2), while the studies' counts `[1, 2]` do add up to the total. That is
     !| rejected as invalid input before any draw, with no argument position (not one argument's
-    !| fault), and `confidence_interval` comes back unchanged. It used to run the bootstrap: every
-    !| draw failed and drew nothing, which gave a JSD of 0 and moved the lower bound of the
-    !| interval to 0. The failing draws already set `ERR_INVALID_INPUT` then, so only the
-    !| unchanged-interval check fails on that code.
+    !| fault), and `confidence_interval` comes back unchanged. The check has to run before any
+    !| draw: the multinomial draws validate nothing, so on such a pool their result is undefined.
     subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
@@ -5940,7 +5929,7 @@ contains
     end subroutine test_occupancy_exhaustive_hand_computed_own_correctness
 
     !> `gather_pooled_neighborhood_residuals` is the exact per-point pooling step
-    !| `run_js_comp_test`/`run_js_comp_test_parameter_search` perform internally, now exported so a
+    !| `run_js_comp_test`/`run_js_comp_test_parameter_search` perform internally, published so a
     !| caller can reconstruct that same input on real data. 2 reps, 3 genes, 2 neighbors, 2 studies,
     !| every residual value distinct so a layout bug (wrong stride/order) cannot hide.
     !|
@@ -5977,7 +5966,7 @@ contains
                                      "test_gather_pooled_residuals_hand_computed: pooled layout")
     end subroutine test_gather_pooled_residuals_hand_computed
 
-    !> `n_studies=0` must be rejected by the shared `validate_dimension_size` check at `arg_pos=5`,
+    !> `n_studies=0` must be rejected by the generated wrapper's extent check at `arg_pos=5`,
     !| before the gather body ever runs (the array contents below are irrelevant to this test).
     subroutine test_gather_pooled_residuals_rejects_empty_dimension()
         integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
@@ -5998,8 +5987,8 @@ contains
     end subroutine test_gather_pooled_residuals_rejects_empty_dimension
 
     !> A gene index of `max_n_genes_all_studies + 1` in `neighborhood_indices_point` is out of
-    !| bounds for `residuals`'s own gene extent and must be rejected with `ERR_INVALID_INPUT` at
-    !| `arg_pos=6`, not silently read out-of-bounds.
+    !| bounds for `residuals`'s own gene extent and must be rejected by the generated wrapper's
+    !| `DM_MAX` check with `ERR_INVALID_INPUT` at `arg_pos=6`, not silently read out-of-bounds.
     subroutine test_gather_pooled_residuals_rejects_gene_index_oob()
         integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
         real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
@@ -6017,6 +6006,54 @@ contains
                         "test_gather_pooled_residuals_rejects_gene_index_oob: "// &
                         "gene index max_n_genes+1 rejected", arg_pos=6_int32)
     end subroutine test_gather_pooled_residuals_rejects_gene_index_oob
+
+    !> The generated wrapper checks `residuals` for finiteness with NaN allowed, so a single `+Inf`
+    !| residual is rejected with `ERR_NAN_INF` at `residuals`' own argument position (1).
+    subroutine test_gather_pooled_residuals_rejects_infinite_residual()
+        integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
+        real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
+        integer(int32) :: neighborhood_indices_point(n_neighbors, n_studies)
+        real(real64) :: pooled_residuals(max_n_reps*n_neighbors*n_studies)
+        integer(int32) :: ierr
+
+        residuals = 1.0_real64
+        residuals(2, 3, 1) = ieee_value(1.0_real64, ieee_positive_inf)
+        neighborhood_indices_point = reshape([1_int32, 3_int32, 2_int32, 1_int32], [2, 2])
+
+        call gather_pooled_neighborhood_residuals(residuals, max_n_reps, max_n_genes, n_neighbors, n_studies, &
+                                                   neighborhood_indices_point, pooled_residuals, ierr)
+
+        call assert_err(ierr, ERR_NAN_INF, &
+                        "test_gather_pooled_residuals_rejects_infinite_residual: +Inf residual rejected", &
+                        arg_pos=1_int32)
+    end subroutine test_gather_pooled_residuals_rejects_infinite_residual
+
+    !> A NaN residual (a missing value) is allowed: the gather succeeds and copies it into its pool
+    !| slot unchanged, like every other value; the NaN is skipped later, where the pool is sorted and
+    !| binned (NaN last), as before. Same layout as test_gather_pooled_residuals_hand_computed:
+    !| study 1/neighbor 2 is gene 3, so `residuals(2, 3, 1)` lands in `pooled(4)`.
+    subroutine test_gather_pooled_residuals_accepts_nan_residual()
+        integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
+        character(len=*), parameter :: name = "test_gather_pooled_residuals_accepts_nan_residual: "
+        real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
+        integer(int32) :: neighborhood_indices_point(n_neighbors, n_studies), i_pos
+        real(real64) :: pooled_residuals(max_n_reps*n_neighbors*n_studies)
+        integer(int32) :: ierr
+
+        residuals = 1.0_real64
+        residuals(2, 3, 1) = ieee_value(1.0_real64, ieee_quiet_nan)
+        neighborhood_indices_point = reshape([1_int32, 3_int32, 2_int32, 1_int32], [2, 2])
+
+        call gather_pooled_neighborhood_residuals(residuals, max_n_reps, max_n_genes, n_neighbors, n_studies, &
+                                                   neighborhood_indices_point, pooled_residuals, ierr)
+
+        call assert_err(ierr, ERR_OK, name//"a NaN residual is accepted")
+        call assert_true(ieee_is_nan(pooled_residuals(4)), name//"the NaN lands in its pool slot")
+        do i_pos = 1, max_n_reps*n_neighbors*n_studies
+            if (i_pos /= 4) call assert_equal_real(pooled_residuals(i_pos), 1.0_real64, 0.0_real64, &
+                                                   name//"every other slot holds its residual")
+        end do
+    end subroutine test_gather_pooled_residuals_accepts_nan_residual
 
     !> Shared fixture for the run_js_comp_test golden regression (and the determine_point_bin_count
     !| uniform-layout test): 3 studies x 10 genes x 4 replicate slots with uneven real replicate
@@ -6520,14 +6557,9 @@ contains
     !| run_js_comp_test's range validation (`n_neighbors <= max_n_genes_all_studies`) must reject
     !| it as ERR_INVALID_INPUT at argument position 5 (`n_neighbors`), before the implementation
     !| runs at all. Without that bound, Pass A (construct_neighborhoods_ranged_impl) would fill the
-    !| third neighbor slot with the out-of-range gene index 3, and only the implementation's own
-    !| gene-index check before Pass B would catch it -- with the argument position cleared on the way
-    !| out, which is what the `arg_pos=5` assert below tells apart. The outputs are pre-filled with
-    !| the sentinel -7 and must come back untouched; since the wrapper returns before the
-    !| implementation runs, these asserts only confirm that nothing is written on rejection. The
-    !| implementation's own early return before Pass B is a defensive branch the wrapper makes
-    !| unreachable; test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr calls the
-    !| implementation directly to cover it.
+    !| third neighbor slot with the out-of-range gene index 3. The outputs are pre-filled with the
+    !| sentinel -7 and must come back untouched; since the wrapper returns before the
+    !| implementation runs, these asserts only confirm that nothing is written on rejection.
     subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 3
@@ -6604,82 +6636,6 @@ contains
         call assert_true(all(p_values_observed_consensus == -7.0_real64), &
                          "test_run_js_comp_test_too_many_neighbors_sets_ierr: p_values_observed_consensus untouched")
     end subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr
-
-    !> The same `n_neighbors = 3 > max_n_genes_all_studies = 2` input as
-    !| test_run_js_comp_test_too_many_neighbors_sets_ierr, but passed to run_js_comp_test_impl
-    !| directly, past the wrapper's range validation. Pass A then fills the third neighbor slot
-    !| with the out-of-range gene index 3, and the implementation's own index check must report
-    !| ERR_INVALID_INPUT with no argument position, before Pass B (`n_bins_per_point` keeps its
-    !| sentinel -7).
-    subroutine test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr()
-        character(*), parameter :: name = "test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr: "
-        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
-        integer(int32), parameter :: n_points = 1, n_neighbors = 3
-        integer(int32), parameter :: n_pooled_max = max_n_reps_all_studies*n_neighbors*n_studies
-        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
-        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        real(real64) :: x_star(n_points)
-        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
-        integer(int32) :: neighborhood_range(2, n_points, n_studies)
-        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
-        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        logical(c_bool) :: occupancy_failed(n_points)
-        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
-        real(real64) :: mean_bin_occupancy(n_points)
-        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
-        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
-        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
-        integer(int32) :: mean_pmf_included_n_reps(n_points)
-        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        real(real64) :: tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points)
-        real(real64) :: tmp_permutation_mean_pmf(n_points, MAX_N_BINS)
-        integer(int32) :: tmp_permutation_point_pool(MAX_N_BINS), tmp_permutation_point_draw(MAX_N_BINS)
-        real(real64) :: tmp_pooled_residuals(n_pooled_max)
-        integer(int32) :: tmp_pooled_residuals_perm(n_pooled_max), tmp_residual_to_study_perm(n_pooled_max)
-        integer(int32) :: tmp_bin_counts_search(MAX_N_BINS)
-        integer(int32) :: tmp_study_block_ends(n_studies), tmp_study_block_sizes(n_studies)
-        integer(int32) :: tmp_point_n_neighbors(n_studies)
-        integer(int32) :: tmp_permutation_mean_pmf_counts(n_points, MAX_N_BINS)
-        integer(int32) :: tmp_permutation_counts(n_points, MAX_N_BINS)
-        real(real64) :: tmp_permutation_pmfs(n_points, MAX_N_BINS, n_studies)
-        real(real64) :: tmp_permutation_js_divergences(n_points, n_studies)
-        real(real64) :: tmp_permutation_weights(n_points, n_studies)
-        real(real64) :: tmp_permutation_global_js_divergence(n_studies)
-        integer(int32) :: ierr
-
-        gene_means = reshape([1.0_real64, 2.0_real64, 1.0_real64, 2.0_real64], [2, 2])
-        gene_means_perms = reshape([1_int32, 2_int32, 1_int32, 2_int32], [2, 2])
-        residuals = 0.5_real64
-        x_star = [1.5_real64]
-        n_bins_per_point = -7_int32
-
-        call run_js_comp_test_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                                   gene_means, gene_means_perms, residuals, x_star, &
-                                   neighborhood_indices, neighborhood_range, n_bins_per_point, &
-                                   shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
-                                   occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
-                                   max_bin_occupancy, sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, &
-                                   mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
-                                   global_js_divergence, p_values, p_values_observed_consensus, &
-                                   tmp_neighborhood_residuals_gathered, &
-                                   tmp_permutation_mean_pmf, tmp_permutation_point_pool, &
-                                   tmp_permutation_point_draw, tmp_pooled_residuals, &
-                                   tmp_pooled_residuals_perm, tmp_bin_counts_search, tmp_residual_to_study_perm, &
-                                   tmp_study_block_ends, tmp_study_block_sizes, tmp_point_n_neighbors, &
-                                   tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
-                                   tmp_permutation_js_divergences, tmp_permutation_weights, &
-                                   tmp_permutation_global_js_divergence, n_permutations=10_int32, ierr=ierr)
-
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"gene index 3 > max_n_genes_all_studies rejected", &
-                        arg_pos=0_int32)
-        call assert_true(all(n_bins_per_point == -7_int32), name//"n_bins_per_point untouched (no Pass B)")
-    end subroutine test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr
 
     !> Issue #217 (D1), the small-N collapse criterion. `G=2000`, `S=2`: `N=4000`,
     !| `floor_k=max(10, 2*2)=10`, `k_start_1=max(10, ceil(0.02*4000))=80`. Hand-derived, exact
@@ -6847,8 +6803,8 @@ contains
                         "test_adaptive_candidates_validation: n_studies=0 rejected", arg_pos=2_int32)
     end subroutine test_adaptive_candidates_validation
 
-    !> Issue #217 (D6b): the hand-validating capacity producer rejects a non-positive gene count
-    !| (argument 1) and a non-positive study count (argument 2) with its own positions.
+    !> Issue #217 (D6b): the capacity producer's generated wrapper rejects a non-positive gene
+    !| count (argument 1) and a non-positive study count (argument 2).
     subroutine test_adaptive_bounds_validation()
         integer(int32) :: max_n_points_candidate, ierr
 
@@ -6954,9 +6910,9 @@ contains
                               "test_adaptive_bounds_rejects_pool_beyond_int32: normal size capacity 801")
     end subroutine test_adaptive_bounds_rejects_pool_beyond_int32
 
-    !> The hand-validating candidate-grid producer backs its documented `DM_MIN(1_int32)` on
-    !| `max_n_genes_all_studies` (argument 1) itself: zero and a negative gene count are both
-    !| rejected with that position, and the smallest valid count `G=1` is accepted.
+    !> The candidate-grid producer's generated wrapper backs the documented `DM_MIN(1_int32)` on
+    !| `max_n_genes_all_studies` (argument 1): zero and a negative gene count are both rejected
+    !| with that position, and the smallest valid count `G=1` is accepted.
     subroutine test_candidate_bounds_rejects_nonpositive_genes()
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
 
@@ -7022,7 +6978,7 @@ contains
         integer(int32), intent(out) :: max_nn
             !! Largest number of entries one study has in one neighborhood
         integer(int32), intent(out) :: status
-            !! Overall construction outcome (ADAPTIVE_STATUS_* code)
+            !! Overall construction outcome (`STAT_ADAPTIVE_CONSTRUCTION_*` code of tox_errors, or ERR_OK)
         real(real64), intent(out) :: x_star(:)
             !! Reference point of each neighborhood: the pooled mean at its seed position
         real(real64), intent(out) :: dispersion(:)
@@ -7034,7 +6990,7 @@ contains
         integer(int32), intent(out) :: n_per_point(:, :)
             !! For each neighborhood, how many of its pooled entries belong to each study
         integer(int32), intent(out) :: stops(:)
-            !! Why each neighborhood stopped growing (ADAPTIVE_STOP_* code)
+            !! Why each neighborhood stopped growing (`STAT_ADAPTIVE_STOP_*` code of tox_errors)
         real(real64), intent(in), optional :: tau
             !! Largest relative dispersion increase an adaptive round may cause and still be committed
         real(real64), intent(in), optional :: factor
@@ -7124,13 +7080,13 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 1_int32, 1_int32, 2_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "test_adaptive_x_star_chain_stops_on_k_max: status")
+        call assert_equal_int(status, ERR_OK, "test_adaptive_x_star_chain_stops_on_k_max: status")
         call assert_equal_int(max_nn, 2_int32, "test_adaptive_x_star_chain_stops_on_k_max: max_n_neighbors")
         call assert_adaptive_points("test_adaptive_x_star_chain_stops_on_k_max", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 1.25_real64, 2.0_real64, 3.0_real64, 6.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4, 4, 5, 5, 6], [2, 5]), &
-                                    reshape([2, 2, 2, 2, 2], [1, 5]), [(ADAPTIVE_STOP_K_MAX, i_gene=1, 5)], &
+                                    reshape([2, 2, 2, 2, 2], [1, 5]), [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 5)], &
                                     [(1.0_real64, i_gene=1, 5)], &
                                     [0.5_real64, 0.125_real64, 0.375_real64, 0.5_real64, 1.5_real64])
     end subroutine test_adaptive_x_star_chain_stops_on_k_max
@@ -7156,11 +7112,11 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 3_int32, 1_int32, 5_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status, tau=0.0_real64)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "test_adaptive_k_start_phase_ignores_tau: status")
+        call assert_equal_int(status, ERR_OK, "test_adaptive_k_start_phase_ignores_tau: status")
         call assert_adaptive_points("test_adaptive_k_start_phase_ignores_tau", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 3.0_real64], &
                                     reshape([1, 3, 3, 5], [2, 2]), reshape([3, 3], [1, 2]), &
-                                    [ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_TAU], &
+                                    [STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_TAU], &
                                     [7.0_real64/3.0_real64, 11.0_real64/3.0_real64], [1.0_real64, 1.0_real64])
     end subroutine test_adaptive_k_start_phase_ignores_tau
 
@@ -7189,7 +7145,7 @@ contains
         call assert_adaptive_points("test_adaptive_tau_stop_discards_round", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 3.0_real64, 4.0_real64], &
                                     reshape([1, 3, 4, 4, 2, 6], [2, 3]), reshape([3, 1, 5], [1, 3]), &
-                                    [ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX], &
+                                    [STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX], &
                                     [1.0_real64, 1.0_real64, 1.6_real64], [1.0_real64, 0.0_real64, 1.0_real64])
     end subroutine test_adaptive_tau_stop_discards_round
 
@@ -7217,7 +7173,7 @@ contains
         call assert_adaptive_points("test_adaptive_tau_ratchets_against_previous_round", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 4.0_real64], &
                                     reshape([1, 4, 1, 6], [2, 2]), reshape([4, 6], [1, 2]), &
-                                    [ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX], &
+                                    [STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX], &
                                     [1.875_real64, 275.0_real64/60.0_real64], [1.0_real64, 1.5_real64])
     end subroutine test_adaptive_tau_ratchets_against_previous_round
 
@@ -7242,7 +7198,7 @@ contains
         call assert_adaptive_points("test_adaptive_partial_last_round_near_k_max", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 5.0_real64], &
                                     reshape([1, 5, 3, 7], [2, 2]), reshape([5, 5], [1, 2]), &
-                                    [ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_K_MAX], [1.0_real64, 1.0_real64], &
+                                    [STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_K_MAX], [1.0_real64, 1.0_real64], &
                                     [1.0_real64, 1.0_real64])
     end subroutine test_adaptive_partial_last_round_near_k_max
 
@@ -7269,7 +7225,7 @@ contains
         call assert_adaptive_points("test_adaptive_cap_truncated_round_committed_then_stops", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, [0.0_real64, 2.0_real64, 3.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4], [2, 3]), reshape([2, 2, 2], [1, 3]), &
-                                    [(ADAPTIVE_STOP_RESIDUAL_CAP, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_RESIDUAL_CAP, i_gene=1, 3)], &
                                     [1.0_real64, 1.0_real64, 1.0_real64], [0.5_real64, 0.5_real64, 0.5_real64])
     end subroutine test_adaptive_cap_truncated_round_committed_then_stops
 
@@ -7300,8 +7256,8 @@ contains
                                     n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64], &
                                     reshape([1, 1, 1, 2, 3, 3, 3, 4], [2, 4]), reshape([1, 2, 1, 2], [1, 4]), &
-                                    [ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_TAU, &
-                                     ADAPTIVE_STOP_RESIDUAL_CAP], &
+                                    [STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_RESIDUAL_CAP, STAT_ADAPTIVE_STOP_TAU, &
+                                     STAT_ADAPTIVE_STOP_RESIDUAL_CAP], &
                                     [1.0_real64, 2.5_real64, 1.0_real64, 1.0_real64], &
                                     [0.0_real64, 0.5_real64, 0.0_real64, 0.5_real64])
     end subroutine test_adaptive_cap_truncated_round_rejected_by_tau
@@ -7329,7 +7285,7 @@ contains
         call assert_adaptive_points("test_adaptive_cap_empty_round_stops: k_start 1", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 1.0_real64, 2.0_real64], &
                                     reshape([1, 1, 2, 2, 3, 3], [2, 3]), reshape([1, 1, 1], [1, 3]), &
-                                    [(ADAPTIVE_STOP_RESIDUAL_CAP, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_RESIDUAL_CAP, i_gene=1, 3)], &
                                     [1.0_real64, 1.0_real64, 1.0_real64], [0.0_real64, 0.0_real64, 0.0_real64])
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 3_int32, n_points, x_star, ranges, &
@@ -7337,7 +7293,7 @@ contains
         call assert_adaptive_points("test_adaptive_cap_empty_round_stops: k_start phase uncapped", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, [0.0_real64, 2.0_real64], &
                                     reshape([1, 2, 2, 3], [2, 2]), reshape([2, 2], [1, 2]), &
-                                    [ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_RESIDUAL_CAP], &
+                                    [STAT_ADAPTIVE_STOP_RESIDUAL_CAP, STAT_ADAPTIVE_STOP_RESIDUAL_CAP], &
                                     [1.0_real64, 1.0_real64], [0.5_real64, 0.5_real64])
     end subroutine test_adaptive_cap_empty_round_stops
 
@@ -7360,7 +7316,7 @@ contains
                                        n_per_point, stops, dispersion, mads, max_nn, status)
         call assert_adaptive_points("test_adaptive_exhausted_after_partial_round", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64], reshape([1, 4], [2, 1]), &
-                                    reshape([4], [1, 1]), [ADAPTIVE_STOP_EXHAUSTED], [1.0_real64], [1.0_real64])
+                                    reshape([4], [1, 1]), [STAT_ADAPTIVE_STOP_EXHAUSTED], [1.0_real64], [1.0_real64])
     end subroutine test_adaptive_exhausted_after_partial_round
 
     !> Issue #217: when k_max is reached with the pool exhausted at the same time, K_MAX is
@@ -7381,7 +7337,7 @@ contains
                                        n_per_point, stops, dispersion, mads, max_nn, status)
         call assert_adaptive_points("test_adaptive_k_max_takes_precedence_over_exhausted", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, [0.0_real64], &
-                                    reshape([1, 3], [2, 1]), reshape([3], [1, 1]), [ADAPTIVE_STOP_K_MAX], &
+                                    reshape([1, 3], [2, 1]), reshape([3], [1, 1]), [STAT_ADAPTIVE_STOP_K_MAX], &
                                     [1.0_real64], [1.0_real64])
     end subroutine test_adaptive_k_max_takes_precedence_over_exhausted
 
@@ -7407,11 +7363,11 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 4_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "test_adaptive_zero_dispersion_skips_adaptive_phase: status")
+        call assert_equal_int(status, ERR_OK, "test_adaptive_zero_dispersion_skips_adaptive_phase: status")
         call assert_adaptive_points("test_adaptive_zero_dispersion_skips_adaptive_phase", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 2.0_real64, 3.0_real64], &
                                     reshape([1, 2, 2, 3, 1, 4], [2, 3]), reshape([2, 2, 4], [1, 3]), &
-                                    [ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX], &
+                                    [STAT_ADAPTIVE_STOP_ZERO_DISPERSION, STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX], &
                                     [0.0_real64, 0.5_real64, 0.5_real64], [0.5_real64, 0.5_real64, 1.0_real64])
     end subroutine test_adaptive_zero_dispersion_skips_adaptive_phase
 
@@ -7436,13 +7392,13 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 2_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS, &
                               "test_adaptive_too_few_residuals_after_k_start: status")
         call assert_adaptive_points("test_adaptive_too_few_residuals_after_k_start", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 2.0_real64, 3.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4], [2, 3]), reshape([2, 2, 2], [1, 3]), &
-                                    [ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
-                                     ADAPTIVE_STOP_TOO_FEW_RESIDUALS], &
+                                    [STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
+                                     STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS], &
                                     [1.0_real64, 13.0_real64/9.0_real64, 1.5_real64], [0.5_real64, 0.5_real64, 0.5_real64])
     end subroutine test_adaptive_too_few_residuals_after_k_start
 
@@ -7463,11 +7419,11 @@ contains
         call run_adaptive_construction(gene_means, residuals, 1_int32, 1_int32, 2_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status, tau=10.0_real64)
         call assert_true(n_points >= 1_int32, "test_adaptive_too_few_residuals_precedes_zero_dispersion: a point")
-        call assert_equal_int(stops(1), ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
+        call assert_equal_int(stops(1), STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
                               "test_adaptive_too_few_residuals_precedes_zero_dispersion: stop reason")
         call assert_equal_real(dispersion(1), 0.0_real64, TOL, &
                                "test_adaptive_too_few_residuals_precedes_zero_dispersion: dispersion")
-        call assert_equal_int(status, ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS, &
                               "test_adaptive_too_few_residuals_precedes_zero_dispersion: status")
     end subroutine test_adaptive_too_few_residuals_precedes_zero_dispersion
 
@@ -7488,13 +7444,13 @@ contains
         call run_adaptive_construction(gene_means, residuals, 1_int32, 1_int32, 1_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
         call assert_equal_int(n_points, 2_int32, "test_adaptive_no_valid_residual_gives_nan_dispersion: n_points")
-        call assert_equal_array_int(stops(1:2), [ADAPTIVE_STOP_TOO_FEW_RESIDUALS, ADAPTIVE_STOP_K_MAX], 2_int32, &
+        call assert_equal_array_int(stops(1:2), [STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS, STAT_ADAPTIVE_STOP_K_MAX], 2_int32, &
                                     "test_adaptive_no_valid_residual_gives_nan_dispersion: stop reasons")
         call assert_true(ieee_is_nan(dispersion(1)), &
                          "test_adaptive_no_valid_residual_gives_nan_dispersion: NaN without a residual")
         call assert_equal_real(dispersion(2), 1.0_real64, TOL, &
                                "test_adaptive_no_valid_residual_gives_nan_dispersion: second dispersion")
-        call assert_equal_int(status, ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS, &
                               "test_adaptive_no_valid_residual_gives_nan_dispersion: status")
     end subroutine test_adaptive_no_valid_residual_gives_nan_dispersion
 
@@ -7520,7 +7476,7 @@ contains
         call assert_adaptive_points("test_adaptive_all_nan_staged_round_commits", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 2.0_real64], &
                                     reshape([1, 2, 1, 3], [2, 2]), reshape([2, 3], [1, 2]), &
-                                    [ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX], [1.0_real64, 1.5_real64], &
+                                    [STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX], [1.0_real64, 1.5_real64], &
                                     [0.5_real64, 1.0_real64])
     end subroutine test_adaptive_all_nan_staged_round_commits
 
@@ -7548,7 +7504,7 @@ contains
                                     ranges, n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 3.0_real64, 5.0_real64, 7.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4, 4, 5], [2, 4]), reshape([2, 2, 2, 2], [1, 4]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
                                     [0.5_real64, 1.0_real64, 1.0_real64, 1.0_real64])
 
         gene_means(:, 1) = [0.0_real64, 2.0_real64, 2.5_real64, 3.5_real64, 10.0_real64]
@@ -7558,7 +7514,7 @@ contains
                                     ranges, n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 2.5_real64, 3.5_real64, 10.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4, 4, 5], [2, 4]), reshape([2, 2, 2, 2], [1, 4]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
                                     [1.0_real64, 0.25_real64, 0.5_real64, 3.25_real64])
     end subroutine test_adaptive_ties_go_to_lower_mean_and_position
 
@@ -7582,7 +7538,7 @@ contains
         call assert_adaptive_points("test_adaptive_zero_mad_still_progresses", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [1.0_real64, 1.0_real64, 2.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4], [2, 3]), reshape([2, 2, 2], [1, 3]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], &
                                     [1.0_real64, 1.0_real64, 1.0_real64], [0.0_real64, 0.0_real64, 0.5_real64])
     end subroutine test_adaptive_zero_mad_still_progresses
 
@@ -7605,7 +7561,7 @@ contains
         call assert_adaptive_points("test_adaptive_seed_beyond_largest_mean", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 11.0_real64], &
                                     reshape([1, 2, 2, 3], [2, 2]), reshape([2, 2], [1, 2]), &
-                                    [ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_K_MAX], [1.0_real64, 1.0_real64], &
+                                    [STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_K_MAX], [1.0_real64, 1.0_real64], &
                                     [5.0_real64, 0.5_real64])
     end subroutine test_adaptive_seed_beyond_largest_mean
 
@@ -7632,7 +7588,7 @@ contains
                                     ranges, n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 6.0_real64, 7.0_real64], &
                                     reshape([1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8], [2, 7]), &
-                                    reshape([2, 2, 2, 2, 2, 2, 2], [1, 7]), [(ADAPTIVE_STOP_K_MAX, i_gene=1, 7)], &
+                                    reshape([2, 2, 2, 2, 2, 2, 2], [1, 7]), [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 7)], &
                                     [(1.0_real64, i_gene=1, 7)], [(0.5_real64, i_gene=1, 7)])
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 2_int32, n_points, x_star, ranges, &
@@ -7641,7 +7597,7 @@ contains
                                     ranges, n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 3.0_real64, 5.0_real64, 7.0_real64], &
                                     reshape([1, 2, 3, 4, 5, 6, 7, 8], [2, 4]), reshape([2, 2, 2, 2], [1, 4]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
                                     [(0.5_real64, i_gene=1, 4)])
     end subroutine test_adaptive_mad_distance_factor_zero_and_four
 
@@ -7672,12 +7628,12 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 3_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status, tau=10.0_real64)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "test_adaptive_multi_study_decode_nan_padded_study: status")
+        call assert_equal_int(status, ERR_OK, "test_adaptive_multi_study_decode_nan_padded_study: status")
         call assert_equal_int(max_nn, 2_int32, "test_adaptive_multi_study_decode_nan_padded_study: max_n_neighbors")
         call assert_adaptive_points("test_adaptive_multi_study_decode_nan_padded_study", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 3.0_real64], &
                                     reshape([1, 3, 3, 5], [2, 2]), reshape([2, 1, 2, 1], [2, 2]), &
-                                    [ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_K_MAX], &
+                                    [STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_K_MAX], &
                                     [8.0_real64/7.0_real64, 8.0_real64/7.0_real64], [1.0_real64, 1.0_real64])
         call assert_equal_int(sum(n_per_point(:, 1)), ranges(2, 1) - ranges(1, 1) + 1_int32, &
                               "test_adaptive_multi_study_decode_nan_padded_study: counts partition the range")
@@ -7699,7 +7655,7 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 4_int32, 1_int32, 4_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_TOO_FEW_MEANS, "test_adaptive_too_few_means: status")
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS, "test_adaptive_too_few_means: status")
         call assert_equal_int(n_points, 0_int32, "test_adaptive_too_few_means: n_points")
         call assert_equal_int(max_nn, 0_int32, "test_adaptive_too_few_means: max_n_neighbors")
     end subroutine test_adaptive_too_few_means
@@ -7719,7 +7675,7 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 1_int32, 1_int32, 1_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_TOO_FEW_MEANS, "test_adaptive_all_means_nan: status")
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS, "test_adaptive_all_means_nan: status")
         call assert_equal_int(n_points, 0_int32, "test_adaptive_all_means_nan: n_points")
         call assert_equal_int(max_nn, 0_int32, "test_adaptive_all_means_nan: max_n_neighbors")
     end subroutine test_adaptive_all_means_nan
@@ -7745,13 +7701,13 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 2_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD, &
                               "test_adaptive_empty_study_neighborhood_min_one: status")
         call assert_adaptive_points("test_adaptive_empty_study_neighborhood_min_one", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 2.0_real64, 10.0_real64, 12.0_real64], &
                                     reshape([1, 2, 2, 3, 4, 5, 5, 6], [2, 4]), reshape([2, 0, 2, 0, 0, 2, 0, 2], [2, 4]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
                                     [(0.5_real64, i_gene=1, 4)])
     end subroutine test_adaptive_empty_study_neighborhood_min_one
 
@@ -7776,21 +7732,21 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 3_int32, 1_int32, 3_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status, min_study=1_int32)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "test_adaptive_empty_study_neighborhood_min_two: min 1 OK")
+        call assert_equal_int(status, ERR_OK, "test_adaptive_empty_study_neighborhood_min_two: min 1 OK")
         call assert_adaptive_points("test_adaptive_empty_study_neighborhood_min_two: min 1", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, [0.0_real64, 3.0_real64, 5.0_real64], &
                                     reshape([1, 3, 3, 5, 4, 6], [2, 3]), reshape([2, 1, 2, 1, 1, 2], [2, 3]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
                                     [(1.0_real64, i_gene=1, 3)])
 
         call run_adaptive_construction(gene_means, residuals, 3_int32, 1_int32, 3_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status, min_study=2_int32)
-        call assert_equal_int(status, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD, &
                               "test_adaptive_empty_study_neighborhood_min_two: min 2 fails")
         call assert_adaptive_points("test_adaptive_empty_study_neighborhood_min_two: min 2", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, [0.0_real64, 3.0_real64, 5.0_real64], &
                                     reshape([1, 3, 3, 5, 4, 6], [2, 3]), reshape([2, 1, 2, 1, 1, 2], [2, 3]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
                                     [(1.0_real64, i_gene=1, 3)])
     end subroutine test_adaptive_empty_study_neighborhood_min_two
 
@@ -7818,12 +7774,12 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 3_int32, 1_int32, 4_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status, tau=10.0_real64)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "test_adaptive_max_n_neighbors_later_point_and_study: status")
+        call assert_equal_int(status, ERR_OK, "test_adaptive_max_n_neighbors_later_point_and_study: status")
         call assert_equal_int(max_nn, 3_int32, "test_adaptive_max_n_neighbors_later_point_and_study: max_n_neighbors")
         call assert_adaptive_points("test_adaptive_max_n_neighbors_later_point_and_study", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [8.0_real64, 26.0_real64, 37.0_real64], &
                                     reshape([1, 4, 3, 6, 5, 8], [2, 3]), reshape([2, 2, 1, 3, 2, 2], [2, 3]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
                                     [2.5_real64, 4.0_real64, 3.0_real64])
     end subroutine test_adaptive_max_n_neighbors_later_point_and_study
 
@@ -7848,14 +7804,14 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 2_int32, 1_int32, 2_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+        call assert_equal_int(status, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS, &
                               "test_adaptive_status_too_few_residuals_beats_empty_study: status")
         call assert_adaptive_points("test_adaptive_status_too_few_residuals_beats_empty_study", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 5.0_real64, 10.0_real64, 12.0_real64], &
                                     reshape([1, 2, 2, 3, 4, 5, 5, 6], [2, 4]), reshape([2, 0, 2, 0, 0, 2, 0, 2], [2, 4]), &
-                                    [ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
-                                     ADAPTIVE_STOP_TOO_FEW_RESIDUALS], [(1.0_real64, i_gene=1, 4)], &
+                                    [STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_K_MAX, STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
+                                     STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS], [(1.0_real64, i_gene=1, 4)], &
                                     [0.5_real64, 2.0_real64, 0.5_real64, 0.5_real64])
     end subroutine test_adaptive_status_too_few_residuals_beats_empty_study
 
@@ -7883,7 +7839,7 @@ contains
         call assert_adaptive_points("test_adaptive_nan_residuals_excluded_from_s_and_cap", n_points, x_star, &
                                     ranges, n_per_point, stops, dispersion, mads, [0.0_real64, 2.0_real64], &
                                     reshape([1, 2, 2, 3], [2, 2]), reshape([2, 2], [1, 2]), &
-                                    [ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_RESIDUAL_CAP], &
+                                    [STAT_ADAPTIVE_STOP_RESIDUAL_CAP, STAT_ADAPTIVE_STOP_RESIDUAL_CAP], &
                                     [4.0_real64/3.0_real64, 4.0_real64/3.0_real64], [0.5_real64, 0.5_real64])
     end subroutine test_adaptive_nan_residuals_excluded_from_s_and_cap
 
@@ -7988,7 +7944,7 @@ contains
                                     n_per_point, stops, dispersion, mads, &
                                     [0.0_real64, 3.0_real64, 3.0_real64, 10.0_real64], &
                                     reshape([1, 2, 4, 5, 5, 6, 6, 7], [2, 4]), reshape([2, 2, 2, 2], [1, 4]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 4)], [(1.0_real64, i_gene=1, 4)], &
                                     [0.5_real64, 0.0_real64, 0.0_real64, 3.5_real64])
     end subroutine test_adaptive_seed_tie_run_takes_first_position
 
@@ -8015,7 +7971,7 @@ contains
         call assert_adaptive_points("test_adaptive_seed_beyond_tie_run_takes_first", n_points, x_star, ranges, &
                                     n_per_point, stops, dispersion, mads, [0.0_real64, 5.0_real64, 5.0_real64], &
                                     reshape([1, 2, 3, 4, 4, 5], [2, 3]), reshape([2, 2, 2], [1, 3]), &
-                                    [(ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
+                                    [(STAT_ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
                                     [2.0_real64, 0.0_real64, 0.0_real64])
     end subroutine test_adaptive_seed_beyond_tie_run_takes_first
 
@@ -8467,7 +8423,7 @@ contains
 
         call run_adaptive_construction(gene_means, residuals, 6_int32, 3_int32, 12_int32, n_points, x_star, ranges, &
                                        n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, name//"construction status")
+        call assert_equal_int(status, ERR_OK, name//"construction status")
         call assert_true(n_points >= 2_int32, name//"several reference points")
 
         call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), out, ierr, n_permutations=200_int32, &
@@ -8782,7 +8738,7 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_adaptive_selection(out, [16_int32, 4_int32, 64_int32], 91_int32, [71_int32, 91_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+                                       [ERR_OK, ERR_OK], name)
         call assert_equal_int(out%n_admissible, 2_int32, name//"two admissible candidates")
         call assert_equal_array_int(out%trace_k_start(1:2), [20_int32, 16_int32], 2_int32, name//"trace_k_start")
         call assert_equal_array_int(out%trace_k_step(1:2), [5_int32, 4_int32], 2_int32, name//"trace_k_step")
@@ -8814,8 +8770,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_adaptive_selection(out, [12_int32, 3_int32, 48_int32], 125_int32, [71_int32, 91_int32, 125_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
-                                        ADAPTIVE_CANDIDATE_EVALUATED], name)
+                                       [ERR_OK, ERR_OK, &
+                                        ERR_OK], name)
         call assert_equal_int(out%n_admissible, 3_int32, name//"three admissible candidates")
         call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
                                      4_int32, 0.0_real64, name//"selected CI is the triggering candidate's [0,0]")
@@ -8836,7 +8792,7 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_adaptive_selection(out, [16_int32, 4_int32, 64_int32], 91_int32, [71_int32, 91_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+                                       [ERR_OK, ERR_OK], name)
     end subroutine test_adaptive_search_both_mode_uses_earlier_trigger
 
     !> Test helper for E4a-c: fixture B, every candidate admissible, no plateau in the given mode.
@@ -8868,7 +8824,7 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_false(out%plateau, name//"no plateau")
         call assert_equal_int(out%n_admissible, 4_int32, name//"all four candidates admissible")
-        call assert_equal_array_int(out%cand_status(1:4), [(ADAPTIVE_CANDIDATE_EVALUATED, t=1, 4)], 4_int32, &
+        call assert_equal_array_int(out%cand_status(1:4), [(ERR_OK, t=1, 4)], 4_int32, &
                                     name//"all evaluated")
 
         do t = 1, 4
@@ -8959,7 +8915,7 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
-                                                ADAPTIVE_CANDIDATE_OVERLAP_FAILED, name)
+                                                STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED, name)
     end subroutine test_adaptive_search_nothing_admissible_falls_back_to_first
 
     !> E6: G = 10, S = 1, R = 1, means 1..10, residuals 0: N = 10 gives the single candidate
@@ -8985,7 +8941,7 @@ contains
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], [10_int32, 3_int32, 40_int32, 1_int32], &
                                     4_int32, name//"knobs and point count")
         call assert_equal_int(out%n_tried, 1_int32, name//"one candidate tried")
-        call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_EVALUATED, name//"evaluated")
+        call assert_equal_int(out%cand_status(1), ERR_OK, name//"evaluated")
         call assert_equal_int(out%n_admissible, 1_int32, name//"one admissible")
         call assert_equal_int(out%n_bins(1), out%trace_n_bins(1, 1), name//"bins from the trace")
         call assert_equal_array_real(out%ci(:, 1), [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, name//"CI [0,0]")
@@ -9014,7 +8970,7 @@ contains
         call assert_false(out%plateau, name//"a single rejected candidate is not established")
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], [10_int32, 3_int32, 40_int32, 1_int32], &
                                     4_int32, name//"knobs and point count")
-        call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name//"min-count failed")
+        call assert_equal_int(out%cand_status(1), STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name//"min-count failed")
         call assert_equal_int(out%n_admissible, 0_int32, name//"nothing admissible")
         call assert_equal_int(out%n_bins(1), 3_int32, name//"m_min bins")
         call assert_equal_array_real([out%range_low(1), out%range_high(1)], [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, &
@@ -9040,8 +8996,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_adaptive_selection(out, [10_int32, 3_int32, 40_int32], 2_int32, [0_int32, 0_int32, 2_int32, 2_int32], &
-                                       [ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, &
-                                        ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+                                       [STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, &
+                                        ERR_OK, ERR_OK], name)
         call assert_equal_array_int(out%trace_k_start(1:2), [12_int32, 10_int32], 2_int32, &
                                     name//"only the admissible candidates are traced")
     end subroutine test_adaptive_search_status_too_few_means
@@ -9062,7 +9018,7 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
-                                                ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, name)
+                                                STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, name)
     end subroutine test_adaptive_search_status_too_few_residuals
 
     !> E7a3: fixture A with `min_study_neighbors = 7`: each study has k/2 entries per neighborhood,
@@ -9085,8 +9041,8 @@ contains
         call assert_false(out%plateau, name//"no plateau")
         call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], 71_int32, &
                                        [71_int32, 91_int32, 125_int32, 166_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
-                                        ADAPTIVE_CANDIDATE_EMPTY_STUDY, ADAPTIVE_CANDIDATE_EMPTY_STUDY], name)
+                                       [ERR_OK, ERR_OK, &
+                                        STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY, STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY], name)
         call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
                                      4_int32, 0.0_real64, name//"a real [0,0] interval")
     end subroutine test_adaptive_search_status_empty_study
@@ -9108,8 +9064,8 @@ contains
         call assert_false(out%plateau, name//"no plateau")
         call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], 71_int32, &
                                        [71_int32, 91_int32, 125_int32, 166_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
-                                        ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED], name)
+                                       [ERR_OK, ERR_OK, &
+                                        STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED], name)
     end subroutine test_adaptive_search_status_capacity_exceeded
 
     !> E7c: fixture A with `min_neighbor_overlap = 0.35`: the overlaps 0.300, 0.3125, 0.333 of
@@ -9129,8 +9085,8 @@ contains
         call assert_false(out%plateau, name//"no plateau from one admissible candidate")
         call assert_adaptive_selection(out, [10_int32, 3_int32, 40_int32], 166_int32, &
                                        [71_int32, 91_int32, 125_int32, 166_int32], &
-                                       [ADAPTIVE_CANDIDATE_OVERLAP_FAILED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
-                                        ADAPTIVE_CANDIDATE_OVERLAP_FAILED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+                                       [STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED, STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
+                                        STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED, ERR_OK], name)
         call assert_equal_int(out%n_admissible, 1_int32, name//"one admissible")
     end subroutine test_adaptive_search_status_overlap_failed
 
@@ -9148,7 +9104,7 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
-                                                ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name)
+                                                STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name)
     end subroutine test_adaptive_search_status_min_count_failed
 
     !> E8: fixture B, effect size with loose thresholds (10): the first two transitions qualify,
@@ -9168,8 +9124,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_adaptive_selection(out, [12_int32, 3_int32, 48_int32], 29_int32, [17_int32, 21_int32, 29_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
-                                        ADAPTIVE_CANDIDATE_EVALUATED], name)
+                                       [ERR_OK, ERR_OK, &
+                                        ERR_OK], name)
         t = selected_trace_column(out)
         call assert_equal_int(t, 3_int32, name//"selected trace column")
         n_pts = out%n_points
@@ -9247,7 +9203,7 @@ contains
                                                   max_pooled_residuals=max_pooled_residuals, &
                                                   min_study_neighbors=min_study_neighbors, ierr=ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, name//"construct ierr")
-            call assert_equal_int(status, ADAPTIVE_STATUS_OK, name//"construction ok")
+            call assert_equal_int(status, ERR_OK, name//"construction ok")
             n_pts = out%trace_n_points(t)
             call assert_equal_int(n_points, n_pts, name//"point count")
             call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), run, ierr, n_permutations=10_int32, &
@@ -9347,7 +9303,7 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%n_points > out%capacity, name//"the selected point count exceeds the capacity")
         call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
-                                                ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, name)
+                                                STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, name)
     end subroutine test_adaptive_search_nothing_admissible_clamped_to_capacity
 
     !> Clamp path, single rejected candidate: G = 100, S = 2 (N = 200) gives the single candidate
@@ -9372,7 +9328,7 @@ contains
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], &
                                     [10_int32, 3_int32, 40_int32, 33_int32], 4_int32, name//"knobs and logged point count")
         call assert_equal_int(out%n_tried, 1_int32, name//"one candidate")
-        call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, name//"capacity exceeded")
+        call assert_equal_int(out%cand_status(1), STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, name//"capacity exceeded")
         call assert_equal_array_int(out%n_bins, [(3_int32, i=1, 20)], 20_int32, name//"m_min bins on 1:20")
         call assert_equal_array_real(out%range_low, [(0.0_real64, i=1, 20)], 20_int32, 0.0_real64, name//"R_low 0")
         call assert_equal_array_real(out%range_high, [(0.0_real64, i=1, 20)], 20_int32, 0.0_real64, name//"R_high 0")
@@ -9416,7 +9372,7 @@ contains
         call run_adaptive_search(gene_means, residuals, out, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
-        call assert_equal_array_int(out%cand_status(1:out%n_tried), [(ADAPTIVE_CANDIDATE_EVALUATED, t=1, out%n_tried)], &
+        call assert_equal_array_int(out%cand_status(1:out%n_tried), [(ERR_OK, t=1, out%n_tried)], &
                                     out%n_tried, name//"every tried candidate evaluated, so trace column = candidate index")
 
         best_ci = -1.0_real64
@@ -10706,7 +10662,7 @@ contains
                                               40_int32, n_points, x_star, all_ranges, all_n_per_point, stops, dispersion, &
                                               mads, max_nn, status, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "construct_adaptive_stone_fixture: ierr")
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, "construct_adaptive_stone_fixture: status")
+        call assert_equal_int(status, ERR_OK, "construct_adaptive_stone_fixture: status")
         ranges = all_ranges(:, 1:n_points)
         n_per_point = all_n_per_point(:, 1:n_points)
     end subroutine construct_adaptive_stone_fixture
@@ -12029,7 +11985,7 @@ contains
         call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"all NaN: ierr")
         call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
-                                                ADAPTIVE_CANDIDATE_EMPTY_STUDY, name//"all NaN: ")
+                                                STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY, name//"all NaN: ")
 
         call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
         residuals(:, 1:8, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
@@ -12039,8 +11995,8 @@ contains
         call assert_equal_int(out%n_admissible, 1_int32, name//"genes 1..8 NaN: only candidate 1 admissible")
         call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], 71_int32, &
                                        [71_int32, 91_int32, 125_int32, 166_int32], &
-                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
-                                        ADAPTIVE_CANDIDATE_EMPTY_STUDY, ADAPTIVE_CANDIDATE_EMPTY_STUDY], &
+                                       [ERR_OK, STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
+                                        STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY, STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY], &
                                        name//"genes 1..8 NaN: ")
         call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
                                      4_int32, 0.0_real64, name//"genes 1..8 NaN: candidate 1's real [0,0] interval")
@@ -12050,7 +12006,7 @@ contains
         call run_adaptive_search(gene_means, residuals, out, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"all NaN, default min count: ierr")
         call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
-                                                ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
+                                                STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
                                                 name//"all NaN, default min count: empty study before min count: ")
     end subroutine test_adaptive_search_nan_residuals_study_not_admissible
 
@@ -12135,7 +12091,7 @@ contains
         ! Adaptive construction, then the adaptive final run on its ranges.
         call run_adaptive_construction(gene_means, residuals, 6_int32, 2_int32, 10_int32, n_adaptive_points, &
                                        adaptive_x_star, ranges, n_per_point, stops, dispersion, mads, max_nn, status)
-        call assert_equal_int(status, ADAPTIVE_STATUS_OK, name//"adaptive construction status ok")
+        call assert_equal_int(status, ERR_OK, name//"adaptive construction status ok")
         call assert_true(n_adaptive_points >= 2_int32, name//"several adaptive reference points")
         call assert_true(all(n_per_point(:, 1:n_adaptive_points) >= 1_int32), &
                          name//"the construction gives every study a gene at every point")

@@ -22,60 +22,30 @@ module tox_data_integration_preprocessing_impl
     use f42_math_impl, only: clamp
     use f42_sort_impl, only: sort_array_heapsort, binary_search_insertion, init_perm, sort_real_heapsort_expl_size
     use f42_stats_impl, only: calc_quantile_impl, calc_sorted_slice_mad, last_non_nan_position
-    use tox_errors, only: set_ok, set_err_once, is_err, validate_dimension_size, ERR_INVALID_INPUT
+    use tox_errors, only: ERR_OK, STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS, STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD, &
+                          STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS, STAT_ADAPTIVE_STOP_TAU, STAT_ADAPTIVE_STOP_K_MAX, &
+                          STAT_ADAPTIVE_STOP_RESIDUAL_CAP, STAT_ADAPTIVE_STOP_EXHAUSTED, STAT_ADAPTIVE_STOP_ZERO_DISPERSION, &
+                          STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS
     M_IMPLICIT_NONE
     private
     public :: compute_gene_means_impl, compute_residuals_impl, pool_means_impl, pool_study_means_impl, &
              calc_neighborhood_size, construct_neighborhoods_impl, construct_neighborhoods_ranged_impl, &
-             gather_pooled_neighborhood_residuals, grow_adaptive_neighborhoods, &
+             gather_pooled_neighborhood_residuals_impl, grow_adaptive_neighborhoods, &
              construct_adaptive_neighborhoods_impl, materialize_pooled_neighborhood, &
-             gather_pooled_neighborhood_residuals_core, sort_gene_means_per_study, sort_pooled_gene_means, &
-             ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_RESIDUAL_CAP, &
-             ADAPTIVE_STOP_EXHAUSTED, ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
-             ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
-             ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
+             sort_gene_means_per_study, sort_pooled_gene_means, &
+             ADAPTIVE_MIN_VALID_RESIDUALS
 
     ! Default of calc_neighborhood_size's `desired_size`, shared by its DM_DEFAULT and its
     ! M_DEFAULT_VAL.
 #define CM_DESIRED_SIZE_DEFAULT 1000_int32
 
-    ! Output codes of construct_adaptive_neighborhoods_impl (not mode arguments). Each is a CM_
-    ! macro first, so the parameter and the documentation quoting it share one literal.
+    ! Residual threshold of construct_adaptive_neighborhoods_impl's growth, a CM_ macro first so the
+    ! parameter and the documentation quoting it share one literal. Its status and stop-reason
+    ! outputs use the STAT_ADAPTIVE_* codes of tox_errors.
 #define CM_ADAPTIVE_MIN_VALID_RESIDUALS 10_int32
-#define CM_ADAPTIVE_STOP_TAU 1_int32
-#define CM_ADAPTIVE_STOP_K_MAX 2_int32
-#define CM_ADAPTIVE_STOP_RESIDUAL_CAP 3_int32
-#define CM_ADAPTIVE_STOP_EXHAUSTED 4_int32
-#define CM_ADAPTIVE_STOP_ZERO_DISPERSION 5_int32
-#define CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS 6_int32
-#define CM_ADAPTIVE_STATUS_OK 0_int32
-#define CM_ADAPTIVE_STATUS_TOO_FEW_MEANS 1_int32
-#define CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD 2_int32
-#define CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS 3_int32
     integer(int32), parameter :: ADAPTIVE_MIN_VALID_RESIDUALS = CM_ADAPTIVE_MIN_VALID_RESIDUALS
         !! Minimum number of non-NaN residuals a neighborhood must pool after its unconditional
         !! `k_start` phase for its dispersion-controlled growth to run
-    integer(int32), parameter :: ADAPTIVE_STOP_TAU = CM_ADAPTIVE_STOP_TAU
-        !! Stop reason: the next round would have raised the dispersion by more than `tau`
-    integer(int32), parameter :: ADAPTIVE_STOP_K_MAX = CM_ADAPTIVE_STOP_K_MAX
-        !! Stop reason: the neighborhood reached `k_max` pooled entries
-    integer(int32), parameter :: ADAPTIVE_STOP_RESIDUAL_CAP = CM_ADAPTIVE_STOP_RESIDUAL_CAP
-        !! Stop reason: the next entry would have pushed the pooled residuals past `max_pooled_residuals`
-    integer(int32), parameter :: ADAPTIVE_STOP_EXHAUSTED = CM_ADAPTIVE_STOP_EXHAUSTED
-        !! Stop reason: no pooled entry is left on either side of the neighborhood
-    integer(int32), parameter :: ADAPTIVE_STOP_ZERO_DISPERSION = CM_ADAPTIVE_STOP_ZERO_DISPERSION
-        !! Stop reason: the `k_start` entries' residuals are all zero, so no relative change is defined
-    integer(int32), parameter :: ADAPTIVE_STOP_TOO_FEW_RESIDUALS = CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS
-        !! Stop reason: fewer than ADAPTIVE_MIN_VALID_RESIDUALS non-NaN residuals after the
-        !! `k_start` phase, so the adaptive phase never ran
-    integer(int32), parameter :: ADAPTIVE_STATUS_OK = CM_ADAPTIVE_STATUS_OK
-        !! Construction status: every neighborhood was built without a failure
-    integer(int32), parameter :: ADAPTIVE_STATUS_TOO_FEW_MEANS = CM_ADAPTIVE_STATUS_TOO_FEW_MEANS
-        !! Construction status: fewer non-NaN pooled means than `k_start`; no neighborhood was built
-    integer(int32), parameter :: ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD = CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD
-        !! Construction status: some neighborhood has fewer than `min_study_neighbors` entries of some study
-    integer(int32), parameter :: ADAPTIVE_STATUS_TOO_FEW_RESIDUALS = CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
-        !! Construction status: some neighborhood stopped with ADAPTIVE_STOP_TOO_FEW_RESIDUALS
 
 contains
 
@@ -539,8 +509,7 @@ contains
         end do
     end subroutine construct_neighborhoods_ranged_impl
 
-    !> M_EXPORT_C
-    !| summary: Pool one reference point's residuals across every neighbor and every study
+    !> summary: Pool one reference point's residuals across every neighbor and every study
     !| AUTHOR_LASZLO_LANG
     !| Gathers one reference point's residuals from every neighbor gene of every study into one flat
     !| array, given that point's per-study neighbor gene indices (one column of the
@@ -553,61 +522,7 @@ contains
     !| feed to the bin-count search, so a caller can pass the same input to
     !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
     !| on real data.
-    pure subroutine gather_pooled_neighborhood_residuals(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                         n_neighbors, n_studies, neighborhood_indices_point, &
-                                                         pooled_residuals, ierr)
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors per neighborhood
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-        real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-            !! Matrix of signed residuals per study, NaN allowed for missing values; not validated
-        integer(int32), intent(in) :: neighborhood_indices_point(n_neighbors, n_studies)
-            !! Gene indices of one reference point's neighborhood, per study; each in
-            !! [1, max_n_genes_all_studies]
-        real(real64), intent(out) :: pooled_residuals(max_n_reps_all_studies*n_neighbors*n_studies)
-            !! This reference point's pooled residuals, laid out as a
-            !! (max_n_reps_all_studies, n_neighbors, n_studies) array
-        integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure
-
-        integer(int32) :: i_study, i_neighbor, gene_idx
-
-        call set_ok(ierr)
-        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=2_int32)
-        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=4_int32)
-        call validate_dimension_size(n_studies, ierr, arg_pos=5_int32)
-        if (is_err(ierr)) return
-
-        ! Every gene index subscripts residuals directly, so a bad one would read out of bounds.
-        ! Sequential: set_err_once on the shared ierr is a read-then-write, not allowed in do concurrent.
-        do i_study = 1, n_studies
-            do i_neighbor = 1, n_neighbors
-                gene_idx = neighborhood_indices_point(i_neighbor, i_study)
-                if (gene_idx < 1 .or. gene_idx > max_n_genes_all_studies) then
-                    call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=6_int32)
-                end if
-            end do
-        end do
-        if (is_err(ierr)) return
-
-        call gather_pooled_neighborhood_residuals_core(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                       n_neighbors, n_studies, neighborhood_indices_point, pooled_residuals)
-    end subroutine gather_pooled_neighborhood_residuals
-
-    !> summary: Pool one reference point's residuals across every neighbor and every study, unchecked
-    !| AUTHOR_LASZLO_LANG
-    !| The pooling of `gather_pooled_neighborhood_residuals`, same layout, without its input checks,
-    !| so the bin-count search can pool every reference point without validating each one again.
-    !| Internal helper, not published; public because `determine_point_bin_count` calls it.
-    !| Precondition, not checked: every extent is at least 1 and every gene index is in
-    !| `[1, max_n_genes_all_studies]`.
-    pure subroutine gather_pooled_neighborhood_residuals_core(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
+    pure subroutine gather_pooled_neighborhood_residuals_impl(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
                                                               n_neighbors, n_studies, neighborhood_indices_point, &
                                                               pooled_residuals)
         integer(int32), intent(in) :: max_n_reps_all_studies
@@ -619,10 +534,12 @@ contains
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-            !! Matrix of signed residuals per study, NaN allowed for missing values
+            !! Matrix of signed residuals per study, NaN for a missing value
+            !! DM_ALLOW_NAN
         integer(int32), intent(in) :: neighborhood_indices_point(n_neighbors, n_studies)
-            !! Gene indices of one reference point's neighborhood, per study; each in
-            !! [1, max_n_genes_all_studies]
+            !! Gene indices of one reference point's neighborhood, per study
+            !! DM_MIN(1_int32)
+            !! DM_MAX(max_n_genes_all_studies)
         real(real64), intent(out) :: pooled_residuals(max_n_reps_all_studies*n_neighbors*n_studies)
             !! This reference point's pooled residuals, laid out as a
             !! (max_n_reps_all_studies, n_neighbors, n_studies) array
@@ -642,7 +559,7 @@ contains
                 end do
             end do
         end do
-    end subroutine gather_pooled_neighborhood_residuals_core
+    end subroutine gather_pooled_neighborhood_residuals_impl
 
     !> summary: Grow Issue #217's adaptive neighborhoods over an already-sorted pool of gene means
     !| AUTHOR_LASZLO_LANG
@@ -707,7 +624,7 @@ contains
 
         integer(int32) :: pool_size, n_valid_means, i_pos, seed_pos, first_pos, last_pos, left_pos, right_pos
         integer(int32) :: n_entries, n_valid, entry_pos, entry_n_valid, n_planned, n_staged, round_n_valid
-        integer(int32) :: stage_left, stage_right, stage_first, stage_last, stop_code, target_pos, study_idx
+        integer(int32) :: stage_left, stage_right, stage_first, stage_last, stop_code, target_pos, study_idx, i_study
         real(real64) :: x_star_val, sum_abs, entry_sum_abs, round_sum_abs, s_old, s_new, median, mad, target
         logical(c_bool) :: capped, has_too_few_residuals, has_empty_study
 
@@ -719,7 +636,7 @@ contains
         n_points = 0_int32
         max_n_neighbors = 0_int32
         if (n_valid_means < k_start) then
-            construction_status = ADAPTIVE_STATUS_TOO_FEW_MEANS
+            construction_status = STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS
             return
         end if
 
@@ -758,10 +675,10 @@ contains
             end do
 
             if (n_valid < ADAPTIVE_MIN_VALID_RESIDUALS) then
-                stop_code = ADAPTIVE_STOP_TOO_FEW_RESIDUALS
+                stop_code = STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS
                 has_too_few_residuals = .true.
             else if (sum_abs == 0.0_real64) then
-                stop_code = ADAPTIVE_STOP_ZERO_DISPERSION
+                stop_code = STAT_ADAPTIVE_STOP_ZERO_DISPERSION
             else
                 ! Phase 2: rounds of up to k_step entries, each judged against the previous
                 ! committed round's dispersion. n_valid >= ADAPTIVE_MIN_VALID_RESIDUALS >= 1 and
@@ -769,11 +686,11 @@ contains
                 s_old = sum_abs/real(n_valid, real64)
                 do
                     if (n_entries == k_max) then
-                        stop_code = ADAPTIVE_STOP_K_MAX
+                        stop_code = STAT_ADAPTIVE_STOP_K_MAX
                         exit
                     end if
                     if (left_pos < 1_int32 .and. right_pos > n_valid_means) then
-                        stop_code = ADAPTIVE_STOP_EXHAUSTED
+                        stop_code = STAT_ADAPTIVE_STOP_EXHAUSTED
                         exit
                     end if
 
@@ -815,14 +732,14 @@ contains
                     ! A frontier was left at the top of this round, so an empty round can only
                     ! come from the cap.
                     if (n_staged == 0_int32) then
-                        stop_code = ADAPTIVE_STOP_RESIDUAL_CAP
+                        stop_code = STAT_ADAPTIVE_STOP_RESIDUAL_CAP
                         exit
                     end if
 
                     ! A round without a non-NaN residual gives exactly s_old back, and commits.
                     s_new = (sum_abs + round_sum_abs)/real(n_valid + round_n_valid, real64)
                     if ((s_new - s_old)/s_old > tau) then
-                        stop_code = ADAPTIVE_STOP_TAU
+                        stop_code = STAT_ADAPTIVE_STOP_TAU
                         exit
                     end if
 
@@ -835,7 +752,7 @@ contains
                     n_entries = n_entries + n_staged
                     s_old = s_new
                     if (capped) then
-                        stop_code = ADAPTIVE_STOP_RESIDUAL_CAP
+                        stop_code = STAT_ADAPTIVE_STOP_RESIDUAL_CAP
                         exit
                     end if
                 end do
@@ -852,7 +769,12 @@ contains
                 study_idx = (pooled_means_perm(i_pos) - 1_int32)/max_n_genes_all_studies + 1_int32
                 n_neighbors_per_point(study_idx, n_points) = n_neighbors_per_point(study_idx, n_points) + 1_int32
             end do
-            if (any(n_neighbors_per_point(:, n_points) < min_study_neighbors)) has_empty_study = .true.
+            do i_study = 1, n_studies
+                if (n_neighbors_per_point(i_study, n_points) < min_study_neighbors) then
+                    has_empty_study = .true._c_bool
+                    exit
+                end if
+            end do
             max_n_neighbors = max(max_n_neighbors, maxval(n_neighbors_per_point(:, n_points)))
 
             if (n_valid > 0_int32) then
@@ -893,11 +815,11 @@ contains
         ! Fixed priority, independent of which neighborhood failed first: too few residuals means
         ! growth itself ran without its dispersion rule, an empty study only affects membership.
         if (has_too_few_residuals) then
-            construction_status = ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
+            construction_status = STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS
         else if (has_empty_study) then
-            construction_status = ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD
+            construction_status = STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD
         else
-            construction_status = ADAPTIVE_STATUS_OK
+            construction_status = ERR_OK
         end if
     end subroutine grow_adaptive_neighborhoods
 
@@ -991,21 +913,19 @@ contains
     !| 1. The first `k_start` entries join unconditionally. With fewer than
     !|    [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_MIN_VALID_RESIDUALS(variable)]]
     !|    (`CM_ADAPTIVE_MIN_VALID_RESIDUALS`) non-NaN residuals the neighborhood stops with
-    !|    [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_TOO_FEW_RESIDUALS(variable)]]
-    !|    (`CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS`); with all residuals zero, with
-    !|    [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_ZERO_DISPERSION(variable)]]
-    !|    (`CM_ADAPTIVE_STOP_ZERO_DISPERSION`).
+    !|    [[tox_errors(module):STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS(variable)]]; with all residuals
+    !|    zero, with [[tox_errors(module):STAT_ADAPTIVE_STOP_ZERO_DISPERSION(variable)]].
     !| 2. Then rounds of the next `min(k_step, k_max - count)` entries: a round with
     !|    `(S_new - S_old) / S_old > tau` is discarded and growth stops
-    !|    ([[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_TAU(variable)]], `CM_ADAPTIVE_STOP_TAU`);
+    !|    ([[tox_errors(module):STAT_ADAPTIVE_STOP_TAU(variable)]]);
     !|    otherwise it is committed. Growth also stops at `k_max` entries
-    !|    ([[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_K_MAX(variable)]], `CM_ADAPTIVE_STOP_K_MAX`,
+    !|    ([[tox_errors(module):STAT_ADAPTIVE_STOP_K_MAX(variable)]],
     !|    checked first) or when no entry is left
-    !|    ([[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_EXHAUSTED(variable)]], `CM_ADAPTIVE_STOP_EXHAUSTED`).
+    !|    ([[tox_errors(module):STAT_ADAPTIVE_STOP_EXHAUSTED(variable)]]).
     !| 3. With `max_pooled_residuals > 0`, a round stages whole entries only while the pool's
     !|    non-NaN residuals stay within that cap (the `k_start` phase is not capped); a capped round
     !|    is still evaluated, and growth then stops with
-    !|    [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_RESIDUAL_CAP(variable)]] (`CM_ADAPTIVE_STOP_RESIDUAL_CAP`).
+    !|    [[tox_errors(module):STAT_ADAPTIVE_STOP_RESIDUAL_CAP(variable)]].
     !|
     !| **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
     !| sorted position `b`, the next seed is the first position after `b` whose mean is nearest
@@ -1014,16 +934,14 @@ contains
     !| neighborhood that reaches the largest pooled mean.
     !|
     !| **Construction status.**
-    !| [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STATUS_TOO_FEW_MEANS(variable)]]
-    !| (`CM_ADAPTIVE_STATUS_TOO_FEW_MEANS`) when fewer than `k_start` pooled means are non-NaN: nothing
-    !| is built, `n_points` and `max_n_neighbors` are 0. Otherwise the construction always completes,
-    !| and reports, in this priority,
-    !| [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STATUS_TOO_FEW_RESIDUALS(variable)]]
-    !| (`CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS`) if any neighborhood stopped with too few residuals,
-    !| [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD(variable)]]
-    !| (`CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD`) if any has fewer than `min_study_neighbors`
-    !| entries of some study, else
-    !| [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STATUS_OK(variable)]] (`CM_ADAPTIVE_STATUS_OK`).
+    !| [[tox_errors(module):STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS(variable)]] when fewer than
+    !| `k_start` pooled means are non-NaN: nothing is built, `n_points` and `max_n_neighbors` are 0.
+    !| Otherwise the construction always completes, and reports, in this priority,
+    !| [[tox_errors(module):STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS(variable)]] if any
+    !| neighborhood stopped with too few residuals,
+    !| [[tox_errors(module):STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD(variable)]] if any
+    !| has fewer than `min_study_neighbors` entries of some study, else
+    !| [[tox_errors(module):ERR_OK(variable)]] (0).
     !|
     !| Outputs sized by `N` are filled only for their first `n_points` reference points.
     pure subroutine construct_adaptive_neighborhoods_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
@@ -1070,10 +988,13 @@ contains
             !! For each neighborhood, how many of its pooled entries belong to each study
             !! DM_RESULT_SIZE_IS(n_points)
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: stop_reason
-            !! Why each neighborhood stopped growing: `CM_ADAPTIVE_STOP_TAU` tau exceeded,
-            !! `CM_ADAPTIVE_STOP_K_MAX` `k_max` reached, `CM_ADAPTIVE_STOP_RESIDUAL_CAP` residual cap
-            !! reached, `CM_ADAPTIVE_STOP_EXHAUSTED` pool exhausted, `CM_ADAPTIVE_STOP_ZERO_DISPERSION`
-            !! zero dispersion, `CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS` too few residuals
+            !! Why each neighborhood stopped growing:
+            !! [[tox_errors(module):STAT_ADAPTIVE_STOP_TAU(variable)]] tau exceeded,
+            !! [[tox_errors(module):STAT_ADAPTIVE_STOP_K_MAX(variable)]] `k_max` reached,
+            !! [[tox_errors(module):STAT_ADAPTIVE_STOP_RESIDUAL_CAP(variable)]] residual cap reached,
+            !! [[tox_errors(module):STAT_ADAPTIVE_STOP_EXHAUSTED(variable)]] pool exhausted,
+            !! [[tox_errors(module):STAT_ADAPTIVE_STOP_ZERO_DISPERSION(variable)]] zero dispersion,
+            !! [[tox_errors(module):STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS(variable)]] too few residuals
             !! DM_RESULT_SIZE_IS(n_points)
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: neighborhood_dispersion
             !! Mean absolute non-NaN residual of each final neighborhood; NaN without any
@@ -1084,10 +1005,12 @@ contains
         integer(int32), intent(out) :: max_n_neighbors
             !! Largest number of entries one study has in one neighborhood; 0 without a neighborhood
         integer(int32), intent(out) :: construction_status
-            !! Overall outcome: `CM_ADAPTIVE_STATUS_OK` ok, `CM_ADAPTIVE_STATUS_TOO_FEW_MEANS` too few
-            !! means, `CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD` a study neighborhood below
-            !! `min_study_neighbors`, `CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS` a neighborhood with too
-            !! few residuals
+            !! Overall outcome: [[tox_errors(module):ERR_OK(variable)]] (0) ok,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS(variable)]] too few means,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD(variable)]] a study
+            !! neighborhood below `min_study_neighbors`,
+            !! [[tox_errors(module):STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS(variable)]] a neighborhood
+            !! with too few residuals
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, seeded and sorted here
         real(real64), intent(in), optional :: tau

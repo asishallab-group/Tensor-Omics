@@ -65,8 +65,7 @@ contains
     !| equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
     !| then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    !| values from before the permutation test. An out-of-range neighbor index is also reported
-    !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !| values from before the permutation test.
     !|
     !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -399,8 +398,7 @@ contains
     !| equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
     !| then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    !| values from before the permutation test. An out-of-range neighbor index is also reported
-    !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !| values from before the permutation test.
     !|
     !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the

@@ -190,12 +190,15 @@ contains
     end subroutine lcg_values
     !> last_non_nan_position on NaN-last sorted permutations: two NaN at the end of five values
     !| (heapsorted, so NaN really sorts last) give 3; no NaN gives the full length; all NaN give 0;
-    !| a single non-NaN value gives 1. A NaN placed before a non-NaN position is not the tail and is
-    !| not counted away: the scan stops at the first non-NaN value from the end.
+    !| a single non-NaN value gives 1; no value at all gives 0. A long NaN tail (40 NaN behind 9
+    !| values, heapsorted) gives 9, and a hand-written non-identity permutation over values stored
+    !| out of order (`[NaN, 4, NaN, 1, 2]` read as `[1, 2, 4, NaN, NaN]`) gives 3, so the search runs
+    !| on `values(perm(:))` and not on `values` itself. An order that is not ascending with NaN
+    !| last is outside the precondition, and its result is undefined, so it is not pinned here.
     subroutine test_last_non_nan_position()
         character(len=*), parameter :: name = "test_last_non_nan_position: "
-        real(real64) :: nan, values(5)
-        integer(int32) :: perm(5)
+        real(real64) :: nan, values(5), long_values(49)
+        integer(int32) :: perm(5), long_perm(49), i_value
 
         nan = ieee_value(1.0_real64, ieee_quiet_nan)
         values = [3.0_real64, nan, 1.0_real64, nan, 2.0_real64]
@@ -213,10 +216,20 @@ contains
         call assert_equal_int(last_non_nan_position(values, 5_int32, perm), 0_int32, name//"all NaN")
 
         call assert_equal_int(last_non_nan_position([7.0_real64], 1_int32, [1_int32]), 1_int32, name//"one value")
+        call assert_equal_int(last_non_nan_position(values, 0_int32, perm), 0_int32, name//"no value")
 
-        ! Not a NaN-last order: position 1 holds a NaN, positions 2 and 3 do not.
-        call assert_equal_int(last_non_nan_position([nan, 1.0_real64, 2.0_real64], 3_int32, [1_int32, 2_int32, 3_int32]), &
-                              3_int32, name//"stops at the first non-NaN from the end")
+        ! 9 values spread over 49 positions, NaN everywhere else.
+        long_values = nan
+        do i_value = 1, 9
+            long_values(5*i_value) = real(10 - i_value, real64)
+        end do
+        call init_perm(long_perm)
+        call sort_array_heapsort(long_values, long_perm)
+        call assert_equal_int(last_non_nan_position(long_values, 49_int32, long_perm), 9_int32, name//"long NaN tail")
+
+        values = [nan, 4.0_real64, nan, 1.0_real64, 2.0_real64]
+        perm = [4_int32, 5_int32, 2_int32, 1_int32, 3_int32]
+        call assert_equal_int(last_non_nan_position(values, 5_int32, perm), 3_int32, name//"non-identity permutation")
     end subroutine test_last_non_nan_position
 
     !> calc_median: odd count [5, 1, 3] -> 3; even count [4, 1, 3, 2] -> 2.5 (the two middle values

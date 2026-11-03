@@ -70,11 +70,9 @@ from .tox_data_archive import (
     read_tox_data_into,
 )
 from .tox_data_integration_js_comp_test_adaptive_search import (
+    calc_adaptive_js_comp_test_bounds,
     generate_adaptive_js_comp_test_candidates,
     run_js_comp_test_adaptive_parameter_search,
-)
-from .tox_data_integration_js_comp_test_adaptive_search_impl import (
-    calc_adaptive_js_comp_test_bounds,
 )
 from .tox_data_integration_js_comp_test_binning import (
     estimate_bin_count,
@@ -87,11 +85,9 @@ from .tox_data_integration_js_comp_test_binning import (
     determine_bin_count_stone_expert,
 )
 from .tox_data_integration_js_comp_test_fixed_k_search import (
+    calc_js_comp_test_candidate_bounds,
     generate_js_comp_test_candidates,
     run_js_comp_test_parameter_search,
-)
-from .tox_data_integration_js_comp_test_fixed_k_search_impl import (
-    calc_js_comp_test_candidate_bounds,
 )
 from .tox_data_integration_js_comp_test_run import (
     run_js_comp_test,
@@ -130,11 +126,11 @@ from .tox_data_integration_preprocessing import (
     construct_neighborhoods,
     construct_neighborhoods_ranged,
     construct_neighborhoods_ranged_expert,
+    gather_pooled_neighborhood_residuals,
     construct_adaptive_neighborhoods,
 )
 from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,
-    gather_pooled_neighborhood_residuals,
 )
 from .tox_data_integration_stats import (
     gjct_permutation_test,

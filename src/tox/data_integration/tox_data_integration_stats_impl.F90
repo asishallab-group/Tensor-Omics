@@ -22,7 +22,7 @@ module tox_data_integration_stats_impl
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multiv_hypergeom, random_multinomial
     use f42_sort_impl, only: top_k_heap_push, bottom_k_heap_push
     use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_only_impl
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_in_range_int, validate_in_range_real, &
+    use tox_errors, only: set_ok, set_err_once, is_err, validate_in_range_int, validate_in_range_real, &
                           ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
@@ -46,8 +46,8 @@ contains
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
     !| is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
-    !| cannot be created. The p-values are then NaN. A failed draw later on is recorded (first
-    !| failure only) without stopping the remaining permutations.
+    !| cannot be created. The p-values are then NaN. The count check, together with the wrappers'
+    !| bounds on the counts, establishes every draw's preconditions, so no draw can fail later on.
     subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
@@ -112,7 +112,7 @@ contains
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
 
-        integer(int32) :: i_permutation, i_point, i_study, draw_ierr, actual_random_seed
+        integer(int32) :: i_permutation, i_point, i_study, actual_random_seed
         type(rng_t) :: rng
 
         call set_ok(ierr)
@@ -157,8 +157,7 @@ contains
                 do i_point = 1, n_points
                     tmp_point_pool = tmp_mean_pmf_counts(i_point, :)
                     call random_multiv_hypergeom(rng, n_bins, tmp_point_pool, sum(tmp_point_pool), &
-                                                 included_n_reps(i_point, i_study), tmp_point_draw, draw_ierr)
-                    if (is_err(draw_ierr)) call set_err_once(ierr, get_err_code(draw_ierr))
+                                                 included_n_reps(i_point, i_study), tmp_point_draw)
                     tmp_mean_pmf_counts(i_point, :) = tmp_point_pool
                     tmp_counts(i_point, :) = tmp_point_draw
                 end do
@@ -261,8 +260,9 @@ contains
     !| draw, when at some reference point the studies' counts do not add up to
     !| `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] produces
-    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. A failed draw
-    !| later on is recorded (first failure only) without stopping the bootstrap.
+    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
+    !| together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
+    !| no draw can fail later on.
     subroutine bootstrap_histogram_impl(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, &
                                         mean_pmf_included_n_reps, included_n_reps, n_bootstrapping_top_k_jsds, &
                                         confidence_interval, tmp_bootstrapping_top_k_jsds, tmp_counts, tmp_pmfs, &
@@ -330,7 +330,7 @@ contains
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
 
-        integer(int32) :: i_bootstrap, i_study, i_point, draw_ierr, actual_random_seed
+        integer(int32) :: i_bootstrap, i_study, i_point, actual_random_seed
         type(rng_t) :: rng
 
         call set_ok(ierr)
@@ -372,8 +372,7 @@ contains
                 do i_point = 1, n_points
                     tmp_point_pool = mean_pmf_counts(i_point, :)
                     call random_multinomial(rng, n_bins, tmp_point_pool, mean_pmf_included_n_reps(i_point), &
-                                            included_n_reps(i_point, i_study), tmp_point_draw, draw_ierr)
-                    if (is_err(draw_ierr)) call set_err_once(ierr, get_err_code(draw_ierr))
+                                            included_n_reps(i_point, i_study), tmp_point_draw)
                     tmp_counts(i_point, :) = tmp_point_draw
                 end do
 

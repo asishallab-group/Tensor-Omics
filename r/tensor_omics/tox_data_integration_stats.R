@@ -17,8 +17,8 @@
 #' Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
 #' studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
 #' is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
-#' cannot be created. The p-values are then NaN. A failed draw later on is recorded (first
-#' failure only) without stopping the remaining permutations.
+#' cannot be created. The p-values are then NaN. The count check, together with the wrappers'
+#' bounds on the counts, establishes every draw's preconditions, so no draw can fail later on.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test}, whose argument names
 #' are the ones an error message reports.
@@ -90,8 +90,9 @@ gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mea
 #' draw, when at some reference point the studies' counts do not add up to
 #' `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
 #' \code{\link{create_mean_pmf}} produces
-#' them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. A failed draw
-#' later on is recorded (first failure only) without stopping the bootstrap.
+#' them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
+#' together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
+#' no draw can fail later on.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_stats::bootstrap_histogram}, whose argument names
 #' are the ones an error message reports.

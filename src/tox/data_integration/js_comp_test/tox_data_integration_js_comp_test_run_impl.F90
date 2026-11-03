@@ -15,9 +15,10 @@ module tox_data_integration_js_comp_test_run_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, ERR_INVALID_INPUT
-    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_impl
+    use f42_stats_impl, only: last_non_nan_position
+    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_impl, &
+                                             has_study_without_residuals
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, &
                                                        materialize_pooled_neighborhood, sort_gene_means_per_study, &
                                                        sort_pooled_gene_means
@@ -211,8 +212,7 @@ contains
     !| equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
     !| then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    !| values from before the permutation test. An out-of-range neighbor index is also reported
-    !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !| values from before the permutation test.
     !|
     !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -425,12 +425,6 @@ contains
                                                      gene_means_perms(:, i_study), n_neighbors, &
                                                      neighborhood_indices(:, :, i_study), neighborhood_range(:, :, i_study))
         end do
-        ! Safeguard for direct callers: n_neighbors above max_n_genes_all_studies (which the wrapper's
-        ! bounds exclude) leaves indices past it, and Pass B would read out of bounds.
-        if (any(neighborhood_indices < 1_int32 .or. neighborhood_indices > max_n_genes_all_studies)) then
-            call set_err_once(ierr, ERR_INVALID_INPUT)
-            return
-        end if
 
         ! ===== PASS B (per point): pool all studies' residuals and run the bin-count search.
         ! Sequential, so one tmp_pooled_residuals buffer serves every point (do concurrent would
@@ -461,7 +455,7 @@ contains
         ! A study with no included residual at a point would leave that point's equal-weight
         ! consensus summing to less than 1. It depends on gene_means and residuals together, so
         ! no arg_pos.
-        if (any(included_n_reps(1:n_points, 1:n_studies) == 0_int32)) then
+        if (has_study_without_residuals(included_n_reps, n_points, n_studies)) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
             return
         end if
@@ -692,7 +686,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
-        integer(int32) :: i_point, n_valid_means, actual_n_permutations, finish_ierr
+        integer(int32) :: i_point, i_study, n_valid_means, actual_n_permutations, finish_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
@@ -700,7 +694,7 @@ contains
         ! The construction's own sort, so every pooled position names the same entry as there.
         call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
         ! NaN sorts last, so the non-NaN means occupy exactly the first n_valid_means positions.
-        n_valid_means = count(.not. ieee_is_nan(gene_means), kind=int32)
+        n_valid_means = last_non_nan_position(gene_means, max_n_genes_all_studies*n_studies, tmp_gene_means_perm_all)
 
         ! Runtime checks, all before any histogram work. Sequential with an early return: the
         ! first failing point ends the routine.
@@ -714,10 +708,12 @@ contains
                                                  pooled_neighborhood_range(1, i_point), &
                                                  pooled_neighborhood_range(2, i_point), max_n_genes_all_studies, &
                                                  tmp_point_neighborhood_indices, n_neighbors_per_point(:, i_point))
-            if (any(n_neighbors_per_point(:, i_point) == 0_int32)) then
-                call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-                return
-            end if
+            do i_study = 1, n_studies
+                if (n_neighbors_per_point(i_study, i_point) == 0_int32) then
+                    call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+                    return
+                end if
+            end do
         end do
 
         ! ===== PASS B (per point, sequential: one pooling buffer serves every point).
@@ -749,7 +745,7 @@ contains
         ! The gene-count check cannot see a study whose genes at a point have only NaN residuals.
         ! Such a study would leave that point's equal-weight consensus summing to less than 1.
         ! It depends on gene_means and residuals together, so no arg_pos.
-        if (any(included_n_reps(1:n_points, 1:n_studies) == 0_int32)) then
+        if (has_study_without_residuals(included_n_reps, n_points, n_studies)) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
             return
         end if

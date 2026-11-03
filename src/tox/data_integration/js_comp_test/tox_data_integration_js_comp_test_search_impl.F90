@@ -29,7 +29,8 @@ module tox_data_integration_js_comp_test_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_stats_impl, only: calc_median
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
-    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, create_mean_pmf_impl
+    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, create_mean_pmf_impl, &
+                                             has_study_without_residuals
     use tox_data_integration_stats_impl, only: bootstrap_histogram_impl
     M_IMPLICIT_NONE
     private
@@ -443,7 +444,7 @@ contains
 
         integer(int32) :: i_study
 
-        has_empty_study = logical(any(included_n_reps == 0_int32), kind=c_bool)
+        has_empty_study = has_study_without_residuals(included_n_reps, n_points, n_studies)
         all_bins_have_min_count = logical(.false., kind=c_bool)
         if (has_empty_study) return
 

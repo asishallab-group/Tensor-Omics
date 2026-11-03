@@ -1,5 +1,42 @@
 # Generated. Do not edit.
 
+#' Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
+#'
+#' Sizes the per-point work arrays of the adaptive parameter search over the candidates of
+#' \code{\link{generate_adaptive_js_comp_test_candidates}}.
+#' A candidate's reference-point count is only known after its neighborhoods are grown, so this
+#' is a **practical capacity, not a proven bound**:
+#' `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the factor 2 being
+#' \code{ADAPTIVE_POINT_CAPACITY_FACTOR},
+#' `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the smallest
+#' candidate `k_start`. The search rejects a candidate that exceeds it with a capacity status.
+#'
+#' Reports invalid input, naming neither argument since the bound is joint in both, for a
+#' product `N` beyond the 32-bit range or a first candidate
+#' `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
+#' `floor(huge(1)/ADAPTIVE_K_MAX_FACTOR)` (\code{ADAPTIVE_K_MAX_FACTOR}), so that its
+#' `k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1)` fits; the output is then left undefined.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_adaptive_search::calc_adaptive_js_comp_test_bounds}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
+#'   The minimum valid value is `1`.
+#' @param n_studies a integer scalar. Number of studies
+#'   The minimum valid value is `1`.
+#' @return a integer scalar. Practical upper bound on the number of reference points any adaptive candidate is
+#'   allowed to emerge with
+#' @export
+calc_adaptive_js_comp_test_bounds <- function(max_n_genes_all_studies, n_studies) {
+    max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
+    n_studies <- .tox_as_integer_scalar(n_studies, "n_studies")
+    .result <- .Call("calc_adaptive_js_comp_test_bounds_call", max_n_genes_all_studies, n_studies)
+    .arguments <- c("max_n_genes_all_studies", "n_studies", "max_n_points_candidate", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    .result$max_n_points_candidate
+}
+
 #' Generate the ascending adaptive (k_start, k_step, k_max) candidate sequence
 #'
 #' The adaptive counterpart of
@@ -85,16 +122,16 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #' **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
 #' `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
 #' failing check, in the order above:
-#' \code{ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED}
+#' \code{STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED}
 #' (too few means or residuals),
-#' \code{ADAPTIVE_CANDIDATE_EMPTY_STUDY}
+#' \code{STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY}
 #' (a study neighborhood below `min_study_neighbors`, or a study without a non-NaN residual at
 #' some point),
-#' \code{ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED},
-#' \code{ADAPTIVE_CANDIDATE_OVERLAP_FAILED},
-#' \code{ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED},
-#' or else \code{ADAPTIVE_CANDIDATE_EVALUATED}
-#' (admissible, with a trace column).
+#' \code{STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED},
+#' \code{STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED},
+#' \code{STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED},
+#' or else \code{ERR_OK}
+#' (0, admissible, with a trace column).
 #'
 #' **Result**, one of three cases, as in the fixed-k search:
 #'
@@ -296,13 +333,14 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'   \item{candidate_n_points}{a integer vector. Number of reference points each tried candidate's construction produced (0 for too
 #'     few means)
 #'     The first `n_candidates_tried` elements will hold the results.}
-#'   \item{candidate_status}{a integer vector. What happened to every tried candidate: `0` evaluated,
-#'     `1` construction failed,
-#'     `2` a study neighborhood below `min_study_neighbors`
-#'     or a study without a non-NaN residual at some point,
-#'     `3` capacity exceeded,
-#'     `4` overlap gate failed,
-#'     `5` consensus-pmf count gate failed
+#'   \item{candidate_status}{a integer vector. What happened to every tried candidate:
+#'     \code{ERR_OK} (0) evaluated,
+#'     \code{STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED} construction failed,
+#'     \code{STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY} a study neighborhood below
+#'     `min_study_neighbors` or a study without a non-NaN residual at some point,
+#'     \code{STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED} capacity exceeded,
+#'     \code{STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED} overlap gate failed,
+#'     \code{STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED} consensus-pmf count gate failed
 #'     The first `n_candidates_tried` elements will hold the results.}
 #' @export
 run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy") {

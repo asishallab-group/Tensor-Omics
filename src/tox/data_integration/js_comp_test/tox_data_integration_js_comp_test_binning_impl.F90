@@ -22,8 +22,8 @@ module tox_data_integration_js_comp_test_binning_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: is_close, LOG_2
     use f42_stats_impl, only: calc_quantile_impl, histogram_bin_counts, sorted_bin_counts, last_non_nan_position
-    use f42_sort_impl, only: init_perm, sort_array_heapsort, block_containing_index
-    use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals_core, &
+    use f42_sort_impl, only: init_perm, sort_array_heapsort, binary_search_insertion_no_perm
+    use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals_impl, &
                                                        materialize_pooled_neighborhood
     M_IMPLICIT_NONE
     private
@@ -94,7 +94,7 @@ contains
         integer(int32) :: n_pool, sturges_raw, fd_raw
         real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood, fd_ratio
 
-        ! NaN sorts last under the ascending permutation: scan back for the last non-NaN position.
+        ! NaN sorts last under the ascending permutation: binary search for the last non-NaN position.
         n_pool = last_non_nan_position(residuals, n_residuals, residuals_perm)
 
         if (n_pool == 0) then
@@ -251,7 +251,7 @@ contains
         M_DEFAULT_VAL(upper_residual_range_quantile, actual_upper_residual_range_quantile, M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         actual_m_max = max(actual_m_min, actual_m_max)
 
-        ! NaN sorts last under the ascending permutation: scan back for the last non-NaN position.
+        ! NaN sorts last under the ascending permutation: binary search for the last non-NaN position.
         n_pooled_residuals = last_non_nan_position(pooled_residuals, n_residuals, pooled_residuals_perm)
 
         ! This neighborhood's own range; 0.0/0.0 when every pooled residual is NaN.
@@ -598,7 +598,7 @@ contains
         pooled_scoring = bin_count_mode == MODE_BIN_COUNT_STONE_POOLED
         size_weighted = bin_count_mode == MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
 
-        ! NaN sorts last -- same scan-back as determine_bin_count_occupancy_impl.
+        ! NaN sorts last -- same binary search as determine_bin_count_occupancy_impl.
         n_pooled_residuals = last_non_nan_position(pooled_residuals, n_residuals, pooled_residuals_perm)
 
         ! The range, exactly as in determine_bin_count_occupancy_impl (0.0/0.0 for an all-NaN pool).
@@ -766,7 +766,8 @@ contains
         else if (present(study_block_ends)) then
             do i_pos = 1, n_residuals
                 residual_idx = pooled_residuals_perm(i_pos)
-                study_idx = block_containing_index(study_block_ends, n_studies, residual_idx)
+                ! The study holding residual_idx: the first whose block end reaches it.
+                study_idx = binary_search_insertion_no_perm(study_block_ends, n_studies, residual_idx)
                 study_block_cursors(study_idx) = study_block_cursors(study_idx) + 1_int32
                 residual_to_study_perm(study_block_cursors(study_idx)) = residual_idx
             end do
@@ -1112,7 +1113,7 @@ contains
     !| Precondition, not checked here: every `point_n_neighbors(i_study)` is at least 1 and at most
     !| `max_n_neighbors`, every gene index read is in `[1, max_n_genes_all_studies]`, and
     !| `bin_count_mode` is one of the four `MODE_BIN_COUNT_*` values. The pooling is
-    !| `gather_pooled_neighborhood_residuals_core`, which checks nothing, so this helper cannot fail.
+    !| `gather_pooled_neighborhood_residuals_impl`, which checks nothing, so this helper cannot fail.
     pure subroutine determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
                                               max_n_neighbors, n_index_points, neighborhood_indices, i_index_point, &
                                               point_n_neighbors, selected_n_bins, occupancy_failed, shared_residual_range_low, &
@@ -1200,7 +1201,7 @@ contains
         pool_offset = 0_int32
         do i_study = 1, n_studies
             n_study_neighbors = point_n_neighbors(i_study)
-            call gather_pooled_neighborhood_residuals_core(residuals(:, :, i_study:i_study), max_n_reps_all_studies, &
+            call gather_pooled_neighborhood_residuals_impl(residuals(:, :, i_study:i_study), max_n_reps_all_studies, &
                                                            max_n_genes_all_studies, n_study_neighbors, 1_int32, &
                                                            neighborhood_indices(1, i_index_point, i_study), &
                                                            tmp_pooled_residuals(pool_offset + 1: &

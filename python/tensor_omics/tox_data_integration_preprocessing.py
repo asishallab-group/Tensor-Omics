@@ -158,6 +158,23 @@ _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENTS = ("n_points", "x_star", "n_gen
 #: For a derived argument, the one the caller passed it in
 _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, None, "neighborhood_indices", None, None, None,)
 
+_lib.gather_pooled_neighborhood_residuals_c.restype = None
+_lib.gather_pooled_neighborhood_residuals_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENTS = ("residuals", "max_n_reps_all_studies", "max_n_genes_all_studies", "n_neighbors", "n_studies", "neighborhood_indices_point", "pooled_residuals", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES = (None, "residuals", "residuals", "neighborhood_indices_point", "residuals", None, None, None,)
+
 _lib.construct_adaptive_neighborhoods_c.restype = None
 _lib.construct_adaptive_neighborhoods_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
@@ -924,6 +941,99 @@ def construct_neighborhoods_ranged_expert(
         "neighborhood_range": neighborhood_range,
     }
 
+def gather_pooled_neighborhood_residuals(
+        residuals,
+        neighborhood_indices_point,
+):
+    r"""Pool one reference point's residuals across every neighbor and every study
+
+    Gathers one reference point's residuals from every neighbor gene of every study into one flat
+    array, given that point's per-study neighbor gene indices (one column of the
+    `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)` of
+    :func:`tensor_omics.construct_neighborhoods_ranged`).
+    Study `s` fills pool block `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to
+    `s*max_n_reps_all_studies*n_neighbors`. This is the pooling
+    :func:`tensor_omics.run_js_comp_test` and
+    :func:`tensor_omics.run_js_comp_test_parameter_search`
+    feed to the bin-count search, so a caller can pass the same input to
+    :func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
+    on real data.
+
+    Parameters
+    ----------
+    residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Matrix of signed residuals per study, NaN for a missing value
+        NaN is permitted for this value.
+    neighborhood_indices_point : np.ndarray[np.int32] of shape (n_neighbors, n_studies,), column-major (order='F')
+        Gene indices of one reference point's neighborhood, per study
+        The minimum valid value is `1`.
+        The maximum valid value is `max_n_genes_all_studies`.
+
+    Returns
+    -------
+    pooled_residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies*n_neighbors*n_studies,), read-only
+        This reference point's pooled residuals, laid out as a
+        (max_n_reps_all_studies, n_neighbors, n_studies) array
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::gather_pooled_neighborhood_residuals`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        residuals = np.asfortranarray(residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
+    if residuals.ndim != 3:
+        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+    try:
+        neighborhood_indices_point = np.asfortranarray(neighborhood_indices_point, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_indices_point' must be an array of np.int32: {error}") from None
+    if neighborhood_indices_point.ndim != 2:
+        raise ValueError(f"'neighborhood_indices_point' must have 2 dimensions, but has {neighborhood_indices_point.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    max_n_reps_all_studies = residuals.shape[0]
+    max_n_genes_all_studies = residuals.shape[1]
+    n_neighbors = neighborhood_indices_point.shape[0]
+    n_studies = residuals.shape[2]
+
+    # Fortran cannot check that shared extents agree; this can
+    if neighborhood_indices_point.shape[1] != n_studies:
+        raise ValueError(f"'neighborhood_indices_point' has {neighborhood_indices_point.shape[1]} along axis 1, but "
+            f"'residuals' implies n_studies == {n_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    pooled_residuals = np.empty((max_n_reps_all_studies*n_neighbors*n_studies,), dtype=np.float64, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.gather_pooled_neighborhood_residuals_c(
+        residuals,
+        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_neighbors)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        neighborhood_indices_point,
+        pooled_residuals,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENTS, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    pooled_residuals.flags.writeable = False
+
+    return pooled_residuals
+
 def construct_adaptive_neighborhoods(
         gene_means,
         residuals,
@@ -956,21 +1066,19 @@ def construct_adaptive_neighborhoods(
     1. The first `k_start` entries join unconditionally. With fewer than
     ``ADAPTIVE_MIN_VALID_RESIDUALS``
     (`10`) non-NaN residuals the neighborhood stops with
-    ``ADAPTIVE_STOP_TOO_FEW_RESIDUALS``
-    (`6`); with all residuals zero, with
-    ``ADAPTIVE_STOP_ZERO_DISPERSION``
-    (`5`).
+    ``STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS``; with all residuals
+    zero, with ``STAT_ADAPTIVE_STOP_ZERO_DISPERSION``.
     2. Then rounds of the next `min(k_step, k_max - count)` entries: a round with
     `(S_new - S_old) / S_old > tau` is discarded and growth stops
-    (``ADAPTIVE_STOP_TAU``, `1`);
+    (``STAT_ADAPTIVE_STOP_TAU``);
     otherwise it is committed. Growth also stops at `k_max` entries
-    (``ADAPTIVE_STOP_K_MAX``, `2`,
+    (``STAT_ADAPTIVE_STOP_K_MAX``,
     checked first) or when no entry is left
-    (``ADAPTIVE_STOP_EXHAUSTED``, `4`).
+    (``STAT_ADAPTIVE_STOP_EXHAUSTED``).
     3. With `max_pooled_residuals > 0`, a round stages whole entries only while the pool's
     non-NaN residuals stay within that cap (the `k_start` phase is not capped); a capped round
     is still evaluated, and growth then stops with
-    ``ADAPTIVE_STOP_RESIDUAL_CAP`` (`3`).
+    ``STAT_ADAPTIVE_STOP_RESIDUAL_CAP``.
 
     **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
     sorted position `b`, the next seed is the first position after `b` whose mean is nearest
@@ -979,16 +1087,14 @@ def construct_adaptive_neighborhoods(
     neighborhood that reaches the largest pooled mean.
 
     **Construction status.**
-    ``ADAPTIVE_STATUS_TOO_FEW_MEANS``
-    (`1`) when fewer than `k_start` pooled means are non-NaN: nothing
-    is built, `n_points` and `max_n_neighbors` are 0. Otherwise the construction always completes,
-    and reports, in this priority,
-    ``ADAPTIVE_STATUS_TOO_FEW_RESIDUALS``
-    (`3`) if any neighborhood stopped with too few residuals,
-    ``ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD``
-    (`2`) if any has fewer than `min_study_neighbors`
-    entries of some study, else
-    ``ADAPTIVE_STATUS_OK`` (`0`).
+    ``STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS`` when fewer than
+    `k_start` pooled means are non-NaN: nothing is built, `n_points` and `max_n_neighbors` are 0.
+    Otherwise the construction always completes, and reports, in this priority,
+    ``STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS`` if any
+    neighborhood stopped with too few residuals,
+    ``STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD`` if any
+    has fewer than `min_study_neighbors` entries of some study, else
+    ``ERR_OK`` (0).
 
     Outputs sized by `N` are filled only for their first `n_points` reference points.
 
@@ -1047,10 +1153,13 @@ def construct_adaptive_neighborhoods(
             The first `n_points` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         stop_reason : np.ndarray[np.int32] of shape (max_n_genes_all_studies*n_studies,), read-only
-            Why each neighborhood stopped growing: `1` tau exceeded,
-            `2` `k_max` reached, `3` residual cap
-            reached, `4` pool exhausted, `5`
-            zero dispersion, `6` too few residuals
+            Why each neighborhood stopped growing:
+            ``STAT_ADAPTIVE_STOP_TAU`` tau exceeded,
+            ``STAT_ADAPTIVE_STOP_K_MAX`` `k_max` reached,
+            ``STAT_ADAPTIVE_STOP_RESIDUAL_CAP`` residual cap reached,
+            ``STAT_ADAPTIVE_STOP_EXHAUSTED`` pool exhausted,
+            ``STAT_ADAPTIVE_STOP_ZERO_DISPERSION`` zero dispersion,
+            ``STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS`` too few residuals
             The first `n_points` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         neighborhood_dispersion : np.ndarray[np.float64] of shape (max_n_genes_all_studies*n_studies,), read-only
@@ -1064,10 +1173,12 @@ def construct_adaptive_neighborhoods(
         max_n_neighbors : int
             Largest number of entries one study has in one neighborhood; 0 without a neighborhood
         construction_status : int
-            Overall outcome: `0` ok, `1` too few
-            means, `2` a study neighborhood below
-            `min_study_neighbors`, `3` a neighborhood with too
-            few residuals
+            Overall outcome: ``ERR_OK`` (0) ok,
+            ``STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS`` too few means,
+            ``STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD`` a study
+            neighborhood below `min_study_neighbors`,
+            ``STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS`` a neighborhood
+            with too few residuals
 
     Raises
     ------
