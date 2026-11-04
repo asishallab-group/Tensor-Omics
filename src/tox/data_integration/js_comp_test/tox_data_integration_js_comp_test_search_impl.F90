@@ -21,7 +21,8 @@
 !| `join_method`) and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]]
 !| (the relative change of each study's observed JSD between successive candidates); a search's
-!| `plateau_mode` selects which of them stops it. Both searches evaluate at most
+!| `plateau_mode` selects which of them stops it, by default the change of the observed JSD.
+!| Both searches evaluate at most
 !| [[tox_data_integration_js_comp_test_search_impl(module):MAX_CANDIDATE_PAIRS(variable)]] candidates.
 module tox_data_integration_js_comp_test_search_impl
     use f42_safeguard
@@ -40,14 +41,15 @@ module tox_data_integration_js_comp_test_search_impl
              MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS, NOT_COMPUTED
 
     ! `join_method`'s mode table; the `METHOD_` prefix follows from the argument name `join_method`.
-    ! Plain parameters: no DM_DEFAULT and no other module needs the numbers themselves.
-    integer(int32), parameter :: METHOD_JOIN_MIN = 0_int32
+    ! The numbers are the M_METHOD_JOIN_* of src/tox/data_integration/macros.h: the study-label
+    ! Permutation-Test needs M_METHOD_JOIN_MIN itself as a DM_DEFAULT.
+    integer(int32), parameter :: METHOD_JOIN_MIN = M_METHOD_JOIN_MIN
         !! Join method: succeeds only once every study's confidence-interval overlap exceeds the
         !! threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
-    integer(int32), parameter :: METHOD_JOIN_MAX = 1_int32
+    integer(int32), parameter :: METHOD_JOIN_MAX = M_METHOD_JOIN_MAX
         !! Join method: succeeds once any one study's confidence-interval overlap exceeds the
         !! threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
-    integer(int32), parameter :: METHOD_JOIN_MEDIAN = 2_int32
+    integer(int32), parameter :: METHOD_JOIN_MEDIAN = M_METHOD_JOIN_MEDIAN
         !! Join method: succeeds once a majority of studies' confidence-interval overlaps exceed
         !! the threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
 
@@ -61,12 +63,13 @@ module tox_data_integration_js_comp_test_search_impl
         !! the adaptive search caps its candidate count at the same value
 
     ! `plateau_mode`'s mode table, from the M_MODE_PLATEAU_* of src/tox/data_integration/macros.h:
-    ! M_MODE_PLATEAU_CI_OVERLAP is also both searches' DM_DEFAULT, which cannot name a Fortran
+    ! M_MODE_PLATEAU_EFFECT_SIZE is also both searches' DM_DEFAULT, which cannot name a Fortran
     ! parameter, and the family is kept together.
     integer(int32), parameter :: MODE_PLATEAU_CI_OVERLAP = M_MODE_PLATEAU_CI_OVERLAP
         !! Plateau mode: CI overlap only
     integer(int32), parameter :: MODE_PLATEAU_EFFECT_SIZE = M_MODE_PLATEAU_EFFECT_SIZE
-        !! Plateau mode: relative-effect-size stability only
+        !! Plateau mode: relative-effect-size stability only (the change of the observed JSD
+        !! values from candidate to candidate); the default of both parameter searches
     integer(int32), parameter :: MODE_PLATEAU_BOTH = M_MODE_PLATEAU_BOTH
         !! Plateau mode: either CI overlap or relative-effect-size stability
 
@@ -310,7 +313,10 @@ contains
     !| for each study `i`, the relative change of the observed global JSD between successive
     !| admissible candidates,
     !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
-    !| delta_epsilon)`, is summarized by its median (`delta_median`) and maximum (`delta_max`). A
+    !| delta_epsilon)`, or 0 when the absolute change `|global_js_divergence(i) -
+    !| prev_global_js_divergence(i)|` is at most `delta_abs_tolerance` (so that small random changes
+    !| of a tiny JSD do not look like large relative changes), is summarized by its median
+    !| (`delta_median`) and maximum (`delta_max`). A
     !| plateau is found once both stay below their thresholds for
     !| `delta_min_consecutive_transitions` consecutive transitions, counted across calls in
     !| `n_consecutive_ok`.
@@ -321,7 +327,7 @@ contains
                                                              has_previous, delta_median_threshold, delta_max_threshold, &
                                                              delta_epsilon, delta_min_consecutive_transitions, &
                                                              n_consecutive_ok, delta, delta_median, delta_max, &
-                                                             plateau_found, tmp_delta_perm)
+                                                             plateau_found, tmp_delta_perm, delta_abs_tolerance)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         real(real64), intent(in) :: global_js_divergence(n_studies)
@@ -350,8 +356,9 @@ contains
             !! not qualify or `has_previous` is `.false.`
             !! DM_MIN(0_int32)
         real(real64), intent(out) :: delta(n_studies)
-            !! Per-study relative JSD change from the previous admissible candidate; `-1.0_real64`
-            !! throughout iff `.not. has_previous`
+            !! Per-study relative JSD change from the previous admissible candidate, 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`; `-1.0_real64` throughout iff
+            !! `.not. has_previous`
         real(real64), intent(out) :: delta_median
             !! Median of `delta` across studies; `-1.0_real64` iff `.not. has_previous`
         real(real64), intent(out) :: delta_max
@@ -360,8 +367,15 @@ contains
             !! `.true.` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`
         integer(int32), intent(out) :: tmp_delta_perm(n_studies)
             !! Working array: sorting permutation for `delta`, used to compute `delta_median`
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
 
         integer(int32) :: i_study
+        real(real64) :: actual_delta_abs_tolerance, change
+
+        M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
 
         if (.not. has_previous) then
             delta = NOT_COMPUTED
@@ -372,9 +386,16 @@ contains
             return
         end if
 
-        do concurrent(i_study=1:n_studies) shared(delta, global_js_divergence, prev_global_js_divergence, delta_epsilon)
-            delta(i_study) = abs(global_js_divergence(i_study) - prev_global_js_divergence(i_study)) &
-                            /max(prev_global_js_divergence(i_study), delta_epsilon)
+        ! A change within the absolute tolerance counts as none; with the tolerance 0 only a zero
+        ! change does, which the relative formula maps to 0 as well.
+        do concurrent(i_study=1:n_studies) local(change) &
+                shared(delta, global_js_divergence, prev_global_js_divergence, delta_epsilon, actual_delta_abs_tolerance)
+            change = abs(global_js_divergence(i_study) - prev_global_js_divergence(i_study))
+            if (change <= actual_delta_abs_tolerance) then
+                delta(i_study) = 0.0_real64
+            else
+                delta(i_study) = change/max(prev_global_js_divergence(i_study), delta_epsilon)
+            end if
         end do
 
         call calc_median(delta, n_studies, tmp_delta_perm, delta_median)
@@ -487,7 +508,8 @@ contains
                                              n_admissible_evaluated, n_bootstraps, n_bootstrapping_top_k_jsds, &
                                              join_method, plateau_mode, succeeding_ci_overlap, delta_median_threshold, &
                                              delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, &
-                                             n_bins_per_point, occupancy_failed, n_pooled_residuals, min_bin_occupancy, &
+                                             delta_abs_tolerance, bootstrap_mode, n_bins_per_point, occupancy_failed, &
+                                             n_pooled_residuals, min_bin_occupancy, &
                                              mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
                                              shared_residual_range_low, shared_residual_range_high, included_n_reps, &
                                              mean_pmf_counts, mean_pmf_included_n_reps, counts, pmfs, mean_pmf, &
@@ -538,6 +560,10 @@ contains
             !! Forwarded to check_effect_size_plateau_condition_impl; also the floor of the relative CI width
         integer(int32), intent(in) :: delta_min_consecutive_transitions
             !! Forwarded to check_effect_size_plateau_condition_impl
+        real(real64), intent(in) :: delta_abs_tolerance
+            !! Forwarded to check_effect_size_plateau_condition_impl
+        integer(int32), intent(in) :: bootstrap_mode
+            !! Forwarded to the bootstrap, one of the `MODE_BOOTSTRAP_*` values
         integer(int32), intent(in) :: n_bins_per_point(n_points)
             !! The candidate's bin count per reference point
         logical(c_bool), intent(in) :: occupancy_failed(n_points)
@@ -561,11 +587,11 @@ contains
         integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
             !! Every study's included-replicate counts
         integer(int32), intent(in) :: mean_pmf_counts(n_points, max_n_bins)
-            !! The consensus histogram counts, the bootstrap's pool
+            !! The consensus histogram counts, the pooled bootstrap's pool
         integer(int32), intent(in) :: mean_pmf_included_n_reps(n_points)
             !! The consensus included-replicate counts
-        integer(int32), intent(out) :: counts(n_points, max_n_bins, n_studies)
-            !! Every study's histogram counts; bootstrap scratch here
+        integer(int32), intent(in) :: counts(n_points, max_n_bins, n_studies)
+            !! Every study's histogram counts, the per-study bootstrap's pools
         real(real64), intent(out) :: pmfs(n_points, max_n_bins, n_studies)
             !! Every study's pmfs; bootstrap scratch here
         real(real64), intent(out) :: mean_pmf(n_points, max_n_bins)
@@ -701,18 +727,19 @@ contains
                                                       trace_delta(1:n_studies, n_admissible_evaluated), &
                                                       trace_delta_median(n_admissible_evaluated), &
                                                       trace_delta_max(n_admissible_evaluated), &
-                                                      effect_size_plateau_found, tmp_delta_perm)
+                                                      effect_size_plateau_found, tmp_delta_perm, delta_abs_tolerance)
         prev_global_js_divergence = global_js_divergence
 
         ! Same n_bootstraps/random_seed for every candidate, for comparability. The observed-value
-        ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed.
-        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, mean_pmf_counts, &
+        ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed; the
+        ! counts are passed whole the same way, as the per-study bootstrap's input.
+        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, mean_pmf_counts, counts, &
                                       mean_pmf_included_n_reps, included_n_reps, &
                                       n_bootstrapping_top_k_jsds, confidence_interval, &
-                                      tmp_bootstrapping_top_k_jsds, counts, pmfs, mean_pmf, &
+                                      tmp_bootstrapping_top_k_jsds, pmfs, mean_pmf, &
                                       js_divergences, weights, global_js_divergence, tmp_point_pool, &
                                       tmp_point_draw, two_sided_bootstrapping_significance_level, random_seed, &
-                                      bootstrap_ierr)
+                                      bootstrap_mode, bootstrap_ierr)
         ! Defensive: the counts add up by construction, so only a failed rng allocation can
         ! land here (untested). Without the return the interval would stay at its zero-width
         ! [J, J] seed and could win the smallest-uncertainty ranking.

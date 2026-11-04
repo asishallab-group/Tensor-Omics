@@ -22,7 +22,8 @@
 !| `join_method`) and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]]
 !| (the relative change of each study's observed JSD between successive candidates); a search's
-!| `plateau_mode` selects which of them stops it. Both searches evaluate at most
+!| `plateau_mode` selects which of them stops it, by default the change of the observed JSD.
+!| Both searches evaluate at most
 !| [[tox_data_integration_js_comp_test_search_impl(module):MAX_CANDIDATE_PAIRS(variable)]] candidates.
 module tox_data_integration_js_comp_test_search_c
     use f42_safeguard
@@ -259,7 +260,10 @@ contains
     !| for each study `i`, the relative change of the observed global JSD between successive
     !| admissible candidates,
     !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
-    !| delta_epsilon)`, is summarized by its median (`delta_median`) and maximum (`delta_max`). A
+    !| delta_epsilon)`, or 0 when the absolute change `|global_js_divergence(i) -
+    !| prev_global_js_divergence(i)|` is at most `delta_abs_tolerance` (so that small random changes
+    !| of a tiny JSD do not look like large relative changes), is summarized by its median
+    !| (`delta_median`) and maximum (`delta_max`). A
     !| plateau is found once both stay below their thresholds for
     !| `delta_min_consecutive_transitions` consecutive transitions, counted across calls in
     !| `n_consecutive_ok`.
@@ -280,6 +284,7 @@ contains
             delta_median,&
             delta_max,&
             plateau_found,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="check_effect_size_plateau_condition_c")
         use tox_data_integration_js_comp_test_search, only: check_effect_size_plateau_condition
@@ -312,14 +317,19 @@ contains
             !! not qualify or `has_previous` is `.false.`
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_studies), intent(out), target :: delta
-            !! Per-study relative JSD change from the previous admissible candidate; `-1.0_real64`
-            !! throughout iff `.not. has_previous`
+            !! Per-study relative JSD change from the previous admissible candidate, 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`; `-1.0_real64` throughout iff
+            !! `.not. has_previous`
         real(c_double), intent(out), target :: delta_median
             !! Median of `delta` across studies; `-1.0_real64` iff `.not. has_previous`
         real(c_double), intent(out), target :: delta_max
             !! Maximum of `delta` across studies; `-1.0_real64` iff `.not. has_previous`
         logical(c_bool), intent(out), target :: plateau_found
             !! `.true.` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -335,6 +345,7 @@ contains
         M_CHECK_NON_NULL(delta_median)
         M_CHECK_NON_NULL(delta_max)
         M_CHECK_NON_NULL(plateau_found)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(prev_global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(delta, n_studies)
@@ -353,6 +364,7 @@ contains
             delta_median = delta_median,&
             delta_max = delta_max,&
             plateau_found = plateau_found,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine check_effect_size_plateau_condition_c
@@ -363,7 +375,10 @@ contains
     !| for each study `i`, the relative change of the observed global JSD between successive
     !| admissible candidates,
     !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
-    !| delta_epsilon)`, is summarized by its median (`delta_median`) and maximum (`delta_max`). A
+    !| delta_epsilon)`, or 0 when the absolute change `|global_js_divergence(i) -
+    !| prev_global_js_divergence(i)|` is at most `delta_abs_tolerance` (so that small random changes
+    !| of a tiny JSD do not look like large relative changes), is summarized by its median
+    !| (`delta_median`) and maximum (`delta_max`). A
     !| plateau is found once both stay below their thresholds for
     !| `delta_min_consecutive_transitions` consecutive transitions, counted across calls in
     !| `n_consecutive_ok`.
@@ -385,6 +400,7 @@ contains
             delta_max,&
             plateau_found,&
             tmp_delta_perm,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="check_effect_size_plateau_condition_expert_c")
         use tox_data_integration_js_comp_test_search, only: check_effect_size_plateau_condition_expert
@@ -417,8 +433,9 @@ contains
             !! not qualify or `has_previous` is `.false.`
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_studies), intent(out), target :: delta
-            !! Per-study relative JSD change from the previous admissible candidate; `-1.0_real64`
-            !! throughout iff `.not. has_previous`
+            !! Per-study relative JSD change from the previous admissible candidate, 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`; `-1.0_real64` throughout iff
+            !! `.not. has_previous`
         real(c_double), intent(out), target :: delta_median
             !! Median of `delta` across studies; `-1.0_real64` iff `.not. has_previous`
         real(c_double), intent(out), target :: delta_max
@@ -427,6 +444,10 @@ contains
             !! `.true.` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`
         integer(c_int), dimension(n_studies), intent(out), target :: tmp_delta_perm
             !! Working array: sorting permutation for `delta`, used to compute `delta_median`
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -442,6 +463,7 @@ contains
         M_CHECK_NON_NULL(delta_median)
         M_CHECK_NON_NULL(delta_max)
         M_CHECK_NON_NULL(plateau_found)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(prev_global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(delta, n_studies)
@@ -462,6 +484,7 @@ contains
             delta_max = delta_max,&
             plateau_found = plateau_found,&
             tmp_delta_perm = tmp_delta_perm,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine check_effect_size_plateau_condition_expert_c

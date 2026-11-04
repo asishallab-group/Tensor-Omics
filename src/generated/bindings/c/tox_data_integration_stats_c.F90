@@ -13,13 +13,17 @@
 !|
 !| The bootstrap
 !| [[tox_data_integration_stats_impl(module):bootstrap_histogram_impl(interface)]] gives each
-!| study's weighted global JSD a confidence interval, by drawing each study's histograms with
-!| replacement from the pooled consensus counts; `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k
-!| heaps for a caller that allocates its own.
+!| study's weighted global JSD an interval, by drawing each study's histograms again with
+!| replacement: by default from the study's own counts (a robustness interval: how much the
+!| observed value would move if each study's residuals were drawn again), or, with
+!| `bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
+!| studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
+!| caller that allocates its own.
 module tox_data_integration_stats_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -42,6 +46,11 @@ contains
     !|
     !| Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
     !| `n_permutations = 0` no permutation runs and both are NaN ("not computed").
+    !|
+    !| This test permutes the pooled residual counts within fixed histograms (residual level); the
+    !| study-label Permutation-Test, which shuffles the samples' study labels and reruns the whole
+    !| JS-Comp-Test, is
+    !| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_label_permutation_test_impl(interface)]].
     !|
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
@@ -150,6 +159,11 @@ contains
     !|
     !| Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
     !| `n_permutations = 0` no permutation runs and both are NaN ("not computed").
+    !|
+    !| This test permutes the pooled residual counts within fixed histograms (residual level); the
+    !| study-label Permutation-Test, which shuffles the samples' study labels and reruns the whole
+    !| JS-Comp-Test, is
+    !| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_label_permutation_test_impl(interface)]].
     !|
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
@@ -292,10 +306,20 @@ contains
     end subroutine gjct_permutation_test_expert_c
 
     !> summary: C-wrapper for [[tox_data_integration_stats(module):bootstrap_histogram(subroutine)]]
-    !| In every bootstrap, each study's histogram at each reference point is drawn with replacement
-    !| (multinomial) from the pooled consensus counts `mean_pmf_counts`, with as many residuals as
-    !| the study observed; the consensus pmf, each study's JSD against it and its weighted global
-    !| JSD are recomputed from the draw.
+    !| In every bootstrap, each study's histogram at each reference point is drawn again with
+    !| replacement (multinomial), with as many residuals as the study observed
+    !| (`included_n_reps`); the consensus pmf, each study's JSD against it and its weighted global
+    !| JSD are recomputed from the draw. What a study is drawn from is `bootstrap_mode`:
+    !|
+    !| - by default its own counts (`counts`): the interval shows how much the observed JSD would
+    !| move if each study's own residuals were drawn again -- a robustness interval of the
+    !| observed value. Drawing again adds sampling noise, so the bootstrapped JSDs are larger
+    !| than the observed one on average: when the studies hardly differ, the interval can lie
+    !| entirely above the observed JSD;
+    !| - or the pooled consensus counts of all studies (`mean_pmf_counts`): the interval shows the
+    !| spread of the JSD expected if the studies did not differ at all -- a noise band, not the
+    !| robustness of the observed value. This was the only bootstrap before the mode existed and
+    !| is kept for comparison.
     !|
     !| `confidence_interval` is input and output: its incoming `[lower, upper]` values seed every
     !| slot of the bottom-k/top-k heaps, so they are only displaced by more extreme bootstrap
@@ -306,23 +330,27 @@ contains
     !| draw, when at some reference point the studies' counts do not add up to
     !| `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] produces
-    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
-    !| together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
-    !| no draw can fail later on.
+    !| them), or, in the per-study mode, when a study's `counts` at some reference point do not add
+    !| up to its `included_n_reps`; `ERR_ALLOC_FAIL` when the random number generator cannot be
+    !| created. The count checks, together with the wrappers' bounds on the counts, establish every
+    !| draw's preconditions, so no draw can fail later on.
     subroutine bootstrap_histogram_c(&
             n_bootstraps,&
             n_bins,&
             n_points,&
             n_studies,&
             mean_pmf_counts,&
+            counts,&
             mean_pmf_included_n_reps,&
             included_n_reps,&
             confidence_interval,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
+            bootstrap_mode,&
             ierr&
         ) bind(C, name="bootstrap_histogram_c")
         use tox_data_integration_stats, only: bootstrap_histogram
+        use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
         integer(c_int), intent(in), target :: n_bins
             !! Number of equally sized histogram bins
@@ -337,7 +365,13 @@ contains
             !! Number of bootstrap resamples to perform
             !! The minimum valid value is `1_int32`.
         integer(c_int), dimension(n_points, n_bins), intent(in), target :: mean_pmf_counts
-            !! Pooled residual counts per bin of the consensus pmf, the pool every bootstrap draws from
+            !! Pooled residual counts per bin of the consensus pmf: what every study is drawn from in
+            !! the pooled mode
+            !! The minimum valid value is `0_int32`.
+        integer(c_int), dimension(n_points, n_bins, n_studies), intent(in), target :: counts
+            !! Every study's own residual counts per bin: what each study is drawn from in the
+            !! per-study mode (the default); at each reference point they must add up to the
+            !! study's `included_n_reps` there. Not drawn from in the pooled mode, but still required
             !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_points), intent(in), target :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates per reference point of the pool
@@ -359,9 +393,20 @@ contains
         integer(c_int), intent(in), target :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
+        character(len=1, kind=c_char), dimension(19), intent(in), target :: bootstrap_mode
+            !! What each study's histograms are drawn from (see above). By default each study's own
+            !! counts: a robustness interval of the observed JSD. The pooled counts give a noise
+            !! band of "no difference between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `'bootstrap_per_study'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
+        integer(int32) :: bootstrap_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -372,9 +417,26 @@ contains
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(counts, n_points * n_bins * n_studies)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(confidence_interval, 2 * n_studies)
+        M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+
+        block
+            character(len=:), pointer :: bootstrap_mode_f
+            bootstrap_mode_f => c_char_as_view(bootstrap_mode)
+
+            select case (bootstrap_mode_f)
+                case ("bootstrap_per_study")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
+                case ("bootstrap_pooled")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call bootstrap_histogram(&
             n_bootstraps = n_bootstraps,&
@@ -382,20 +444,32 @@ contains
             n_points = n_points,&
             n_studies = n_studies,&
             mean_pmf_counts = mean_pmf_counts,&
+            counts = counts,&
             mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
             included_n_reps = included_n_reps,&
             confidence_interval = confidence_interval,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
+            bootstrap_mode = bootstrap_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine bootstrap_histogram_c
 
     !> summary: C-wrapper for [[tox_data_integration_stats(module):bootstrap_histogram_expert(subroutine)]]
-    !| In every bootstrap, each study's histogram at each reference point is drawn with replacement
-    !| (multinomial) from the pooled consensus counts `mean_pmf_counts`, with as many residuals as
-    !| the study observed; the consensus pmf, each study's JSD against it and its weighted global
-    !| JSD are recomputed from the draw.
+    !| In every bootstrap, each study's histogram at each reference point is drawn again with
+    !| replacement (multinomial), with as many residuals as the study observed
+    !| (`included_n_reps`); the consensus pmf, each study's JSD against it and its weighted global
+    !| JSD are recomputed from the draw. What a study is drawn from is `bootstrap_mode`:
+    !|
+    !| - by default its own counts (`counts`): the interval shows how much the observed JSD would
+    !| move if each study's own residuals were drawn again -- a robustness interval of the
+    !| observed value. Drawing again adds sampling noise, so the bootstrapped JSDs are larger
+    !| than the observed one on average: when the studies hardly differ, the interval can lie
+    !| entirely above the observed JSD;
+    !| - or the pooled consensus counts of all studies (`mean_pmf_counts`): the interval shows the
+    !| spread of the JSD expected if the studies did not differ at all -- a noise band, not the
+    !| robustness of the observed value. This was the only bootstrap before the mode existed and
+    !| is kept for comparison.
     !|
     !| `confidence_interval` is input and output: its incoming `[lower, upper]` values seed every
     !| slot of the bottom-k/top-k heaps, so they are only displaced by more extreme bootstrap
@@ -406,21 +480,22 @@ contains
     !| draw, when at some reference point the studies' counts do not add up to
     !| `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] produces
-    !| them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
-    !| together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
-    !| no draw can fail later on.
+    !| them), or, in the per-study mode, when a study's `counts` at some reference point do not add
+    !| up to its `included_n_reps`; `ERR_ALLOC_FAIL` when the random number generator cannot be
+    !| created. The count checks, together with the wrappers' bounds on the counts, establish every
+    !| draw's preconditions, so no draw can fail later on.
     subroutine bootstrap_histogram_expert_c(&
             n_bootstraps,&
             n_bins,&
             n_points,&
             n_studies,&
             mean_pmf_counts,&
+            counts,&
             mean_pmf_included_n_reps,&
             included_n_reps,&
             n_bootstrapping_top_k_jsds,&
             confidence_interval,&
             tmp_bootstrapping_top_k_jsds,&
-            tmp_counts,&
             tmp_pmfs,&
             tmp_mean_pmf,&
             tmp_js_divergences,&
@@ -430,9 +505,11 @@ contains
             tmp_point_draw,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
+            bootstrap_mode,&
             ierr&
         ) bind(C, name="bootstrap_histogram_expert_c")
         use tox_data_integration_stats, only: bootstrap_histogram_expert
+        use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
         integer(c_int), intent(in), target :: n_bins
             !! Number of equally sized histogram bins
@@ -451,7 +528,13 @@ contains
             !! Number of bootstrap resamples to perform
             !! The minimum valid value is `1_int32`.
         integer(c_int), dimension(n_points, n_bins), intent(in), target :: mean_pmf_counts
-            !! Pooled residual counts per bin of the consensus pmf, the pool every bootstrap draws from
+            !! Pooled residual counts per bin of the consensus pmf: what every study is drawn from in
+            !! the pooled mode
+            !! The minimum valid value is `0_int32`.
+        integer(c_int), dimension(n_points, n_bins, n_studies), intent(in), target :: counts
+            !! Every study's own residual counts per bin: what each study is drawn from in the
+            !! per-study mode (the default); at each reference point they must add up to the
+            !! study's `included_n_reps` there. Not drawn from in the pooled mode, but still required
             !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_points), intent(in), target :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates per reference point of the pool
@@ -467,8 +550,6 @@ contains
             !! The maximum valid value is `1.0_real64`.
         real(c_double), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out), target :: tmp_bootstrapping_top_k_jsds
             !! Working array: per study the bottom-k heap `(:, 1, :)` and the top-k heap `(:, 2, :)`
-        integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts
-            !! Working array: one study's resampled histogram counts
         real(c_double), dimension(n_points, n_bins, n_studies), intent(out), target :: tmp_pmfs
             !! Working array: one bootstrap's resampled pmfs, all studies
         real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_mean_pmf
@@ -480,7 +561,7 @@ contains
         real(c_double), dimension(n_studies), intent(out), target :: tmp_global_js_divergence
             !! Working array: one bootstrap's weighted global JSD values
         integer(c_int), dimension(n_bins), intent(out), target :: tmp_point_pool
-            !! Working array: one reference point's pooled counts, the pool of one draw
+            !! Working array: one reference point's counts, the pool of one draw
         integer(c_int), dimension(n_bins), intent(out), target :: tmp_point_draw
             !! Working array: one study's draw at one reference point
         real(c_double), intent(in), target :: two_sided_bootstrapping_significance_level
@@ -491,9 +572,20 @@ contains
         integer(c_int), intent(in), target :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
+        character(len=1, kind=c_char), dimension(19), intent(in), target :: bootstrap_mode
+            !! What each study's histograms are drawn from (see above). By default each study's own
+            !! counts: a robustness interval of the observed JSD. The pooled counts give a noise
+            !! band of "no difference between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `'bootstrap_per_study'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
+        integer(int32) :: bootstrap_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -505,11 +597,11 @@ contains
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(counts, n_points * n_bins * n_studies)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds * 2 * n_studies)
-        M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_pmfs, n_points * n_bins * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_mean_pmf, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_js_divergences, n_points * n_studies)
@@ -517,6 +609,22 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_point_pool, n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_point_draw, n_bins)
+        M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+
+        block
+            character(len=:), pointer :: bootstrap_mode_f
+            bootstrap_mode_f => c_char_as_view(bootstrap_mode)
+
+            select case (bootstrap_mode_f)
+                case ("bootstrap_per_study")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
+                case ("bootstrap_pooled")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call bootstrap_histogram_expert(&
             n_bootstraps = n_bootstraps,&
@@ -524,12 +632,12 @@ contains
             n_points = n_points,&
             n_studies = n_studies,&
             mean_pmf_counts = mean_pmf_counts,&
+            counts = counts,&
             mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
             included_n_reps = included_n_reps,&
             n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
             confidence_interval = confidence_interval,&
             tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
-            tmp_counts = tmp_counts,&
             tmp_pmfs = tmp_pmfs,&
             tmp_mean_pmf = tmp_mean_pmf,&
             tmp_js_divergences = tmp_js_divergences,&
@@ -539,6 +647,7 @@ contains
             tmp_point_draw = tmp_point_draw,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
+            bootstrap_mode = bootstrap_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine bootstrap_histogram_expert_c

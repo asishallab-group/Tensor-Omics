@@ -9,7 +9,7 @@
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
 void check_mean_pmf_min_counts_c(const int*, const int*, const int*, const int*, const int*, unsigned char*, int*);
 void check_plateau_condition_c(const double*, double*, const int*, int*, int*, const int*, const char*, const double*, double*, unsigned char*, int*);
-void check_effect_size_plateau_condition_c(const double*, const double*, const int*, const unsigned char*, const double*, const double*, const double*, const int*, int*, double*, double*, double*, unsigned char*, int*);
+void check_effect_size_plateau_condition_c(const double*, const double*, const int*, const unsigned char*, const double*, const double*, const double*, const int*, int*, double*, double*, double*, unsigned char*, const double*, int*);
 
 SEXP check_neighborhood_overlaps_call(SEXP neighborhood_range, SEXP min_neighbor_overlap) {
     int _nprot = 0;
@@ -138,7 +138,7 @@ SEXP check_plateau_condition_call(SEXP confidence_interval, SEXP best_candidate_
     return _out;
 }
 
-SEXP check_effect_size_plateau_condition_call(SEXP global_js_divergence, SEXP prev_global_js_divergence, SEXP has_previous, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP n_consecutive_ok) {
+SEXP check_effect_size_plateau_condition_call(SEXP global_js_divergence, SEXP prev_global_js_divergence, SEXP has_previous, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP n_consecutive_ok, SEXP delta_abs_tolerance) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = (int) Rf_length(global_js_divergence);
@@ -150,6 +150,7 @@ SEXP check_effect_size_plateau_condition_call(SEXP global_js_divergence, SEXP pr
     double _v_delta_epsilon = Rf_asReal(delta_epsilon);
     int _v_delta_min_consecutive_transitions = Rf_asInteger(delta_min_consecutive_transitions);
     int _v_n_consecutive_ok = Rf_asInteger(n_consecutive_ok);
+    double _v_delta_abs_tolerance = Rf_asReal(delta_abs_tolerance);
 
     // outputs and work space
     SEXP delta = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
@@ -172,6 +173,7 @@ SEXP check_effect_size_plateau_condition_call(SEXP global_js_divergence, SEXP pr
         &delta_median,
         &delta_max,
         &plateau_found,
+        &_v_delta_abs_tolerance,
         &ierr
     );
 

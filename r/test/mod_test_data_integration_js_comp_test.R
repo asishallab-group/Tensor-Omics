@@ -245,6 +245,26 @@ test_generate_js_comp_test_candidates <- function() {
     generate_js_comp_test_candidates(0L),
     "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT
   )
+
+  # ============================================================
+  # Test 4 -- neighborhood_size_mode as a mode string (call, type, shape; the grids themselves
+  # are test_fixed_k_grid_neighborhood_size_modes_*): every mode gives positive pairs, and the
+  # grid of both modes holds the pairs of the large and of the small one.
+  # ============================================================
+  n_columns <- c()
+  for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
+    candidates_mode <- generate_js_comp_test_candidates(2000L, neighborhood_size_mode = mode)
+    assert_true(is.matrix(candidates_mode) && nrow(candidates_mode) == 2L, paste("Test 4 failed:", mode, "shape"))
+    assert_true(is.integer(candidates_mode) && ncol(candidates_mode) >= 1L && all(candidates_mode > 0L),
+                paste("Test 4 failed:", mode, "values"))
+    n_columns[[mode]] <- ncol(candidates_mode)
+  }
+  assert_true(n_columns[["neighborhood_size_both"]] ==
+                n_columns[["neighborhood_size_large"]] + n_columns[["neighborhood_size_small"]],
+              "Test 4 failed: both = large + small")
+  assert_true(nrow(generate_js_comp_test_candidates(2000L)) == 2L, "Test 4 failed: default shape")
+  assert_error(generate_js_comp_test_candidates(2000L, neighborhood_size_mode = "nonsense"),
+               "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected before Fortran")
 }
 
 test_check_neighborhood_overlaps <- function() {
@@ -443,6 +463,28 @@ test_check_effect_size_plateau_condition <- function() {
     assert_true(is.numeric(result$delta_median) && is.numeric(result$delta_max),
                 "Test 2 failed: delta_median and delta_max must be numeric")
   }
+
+  # ============================================================
+  # Test 3 -- delta_abs_tolerance (call, type, shape; the values themselves are
+  # test_effect_size_abs_tolerance_*), a negative one rejected.
+  # ============================================================
+  result_tol <- check_effect_size_plateau_condition(c(0.0012, 0.0012), c(0.0010, 0.0010), has_previous = TRUE,
+                                                    delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                    delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                    n_consecutive_ok = 0L, delta_abs_tolerance = 0.0002)
+  assert_equal_int(length(result_tol$delta), 2L, "Test 3 failed: delta of length n_studies")
+  assert_true(is.numeric(result_tol$delta) && all(is.finite(result_tol$delta)) && all(result_tol$delta >= 0),
+              "Test 3 failed: delta finite and >= 0")
+  result_no_tol <- check_effect_size_plateau_condition(c(0.0012, 0.0012), c(0.0010, 0.0010), has_previous = TRUE,
+                                                       delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                       delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                       n_consecutive_ok = 0L)
+  assert_equal_int(length(result_no_tol$delta), 2L, "Test 3 failed: delta of length n_studies without the tolerance")
+  assert_error(check_effect_size_plateau_condition(c(0.1), c(0.1), has_previous = TRUE,
+                                                   delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                   delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                   n_consecutive_ok = 0L, delta_abs_tolerance = -1.0),
+               "Test 3 failed: expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 }
 
 test_create_mean_pmf <- function() {
@@ -531,16 +573,18 @@ test_bootstrap_histogram <- function() {
   # (test_bootstrap_histogram_seeded_reproducibility).
   # ============================================================
   mean_pmf_counts <- matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE)
+  # Every study's own counts (points x bins x studies), adding up to the pool.
+  counts <- bootstrap_test_counts()
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(c(4L, 4L, 6L, 6L), nrow = 2)
 
   ci_first <- matrix(c(0.2, 0.2, 0.3, 0.3), nrow = 2)
-  ci_first <- bootstrap_histogram(15L, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, ci_first,
-                                   random_seed = 123L)
+  ci_first <- bootstrap_histogram(15L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_first,
+                                   random_seed = 123L, bootstrap_mode = "bootstrap_pooled")
 
   ci_second <- matrix(c(0.2, 0.2, 0.3, 0.3), nrow = 2)
-  ci_second <- bootstrap_histogram(15L, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, ci_second,
-                                    random_seed = 123L)
+  ci_second <- bootstrap_histogram(15L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_second,
+                                    random_seed = 123L, bootstrap_mode = "bootstrap_pooled")
 
   assert_equal_numeric(ci_first, ci_second, TOL, "same random_seed twice must give identical confidence_interval")
 
@@ -553,8 +597,10 @@ test_bootstrap_histogram <- function() {
   included_n_reps_deg <- matrix(c(5L, 5L), nrow = 1)
   confidence_interval_deg <- matrix(0.0, nrow = 2, ncol = 2)
 
-  confidence_interval_deg <- bootstrap_histogram(5L, mean_pmf_counts_deg, mean_pmf_included_n_reps_deg,
-                                                  included_n_reps_deg, confidence_interval_deg, random_seed = 7L)
+  counts_deg <- array(c(5L, 5L), dim = c(1, 1, 2))
+  confidence_interval_deg <- bootstrap_histogram(5L, mean_pmf_counts_deg, counts_deg, mean_pmf_included_n_reps_deg,
+                                                  included_n_reps_deg, confidence_interval_deg, random_seed = 7L,
+                                                  bootstrap_mode = "bootstrap_pooled")
 
   assert_equal_numeric(confidence_interval_deg, matrix(0.0, nrow = 2, ncol = 2), TOL,
                         "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
@@ -565,12 +611,13 @@ test_bootstrap_histogram_rejects_draws_from_empty_pool <- function() {
   # with invalid input, not tied to any one argument
   # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
   mean_pmf_counts <- matrix(c(0L, 0L), nrow = 1)
+  counts <- array(0L, dim = c(1, 2, 2))
   mean_pmf_included_n_reps <- c(0L)
   included_n_reps <- matrix(c(3L, 3L), nrow = 1)
 
   call <- function() {
-    bootstrap_histogram(3L, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
-                        matrix(0.0, nrow = 2, ncol = 2), random_seed = 7L)
+    bootstrap_histogram(3L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
+                        matrix(0.0, nrow = 2, ncol = 2), random_seed = 7L, bootstrap_mode = "bootstrap_pooled")
   }
   assert_error(call(), "expected ERR_INVALID_INPUT for draws from an empty pool", ERR_INVALID_INPUT)
   err <- tryCatch({ call(); NULL }, error = function(e) e)
@@ -604,16 +651,63 @@ test_bootstrap_histogram_rejects_zero_included_n_reps <- function() {
   # included_n_reps is rejected on that argument, even where the counts otherwise add up
   # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
   mean_pmf_counts <- matrix(c(2L, 2L), nrow = 1)
+  counts <- array(0L, dim = c(1, 2, 2))
+  counts[1, , 2] <- c(2L, 2L)
   mean_pmf_included_n_reps <- c(4L)
   included_n_reps <- matrix(c(0L, 4L), nrow = 1)
 
   call <- function() {
-    bootstrap_histogram(3L, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
-                        matrix(0.5, nrow = 2, ncol = 2), random_seed = 7L)
+    bootstrap_histogram(3L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
+                        matrix(0.5, nrow = 2, ncol = 2), random_seed = 7L, bootstrap_mode = "bootstrap_pooled")
   }
   assert_error(call(), "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
   err <- tryCatch({ call(); NULL }, error = function(e) e)
   assert_true(identical(err$argument, "included_n_reps"), "expected the error on included_n_reps")
+}
+
+# Test helper: the studies' own counts (points x bins x studies) of the bootstrap fixture whose pool
+# is matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE) and whose studies hold 4 and 6 residuals.
+bootstrap_test_counts <- function() {
+  counts <- array(0L, dim = c(2, 3, 2))
+  counts[1, , 1] <- c(2L, 1L, 1L)
+  counts[1, , 2] <- c(3L, 2L, 1L)
+  counts[2, , 1] <- c(1L, 1L, 2L)
+  counts[2, , 2] <- c(1L, 1L, 4L)
+  counts
+}
+
+test_bootstrap_histogram_bootstrap_mode <- function() {
+  # Call + shape for both bootstrap modes (the numbers are checked in the Fortran suite): the
+  # default per-study mode and "bootstrap_pooled" both return a 2 x n_studies numeric interval with
+  # lower <= upper; an unknown mode is rejected before Fortran, and per-study counts that do not add
+  # up are invalid input.
+  mean_pmf_counts <- matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE)
+  counts <- bootstrap_test_counts()
+  mean_pmf_included_n_reps <- c(10L, 10L)
+  included_n_reps <- matrix(c(4L, 4L, 6L, 6L), nrow = 2)
+  seed_ci <- matrix(c(1.0, 0.0, 1.0, 0.0), nrow = 2)
+
+  results <- list(
+    default = bootstrap_histogram(20L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
+                                  random_seed = 3L),
+    per_study = bootstrap_histogram(20L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
+                                    random_seed = 3L, bootstrap_mode = "bootstrap_per_study"),
+    pooled = bootstrap_histogram(20L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
+                                 random_seed = 3L, bootstrap_mode = "bootstrap_pooled"))
+  for (name in names(results)) {
+    ci <- results[[name]]
+    assert_true(is.numeric(ci) && identical(dim(ci), c(2L, 2L)), paste(name, ": numeric 2 x 2"))
+    assert_true(all(is.finite(ci)) && all(ci[1, ] <= ci[2, ]), paste(name, ": lower <= upper"))
+  }
+
+  assert_error(bootstrap_histogram(3L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
+                                   matrix(0.5, nrow = 2, ncol = 2), bootstrap_mode = "no_such_mode"),
+               "expected an unknown bootstrap_mode to be rejected before Fortran")
+  bad_counts <- counts
+  bad_counts[1, 1, 1] <- 0L
+  assert_error(bootstrap_histogram(3L, mean_pmf_counts, bad_counts, mean_pmf_included_n_reps, included_n_reps,
+                                   matrix(0.5, nrow = 2, ncol = 2)),
+               "expected ERR_INVALID_INPUT for per-study counts not adding up", ERR_INVALID_INPUT)
 }
 
 test_calc_js_comp_test_candidate_bounds <- function() {
@@ -1003,6 +1097,61 @@ test_run_js_comp_test_parameter_search <- function() {
                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                  bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+
+  # ============================================================
+  # Test 6 -- neighborhood_size_mode: every mode string is accepted (type/shape only; the Fortran
+  # suite's test_param_search_neighborhood_size_mode checks the grid it walks).
+  # ============================================================
+  for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
+    result_size <- run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                                     max_n_points_candidate = bounds$max_n_points_candidate,
+                                                     max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                                     min_residuals_per_bin = 1000000L, random_seed = 1L,
+                                                     neighborhood_size_mode = mode)
+    assert_true(result_size$n_points >= 1L, paste(mode, "n_points"))
+    assert_true(result_size$n_neighbors >= 1L, paste(mode, "n_neighbors"))
+    assert_equal_int(length(result_size$n_bins_per_point), bounds$max_n_points_candidate, paste(mode, "length"))
+  }
+  assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                                 neighborhood_size_mode = "nonsense"),
+               "expected an unknown neighborhood_size_mode string to be rejected before Fortran")
+
+  # ============================================================
+  # Test 7 -- delta_abs_tolerance is accepted (call + shape; test_param_search_delta_abs_tolerance
+  # is the Fortran check), a negative one rejected. Reuses Test 2's single-candidate setup.
+  # ============================================================
+  result_tol <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
+                                                  max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                  min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
+                                                  random_seed = 1L, delta_abs_tolerance = 0.001)
+  assert_true(result_tol$n_points >= 1L && result_tol$n_neighbors >= 1L, "tolerance: a candidate")
+  assert_equal_int(dim(result_tol$trace_delta), c(2L, 1L), "tolerance: trace_delta shape")
+  assert_error(run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                 delta_abs_tolerance = -0.1),
+               "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
+
+  # ============================================================
+  # Test 8 -- bootstrap_mode: the pooled bootstrap is accepted (call + shape;
+  # test_param_search_bootstrap_mode is the Fortran check), an unknown mode rejected before Fortran.
+  # ============================================================
+  result_pooled <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L,
+                                                     join_method = "join_min",
+                                                     max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                     max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                     min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
+                                                     random_seed = 1L, bootstrap_mode = "bootstrap_pooled")
+  assert_equal_int(dim(result_pooled$best_candidate_pair_confidence_interval), c(2L, 2L), "pooled: CI shape")
+  assert_equal_int(dim(result_pooled$trace_ci_lower), c(2L, 1L), "pooled: trace_ci_lower shape")
+  assert_error(run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                 bootstrap_mode = "no_such_mode"),
+               "expected an unknown bootstrap_mode to be rejected before Fortran")
 }
 
 test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {
@@ -1270,7 +1419,8 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
                                                        min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                        plateau_mode = "plateau_both", tau = 0.1,
                                                        mad_distance_factor = 1.0, max_pooled_residuals = 0L,
-                                                       min_study_neighbors = 1L, random_seed = 1L)
+                                                       min_study_neighbors = 1L, random_seed = 1L,
+                                                       delta_abs_tolerance = 0.001, bootstrap_mode = "bootstrap_pooled")
   assert_true(is.list(result), "expected a list")
   for (key in c("k_start", "k_step", "k_max", "n_points")) {
     assert_true(is.numeric(result[[key]]) && length(result[[key]]) == 1, paste(key, "must be a single number"))
@@ -1333,6 +1483,98 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
                                                           join_method = "join_min", max_n_points_candidate = capacity,
                                                           bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+}
+
+# Three studies of 5, 4 and 4 samples (the last slot of studies 2 and 3 is NaN padding), 300
+# genes spread over the expression range, as the Fortran suite's fixtures.
+label_test_expression <- function() {
+  set.seed(9001)
+  n_genes <- 300L
+  n_reps <- c(5L, 4L, 4L)
+  expression <- array(NaN, dim = c(5L, n_genes, 3L))
+  centres <- 2.0 + 6.0 * (seq_len(n_genes) - 1) / (n_genes - 1)
+  for (study in 1:3) {
+    for (rep in seq_len(n_reps[study])) {
+      expression[rep, , study] <- centres + rnorm(n_genes, 0.0, 0.5)
+    }
+  }
+  expression
+}
+
+test_calc_js_comp_test_permutation_bounds <- function() {
+  # Call + types only; the values are checked by hand in the Fortran suite.
+  bounds <- calc_js_comp_test_permutation_bounds(300L, 10L, 30L)
+  for (key in c("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds")) {
+    assert_true(is.numeric(bounds[[key]]) && length(bounds[[key]]) == 1 && bounds[[key]] >= 1,
+                paste(key, "must be a single number of at least 1"))
+  }
+  assert_error(calc_js_comp_test_permutation_bounds(300L, 10L, 301L),
+               "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
+}
+
+test_calc_adaptive_js_comp_test_permutation_bounds <- function() {
+  bounds <- calc_adaptive_js_comp_test_permutation_bounds(300L, 3L, 30L)
+  for (key in c("max_n_points_candidate", "n_bootstrapping_top_k_jsds")) {
+    assert_true(is.numeric(bounds[[key]]) && length(bounds[[key]]) == 1 && bounds[[key]] >= 1,
+                paste(key, "must be a single number of at least 1"))
+  }
+  assert_error(calc_adaptive_js_comp_test_permutation_bounds(300L, 3L, 0L),
+               "expected ERR_INVALID_INPUT for k_start = 0", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_on_sample_assignment <- function() {
+  # Call-ability and return types/shapes only; the identity/swap equalities are the Fortran
+  # suite's job.
+  expression <- label_test_expression()
+  assignment <- c(2L, 1L, 3:13)
+  result <- run_js_comp_test_on_sample_assignment(expression, assignment, 10L, 30L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence), 3L, "global_js_divergence length")
+  assert_true(all(is.finite(result$global_js_divergence)), "global_js_divergence finite")
+  assert_true(length(result$used_n_points) == 1 && length(result$used_n_neighbors) == 1, "used parameters scalars")
+
+  repeated <- assignment
+  repeated[2] <- repeated[1]
+  assert_error(run_js_comp_test_on_sample_assignment(expression, repeated, 10L, 30L),
+               "expected ERR_INVALID_INPUT for an assignment that is not a permutation", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_adaptive_on_sample_assignment <- function() {
+  expression <- label_test_expression()
+  result <- run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 30L, 10L, 90L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence), 3L, "global_js_divergence length")
+  assert_true(all(is.finite(result$global_js_divergence)), "global_js_divergence finite")
+  for (key in c("used_k_start", "used_k_step", "used_k_max", "n_points")) {
+    assert_true(length(result[[key]]) == 1, paste(key, "must be a scalar"))
+  }
+  assert_error(run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 2000L, 10L, 2000L),
+               "expected ERR_INVALID_INPUT when no neighborhood is built", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_label_permutation_test <- function() {
+  expression <- label_test_expression()
+  result <- run_js_comp_test_label_permutation_test(expression, 10L, 30L, 4L, random_seed = 3L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence_observed), 3L, "observed length")
+  assert_equal_int(length(result$p_values), 3L, "p_values length")
+  assert_equal_int(dim(result$jsd_null), c(4L, 3L), "jsd_null shape")
+  assert_true(length(result$n_failed_permutations) == 1, "n_failed_permutations scalar")
+  assert_true(all(result$p_values > 0 & result$p_values <= 1), "p-values in (0, 1]")
+  assert_error(run_js_comp_test_label_permutation_test(expression, 10L, 30L, 0L),
+               "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_adaptive_label_permutation_test <- function() {
+  expression <- label_test_expression()
+  result <- run_js_comp_test_adaptive_label_permutation_test(expression, 30L, 10L, 90L, 3L, random_seed = 3L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence_observed), 3L, "observed length")
+  assert_equal_int(length(result$p_values), 3L, "p_values length")
+  assert_equal_int(dim(result$jsd_null), c(3L, 3L), "jsd_null shape")
+  assert_true(length(result$n_failed_permutations) == 1, "n_failed_permutations scalar")
+  assert_error(run_js_comp_test_adaptive_label_permutation_test(expression, 30L, 10L, 90L, 0L),
+               "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
 }
 
 run_all_tests()

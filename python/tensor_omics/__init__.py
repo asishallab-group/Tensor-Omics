@@ -143,6 +143,16 @@ from .tox_data_integration_js_comp_test_fixed_k_search import (
     generate_js_comp_test_candidates,
     run_js_comp_test_parameter_search,
 )
+from .tox_data_integration_js_comp_test_permutation import (
+    run_js_comp_test_on_sample_assignment,
+    run_js_comp_test_adaptive_on_sample_assignment,
+    run_js_comp_test_label_permutation_test,
+    run_js_comp_test_adaptive_label_permutation_test,
+)
+from .tox_data_integration_js_comp_test_permutation_impl import (
+    calc_js_comp_test_permutation_bounds,
+    calc_adaptive_js_comp_test_permutation_bounds,
+)
 from .tox_data_integration_js_comp_test_run import (
     run_js_comp_test,
     run_js_comp_test_expert,
@@ -350,9 +360,11 @@ __all__ = [
     "build_residual_histograms",
     "build_spherical_kd",
     "calc_adaptive_js_comp_test_bounds",
+    "calc_adaptive_js_comp_test_permutation_bounds",
     "calc_fchange",
     "calc_js_comp_test_candidate_bounds",
     "calc_js_comp_test_n_top_k_jsds",
+    "calc_js_comp_test_permutation_bounds",
     "calc_neighborhood_size",
     "calc_pmf",
     "calc_quantile",
@@ -464,8 +476,12 @@ __all__ = [
     "root_mean_sq_normalization",
     "run_js_comp_test",
     "run_js_comp_test_adaptive",
+    "run_js_comp_test_adaptive_label_permutation_test",
+    "run_js_comp_test_adaptive_on_sample_assignment",
     "run_js_comp_test_adaptive_parameter_search",
     "run_js_comp_test_expert",
+    "run_js_comp_test_label_permutation_test",
+    "run_js_comp_test_on_sample_assignment",
     "run_js_comp_test_parameter_search",
     "save_tox_data",
     "serialize_char_helper",

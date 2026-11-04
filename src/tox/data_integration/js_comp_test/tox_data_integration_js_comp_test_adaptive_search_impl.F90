@@ -348,7 +348,8 @@ contains
                                                                 upper_residual_range_quantile, &
                                                                 two_sided_bootstrapping_significance_level, random_seed, &
                                                                 tau, mad_distance_factor, max_pooled_residuals, &
-                                                                min_study_neighbors, bin_count_mode, ierr)
+                                                                min_study_neighbors, bin_count_mode, delta_abs_tolerance, &
+                                                                bootstrap_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -404,8 +405,9 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_confidence_interval
-            !! The bootstrapped JSD confidence interval of the finally chosen candidate;
-            !! `-1.0_real64` throughout where no admissible candidate backs the result
+            !! The bootstrapped JSD confidence interval of the finally chosen candidate (by default a
+            !! robustness interval of its observed JSD, see `bootstrap_mode`); `-1.0_real64`
+            !! throughout where no admissible candidate backs the result
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise
@@ -428,10 +430,12 @@ contains
             !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_lower
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound, from
+            !! the bootstrap `bootstrap_mode` selects
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_upper
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound, from
+            !! the bootstrap `bootstrap_mode` selects
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width
@@ -447,7 +451,8 @@ contains
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate; `-1.0` for the first
+            !! candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            !! `delta_abs_tolerance`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -633,14 +638,21 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         integer(int32), intent(in), optional :: plateau_mode
-            !! Which plateau criterion decides when the search stops
+            !! Which plateau criterion decides when the search stops. The default is the change of
+            !! the observed JSD values from one admissible candidate to the next: it measures
+            !! directly how stable the observed value is. The CI-overlap criterion stays available.
+            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
+            !! the default) its interval describes the spread of the JSD expected if the studies did
+            !! not differ at all (a noise band), not how stable the observed value is from candidate
+            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
+            !! of each candidate's observed value
             !!
             !! | Mode | Value |
             !! |------|-------|
             !! | CI overlap only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]] |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
             !! | Either criterion | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]] |
-            !! DM_DEFAULT(M_MODE_PLATEAU_CI_OVERLAP)
+            !! DM_DEFAULT(M_MODE_PLATEAU_EFFECT_SIZE)
         real(real64), intent(in), optional :: delta_median_threshold
             !! Upper bound on the median relative JSD change for a transition to qualify
             !! DM_MIN(above(0.0_real64))
@@ -723,6 +735,23 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! What the bootstrap draws each study's histograms from, for every admissible
+            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
+            !! returned interval). By default each study's own counts: the interval shows how much
+            !! the observed JSD would move if each study's own residuals were drawn again (a
+            !! robustness interval). The pooled counts of all studies give the spread expected if the
+            !! studies did not differ (a noise band) instead, kept for comparison
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -735,6 +764,8 @@ contains
         integer(int32) :: actual_max_pooled_residuals, actual_min_study_neighbors, construction_status, max_n_neighbors
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
+        real(real64) :: actual_delta_abs_tolerance
+        integer(int32) :: actual_bootstrap_mode
         real(real64) :: best_uncertainty_value, actual_tau, actual_mad_distance_factor
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -742,12 +773,14 @@ contains
         M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, M_MIN_NEIGHBOR_OVERLAP_DEFAULT)
         M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, M_SUCCEEDING_CI_OVERLAP_DEFAULT)
-        M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, M_MODE_PLATEAU_CI_OVERLAP)
+        M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, M_MODE_PLATEAU_EFFECT_SIZE)
         M_DEFAULT_VAL(delta_median_threshold, actual_delta_median_threshold, M_DELTA_MEDIAN_THRESHOLD_DEFAULT)
         M_DEFAULT_VAL(delta_max_threshold, actual_delta_max_threshold, M_DELTA_MAX_THRESHOLD_DEFAULT)
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, M_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
+        M_DEFAULT_VAL(bootstrap_mode, actual_bootstrap_mode, M_MODE_BOOTSTRAP_PER_STUDY)
         M_DEFAULT_VAL(tau, actual_tau, M_ADAPTIVE_TAU_DEFAULT)
         M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
         M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
@@ -869,7 +902,8 @@ contains
                                                join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
                                                actual_delta_median_threshold, actual_delta_max_threshold, &
                                                actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
-                                               tmp_n_bins_per_point, tmp_occupancy_failed, tmp_n_pooled_residuals, &
+                                               actual_delta_abs_tolerance, actual_bootstrap_mode, tmp_n_bins_per_point, &
+                                               tmp_occupancy_failed, tmp_n_pooled_residuals, &
                                                tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
                                                tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &
                                                tmp_shared_residual_range_high, tmp_included_n_reps, tmp_mean_pmf_counts, &

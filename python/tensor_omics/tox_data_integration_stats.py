@@ -11,9 +11,12 @@ null (a fixed observed consensus) and is kept for comparison.
 
 The bootstrap
 :func:`tensor_omics.bootstrap_histogram` gives each
-study's weighted global JSD a confidence interval, by drawing each study's histograms with
-replacement from the pooled consensus counts; `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k
-heaps for a caller that allocates its own.
+study's weighted global JSD an interval, by drawing each study's histograms again with
+replacement: by default from the study's own counts (a robustness interval: how much the
+observed value would move if each study's residuals were drawn again), or, with
+`bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
+studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
+caller that allocates its own.
 
 Python binding, generated from tox_data_integration_stats. Do not edit.
 """
@@ -58,18 +61,20 @@ _lib.bootstrap_histogram_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=3, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_double),
     _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BOOTSTRAP_HISTOGRAM_ARGUMENTS = ("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_BOOTSTRAP_HISTOGRAM_ARGUMENTS = ("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "bootstrap_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BOOTSTRAP_HISTOGRAM_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", None, None, None, None, None, None, None,)
+_BOOTSTRAP_HISTOGRAM_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "counts", None, None, None, None, None, None, None, None, None,)
 
 def gjct_permutation_test(
         n_permutations,
@@ -93,6 +98,11 @@ def gjct_permutation_test(
 
     Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
     `n_permutations = 0` no permutation runs and both are NaN ("not computed").
+
+    This test permutes the pooled residual counts within fixed histograms (residual level); the
+    study-label Permutation-Test, which shuffles the samples' study labels and reruns the whole
+    JS-Comp-Test, is
+    :func:`tensor_omics.run_js_comp_test_label_permutation_test`.
 
     Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
@@ -213,18 +223,30 @@ def gjct_permutation_test(
 def bootstrap_histogram(
         n_bootstraps,
         mean_pmf_counts,
+        counts,
         mean_pmf_included_n_reps,
         included_n_reps,
         confidence_interval,
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
+        bootstrap_mode='bootstrap_per_study',
 ):
-    r"""Bootstrap a confidence interval for each study's global JSD by resampling the pooled consensus histogram
+    r"""Bootstrap an interval for each study's global JSD by resampling the studies' histograms
 
-    In every bootstrap, each study's histogram at each reference point is drawn with replacement
-    (multinomial) from the pooled consensus counts `mean_pmf_counts`, with as many residuals as
-    the study observed; the consensus pmf, each study's JSD against it and its weighted global
-    JSD are recomputed from the draw.
+    In every bootstrap, each study's histogram at each reference point is drawn again with
+    replacement (multinomial), with as many residuals as the study observed
+    (`included_n_reps`); the consensus pmf, each study's JSD against it and its weighted global
+    JSD are recomputed from the draw. What a study is drawn from is `bootstrap_mode`:
+
+    - by default its own counts (`counts`): the interval shows how much the observed JSD would
+    move if each study's own residuals were drawn again -- a robustness interval of the
+    observed value. Drawing again adds sampling noise, so the bootstrapped JSDs are larger
+    than the observed one on average: when the studies hardly differ, the interval can lie
+    entirely above the observed JSD;
+    - or the pooled consensus counts of all studies (`mean_pmf_counts`): the interval shows the
+    spread of the JSD expected if the studies did not differ at all -- a noise band, not the
+    robustness of the observed value. This was the only bootstrap before the mode existed and
+    is kept for comparison.
 
     `confidence_interval` is input and output: its incoming `[lower, upper]` values seed every
     slot of the bottom-k/top-k heaps, so they are only displaced by more extreme bootstrap
@@ -235,9 +257,10 @@ def bootstrap_histogram(
     draw, when at some reference point the studies' counts do not add up to
     `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     :func:`tensor_omics.create_mean_pmf` produces
-    them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. The count check,
-    together with the wrappers' bounds on the counts, establishes every draw's preconditions, so
-    no draw can fail later on.
+    them), or, in the per-study mode, when a study's `counts` at some reference point do not add
+    up to its `included_n_reps`; `ERR_ALLOC_FAIL` when the random number generator cannot be
+    created. The count checks, together with the wrappers' bounds on the counts, establish every
+    draw's preconditions, so no draw can fail later on.
 
     Parameters
     ----------
@@ -245,7 +268,13 @@ def bootstrap_histogram(
         Number of bootstrap resamples to perform
         The minimum valid value is `1`.
     mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
-        Pooled residual counts per bin of the consensus pmf, the pool every bootstrap draws from
+        Pooled residual counts per bin of the consensus pmf: what every study is drawn from in
+        the pooled mode
+        The minimum valid value is `0`.
+    counts : np.ndarray[np.int32] of shape (n_points, n_bins, n_studies,), column-major (order='F')
+        Every study's own residual counts per bin: what each study is drawn from in the
+        per-study mode (the default); at each reference point they must add up to the
+        study's `included_n_reps` there. Not drawn from in the pooled mode, but still required
         The minimum valid value is `0`.
     mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,)
         Count of non-NaN replicates per reference point of the pool
@@ -267,6 +296,13 @@ def bootstrap_histogram(
     random_seed : int, optional, default 42
         Seed for the GSL random number generator
         The default value is `42`.
+    bootstrap_mode : str, one of 'bootstrap_per_study' | 'bootstrap_pooled', optional, default 'bootstrap_per_study'
+        What each study's histograms are drawn from (see above). By default each study's own
+        counts: a robustness interval of the observed JSD. The pooled counts give a noise
+        band of "no difference between the studies" instead, kept for comparison
+
+        The default value is `'bootstrap_per_study'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -288,6 +324,7 @@ def bootstrap_histogram(
     # check every input by the input contract, converting only when C needs it
     n_bootstraps = _contract.integer(n_bootstraps, "n_bootstraps")
     mean_pmf_counts = _contract.integers(mean_pmf_counts, "mean_pmf_counts", ndim=2, order="F")
+    counts = _contract.integers(counts, "counts", ndim=3, order="F")
     mean_pmf_included_n_reps = _contract.integers(mean_pmf_included_n_reps, "mean_pmf_included_n_reps", ndim=1)
     included_n_reps = _contract.integers(included_n_reps, "included_n_reps", ndim=2, order="F")
     if not isinstance(confidence_interval, _np.ndarray) or confidence_interval.dtype != _np.float64:
@@ -298,21 +335,28 @@ def bootstrap_histogram(
         raise _ToxArgumentError("'confidence_interval' is modified in place, so it must already be column-major (order='F')", argument="confidence_interval")
     two_sided_bootstrapping_significance_level = _contract.real(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed = _contract.integer(random_seed, "random_seed")
+    bootstrap_mode = _np.array([_contract.mode(bootstrap_mode, "bootstrap_mode", ("bootstrap_per_study", "bootstrap_pooled",)).ljust(19)], dtype="S19")
 
     # what the inputs already say, rather than asking for it again
     n_bins = mean_pmf_counts.shape[1]
     n_points = mean_pmf_counts.shape[0]
-    n_studies = included_n_reps.shape[1]
+    n_studies = counts.shape[2]
 
     # Fortran cannot check that an array has the shape it is declared with; this can
+    if counts.shape[0] != n_points:
+        raise _ToxArgumentError(f"'counts' has {counts.shape[0]} along axis 0, but 'mean_pmf_counts' implies n_points == {n_points}; 'counts' is declared with shape (n_points, n_bins, n_studies)", argument="counts")
+    if counts.shape[1] != n_bins:
+        raise _ToxArgumentError(f"'counts' has {counts.shape[1]} along axis 1, but 'mean_pmf_counts' implies n_bins == {n_bins}; 'counts' is declared with shape (n_points, n_bins, n_studies)", argument="counts")
     if mean_pmf_included_n_reps.shape[0] != n_points:
         raise _ToxArgumentError(f"'mean_pmf_included_n_reps' has {mean_pmf_included_n_reps.shape[0]} along axis 0, but 'mean_pmf_counts' implies n_points == {n_points}; 'mean_pmf_included_n_reps' is declared with shape (n_points)", argument="mean_pmf_included_n_reps")
     if included_n_reps.shape[0] != n_points:
         raise _ToxArgumentError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but 'mean_pmf_counts' implies n_points == {n_points}; 'included_n_reps' is declared with shape (n_points, n_studies)", argument="included_n_reps")
+    if included_n_reps.shape[1] != n_studies:
+        raise _ToxArgumentError(f"'included_n_reps' has {included_n_reps.shape[1]} along axis 1, but 'counts' implies n_studies == {n_studies}; 'included_n_reps' is declared with shape (n_points, n_studies)", argument="included_n_reps")
     if confidence_interval.shape[0] != 2:
         raise _ToxArgumentError(f"'confidence_interval' has {confidence_interval.shape[0]} along axis 0, but its declared shape fixes it at {2}; 'confidence_interval' is declared with shape (2, n_studies)", argument="confidence_interval")
     if confidence_interval.shape[1] != n_studies:
-        raise _ToxArgumentError(f"'confidence_interval' has {confidence_interval.shape[1]} along axis 1, but 'included_n_reps' implies n_studies == {n_studies}; 'confidence_interval' is declared with shape (2, n_studies)", argument="confidence_interval")
+        raise _ToxArgumentError(f"'confidence_interval' has {confidence_interval.shape[1]} along axis 1, but 'counts' implies n_studies == {n_studies}; 'confidence_interval' is declared with shape (2, n_studies)", argument="confidence_interval")
 
     # outputs and work arrays, which the caller never sees
     ierr = _ctypes.c_int(0)
@@ -323,11 +367,13 @@ def bootstrap_histogram(
         _ctypes.byref(_ctypes.c_int(n_points)),
         _ctypes.byref(_ctypes.c_int(n_studies)),
         mean_pmf_counts,
+        counts,
         mean_pmf_included_n_reps,
         included_n_reps,
         confidence_interval,
         _ctypes.byref(_ctypes.c_double(two_sided_bootstrapping_significance_level)),
         _ctypes.byref(_ctypes.c_int(random_seed)),
+        bootstrap_mode,
         _ctypes.byref(ierr),
     )
 

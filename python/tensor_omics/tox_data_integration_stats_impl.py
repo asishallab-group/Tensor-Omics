@@ -11,9 +11,12 @@ null (a fixed observed consensus) and is kept for comparison.
 
 The bootstrap
 :func:`tensor_omics.bootstrap_histogram` gives each
-study's weighted global JSD a confidence interval, by drawing each study's histograms with
-replacement from the pooled consensus counts; `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k
-heaps for a caller that allocates its own.
+study's weighted global JSD an interval, by drawing each study's histograms again with
+replacement: by default from the study's own counts (a robustness interval: how much the
+observed value would move if each study's residuals were drawn again), or, with
+`bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
+studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
+caller that allocates its own.
 
 Python binding, generated from tox_data_integration_stats_impl. Do not edit.
 """

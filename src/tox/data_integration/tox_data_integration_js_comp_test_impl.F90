@@ -38,9 +38,23 @@
 !| `calc_js_comp_test_candidate_bounds`, `calc_adaptive_js_comp_test_bounds` and
 !| `calc_js_comp_test_n_top_k_jsds` size the work arrays for a caller that allocates its own.
 !|
-!| The pipeline is split over six modules -- bin counts, histograms, the criteria both parameter
-!| searches share, the fixed-k search, the adaptive search and the final run -- which this one
-!| gathers, so a caller reaches all of them through it.
+!| The study-label Permutation-Test asks whether the assignment of samples to studies influences
+!| the JS-Comp-Test values at all: it shuffles the study labels of the samples and reruns the whole
+!| test on every shuffled data set.
+!| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_label_permutation_test_impl(interface)]]
+!| (k-NN) and
+!| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_adaptive_label_permutation_test_impl(interface)]]
+!| (adaptive) run the whole test;
+!| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_on_sample_assignment_impl(interface)]]
+!| and
+!| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_adaptive_on_sample_assignment_impl(interface)]]
+!| run one given assignment, for a caller who draws the assignments itself.
+!| `calc_js_comp_test_permutation_bounds` and `calc_adaptive_js_comp_test_permutation_bounds` size
+!| their work arrays.
+!|
+!| The pipeline is split over seven modules -- bin counts, histograms, the criteria both parameter
+!| searches share, the fixed-k search, the adaptive search, the final run and the study-label
+!| Permutation-Test -- which this one gathers, so a caller reaches all of them through it.
 module tox_data_integration_js_comp_test_impl
     use tox_data_integration_js_comp_test_binning_impl
     use tox_data_integration_js_comp_test_histograms_impl
@@ -48,4 +62,5 @@ module tox_data_integration_js_comp_test_impl
     use tox_data_integration_js_comp_test_fixed_k_search_impl
     use tox_data_integration_js_comp_test_adaptive_search_impl
     use tox_data_integration_js_comp_test_run_impl
+    use tox_data_integration_js_comp_test_permutation_impl
 end module tox_data_integration_js_comp_test_impl

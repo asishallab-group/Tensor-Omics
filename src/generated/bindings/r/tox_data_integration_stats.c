@@ -7,7 +7,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void gjct_permutation_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, double*, double*, const int*, int*);
-void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
+void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, const char*, int*);
 
 SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP mean_pmf, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP global_jsd_observed, SEXP random_seed) {
     int _nprot = 0;
@@ -59,12 +59,12 @@ SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP 
     return _out;
 }
 
-SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
+SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bootstrap_mode) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
     int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
-    int n_studies = INTEGER(Rf_getAttrib(included_n_reps, R_DimSymbol))[1];
+    int n_studies = INTEGER(Rf_getAttrib(counts, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_bootstraps = Rf_asInteger(n_bootstraps);
@@ -76,8 +76,10 @@ SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean
 
     // convert what Fortran cannot take from R directly
     const int* _c_mean_pmf_counts = tox_int_in(mean_pmf_counts, "mean_pmf_counts");
+    const int* _c_counts = tox_int_in(counts, "counts");
     const int* _c_mean_pmf_included_n_reps = tox_int_in(mean_pmf_included_n_reps, "mean_pmf_included_n_reps");
     const int* _c_included_n_reps = tox_int_in(included_n_reps, "included_n_reps");
+    char* _c_bootstrap_mode = tox_char_in(bootstrap_mode, 19, "bootstrap_mode");
 
     // outputs and work space
     int ierr = 0;
@@ -88,11 +90,13 @@ SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean
         &n_points,
         &n_studies,
         _c_mean_pmf_counts,
+        _c_counts,
         _c_mean_pmf_included_n_reps,
         _c_included_n_reps,
         REAL(_out_confidence_interval),
         &_v_two_sided_bootstrapping_significance_level,
         &_v_random_seed,
+        _c_bootstrap_mode,
         &ierr
     );
 

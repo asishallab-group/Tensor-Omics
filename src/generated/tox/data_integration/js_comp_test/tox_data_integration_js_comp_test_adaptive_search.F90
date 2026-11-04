@@ -28,7 +28,7 @@ module tox_data_integration_js_comp_test_adaptive_search
     use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
     use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH
     use tox_data_integration_js_comp_test_search_impl, only: MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
-    use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
+    use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED, calc_js_comp_test_n_top_k_jsds
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
     use tox_errors, only: validate_in_range_int, validate_in_range_real
@@ -294,6 +294,8 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -347,8 +349,9 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_confidence_interval
-            !! The bootstrapped JSD confidence interval of the finally chosen candidate;
-            !! `-1.0_real64` throughout where no admissible candidate backs the result
+            !! The bootstrapped JSD confidence interval of the finally chosen candidate (by default a
+            !! robustness interval of its observed JSD, see `bootstrap_mode`); `-1.0_real64`
+            !! throughout where no admissible candidate backs the result
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise
@@ -371,10 +374,12 @@ contains
             !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}`)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_lower
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound, from
+            !! the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound, from
+            !! the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width
@@ -390,7 +395,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate; `-1.0` for the first
+            !! candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            !! `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(16), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -478,14 +484,21 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Which plateau criterion decides when the search stops
+            !! Which plateau criterion decides when the search stops. The default is the change of
+            !! the observed JSD values from one admissible candidate to the next: it measures
+            !! directly how stable the observed value is. The CI-overlap criterion stays available.
+            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
+            !! the default) its interval describes the spread of the JSD expected if the studies did
+            !! not differ at all (a noise band), not how stable the observed value is from candidate
+            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
+            !! of each candidate's observed value
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -565,6 +578,23 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! What the bootstrap draws each study's histograms from, for every admissible
+            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
+            !! returned interval). By default each study's own counts: the interval shows how much
+            !! the observed JSD would move if each study's own residuals were drawn again (a
+            !! robustness interval). The pooled counts of all studies give the spread expected if the
+            !! studies did not differ (a noise band) instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: n_bootstrapping_top_k_jsds
@@ -640,11 +670,13 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=62_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=63_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=64_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=66_int32, min=0.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=49_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=65_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=67_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -817,6 +849,8 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -1005,6 +1039,8 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1062,8 +1098,9 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_confidence_interval
-            !! The bootstrapped JSD confidence interval of the finally chosen candidate;
-            !! `-1.0_real64` throughout where no admissible candidate backs the result
+            !! The bootstrapped JSD confidence interval of the finally chosen candidate (by default a
+            !! robustness interval of its observed JSD, see `bootstrap_mode`); `-1.0_real64`
+            !! throughout where no admissible candidate backs the result
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise
@@ -1086,10 +1123,12 @@ contains
             !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}`)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_lower
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound, from
+            !! the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound, from
+            !! the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width
@@ -1105,7 +1144,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate; `-1.0` for the first
+            !! candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            !! `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(16), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -1288,14 +1328,21 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Which plateau criterion decides when the search stops
+            !! Which plateau criterion decides when the search stops. The default is the change of
+            !! the observed JSD values from one admissible candidate to the next: it measures
+            !! directly how stable the observed value is. The CI-overlap criterion stays available.
+            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
+            !! the default) its interval describes the spread of the JSD expected if the studies did
+            !! not differ at all (a noise band), not how stable the observed value is from candidate
+            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
+            !! of each candidate's observed value
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -1375,6 +1422,23 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! What the bootstrap draws each study's histograms from, for every admissible
+            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
+            !! returned interval). By default each study's own counts: the interval shows how much
+            !! the observed JSD would move if each study's own residuals were drawn again (a
+            !! robustness interval). The pooled counts of all studies give the spread expected if the
+            !! studies did not differ (a noise band) instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -1403,11 +1467,13 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=110_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=111_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=112_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=114_int32, min=0.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=97_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=113_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=115_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1525,6 +1591,8 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

@@ -11,6 +11,12 @@ from finest to coarsest and stops at the first admissible candidate whose bootst
 have reached a plateau, by the criteria of
 :func:`tensor_omics.check_plateau_condition` and
 :func:`tensor_omics.check_effect_size_plateau_condition`.
+By default the grid holds only the large neighborhoods
+(``'neighborhood_size_large'``);
+`neighborhood_size_mode` selects the small ones
+(``'neighborhood_size_small'``)
+or both
+(``'neighborhood_size_both'``).
 `calc_js_comp_test_candidate_bounds` sizes the work arrays for a caller that allocates its own.
 
 Python binding, generated from tox_data_integration_js_comp_test_fixed_k_search. Do not edit.
@@ -43,11 +49,12 @@ _lib.generate_js_comp_test_candidates_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "ierr",)
+_GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "ierr",)
 
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
@@ -105,13 +112,16 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_double),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(ndim=1),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def calc_js_comp_test_candidate_bounds(
         max_n_genes_all_studies,
@@ -121,7 +131,8 @@ def calc_js_comp_test_candidate_bounds(
     For the candidate grid of
     :func:`tensor_omics.generate_js_comp_test_candidates`:
     `max_n_points_candidate` is exactly its largest `n_points` candidate, and
-    `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
+    `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`,
+    in every `neighborhood_size_mode` (the bound uses the large-neighborhood factor `KX_FACTORS(1)`).
 
     Parameters
     ----------
@@ -176,21 +187,31 @@ def calc_js_comp_test_candidate_bounds(
 
 def generate_js_comp_test_candidates(
         max_n_genes_all_studies,
+        neighborhood_size_mode='neighborhood_size_large',
 ):
     r"""Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
 
     Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
     (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
     `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
-    `n_points` with up to `size(KX_FACTORS)` distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))`.
-    Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
-    candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
+    `n_points` with the distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))` of the
+    factors `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default only `f = 0.25`
+    (the large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next.
+    Small neighborhoods are left out by default: a higher JSCompTest value from small
+    neighborhoods only shows that they are too small. Duplicate values from
+    clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
+    are not part of a candidate; they are chosen per reference point later.
 
     Parameters
     ----------
     max_n_genes_all_studies : int
         Maximum number of genes across all studies
         The minimum valid value is `1`.
+    neighborhood_size_mode : str, one of 'neighborhood_size_large' | 'neighborhood_size_small' | 'neighborhood_size_both', optional, default 'neighborhood_size_large'
+        Which neighborhood sizes the grid pairs with each `n_points`
+
+        The default value is `'neighborhood_size_large'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -214,6 +235,7 @@ def generate_js_comp_test_candidates(
     """
     # check every input by the input contract, converting only when C needs it
     max_n_genes_all_studies = _contract.integer(max_n_genes_all_studies, "max_n_genes_all_studies")
+    neighborhood_size_mode = _np.array([_contract.mode(neighborhood_size_mode, "neighborhood_size_mode", ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both",)).ljust(23)], dtype="S23")
 
     # outputs and work arrays, which the caller never sees
     candidates_n_points_n_neighbors = _np.empty((2, 16,), dtype=_np.int32, order='F')
@@ -224,6 +246,7 @@ def generate_js_comp_test_candidates(
         _ctypes.byref(_ctypes.c_int(max_n_genes_all_studies)),
         candidates_n_points_n_neighbors,
         _ctypes.byref(n_candidates),
+        neighborhood_size_mode,
         _ctypes.byref(ierr),
     )
 
@@ -244,7 +267,7 @@ def run_js_comp_test_parameter_search(
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
-        plateau_mode='plateau_ci_overlap',
+        plateau_mode='plateau_effect_size',
         delta_median_threshold=0.05,
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
@@ -257,12 +280,16 @@ def run_js_comp_test_parameter_search(
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
         bin_count_mode='bin_count_occupancy',
+        neighborhood_size_mode='neighborhood_size_large',
+        delta_abs_tolerance=0.0,
+        bootstrap_mode='bootstrap_per_study',
 ):
     r"""Search a GAMMA-decay (n_points, n_neighbors) candidate grid for a stable JSD parameter setting
 
     Walks the candidates of
     :func:`tensor_omics.generate_js_comp_test_candidates`
-    from finest to coarsest resolution. For each candidate:
+    from finest to coarsest resolution, by default only the large neighborhoods
+    (`neighborhood_size_mode`). For each candidate:
 
     1. Reference points from the pooled gene means
     (:func:`tensor_omics.pool_means`) and every
@@ -280,8 +307,9 @@ def run_js_comp_test_parameter_search(
     (:func:`tensor_omics.check_plateau_condition`)
     and relative effect-size stability
     (:func:`tensor_omics.check_effect_size_plateau_condition`).
-    Both are always computed and traced; `plateau_mode` decides which one stops the search. A
-    stop by the effect-size criterion returns the candidate that triggered it.
+    Both are always computed and traced; `plateau_mode` decides which one stops the search
+    (by default the effect-size criterion, see `plateau_mode`). A stop by the effect-size
+    criterion returns the candidate that triggered it.
 
     The returned candidate:
 
@@ -338,10 +366,17 @@ def run_js_comp_test_parameter_search(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
-    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
-        Which plateau criterion decides when the search stops
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_effect_size'
+        Which plateau criterion decides when the search stops. The default is the change of
+        the observed JSD values from one admissible candidate to the next: it measures
+        directly how stable the observed value is. The CI-overlap criterion stays available.
+        With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
+        the default) its interval describes the spread of the JSD expected if the studies did
+        not differ at all (a noise band), not how stable the observed value is from candidate
+        to candidate; with the per-study bootstrap (the default) it is a robustness interval
+        of each candidate's observed value
 
-        The default value is `'plateau_ci_overlap'`.
+        The default value is `'plateau_effect_size'`.
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     delta_median_threshold : float, optional, default 0.05
         Upper bound on the median relative JSD change for a transition to qualify
@@ -400,6 +435,27 @@ def run_js_comp_test_parameter_search(
 
         The default value is `'bin_count_occupancy'`.
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
+    neighborhood_size_mode : str, one of 'neighborhood_size_large' | 'neighborhood_size_small' | 'neighborhood_size_both', optional, default 'neighborhood_size_large'
+        Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
+        neighborhoods are left out by default: if they already give higher JSCompTest values,
+        that only shows they are too small
+
+        The default value is `'neighborhood_size_large'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
+    delta_abs_tolerance : float, optional, default 0.0
+        Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
+    bootstrap_mode : str, one of 'bootstrap_per_study' | 'bootstrap_pooled', optional, default 'bootstrap_per_study'
+        What the bootstrap draws each study's histograms from, for every admissible
+        candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
+        returned interval). By default each study's own counts: the interval shows how much
+        the observed JSD would move if each study's own residuals were drawn again (a
+        robustness interval). The pooled counts of all studies give the spread expected if the
+        studies did not differ (a noise band) instead, kept for comparison
+
+        The default value is `'bootstrap_per_study'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -423,8 +479,9 @@ def run_js_comp_test_parameter_search(
             The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
             A result is a value; call `.copy()` to obtain a modifiable array.
         best_candidate_pair_confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), read-only
-            The chosen candidate's bootstrapped JSD confidence interval; `-1.0` when no candidate
-            was admissible
+            The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
+            interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
+            admissible
             A result is a value; call `.copy()` to obtain a modifiable array.
         plateau_established : bool
             `True` when a plateau was found (by the criterion `plateau_mode` selects) or the
@@ -444,12 +501,12 @@ def run_js_comp_test_parameter_search(
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_ci_lower : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-            (`L_{i,t}`)
+            (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_ci_upper : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-            (`U_{i,t}`)
+            (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_ci_width : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
@@ -470,7 +527,8 @@ def run_js_comp_test_parameter_search(
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate
+            candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate; 0 for a study
+            whose absolute change is at most `delta_abs_tolerance`
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta_median : np.ndarray[np.float64] of shape (16,), read-only
@@ -570,6 +628,9 @@ def run_js_comp_test_parameter_search(
     two_sided_bootstrapping_significance_level = _contract.real(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed = _contract.integer(random_seed, "random_seed")
     bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
+    neighborhood_size_mode = _np.array([_contract.mode(neighborhood_size_mode, "neighborhood_size_mode", ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both",)).ljust(23)], dtype="S23")
+    delta_abs_tolerance = _contract.real(delta_abs_tolerance, "delta_abs_tolerance")
+    bootstrap_mode = _np.array([_contract.mode(bootstrap_mode, "bootstrap_mode", ("bootstrap_per_study", "bootstrap_pooled",)).ljust(19)], dtype="S19")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -669,6 +730,9 @@ def run_js_comp_test_parameter_search(
         _ctypes.byref(_ctypes.c_double(two_sided_bootstrapping_significance_level)),
         _ctypes.byref(_ctypes.c_int(random_seed)),
         bin_count_mode,
+        neighborhood_size_mode,
+        _ctypes.byref(_ctypes.c_double(delta_abs_tolerance)),
+        bootstrap_mode,
         _ctypes.byref(ierr),
     )
 
