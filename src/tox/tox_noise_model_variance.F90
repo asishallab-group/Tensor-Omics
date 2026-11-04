@@ -20,6 +20,10 @@
 !|     - `VARIANCE_MODE_ADAPTIVE` (3, note F §5): block-wise growth inside a
 !|       growth radius, with a variance band, a two-sided stability stop and an
 !|       acceptance-rate stop.
+!|     - `VARIANCE_MODE_ELLIPSE` (4, note F §5 "open alternative"): the `k` genes
+!|       with the smallest joint distance `D = sqrt((dm / r_max)^2 + (du / tau_var)^2)`,
+!|       `dm` the log2 mean distance and `du` the matching-variable distance, among
+!|       those inside the ellipse `D <= 1`.
 !|   `match_variable` (the `u` of band / adaptive)
 !|     - `MATCH_RAW` (0, note A): raw detrended log2-variance,
 !|       `tau_var = c_tau * sqrt(psi1(d/2))`.
@@ -73,6 +77,9 @@ module noise_model_variance
     integer(int32), parameter :: VARIANCE_MODE_ADAPTIVE = 3_int32
         !! `variance_mode`: note F §5 -- adaptive variance-aware growth. (2 was note
         !! B's shrunk band, removed; it is rejected.)
+    integer(int32), parameter :: VARIANCE_MODE_ELLIPSE = 4_int32
+        !! `variance_mode`: note F §5 open alternative -- the `k` nearest genes in the
+        !! joint (log2 mean, matching variable) distance, inside an ellipse.
 
     integer(int32), parameter :: MATCH_RAW = 0_int32
         !! `match_variable`: raw detrended log2-variance (note A).
@@ -770,6 +777,147 @@ contains
     end subroutine gather_residuals_adaptive_helper
 
     ! =========================================================================
+    ! 2-D ellipse gather (note F §5 open alternative)
+    ! =========================================================================
+
+    !> The `k` nearest genes in the joint distance
+    !| `D_j = sqrt((dm_j / r_max)^2 + (du_j / tau_var)^2)` with
+    !| `dm_j = |log2(m_j + 1) - log2(m_g + 1)|` (this side's linear means) and
+    !| `du_j = |u_j - u_g|`, among the genes inside the ellipse `D_j <= 1`.
+    !|
+    !| Exact without scanning every gene: candidates are visited outward in log2 mean
+    !| (two pointers on the sorted means, the nearer side first), so `dm` never
+    !| decreases. Every unvisited gene has `D >= dm / r_max`, so the walk stops once
+    !| `dm / r_max` exceeds the `k`-th best `D` (the `k` nearest are found,
+    !| `STOP_K_MAX`) or exceeds 1 (nothing left inside the ellipse; `STOP_RADIUS`,
+    !| a short pool when fewer than `k` were found), at the scan cap
+    !| (`STOP_SCAN_CAP`) or when both sides are exhausted (`STOP_EXHAUSTED`). The
+    !| selected genes' residuals are pooled in increasing `D`; the target itself
+    !| (`D = 0`) comes first. `radius` = the largest `dm` among the selected genes.
+    pure subroutine gather_residuals_ellipse_helper(target_mean, target_u, sorted_data, match_u, &
+                                                    tau_var, r_max, k, scan_max, &
+                                                    pooled_residuals, n_pooled, n_genes_pool, n_scanned, &
+                                                    radius, stop_reason, max_pool_size)
+        real(real64), intent(in) :: target_mean
+        !! Mean of the target gene on this side (linear)
+        real(real64), intent(in) :: target_u
+        !! Matching variable of the target gene
+        type(sorted_data_t), intent(in) :: sorted_data
+        !! Sorted structure of this side
+        real(real64), dimension(:), intent(in) :: match_u
+        !! Matching variable, indexed by ORIGINAL gene index
+        real(real64), intent(in) :: tau_var
+        !! Semi-axis in the matching variable (the band half-width)
+        real(real64), intent(in) :: r_max
+        !! Semi-axis in log2 mean units
+        integer(int32), intent(in) :: k
+        !! Genes wanted
+        integer(int32), intent(in) :: scan_max
+        !! Maximum number of candidate slots examined
+        real(real64), intent(out) :: pooled_residuals(:)
+        !! Output residual pool (at least `max_pool_size` long)
+        integer(int32), intent(out) :: n_pooled
+        !! Residuals written
+        integer(int32), intent(out) :: n_genes_pool
+        !! Genes pooled
+        integer(int32), intent(out) :: n_scanned
+        !! Candidate slots examined
+        real(real64), intent(out) :: radius
+        !! Largest log2 mean distance among the selected genes
+        integer(int32), intent(out) :: stop_reason
+        !! `STOP_*` code
+        integer(int32), intent(in) :: max_pool_size
+        !! Hard cap on the residual count
+
+        real(real64) :: best_d(k), best_dm(k), lt, dm_l, dm_r, dm, du, d, u_j
+        integer(int32) :: best_idx(k), n_best, left, right, idx, pos, j, new_size
+        real(real64), parameter :: LOG2F = 1.0_real64 / log(2.0_real64)
+
+        n_pooled = 0
+        n_genes_pool = 0
+        n_scanned = 0
+        radius = 0.0_real64
+        stop_reason = STOP_EXHAUSTED
+        n_best = 0
+
+        pos = find_closest_helper(target_mean, sorted_data%means_sorted, sorted_data%n_genes)
+        if (pos == 0) return
+        lt = log(max(target_mean, 0.0_real64) + 1.0_real64) * LOG2F
+        left = pos
+        right = pos + 1
+
+        do
+            if (left < 1 .and. right > sorted_data%n_genes) then
+                stop_reason = STOP_EXHAUSTED
+                exit
+            end if
+            dm_l = huge(1.0_real64)
+            dm_r = huge(1.0_real64)
+            if (left >= 1) dm_l = abs(log(max(sorted_data%means_sorted(left), 0.0_real64) + 1.0_real64) * LOG2F - lt)
+            if (right <= sorted_data%n_genes) &
+                dm_r = abs(log(max(sorted_data%means_sorted(right), 0.0_real64) + 1.0_real64) * LOG2F - lt)
+            if (dm_l <= dm_r) then
+                idx = left
+                dm = dm_l
+                left = left - 1
+            else
+                idx = right
+                dm = dm_r
+                right = right + 1
+            end if
+            ! every unvisited gene has D >= dm / r_max
+            if (dm / r_max > 1.0_real64) then
+                stop_reason = merge(STOP_K_MAX, STOP_RADIUS, n_best >= k)
+                exit
+            end if
+            if (n_best >= k) then
+                if (dm / r_max >= best_d(k)) then
+                    stop_reason = STOP_K_MAX
+                    exit
+                end if
+            end if
+            if (n_scanned >= scan_max) then
+                stop_reason = STOP_SCAN_CAP
+                exit
+            end if
+            n_scanned = n_scanned + 1
+            u_j = match_u(sorted_data%original_indices(idx))
+            if (.not. ieee_is_finite(u_j)) cycle
+            du = abs(u_j - target_u)
+            d = sqrt((dm / r_max)**2 + (du / tau_var)**2)
+            if (d > 1.0_real64) cycle
+            if (n_best >= k) then
+                if (d >= best_d(k)) cycle
+            else
+                n_best = n_best + 1
+            end if
+            ! insert into the ascending list (the last slot is free or the worst)
+            j = n_best
+            do while (j > 1)
+                if (best_d(j - 1) <= d) exit
+                best_d(j) = best_d(j - 1)
+                best_dm(j) = best_dm(j - 1)
+                best_idx(j) = best_idx(j - 1)
+                j = j - 1
+            end do
+            best_d(j) = d
+            best_dm(j) = dm
+            best_idx(j) = idx
+        end do
+
+        do j = 1, n_best
+            if (n_pooled >= max_pool_size) exit
+            idx = best_idx(j)
+            new_size = min(n_pooled + sorted_data%n_residuals(idx), max_pool_size)
+            call add_residuals_to_pool_helper(pooled_residuals, n_pooled, sorted_data%residuals_packed(:, idx), &
+                                              sorted_data%n_residuals(idx), new_size)
+            n_pooled = new_size
+            n_genes_pool = n_genes_pool + 1
+            radius = max(radius, best_dm(j))
+        end do
+    end subroutine gather_residuals_ellipse_helper
+
+    ! =========================================================================
     ! pipeline
     ! =========================================================================
 
@@ -828,7 +976,7 @@ contains
         !! 0 = linear residuals/statistic/variances; non-zero = log2. Note A's raw
         !! matching variable is always on the log2 scale.
         integer(int32), intent(in) :: variance_mode
-        !! `VARIANCE_MODE_MEAN` (0), `_BAND` (1) or `_ADAPTIVE` (3)
+        !! `VARIANCE_MODE_MEAN` (0), `_BAND` (1), `_ADAPTIVE` (3) or `_ELLIPSE` (4)
         integer(int32), intent(in) :: match_variable
         !! `MATCH_RAW` (0) or `MATCH_JS` (1); used by band and adaptive
         integer(int32), intent(in) :: scaling
@@ -856,7 +1004,7 @@ contains
         integer(int32), intent(in) :: k_min
         !! Adaptive: accepted genes before the stability stop applies (1..k)
         real(real64), intent(in) :: r_max
-        !! Adaptive: growth radius in log2 mean units (> 0, may be +Inf)
+        !! Adaptive: growth radius; ellipse: semi-axis; log2 mean units (> 0, may be +Inf)
         real(real64), intent(in) :: tau_stab
         !! Adaptive: stability tolerance (> 0, may be +Inf)
         integer(int32), intent(in) :: w_blocks
@@ -896,11 +1044,11 @@ contains
         integer(int32), dimension(n_genes), intent(out) :: n_accepted_own_control
         !! Output: control genes accepted (band/adaptive; -1 otherwise)
         real(real64), dimension(n_genes), intent(out) :: radius_own_case
-        !! Output: adaptive case radius (log2 mean units; -1 otherwise)
+        !! Output: adaptive / ellipse case radius (log2 mean units; -1 otherwise)
         real(real64), dimension(n_genes), intent(out) :: radius_own_control
         !! Output: adaptive control radius (-1 otherwise)
         integer(int32), dimension(n_genes), intent(out) :: stop_own_case
-        !! Output: adaptive case stop reason `STOP_*` (-1 otherwise)
+        !! Output: adaptive / ellipse case stop reason `STOP_*` (-1 otherwise)
         integer(int32), dimension(n_genes), intent(out) :: stop_own_control
         !! Output: adaptive control stop reason (-1 otherwise)
         real(real64), dimension(n_genes), intent(out) :: match_u
@@ -970,7 +1118,8 @@ contains
         call validate_dimension_size(w_blocks, ierr)
         call validate_dimension_size(max_pool_size, ierr)
         if (variance_mode /= VARIANCE_MODE_MEAN .and. variance_mode /= VARIANCE_MODE_BAND .and. &
-            variance_mode /= VARIANCE_MODE_ADAPTIVE) call set_err(ierr, ERR_INVALID_INPUT)
+            variance_mode /= VARIANCE_MODE_ADAPTIVE .and. variance_mode /= VARIANCE_MODE_ELLIPSE) &
+            call set_err(ierr, ERR_INVALID_INPUT)
         if (match_variable /= MATCH_RAW .and. match_variable /= MATCH_JS) call set_err(ierr, ERR_INVALID_INPUT)
         if (scaling < SCALING_NONE .or. scaling > SCALING_SAME_GROUP) call set_err(ierr, ERR_INVALID_INPUT)
         if (shrink_target /= SHRINK_TARGET_MEDIAN .and. shrink_target /= SHRINK_TARGET_LOESS) &
@@ -1134,6 +1283,21 @@ contains
                                                   n_scanned_own_control(i_gene), max_pool_size)
                 n_accepted_own_control(i_gene) = n_gp_control
                 if (n_gp_control < BAND_MIN_GENES .or. n_pool_control < MIN_POOL_RESIDUALS) cycle
+            case (VARIANCE_MODE_ELLIPSE)
+                if (.not. ieee_is_finite(match_u(i_gene))) cycle
+                call gather_residuals_ellipse_helper(means_case(i_gene), match_u(i_gene), sorted_case, match_u, &
+                                                     tau_var, r_max, k, scan_max, pool_case, n_pool_case, n_gp_case, &
+                                                     n_scanned_own_case(i_gene), radius_own_case(i_gene), &
+                                                     stop_own_case(i_gene), max_pool_size)
+                n_accepted_own_case(i_gene) = n_gp_case
+                if (n_gp_case < BAND_MIN_GENES .or. n_pool_case < MIN_POOL_RESIDUALS) cycle
+                call gather_residuals_ellipse_helper(means_control(i_gene), match_u(i_gene), sorted_control, &
+                                                     match_u, tau_var, r_max, k, scan_max, pool_control, &
+                                                     n_pool_control, n_gp_control, n_scanned_own_control(i_gene), &
+                                                     radius_own_control(i_gene), stop_own_control(i_gene), &
+                                                     max_pool_size)
+                n_accepted_own_control(i_gene) = n_gp_control
+                if (n_gp_control < BAND_MIN_GENES .or. n_pool_control < MIN_POOL_RESIDUALS) cycle
             case default
                 if (.not. ieee_is_finite(match_u(i_gene))) cycle
                 call gather_residuals_adaptive_helper(means_case(i_gene), match_u(i_gene), sorted_case, match_u, &
@@ -1223,7 +1387,7 @@ subroutine compute_noise_pvalues_pipeline_variance_c( &
     integer(c_int), intent(in), target :: norm_method
     !! 0 = linear; non-zero = log2
     integer(c_int), intent(in), target :: variance_mode
-    !! 0 = mean kNN; 1 = variance band; 3 = adaptive growth
+    !! 0 = mean kNN; 1 = variance band; 3 = adaptive growth; 4 = 2-D ellipse
     integer(c_int), intent(in), target :: match_variable
     !! 0 = raw (note A); 1 = James-Stein
     integer(c_int), intent(in), target :: scaling

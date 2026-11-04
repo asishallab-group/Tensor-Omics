@@ -3735,7 +3735,11 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #'     \code{block_size} candidates inside the growth radius \code{r_max} (log2 mean
 #'     units), the same band, a two-sided stability stop (\code{tau_stab}, once
 #'     \code{k_min} genes are in) and an acceptance-rate stop (\code{a_min} over
-#'     \code{w_blocks} blocks); at most \code{k} genes.}
+#'     \code{w_blocks} blocks); at most \code{k} genes. \code{"ellipse"}: the
+#'     \code{k} genes nearest in the joint distance
+#'     \code{sqrt((dm / r_max)^2 + (du / tau_var)^2)} (\code{dm} log2 mean distance,
+#'     \code{du} matching-variable distance, \code{tau_var} the band width of
+#'     \code{match_variable}), among those inside the ellipse (distance <= 1).}
 #'   \item{\code{match_variable} (band / adaptive)}{\code{"raw"} (note A):
 #'     detrended log2-variance, \code{tau_var = c_tau * sqrt(trigamma(d/2))}.
 #'     \code{"js"}: \code{u = log(s2s / T)} of the James-Stein-shrunk variance,
@@ -3759,8 +3763,8 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #'
 #' @param case_replicates,control_replicates Numeric matrices (samples x genes),
 #'   pre-log, same gene columns in the same order.
-#' @param variance_mode \code{"mean"}, \code{"band"} or \code{"adaptive"} (integer
-#'   codes 0, 1, 3; 2 was note B's shrunk band, removed).
+#' @param variance_mode \code{"mean"}, \code{"band"}, \code{"adaptive"} or
+#'   \code{"ellipse"} (integer codes 0, 1, 3, 4; 2 was note B's shrunk band, removed).
 #' @param match_variable \code{"raw"} or \code{"js"}.
 #' @param scaling \code{"none"}, \code{"xfit_raw"}, \code{"xfit_js"} or
 #'   \code{"same_group"}.
@@ -3785,8 +3789,9 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #'   scaling), \code{log2fc}, \code{delta_hat}, \code{n_success},
 #'   \code{neighborhood_size_own_case} / \code{_control} (residuals),
 #'   \code{n_scanned_own_*}, \code{n_accepted_own_*} (band / adaptive),
-#'   \code{radius_own_*} and \code{stop_own_*} (adaptive: 1 k reached, 2 radius,
-#'   3 stability, 4 acceptance rate, 5 scan cap, 6 exhausted), \code{match_u},
+#'   \code{radius_own_*} and \code{stop_own_*} (adaptive / ellipse: 1 k reached,
+#'   2 radius / nothing left inside the ellipse, 3 stability, 4 acceptance rate,
+#'   5 scan cap, 6 exhausted), \code{match_u},
 #'   \code{s2s_pool}, \code{tau_var}, \code{scatter}, \code{lambda_pool},
 #'   \code{lambda_case}, \code{lambda_control} (as used; \code{xfit_raw} uses 0 but
 #'   reports the estimates), their \code{*_unclipped} ratios, \code{p_hat}
@@ -3796,7 +3801,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 tox_compute_noise_pvalues_pipeline_variance <- function(
     case_replicates,
     control_replicates,
-    variance_mode = c("mean", "band", "adaptive"),
+    variance_mode = c("mean", "band", "adaptive", "ellipse"),
     match_variable = c("raw", "js"),
     scaling = c("none", "xfit_raw", "xfit_js", "same_group"),
     shrink_target = c("median", "loess"),
@@ -3826,7 +3831,7 @@ tox_compute_noise_pvalues_pipeline_variance <- function(
     code <- function(x, levels, codes) {
         if (is.character(x)) codes[match(match.arg(x, levels), levels)] else as.integer(x)
     }
-    mode_int    <- code(variance_mode, c("mean", "band", "adaptive"), c(0L, 1L, 3L))
+    mode_int    <- code(variance_mode, c("mean", "band", "adaptive", "ellipse"), c(0L, 1L, 3L, 4L))
     match_int   <- code(match_variable, c("raw", "js"), 0:1)
     scaling_int <- code(scaling, c("none", "xfit_raw", "xfit_js", "same_group"), 0:3)
     target_int  <- code(shrink_target, c("median", "loess"), 0:1)

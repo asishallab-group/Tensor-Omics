@@ -19,6 +19,8 @@
 !|   7. Calibration regression (n = 3, heterogeneous variances, null): cross-fitted
 !|      JS tail `p <= 0.001` at most 2x nominal, same-group clearly above.
 !|   8. Scale invariance (linear branch), the floor path, validation.
+!|   9. 2-D ellipse gather: equals a brute-force search for the k nearest in the
+!|      joint distance; its stop reasons; a pipeline run.
 module mod_test_noise_model_variance
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -58,7 +60,9 @@ contains
     function get_all_tests_noise_model_variance() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(13))
+        allocate(all_tests(15))
+        all_tests(14) = test_case("test_ellipse_brute_force",         test_ellipse_brute_force)
+        all_tests(15) = test_case("test_ellipse_stops_and_pipeline",  test_ellipse_stops_and_pipeline)
         all_tests(1)  = test_case("test_trigamma_and_tau_rule",       test_trigamma_and_tau_rule)
         all_tests(2)  = test_case("test_band_gather_hand_built",      test_band_gather_hand_built)
         all_tests(3)  = test_case("test_band_regression_fixture",     test_band_regression_fixture)
@@ -693,5 +697,135 @@ contains
             nb(:, 4), nb(:, 5), nb(:, 6), rad(:, 1), rad(:, 2), nb(:, 7), nb(:, 8), u, s2s, tv, sc, dg, nf, ierr)
         call assert_equal_int(ierr, ERR_DIM_MISMATCH, "validation: transposed control matrix")
     end subroutine test_variance_validation
+
+    ! =========================================================================
+    ! 9. 2-D ellipse
+    ! =========================================================================
+    !> Random structure: G genes, linear means over a wide range, 3 replicates.
+    subroutine random_structure(G, sd, u, seedv)
+        integer(int32), intent(in) :: G, seedv
+        type(sorted_data_t), intent(out) :: sd
+        real(real64), intent(out) :: u(G)
+        real(real64) :: means(G), reps(3, G), z(3 * G)
+        integer(int32) :: ig, ierr, seed_size
+        integer(int32), allocatable :: seed(:)
+        call random_seed(size=seed_size); allocate(seed(seed_size)); seed = seedv; call random_seed(put=seed)
+        call rnorm(z)
+        call random_number(means)
+        means = 2.0_real64**(12.0_real64 * means) - 1.0_real64
+        do ig = 1, G
+            reps(:, ig) = means(ig) + (1.0_real64 + 0.1_real64 * means(ig)) * z(3 * ig - 2 : 3 * ig)
+            means(ig) = sum(reps(:, ig)) / 3.0_real64
+        end do
+        call rnorm(u)
+        call prepare_sorted_data(means, reps, 3, G, 0, sd, ierr)
+        call assert_equal_int(ierr, ERR_OK, "ellipse: prepare_sorted_data")
+    end subroutine random_structure
+
+    subroutine test_ellipse_brute_force()
+        integer(int32), parameter :: G = 600
+        type(sorted_data_t) :: sd
+        real(real64) :: u(G), pool(5000), expect(5000), d(G), dm(G), rad, r_list(3), t_list(3), lt
+        integer(int32) :: it, ir, ik, j, m, cnt, kk, n_pooled, n_expect, n_gp, n_scan, stp, n_in
+        integer(int32) :: order(G), k_list(2)
+
+        call random_structure(G, sd, u, 77)
+        r_list = [0.5_real64, 1.5_real64, 1.0e6_real64]
+        t_list = [0.3_real64, 1.0_real64, 1.0e12_real64]
+        k_list = [10, 50]
+        do it = 1, 40
+            j = 1 + mod(37 * it, G)                       ! target: sorted slot j
+            lt = log(max(sd%means_sorted(j), 0.0_real64) + 1.0_real64) / log(2.0_real64)
+            dm = abs(log(max(sd%means_sorted, 0.0_real64) + 1.0_real64) / log(2.0_real64) - lt)
+            do ir = 1, 3
+                d = sqrt((dm / r_list(ir))**2 + ((u(sd%original_indices) - u(sd%original_indices(j))) &
+                         / t_list(ir))**2)
+                n_in = count(d <= 1.0_real64)
+                order = [(m, m = 1, G)]
+                call sort_by(d, order, G)                 ! brute force: slots by ascending D
+                do ik = 1, 2
+                    kk = k_list(ik)
+                    cnt = 0
+                    do m = 1, G
+                        if (d(order(m)) > 1.0_real64 .or. cnt >= kk) exit
+                        cnt = cnt + 1
+                        expect(3 * cnt - 2 : 3 * cnt) = sd%residuals_packed(:, order(m))
+                    end do
+                    n_expect = 3 * cnt
+                    call gather_residuals_ellipse_helper(sd%means_sorted(j), u(sd%original_indices(j)), sd, u, &
+                                                         t_list(ir), r_list(ir), kk, 100000, pool, n_pooled, n_gp, &
+                                                         n_scan, rad, stp, 5000)
+                    call assert_equal_int(n_pooled, n_expect, "ellipse: pool size = brute force, target "//str(it))
+                    call assert_equal_array_real(pool(1:n_pooled), expect(1:n_expect), n_expect, EXACT, &
+                                                 "ellipse: pool = brute-force k nearest inside the ellipse")
+                    call assert_equal_int(n_gp, min(n_in, kk), "ellipse: genes pooled")
+                    if (ir == 1) call assert_true(n_scan < G, "ellipse: the walk stops early inside a small ellipse")
+                end do
+            end do
+        end do
+    end subroutine test_ellipse_brute_force
+
+    !> Stable insertion sort of `idx` by `key(idx)` (test helper; small n).
+    subroutine sort_by(key, idx, n)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: key(n)
+        integer(int32), intent(inout) :: idx(n)
+        integer(int32) :: i, j, t
+        do i = 2, n
+            t = idx(i); j = i - 1
+            do while (j >= 1)
+                if (key(idx(j)) <= key(t)) exit
+                idx(j + 1) = idx(j); j = j - 1
+            end do
+            idx(j + 1) = t
+        end do
+    end subroutine sort_by
+
+    subroutine test_ellipse_stops_and_pipeline()
+        integer(int32), parameter :: G = 12, GP = 200, N = 4
+        type(sorted_data_t) :: sd
+        real(real64) :: u(G), pool(100), rad, inf, rc(N, GP), rt(N, GP)
+        integer(int32) :: n_pooled, n_gp, n_scan, stp
+        type(vcfg) :: cfg
+        type(vout) :: o
+
+        inf = ieee_value(1.0_real64, ieee_positive_inf)
+        call hand_built(sd)
+        u = 0.0_real64
+        call gather_residuals_ellipse_helper(6.0_real64, 0.0_real64, sd, u, 1.0_real64, 10.0_real64, 3, 1000, &
+                                             pool, n_pooled, n_gp, n_scan, rad, stp, 100)
+        call assert_equal_int(stp, STOP_K_MAX, "ellipse: k nearest found")
+        call assert_equal_int(n_gp, 3, "ellipse: 3 genes")
+        ! |log2(6) - log2(7)| = 0.222 (gene 5), 0.193 (gene 7): semi-axis 0.21 keeps only genes 6, 7
+        call gather_residuals_ellipse_helper(6.0_real64, 0.0_real64, sd, u, 1.0_real64, 0.21_real64, 10, 1000, &
+                                             pool, n_pooled, n_gp, n_scan, rad, stp, 100)
+        call assert_equal_int(stp, STOP_RADIUS, "ellipse: nothing left inside, short pool")
+        call assert_equal_int(n_gp, 2, "ellipse: genes 6 and 7 inside")
+        call gather_residuals_ellipse_helper(6.0_real64, 0.0_real64, sd, u, 1.0_real64, inf, 10, 4, &
+                                             pool, n_pooled, n_gp, n_scan, rad, stp, 100)
+        call assert_equal_int(stp, STOP_SCAN_CAP, "ellipse: scan cap")
+        call gather_residuals_ellipse_helper(6.0_real64, 0.0_real64, sd, u, 1.0_real64, inf, 50, 1000, &
+                                             pool, n_pooled, n_gp, n_scan, rad, stp, 100)
+        call assert_equal_int(stp, STOP_EXHAUSTED, "ellipse: exhausted")
+        call assert_equal_int(n_gp, G, "ellipse: all genes")
+
+        call make_hetero(GP, N, 0.0_real64, 30.0_real64, rc)
+        call make_hetero(GP, N, 1.7_real64, 0.0_real64, rt)
+        cfg%mode = VARIANCE_MODE_ELLIPSE
+        cfg%k = 30
+        cfg%k_min = 30
+        cfg%r_max = 1.0_real64
+        cfg%c_tau = 3.0_real64
+        call run_v(cfg, GP, N, N, rc, rt, o)
+        call assert_equal_int(o%ierr, ERR_OK, "ellipse pipeline: ierr")
+        call assert_true(o%nwp > 0, "ellipse pipeline: p-values computed")
+        call assert_true(all(o%nac(1:GP) <= 30), "ellipse pipeline: at most k genes")
+        call assert_true(all(o%p == -1.0_real64 .or. (o%p >= 0.0_real64 .and. o%p <= 1.0_real64)), &
+                         "ellipse pipeline: valid p-values")
+        cfg%scaling = SCALING_XFIT_JS
+        cfg%match = MATCH_JS
+        call run_v(cfg, GP, N, N, rc, rt, o)
+        call assert_equal_int(o%ierr, ERR_OK, "ellipse pipeline: JS + cross-fit ierr")
+    end subroutine test_ellipse_stops_and_pipeline
 
 end module mod_test_noise_model_variance

@@ -5021,7 +5021,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
 //' @param valid_genes_own IntegerVector (length n_genes), 1 = test this gene
 //' @param beta_centre Integer 0/1, median centring of the observed statistic
 //' @param norm_method Integer 0 = linear, non-zero = log2
-//' @param variance_mode Integer 0 = mean kNN, 1 = band, 3 = adaptive
+//' @param variance_mode Integer 0 = mean kNN, 1 = band, 3 = adaptive, 4 = 2-D ellipse
 //' @param match_variable Integer 0 = raw (note A), 1 = James-Stein
 //' @param scaling Integer 0 = none, 1 = cross-fit raw, 2 = cross-fit JS, 3 = same group
 //' @param shrink_target Integer 0 = median, 1 = LOESS
