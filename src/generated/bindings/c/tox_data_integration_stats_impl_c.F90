@@ -2,23 +2,17 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_data_integration_stats_impl(module)]]
-!| # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test and Bootstrap
-!|
-!| The permutation test of the JS-Comp-Test:
-!| [[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]] estimates an
-!| empirical p-value for each of K studies' weighted global JSD against the consensus pmf, by
-!| resampling every reference point's pooled histogram counts into the studies without
-!| replacement. `p_values` is the primary result; `p_values_observed_consensus` uses the older
-!| null (a fixed observed consensus) and is kept for comparison.
+!| # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Bootstrap
 !|
 !| The bootstrap
 !| [[tox_data_integration_stats_impl(module):bootstrap_histogram_impl(interface)]] gives each
 !| study's weighted global JSD an interval, by drawing each study's histograms again with
-!| replacement: by default from the study's own counts (a robustness interval: how much the
-!| observed value would move if each study's residuals were drawn again), or, with
-!| `bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
-!| studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
-!| caller that allocates its own.
+!| replacement from the study's own counts: a robustness interval, how much the observed value
+!| would move if each study's residuals were drawn again. `calc_js_comp_test_n_top_k_jsds` sizes
+!| its top-/bottom-k heaps for a caller that allocates its own. The significance test of the
+!| JS-Comp-Test is the study-label Permutation-Test,
+!| [[tox_data_integration_js_comp_test_permutation_fixed_k_impl(module):run_js_comp_test_permutation_impl(interface)]]
+!| and its adaptive counterpart.
 module tox_data_integration_stats_impl_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

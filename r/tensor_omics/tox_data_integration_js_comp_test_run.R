@@ -12,16 +12,19 @@
 #' 2. Per reference point, all studies' residuals are pooled and the bin-count search
 #' `bin_count_mode` names chooses the point's bin count and residual range (occupancy search
 #' \code{\link{determine_bin_count_occupancy}}
-#' by default, or Stone's rule
-#' \code{\link{determine_bin_count_stone}}).
+#' or Stone's rule
+#' \code{\link{determine_bin_count_stone}},
+#' by default with every study's score counted equally).
 #' 3. Each study's histogram and pmf is built per point
 #' (\code{\link{build_residual_histograms}}).
 #' 4. The consensus pmf
-#' (\code{\link{create_mean_pmf}}), each
-#' study's per-point JSD against it and its weighted global JSD, and the permutation test
-#' (\code{\link{gjct_permutation_test}}) give
-#' `p_values` (primary) and `p_values_observed_consensus` (comparison only). With
-#' `n_permutations = 0` both p-values are NaN.
+#' (\code{\link{create_mean_pmf}}), each study's
+#' per-point JSD and its weighted global JSD: by default (`divergence_mode`), for exactly two
+#' studies, the pairwise JSD of the two studies, the same for both; otherwise each study's JSD
+#' against the consensus.
+#'
+#' The p-values of the study-label Permutation-Test come from
+#' \code{\link{run_js_comp_test_permutation}}.
 #'
 #' There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
 #' still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
@@ -36,10 +39,8 @@
 #'
 #' Errors (`ierr`): `ERR_INVALID_INPUT` when some study has no non-NaN residual at some
 #' reference point (for example a study whose gene means are all missing), since the
-#' equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
-#' then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
-#' generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-#' values from before the permutation test.
+#' equal-weight consensus needs every study; the consensus, JSD and weight outputs are then not
+#' filled.
 #'
 #' The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
 #' last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -51,7 +52,7 @@
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_run::run_js_comp_test}, whose argument names
 #' are the ones an error message reports.
 #'
-#' This entry point computes \code{gene_means_perms}, \code{tmp_neighborhood_residuals_gathered}, \code{tmp_permutation_mean_pmf}, \code{tmp_permutation_point_pool}, \code{tmp_permutation_point_draw}, \code{tmp_pooled_residuals}, \code{tmp_pooled_residuals_perm}, \code{tmp_bin_counts_search}, \code{tmp_residual_to_study_perm}, \code{tmp_study_block_ends}, \code{tmp_study_block_sizes}, \code{tmp_point_n_neighbors}, \code{tmp_permutation_mean_pmf_counts}, \code{tmp_permutation_counts}, \code{tmp_permutation_pmfs}, \code{tmp_permutation_js_divergences}, \code{tmp_permutation_weights} and \code{tmp_permutation_global_js_divergence} for you and runs \code{prepare_gene_means_perms} first, which may answer the call outright.
+#' This entry point computes \code{gene_means_perms}, \code{tmp_neighborhood_residuals_gathered}, \code{tmp_pooled_residuals}, \code{tmp_pooled_residuals_perm}, \code{tmp_bin_counts_search}, \code{tmp_residual_to_study_perm}, \code{tmp_study_block_ends}, \code{tmp_study_block_sizes} and \code{tmp_point_n_neighbors} for you and runs \code{prepare_gene_means_perms} first, which may answer the call outright.
 #' Call \code{run_js_comp_test_expert} to do that yourself.
 #'
 #' @param n_neighbors a integer scalar. Number of neighbors per neighborhood
@@ -62,11 +63,6 @@
 #' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
 #'   NaN is permitted for this value.
 #' @param x_star a numeric vector. Mean-expression reference points
-#' @param n_permutations a integer scalar. Number of permutations of the permutation test; `0` skips it (p-values NaN)
-#'   The minimum valid value is `0`.
-#'   The default value is `1000`.
-#' @param random_seed a integer scalar. Seed for the GSL random number generator
-#'   The default value is `42`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a bin count to be
 #'   admissible, in every `bin_count_mode`
 #'   The minimum valid value is `0`.
@@ -96,7 +92,11 @@
 #'   (\code{\link{determine_bin_count_stone}}),
 #'   with `min_residuals_per_bin` as the floor
 #'
-#'   The default value is `"bin_count_occupancy"`.
+#'   The default value is `"bin_count_stone_equal"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2". How each study's per-point divergence is computed
+#'
+#'   The default value is `"divergence_pairwise_k2"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study}
@@ -122,20 +122,15 @@
 #'   \item{mean_pmf_counts}{a integer matrix. Residual counts per bin of the consensus pmf; only bins `1:max_n_bins_per_point` are
 #'     meaningful}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates per reference point of the consensus pmf}
-#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
+#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study, the one `divergence_mode` selects}
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
-#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
-#'   \item{p_values}{a numeric vector. Empirical p-value per study, the primary result; NaN when `n_permutations` is 0}
-#'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-#'     comparison only; NaN when `n_permutations` is 0}
+#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study, the one `divergence_mode` selects}
 #' @export
-run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_stone_equal", divergence_mode = "divergence_pairwise_k2") {
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     x_star <- .tox_as_double_vector(x_star, "x_star")
-    n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
-    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
@@ -143,14 +138,15 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2"))
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
-    .result <- .Call("run_js_comp_test_call", n_neighbors, gene_means, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_call", n_neighbors, gene_means, residuals, x_star, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode, divergence_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -175,9 +171,7 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
         mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
         js_divergences = .result$js_divergences,
         weights = .result$weights,
-        global_js_divergence = .result$global_js_divergence,
-        p_values = .result$p_values,
-        p_values_observed_consensus = .result$p_values_observed_consensus
+        global_js_divergence = .result$global_js_divergence
     )
 }
 
@@ -193,16 +187,19 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #' 2. Per reference point, all studies' residuals are pooled and the bin-count search
 #' `bin_count_mode` names chooses the point's bin count and residual range (occupancy search
 #' \code{\link{determine_bin_count_occupancy}}
-#' by default, or Stone's rule
-#' \code{\link{determine_bin_count_stone}}).
+#' or Stone's rule
+#' \code{\link{determine_bin_count_stone}},
+#' by default with every study's score counted equally).
 #' 3. Each study's histogram and pmf is built per point
 #' (\code{\link{build_residual_histograms}}).
 #' 4. The consensus pmf
-#' (\code{\link{create_mean_pmf}}), each
-#' study's per-point JSD against it and its weighted global JSD, and the permutation test
-#' (\code{\link{gjct_permutation_test}}) give
-#' `p_values` (primary) and `p_values_observed_consensus` (comparison only). With
-#' `n_permutations = 0` both p-values are NaN.
+#' (\code{\link{create_mean_pmf}}), each study's
+#' per-point JSD and its weighted global JSD: by default (`divergence_mode`), for exactly two
+#' studies, the pairwise JSD of the two studies, the same for both; otherwise each study's JSD
+#' against the consensus.
+#'
+#' The p-values of the study-label Permutation-Test come from
+#' \code{\link{run_js_comp_test_permutation}}.
 #'
 #' There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
 #' still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
@@ -217,10 +214,8 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #'
 #' Errors (`ierr`): `ERR_INVALID_INPUT` when some study has no non-NaN residual at some
 #' reference point (for example a study whose gene means are all missing), since the
-#' equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
-#' then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
-#' generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-#' values from before the permutation test.
+#' equal-weight consensus needs every study; the consensus, JSD and weight outputs are then not
+#' filled.
 #'
 #' The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
 #' last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -232,8 +227,8 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_run::run_js_comp_test_expert}, whose argument names
 #' are the ones an error message reports.
 #'
-#' The expert entry point: you supply \code{gene_means_perms}, \code{tmp_neighborhood_residuals_gathered}, \code{tmp_permutation_mean_pmf}, \code{tmp_permutation_point_pool}, \code{tmp_permutation_point_draw}, \code{tmp_pooled_residuals}, \code{tmp_pooled_residuals_perm}, \code{tmp_bin_counts_search}, \code{tmp_residual_to_study_perm}, \code{tmp_study_block_ends}, \code{tmp_study_block_sizes}, \code{tmp_point_n_neighbors}, \code{tmp_permutation_mean_pmf_counts}, \code{tmp_permutation_counts}, \code{tmp_permutation_pmfs}, \code{tmp_permutation_js_divergences}, \code{tmp_permutation_weights} and \code{tmp_permutation_global_js_divergence} yourself.
-#' \code{run_js_comp_test} computes \code{gene_means_perms}, \code{tmp_neighborhood_residuals_gathered}, \code{tmp_permutation_mean_pmf}, \code{tmp_permutation_point_pool}, \code{tmp_permutation_point_draw}, \code{tmp_pooled_residuals}, \code{tmp_pooled_residuals_perm}, \code{tmp_bin_counts_search}, \code{tmp_residual_to_study_perm}, \code{tmp_study_block_ends}, \code{tmp_study_block_sizes}, \code{tmp_point_n_neighbors}, \code{tmp_permutation_mean_pmf_counts}, \code{tmp_permutation_counts}, \code{tmp_permutation_pmfs}, \code{tmp_permutation_js_divergences}, \code{tmp_permutation_weights} and \code{tmp_permutation_global_js_divergence} for you and runs \code{prepare_gene_means_perms} first, which may answer the call outright.
+#' The expert entry point: you supply \code{gene_means_perms}, \code{tmp_neighborhood_residuals_gathered}, \code{tmp_pooled_residuals}, \code{tmp_pooled_residuals_perm}, \code{tmp_bin_counts_search}, \code{tmp_residual_to_study_perm}, \code{tmp_study_block_ends}, \code{tmp_study_block_sizes} and \code{tmp_point_n_neighbors} yourself.
+#' \code{run_js_comp_test} computes \code{gene_means_perms}, \code{tmp_neighborhood_residuals_gathered}, \code{tmp_pooled_residuals}, \code{tmp_pooled_residuals_perm}, \code{tmp_bin_counts_search}, \code{tmp_residual_to_study_perm}, \code{tmp_study_block_ends}, \code{tmp_study_block_sizes} and \code{tmp_point_n_neighbors} for you and runs \code{prepare_gene_means_perms} first, which may answer the call outright.
 #'
 #' @param n_neighbors a integer scalar. Number of neighbors per neighborhood
 #'   The minimum valid value is `1`.
@@ -249,11 +244,6 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
 #'   NaN is permitted for this value.
 #' @param x_star a numeric vector. Mean-expression reference points
-#' @param n_permutations a integer scalar. Number of permutations of the permutation test; `0` skips it (p-values NaN)
-#'   The minimum valid value is `0`.
-#'   The default value is `1000`.
-#' @param random_seed a integer scalar. Seed for the GSL random number generator
-#'   The default value is `42`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a bin count to be
 #'   admissible, in every `bin_count_mode`
 #'   The minimum valid value is `0`.
@@ -283,7 +273,11 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #'   (\code{\link{determine_bin_count_stone}}),
 #'   with `min_residuals_per_bin` as the floor
 #'
-#'   The default value is `"bin_count_occupancy"`.
+#'   The default value is `"bin_count_stone_equal"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2". How each study's per-point divergence is computed
+#'
+#'   The default value is `"divergence_pairwise_k2"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study}
@@ -309,21 +303,16 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #'   \item{mean_pmf_counts}{a integer matrix. Residual counts per bin of the consensus pmf; only bins `1:max_n_bins_per_point` are
 #'     meaningful}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates per reference point of the consensus pmf}
-#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
+#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study, the one `divergence_mode` selects}
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
-#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
-#'   \item{p_values}{a numeric vector. Empirical p-value per study, the primary result; NaN when `n_permutations` is 0}
-#'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-#'     comparison only; NaN when `n_permutations` is 0}
+#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study, the one `divergence_mode` selects}
 #' @export
-run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, residuals, x_star, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_stone_equal", divergence_mode = "divergence_pairwise_k2") {
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     gene_means_perms <- .tox_as_integer_matrix(gene_means_perms, "gene_means_perms")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     x_star <- .tox_as_double_vector(x_star, "x_star")
-    n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
-    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
@@ -331,6 +320,7 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2"))
     if (dim(gene_means_perms)[1] != dim(gene_means)[1])
         .tox_shape_error("gene_means_perms", 1L, dim(gene_means_perms)[1], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_genes_all_studies, n_studies")
     if (dim(gene_means_perms)[2] != dim(gene_means)[2])
@@ -340,9 +330,9 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
-    .result <- .Call("run_js_comp_test_expert_call", n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "tmp_neighborhood_residuals_gathered", "tmp_permutation_mean_pmf", "tmp_permutation_point_pool", "tmp_permutation_point_draw", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "tmp_permutation_mean_pmf_counts", "tmp_permutation_counts", "tmp_permutation_pmfs", "tmp_permutation_js_divergences", "tmp_permutation_weights", "tmp_permutation_global_js_divergence", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_expert_call", n_neighbors, gene_means, gene_means_perms, residuals, x_star, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode, divergence_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "tmp_neighborhood_residuals_gathered", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -367,9 +357,7 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
         mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
         js_divergences = .result$js_divergences,
         weights = .result$weights,
-        global_js_divergence = .result$global_js_divergence,
-        p_values = .result$p_values,
-        p_values_observed_consensus = .result$p_values_observed_consensus
+        global_js_divergence = .result$global_js_divergence
     )
 }
 
@@ -388,7 +376,7 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
 #' Errors (`ierr`): `ERR_INVALID_INPUT` before any histogram work for the first range that is
 #' reversed, reaches past the non-NaN pooled means, or leaves a study without a gene (every
 #' output then undefined); otherwise as in `run_js_comp_test_impl` (a study without a non-NaN
-#' residual at some point, or `ERR_ALLOC_FAIL` from the permutation test).
+#' residual at some point).
 #'
 #' The pooling work arrays hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies`
 #' values each, the size of `residuals`, since one study may contribute all its genes to one
@@ -409,11 +397,6 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
 #'   construct_adaptive_neighborhoods
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `max_n_genes_all_studies*n_studies`.
-#' @param n_permutations a integer scalar. Number of permutations of the permutation test; `0` skips it (p-values NaN)
-#'   The minimum valid value is `0`.
-#'   The default value is `1000`.
-#' @param random_seed a integer scalar. Seed for the GSL random number generator
-#'   The default value is `42`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a bin count to be
 #'   admissible, in every `bin_count_mode`
 #'   The minimum valid value is `0`.
@@ -443,7 +426,11 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
 #'   (\code{\link{determine_bin_count_stone}}),
 #'   with `min_residuals_per_bin` as the floor
 #'
-#'   The default value is `"bin_count_occupancy"`.
+#'   The default value is `"bin_count_stone_equal"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2". How each study's per-point divergence is computed
+#'
+#'   The default value is `"divergence_pairwise_k2"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{n_neighbors_per_point}{a integer matrix. For each neighborhood, how many of its genes belong to each study (at least 1 each)}
@@ -468,19 +455,14 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
 #'   \item{mean_pmf_counts}{a integer matrix. Residual counts per bin of the consensus pmf; only bins `1:max_n_bins_per_point` are
 #'     meaningful}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN residuals per reference point for the consensus pmf}
-#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
+#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study, the one `divergence_mode` selects}
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
-#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
-#'   \item{p_values}{a numeric vector. Empirical p-value per study, the primary result; NaN when `n_permutations` is 0}
-#'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-#'     comparison only; NaN when `n_permutations` is 0}
+#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study, the one `divergence_mode` selects}
 #' @export
-run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood_range, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood_range, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_stone_equal", divergence_mode = "divergence_pairwise_k2") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     pooled_neighborhood_range <- .tox_as_integer_matrix(pooled_neighborhood_range, "pooled_neighborhood_range")
-    n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
-    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
@@ -488,6 +470,7 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2"))
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
     if (dim(residuals)[3] != dim(gene_means)[2])
@@ -495,9 +478,9 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
     if (dim(pooled_neighborhood_range)[1] != 2L)
         .tox_shape_error("pooled_neighborhood_range", 1L, dim(pooled_neighborhood_range)[1], "its declared shape fixes it at ", 2L, "2, n_points")
 
-    .result <- .Call("run_js_comp_test_adaptive_call", gene_means, residuals, pooled_neighborhood_range, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_adaptive_call", gene_means, residuals, pooled_neighborhood_range, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode, divergence_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -521,8 +504,6 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
         mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
         js_divergences = .result$js_divergences,
         weights = .result$weights,
-        global_js_divergence = .result$global_js_divergence,
-        p_values = .result$p_values,
-        p_values_observed_consensus = .result$p_values_observed_consensus
+        global_js_divergence = .result$global_js_divergence
     )
 }

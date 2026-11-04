@@ -209,37 +209,32 @@ test_determine_bin_count_stone <- function() {
 
 test_generate_js_comp_test_candidates <- function() {
   # ============================================================
-  # Test 1 -- small-N candidate-grid collapse at its exact threshold
-  # (test_generate_js_comp_test_candidates_collapses_at_8742): every candidate shares n_points=374.
+  # Test 1 -- the default grid by hand (grid_points_factor 4, grid_min_points 200), as in the
+  # Python suite: 8742 genes give n_points 374, 299, 239 and the floor 200 as the last candidate,
+  # with n_neighbors floor(8742/(0.25*n_points)) = 93, 116, 146, 174. The routine's only
+  # DM_RESULT_SIZE_IS output, so the wrapper returns the trimmed matrix.
   # ============================================================
   candidates <- generate_js_comp_test_candidates(8742L)
-  # Issue #187, Step 2.7: `candidates_n_points_n_neighbors` is now the routine's only
-  # DM_RESULT_SIZE_IS output, so the generated R wrapper's own bracket slice
-  # (`[, seq_len(n_candidates), drop = FALSE]`) already returns it correctly trimmed by column --
-  # no manual re-slicing needed (contrast the old n_bins_candidates-vs-head() workaround this test
-  # used to need, now gone along with n_bins_candidates itself).
-  n_candidates <- ncol(candidates)
-  assert_true(n_candidates >= 1, "Test 1 failed: expected at least one candidate")
-  assert_true(all(candidates[1, ] == candidates[1, 1]),
-              "Test 1 failed: every candidate must share the same n_points")
-  assert_equal_int(as.integer(candidates[1, 1]), 374L, "Test 1 failed: n_points should be 374")
+  assert_true(is.matrix(candidates) && is.integer(candidates), "Test 1 failed: an integer matrix")
+  assert_equal_int(dim(candidates), c(2L, 4L), "Test 1 failed: a 2 x 4 grid")
+  assert_equal_int(as.integer(candidates[1, ]), c(374L, 299L, 239L, 200L), "Test 1 failed: n_points")
+  assert_equal_int(as.integer(candidates[2, ]), c(93L, 116L, 146L, 174L), "Test 1 failed: n_neighbors")
 
   # ============================================================
-  # Test 2 -- the other side of the bracket (test_generate_js_comp_test_candidates_has_two_distinct_at_8743):
-  # at least two distinct n_points values, first=375, last=300.
+  # Test 2 -- the two grid options: grid_min_points = 300 gives (374, 93), (300, 116);
+  # grid_points_factor = 2 gives the single candidate (200, 174); bad values are rejected.
   # ============================================================
-  candidates2 <- generate_js_comp_test_candidates(8743L)
-  n_candidates2 <- ncol(candidates2)
-  n_distinct <- length(unique(candidates2[1, ]))
-  assert_true(n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values")
-  assert_equal_int(as.integer(candidates2[1, 1]), 375L, "Test 2 failed: first n_points should be 375")
-  assert_equal_int(as.integer(candidates2[1, n_candidates2]), 300L,
-                    "Test 2 failed: last n_points should collapse to 300")
+  floor_300 <- generate_js_comp_test_candidates(8742L, grid_min_points = 300L)
+  assert_equal_int(as.integer(floor_300), c(374L, 93L, 300L, 116L), "Test 2 failed: grid_min_points = 300")
+  factor_2 <- generate_js_comp_test_candidates(8742L, grid_points_factor = 2.0)
+  assert_equal_int(as.integer(factor_2), c(200L, 174L), "Test 2 failed: grid_points_factor = 2")
+  assert_error(generate_js_comp_test_candidates(8742L, grid_points_factor = 0.0),
+               "Test 2 failed: expected ERR_INVALID_INPUT for grid_points_factor = 0", ERR_INVALID_INPUT)
+  assert_error(generate_js_comp_test_candidates(8742L, grid_min_points = 1501L),
+               "Test 2 failed: expected ERR_INVALID_INPUT for grid_min_points above 1500", ERR_INVALID_INPUT)
 
   # ============================================================
-  # Test 3 -- validation (test_generate_js_comp_test_candidates_validation). Issue #187, Step 2.7:
-  # this routine's `_expert` tier no longer exists (no tmp_/work-array/permutation left in its
-  # signature once the bin-estimate side effect was removed), so this test no longer exercises it.
+  # Test 3 -- validation (test_generate_js_comp_test_candidates_validation).
   # ============================================================
   assert_error(
     generate_js_comp_test_candidates(0L),
@@ -247,24 +242,21 @@ test_generate_js_comp_test_candidates <- function() {
   )
 
   # ============================================================
-  # Test 4 -- neighborhood_size_mode as a mode string (call, type, shape; the grids themselves
-  # are test_fixed_k_grid_neighborhood_size_modes_*): every mode gives positive pairs, and the
-  # grid of both modes holds the pairs of the large and of the small one.
+  # Test 4 -- neighborhood_size_mode as a mode string (call, type, shape): both modes share the
+  # n_points, the small one has fewer neighbors; an unknown string (also the removed "both") is
+  # rejected before Fortran.
   # ============================================================
-  n_columns <- c()
-  for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
-    candidates_mode <- generate_js_comp_test_candidates(2000L, neighborhood_size_mode = mode)
-    assert_true(is.matrix(candidates_mode) && nrow(candidates_mode) == 2L, paste("Test 4 failed:", mode, "shape"))
-    assert_true(is.integer(candidates_mode) && ncol(candidates_mode) >= 1L && all(candidates_mode > 0L),
-                paste("Test 4 failed:", mode, "values"))
-    n_columns[[mode]] <- ncol(candidates_mode)
+  large <- generate_js_comp_test_candidates(8742L, neighborhood_size_mode = "neighborhood_size_large")
+  small <- generate_js_comp_test_candidates(8742L, neighborhood_size_mode = "neighborhood_size_small")
+  for (grid in list(large, small)) {
+    assert_true(is.matrix(grid) && nrow(grid) == 2L && is.integer(grid) && all(grid > 0L), "Test 4 failed: shape")
   }
-  assert_true(n_columns[["neighborhood_size_both"]] ==
-                n_columns[["neighborhood_size_large"]] + n_columns[["neighborhood_size_small"]],
-              "Test 4 failed: both = large + small")
-  assert_true(nrow(generate_js_comp_test_candidates(2000L)) == 2L, "Test 4 failed: default shape")
+  assert_equal_int(as.integer(small[1, ]), as.integer(large[1, ]), "Test 4 failed: both modes share the n_points")
+  assert_true(all(small[2, ] < large[2, ]), "Test 4 failed: the small neighborhoods have fewer neighbors")
   assert_error(generate_js_comp_test_candidates(2000L, neighborhood_size_mode = "nonsense"),
                "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected before Fortran")
+  assert_error(generate_js_comp_test_candidates(2000L, neighborhood_size_mode = "neighborhood_size_both"),
+               "Test 4 failed: expected the removed mode 'both' to be rejected before Fortran")
 }
 
 test_check_neighborhood_overlaps <- function() {
@@ -572,52 +564,47 @@ test_bootstrap_histogram <- function() {
   # Test 1 -- same random_seed twice must give bit-for-bit identical confidence_interval
   # (test_bootstrap_histogram_seeded_reproducibility).
   # ============================================================
-  mean_pmf_counts <- matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE)
-  # Every study's own counts (points x bins x studies), adding up to the pool.
   counts <- bootstrap_test_counts()
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(c(4L, 4L, 6L, 6L), nrow = 2)
 
   ci_first <- matrix(c(0.2, 0.2, 0.3, 0.3), nrow = 2)
-  ci_first <- bootstrap_histogram(15L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_first,
-                                   random_seed = 123L, bootstrap_mode = "bootstrap_pooled")
+  ci_first <- bootstrap_histogram(15L, counts, mean_pmf_included_n_reps, included_n_reps, ci_first,
+                                   random_seed = 123L)
 
   ci_second <- matrix(c(0.2, 0.2, 0.3, 0.3), nrow = 2)
-  ci_second <- bootstrap_histogram(15L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_second,
-                                    random_seed = 123L, bootstrap_mode = "bootstrap_pooled")
+  ci_second <- bootstrap_histogram(15L, counts, mean_pmf_included_n_reps, included_n_reps, ci_second,
+                                    random_seed = 123L)
 
-  assert_equal_numeric(ci_first, ci_second, TOL, "same random_seed twice must give identical confidence_interval")
+  assert_true(identical(ci_first, ci_second), "same random_seed twice must give identical confidence_interval")
 
   # ============================================================
   # Test 2 -- degenerate single-bin histogram: JSD is always exactly 0.0, so the CI must
   # collapse to [0.0, 0.0] (test_bootstrap_histogram_degenerate_single_bin_zero_ci).
   # ============================================================
-  mean_pmf_counts_deg <- matrix(10L, nrow = 1, ncol = 1)
   mean_pmf_included_n_reps_deg <- c(10L)
   included_n_reps_deg <- matrix(c(5L, 5L), nrow = 1)
   confidence_interval_deg <- matrix(0.0, nrow = 2, ncol = 2)
 
   counts_deg <- array(c(5L, 5L), dim = c(1, 1, 2))
-  confidence_interval_deg <- bootstrap_histogram(5L, mean_pmf_counts_deg, counts_deg, mean_pmf_included_n_reps_deg,
-                                                  included_n_reps_deg, confidence_interval_deg, random_seed = 7L,
-                                                  bootstrap_mode = "bootstrap_pooled")
+  confidence_interval_deg <- bootstrap_histogram(5L, counts_deg, mean_pmf_included_n_reps_deg,
+                                                  included_n_reps_deg, confidence_interval_deg, random_seed = 7L)
 
-  assert_equal_numeric(confidence_interval_deg, matrix(0.0, nrow = 2, ncol = 2), TOL,
-                        "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
+  assert_true(identical(confidence_interval_deg, matrix(0.0, nrow = 2, ncol = 2)),
+              "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
 }
 
 test_bootstrap_histogram_rejects_draws_from_empty_pool <- function() {
-  # A study drawing from a point whose pool is empty (counts c(0, 0), 0 included replicates) fails
-  # with invalid input, not tied to any one argument
+  # Each study draws 3 residuals from its own counts, which are empty (c(0, 0)) at the point, so
+  # the call fails with invalid input, not tied to any one argument
   # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
-  mean_pmf_counts <- matrix(c(0L, 0L), nrow = 1)
   counts <- array(0L, dim = c(1, 2, 2))
-  mean_pmf_included_n_reps <- c(0L)
+  mean_pmf_included_n_reps <- c(6L)
   included_n_reps <- matrix(c(3L, 3L), nrow = 1)
 
   call <- function() {
-    bootstrap_histogram(3L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
-                        matrix(0.0, nrow = 2, ncol = 2), random_seed = 7L, bootstrap_mode = "bootstrap_pooled")
+    bootstrap_histogram(3L, counts, mean_pmf_included_n_reps, included_n_reps,
+                        matrix(0.0, nrow = 2, ncol = 2), random_seed = 7L)
   }
   assert_error(call(), "expected ERR_INVALID_INPUT for draws from an empty pool", ERR_INVALID_INPUT)
   err <- tryCatch({ call(); NULL }, error = function(e) e)
@@ -650,23 +637,22 @@ test_bootstrap_histogram_rejects_zero_included_n_reps <- function() {
   # Every study needs at least one included residual at every reference point, so a single 0 in
   # included_n_reps is rejected on that argument, even where the counts otherwise add up
   # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
-  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 1)
   counts <- array(0L, dim = c(1, 2, 2))
   counts[1, , 2] <- c(2L, 2L)
   mean_pmf_included_n_reps <- c(4L)
   included_n_reps <- matrix(c(0L, 4L), nrow = 1)
 
   call <- function() {
-    bootstrap_histogram(3L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
-                        matrix(0.5, nrow = 2, ncol = 2), random_seed = 7L, bootstrap_mode = "bootstrap_pooled")
+    bootstrap_histogram(3L, counts, mean_pmf_included_n_reps, included_n_reps,
+                        matrix(0.5, nrow = 2, ncol = 2), random_seed = 7L)
   }
   assert_error(call(), "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
   err <- tryCatch({ call(); NULL }, error = function(e) e)
   assert_true(identical(err$argument, "included_n_reps"), "expected the error on included_n_reps")
 }
 
-# Test helper: the studies' own counts (points x bins x studies) of the bootstrap fixture whose pool
-# is matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE) and whose studies hold 4 and 6 residuals.
+# Test helper: the studies' own counts (points x bins x studies) of the bootstrap fixture: two
+# points, three bins, studies of 4 and 6 residuals (pool totals 10 and 10).
 bootstrap_test_counts <- function() {
   counts <- array(0L, dim = c(2, 3, 2))
   counts[1, , 1] <- c(2L, 1L, 1L)
@@ -676,52 +662,62 @@ bootstrap_test_counts <- function() {
   counts
 }
 
-test_bootstrap_histogram_bootstrap_mode <- function() {
-  # Call + shape for both bootstrap modes (the numbers are checked in the Fortran suite): the
-  # default per-study mode and "bootstrap_pooled" both return a 2 x n_studies numeric interval with
-  # lower <= upper; an unknown mode is rejected before Fortran, and per-study counts that do not add
-  # up are invalid input.
-  mean_pmf_counts <- matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE)
+test_bootstrap_histogram_divergence_mode <- function() {
+  # Call + shape for both divergence modes (the numbers are checked in the Fortran suite): each
+  # returns a 2 x n_studies numeric interval with lower <= upper; omitting the mode equals the
+  # default "divergence_pairwise_k2" exactly, which with two studies gives both the same interval.
+  # An unknown mode is rejected before Fortran; per-study counts that do not add up, and a pool
+  # total that is not the studies' sum, are invalid input.
   counts <- bootstrap_test_counts()
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(c(4L, 4L, 6L, 6L), nrow = 2)
   seed_ci <- matrix(c(1.0, 0.0, 1.0, 0.0), nrow = 2)
 
   results <- list(
-    default = bootstrap_histogram(20L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
+    default = bootstrap_histogram(20L, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
                                   random_seed = 3L),
-    per_study = bootstrap_histogram(20L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
-                                    random_seed = 3L, bootstrap_mode = "bootstrap_per_study"),
-    pooled = bootstrap_histogram(20L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
-                                 random_seed = 3L, bootstrap_mode = "bootstrap_pooled"))
+    symmetric = bootstrap_histogram(20L, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
+                                    random_seed = 3L, divergence_mode = "divergence_symmetric"),
+    pairwise = bootstrap_histogram(20L, counts, mean_pmf_included_n_reps, included_n_reps, seed_ci,
+                                   random_seed = 3L, divergence_mode = "divergence_pairwise_k2"))
   for (name in names(results)) {
     ci <- results[[name]]
     assert_true(is.numeric(ci) && identical(dim(ci), c(2L, 2L)), paste(name, ": numeric 2 x 2"))
     assert_true(all(is.finite(ci)) && all(ci[1, ] <= ci[2, ]), paste(name, ": lower <= upper"))
   }
+  assert_true(identical(results$default, results$pairwise), "the default is divergence_pairwise_k2")
+  assert_true(identical(results$pairwise[, 1], results$pairwise[, 2]), "pairwise: both studies alike")
 
-  assert_error(bootstrap_histogram(3L, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
-                                   matrix(0.5, nrow = 2, ncol = 2), bootstrap_mode = "no_such_mode"),
-               "expected an unknown bootstrap_mode to be rejected before Fortran")
+  assert_error(bootstrap_histogram(3L, counts, mean_pmf_included_n_reps, included_n_reps,
+                                   matrix(0.5, nrow = 2, ncol = 2), divergence_mode = "no_such_mode"),
+               "expected an unknown divergence_mode to be rejected before Fortran")
   bad_counts <- counts
   bad_counts[1, 1, 1] <- 0L
-  assert_error(bootstrap_histogram(3L, mean_pmf_counts, bad_counts, mean_pmf_included_n_reps, included_n_reps,
+  assert_error(bootstrap_histogram(3L, bad_counts, mean_pmf_included_n_reps, included_n_reps,
                                    matrix(0.5, nrow = 2, ncol = 2)),
                "expected ERR_INVALID_INPUT for per-study counts not adding up", ERR_INVALID_INPUT)
+  assert_error(bootstrap_histogram(3L, counts, c(10L, 9L), included_n_reps, matrix(0.5, nrow = 2, ncol = 2)),
+               "expected ERR_INVALID_INPUT for a pool total that is not the studies' sum", ERR_INVALID_INPUT)
 }
 
 test_calc_js_comp_test_candidate_bounds <- function() {
-  # Cross-check against the already-verified candidate-grid collapse fixture: with
-  # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374, and
-  # `max_n_points_candidate` is documented as being exactly that value.
+  # The bounds of the grid of test_generate_js_comp_test_candidates (8742 genes): the first
+  # n_points 374 and floor(8742/(0.25*200)) = 174 neighbors at the floor; with
+  # grid_min_points = 300 the neighbor bound is 116, with grid_points_factor = 8 the first
+  # n_points is ceiling(8*sqrt(8742)) = 748.
   bounds <- calc_js_comp_test_candidate_bounds(8742L)
   assert_equal_int(as.integer(bounds$max_n_points_candidate), 374L, "expected max_n_points_candidate=374")
+  assert_equal_int(as.integer(bounds$max_n_neighbors_candidate), 174L, "expected max_n_neighbors_candidate=174")
 
-  # Issue #187, Step 2.7: generate_js_comp_test_candidates now returns the already-correctly-
-  # trimmed matrix directly (see the NOTE in test_generate_js_comp_test_candidates).
   candidates <- generate_js_comp_test_candidates(8742L)
   assert_true(bounds$max_n_neighbors_candidate >= max(candidates[2, ]),
               "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors")
+
+  floor_300 <- calc_js_comp_test_candidate_bounds(8742L, grid_min_points = 300L)
+  assert_equal_int(as.integer(c(floor_300$max_n_points_candidate, floor_300$max_n_neighbors_candidate)),
+                   c(374L, 116L), "grid_min_points = 300")
+  factor_8 <- calc_js_comp_test_candidate_bounds(8742L, grid_points_factor = 8.0)
+  assert_equal_int(as.integer(factor_8$max_n_points_candidate), 748L, "grid_points_factor = 8")
 
   assert_error(calc_js_comp_test_candidate_bounds(0L),
                "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
@@ -792,8 +788,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
   # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
   result <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                              residuals = residuals, x_star = x_star,
-                              n_permutations = 0L, random_seed = 1L, min_residuals_per_bin = 1L)
+                              residuals = residuals, x_star = x_star, min_residuals_per_bin = 1L)
 
   n_points <- 1L
   n_studies <- 2L
@@ -819,8 +814,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   assert_equal_int(dim(result$js_divergences), c(n_points, n_studies), "js_divergences shape")
   assert_equal_int(dim(result$weights), c(n_points, n_studies), "weights shape")
   assert_equal_int(length(result$global_js_divergence), n_studies, "global_js_divergence shape")
-  assert_equal_int(length(result$p_values), n_studies, "p_values shape")
-  assert_equal_int(length(result$p_values_observed_consensus), n_studies, "p_values_observed_consensus shape")
+  assert_true(is.null(result$p_values), "the final run has no permutation test (see run_js_comp_test_permutation)")
 
   # A caller must be able to slice down to the meaningful leading bins.
   max_n_bins <- as.integer(result$max_n_bins_per_point)
@@ -830,15 +824,15 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 1]), 1L, "study 1 neighbor should be gene 1")
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 2]), 1L, "study 2 neighbor should be gene 1")
 
-  assert_true(all(is.nan(result$p_values)), "n_permutations=0 -> p_values are NaN (not computed)")
-  assert_true(all(is.nan(result$p_values_observed_consensus)),
-              "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)")
+  # Two studies with the default divergence_mode (pairwise): both studies get the same value.
+  assert_true(result$global_js_divergence[1] == result$global_js_divergence[2],
+              "pairwise default: both studies share one global JSD")
 
   # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves are
   # the Fortran suite's job), an unknown one is rejected before Fortran.
   for (mode in BIN_COUNT_MODES) {
     result_mode <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                                    residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                                    residuals = residuals, x_star = x_star,
                                     min_residuals_per_bin = 1L, bin_count_mode = mode)
     assert_equal_int(length(result_mode$n_bins_per_point), n_points, paste(mode, "n_bins_per_point length"))
     assert_true(is.logical(result_mode$occupancy_failed), paste(mode, "occupancy_failed must be logical"))
@@ -846,9 +840,23 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
     assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
   }
   assert_error(run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                                residuals = residuals, x_star = x_star, n_permutations = 0L,
+                                residuals = residuals, x_star = x_star,
                                 bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+
+  # divergence_mode: both strings accepted (type/shape), omitting it equals the default
+  # "divergence_pairwise_k2" exactly, an unknown string is rejected before Fortran.
+  for (mode in c("divergence_symmetric", "divergence_pairwise_k2")) {
+    result_mode <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, residuals = residuals,
+                                    x_star = x_star, min_residuals_per_bin = 1L, divergence_mode = mode)
+    assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
+    assert_equal_int(dim(result_mode$js_divergences), c(n_points, n_studies), paste(mode, "js_divergences shape"))
+    if (mode == "divergence_pairwise_k2")
+      assert_true(identical(result_mode$global_js_divergence, result$global_js_divergence), "default is pairwise")
+  }
+  assert_error(run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, residuals = residuals, x_star = x_star,
+                                min_residuals_per_bin = 1L, divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
 }
 
 test_run_js_comp_test_expert_takes_the_callers_permutations <- function() {
@@ -866,12 +874,11 @@ test_run_js_comp_test_expert_takes_the_callers_permutations <- function() {
   x_star <- c(1.0)
 
   plain <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, residuals = residuals, x_star = x_star,
-                            n_permutations = 2L, random_seed = 1L, min_residuals_per_bin = 1L)
+                            min_residuals_per_bin = 1L)
   ascending <- apply(gene_means, 2, order)
   storage.mode(ascending) <- "integer"
   expert <- run_js_comp_test_expert(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = ascending,
-                                    residuals = residuals, x_star = x_star, n_permutations = 2L, random_seed = 1L,
-                                    min_residuals_per_bin = 1L)
+                                    residuals = residuals, x_star = x_star, min_residuals_per_bin = 1L)
   assert_true(identical(sort(names(expert)), sort(names(plain))), "both tiers return the same outputs")
   for (key in names(plain)) {
     assert_true(identical(expert[[key]], plain[[key]]),
@@ -889,38 +896,11 @@ test_run_js_comp_test_expert_takes_the_callers_permutations <- function() {
   for (case in list(list(order = c(1L, 2L, 3L), gene = 1L), list(order = c(2L, 1L, 3L), gene = 2L))) {
     perms <- cbind(case$order, c(1L, 2L, 3L))
     result <- run_js_comp_test_expert(n_neighbors = 1L, gene_means = tied_means, gene_means_perms = perms,
-                                      residuals = tied_residuals, x_star = c(0.5), n_permutations = 0L,
-                                      min_residuals_per_bin = 1L)
+                                      residuals = tied_residuals, x_star = c(0.5), min_residuals_per_bin = 1L)
     label <- paste0("order c(", paste(case$order, collapse = ", "), "): ")
     assert_equal_int(as.integer(result$neighborhood_indices[1, 1, 1]), case$gene,
                      paste0(label, "study 1 should take gene ", case$gene))
     assert_equal_int(as.integer(result$neighborhood_indices[1, 1, 2]), 1L, paste0(label, "study 2 should take gene 1"))
-  }
-}
-
-test_run_js_comp_test_zero_permutations_gives_nan_p_values <- function() {
-  # n_permutations = 0 skips the permutation test: both p-value vectors are NaN ("not computed"), not
-  # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
-  # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
-  gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
-  residuals <- array(NaN, dim = c(2, 2, 2))
-  residuals[, 1, 1] <- c(-1.0, 1.0)
-  residuals[, 1, 2] <- c(-3.0, 3.0)
-  x_star <- c(1.0)
-
-  skipped <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                              residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
-                              min_residuals_per_bin = 1L)
-  for (key in c("p_values", "p_values_observed_consensus")) {
-    assert_true(all(is.nan(skipped[[key]])), paste(key, "n_permutations=0 must give NaN"))
-  }
-  assert_true(all(is.finite(skipped$global_js_divergence)), "the JSDs are still computed")
-
-  control <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                              residuals = residuals, x_star = x_star, n_permutations = 2L, random_seed = 1L,
-                              min_residuals_per_bin = 1L)
-  for (key in c("p_values", "p_values_observed_consensus")) {
-    assert_true(all(control[[key]] > 0.0 & control[[key]] <= 1.0), paste(key, "control expected in (0, 1]"))
   }
 }
 
@@ -940,7 +920,9 @@ test_run_js_comp_test_parameter_search <- function() {
 
   # ============================================================
   # Test 1 -- no candidate ever plateaus (min_residuals_per_bin impossibly high): falls back to
-  # the FIRST (finest-resolution) candidate, (n_points, n_neighbors)=(300, 26), and resets
+  # the FIRST (finest-resolution) candidate, (n_points, n_neighbors)=(200, 40): the default grid of
+  # 2000 genes is that single candidate (ceiling(4*sqrt(2000)) = 179 clamped up to the floor 200,
+  # floor(2000/(0.25*200)) = 40), and resets
   # best_candidate_pair_confidence_interval to -1.0 throughout
   # (test_param_search_no_plateau_falls_back_to_finest).
   # ============================================================
@@ -952,15 +934,16 @@ test_run_js_comp_test_parameter_search <- function() {
                                                min_residuals_per_bin = 1000000L,
                                                random_seed = 1L)
 
-  assert_equal_int(as.integer(result$n_points), 300L, "expected n_points=300")
-  assert_equal_int(as.integer(result$n_neighbors), 26L, "expected n_neighbors=26")
+  assert_equal_int(as.integer(result$n_points), 200L, "expected n_points=200")
+  assert_equal_int(as.integer(result$n_neighbors), 40L, "expected n_neighbors=40")
   assert_false(result$plateau_established, "no candidate ever plateaus here")
   assert_equal_numeric(result$best_candidate_pair_confidence_interval[, 1], c(-1.0, -1.0), TOL, "study 1 CI reset")
   assert_equal_numeric(result$best_candidate_pair_confidence_interval[, 2], c(-1.0, -1.0), TOL, "study 2 CI reset")
 
   # ============================================================
   # Test 2 -- the GAMMA-decay grid collapses to exactly ONE candidate at
-  # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(300, 1)); with both admissibility
+  # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(200, 2): the floor 200 and
+  # floor(100/(0.25*200)) = 2); with both admissibility
   # gates relaxed, the sole candidate is returned regardless of plateau, and the bootstrap
   # actually runs (test_param_search_single_candidate_bypasses_plateau).
   # ============================================================
@@ -982,8 +965,8 @@ test_run_js_comp_test_parameter_search <- function() {
                                                 min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                 random_seed = 1L)
 
-  assert_equal_int(as.integer(result2$n_points), 300L, "expected n_points=300")
-  assert_equal_int(as.integer(result2$n_neighbors), 1L, "expected n_neighbors=1")
+  assert_equal_int(as.integer(result2$n_points), 200L, "expected n_points=200")
+  assert_equal_int(as.integer(result2$n_neighbors), 2L, "expected n_neighbors=2")
   assert_true(result2$plateau_established, "the single-candidate bypass counts as established")
   ci <- result2$best_candidate_pair_confidence_interval
   assert_true(ci[1, 1] >= 0.0 && ci[2, 1] <= 1.0,
@@ -1060,7 +1043,7 @@ test_run_js_comp_test_parameter_search <- function() {
     assert_true(all(dim(result2[[key]]) == dim(result2$trace_selected_n_bins)),
                 paste0(key, " shape mismatch"))
   }
-  # n_points=300 leading entries of n_bins_per_point must match the sole admissible candidate's
+  # The n_points leading entries of n_bins_per_point must match the sole admissible candidate's
   # own trace_selected_n_bins column (test_param_search_final_n_bins_matches_selected_trace_column
   # is the Fortran suite's rigorous version of this same wiring check).
   n_points_2 <- result2$n_points
@@ -1102,7 +1085,7 @@ test_run_js_comp_test_parameter_search <- function() {
   # Test 6 -- neighborhood_size_mode: every mode string is accepted (type/shape only; the Fortran
   # suite's test_param_search_neighborhood_size_mode checks the grid it walks).
   # ============================================================
-  for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
+  for (mode in c("neighborhood_size_large", "neighborhood_size_small")) {
     result_size <- run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
                                                      max_n_points_candidate = bounds$max_n_points_candidate,
                                                      max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
@@ -1136,28 +1119,63 @@ test_run_js_comp_test_parameter_search <- function() {
                "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 
   # ============================================================
-  # Test 8 -- bootstrap_mode: the pooled bootstrap is accepted (call + shape;
-  # test_param_search_bootstrap_mode is the Fortran check), an unknown mode rejected before Fortran.
+  # Test 8 -- divergence_mode: both strings accepted (call + shape; the values are the Fortran
+  # suite's job), an unknown one rejected before Fortran. Reuses Test 2's setup.
   # ============================================================
-  result_pooled <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L,
-                                                     join_method = "join_min",
-                                                     max_n_points_candidate = bounds_2$max_n_points_candidate,
-                                                     max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
-                                                     min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
-                                                     random_seed = 1L, bootstrap_mode = "bootstrap_pooled")
-  assert_equal_int(dim(result_pooled$best_candidate_pair_confidence_interval), c(2L, 2L), "pooled: CI shape")
-  assert_equal_int(dim(result_pooled$trace_ci_lower), c(2L, 1L), "pooled: trace_ci_lower shape")
+  for (mode in c("divergence_symmetric", "divergence_pairwise_k2")) {
+    result_div <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L,
+                                                    join_method = "join_min",
+                                                    max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                    max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                    min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
+                                                    random_seed = 1L, divergence_mode = mode)
+    assert_equal_int(dim(result_div$best_candidate_pair_confidence_interval), c(2L, 2L), paste(mode, "CI shape"))
+    assert_equal_int(dim(result_div$trace_global_js_divergence), c(2L, 1L), paste(mode, "trace shape"))
+  }
   assert_error(run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
                                                  max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
-                                                 bootstrap_mode = "no_such_mode"),
-               "expected an unknown bootstrap_mode to be rejected before Fortran")
+                                                 divergence_mode = "no_such_mode"),
+               "expected an unknown divergence_mode to be rejected before Fortran")
+
+  # ============================================================
+  # Test 9 -- grid_points_factor and grid_min_points: factor 6.7 and floor 240 give the 2000-gene
+  # grid (300, 26), (240, 33); no candidate is admissible, so the first is returned. Capacities
+  # sized for the default grid are too small for it: invalid input naming no argument.
+  # ============================================================
+  bounds_grid <- calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, grid_points_factor = 6.7,
+                                                    grid_min_points = 240L)
+  assert_equal_int(as.integer(c(bounds_grid$max_n_points_candidate, bounds_grid$max_n_neighbors_candidate)),
+                   c(300L, 33L), "grid options: bounds")
+  result_grid <- run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                                   max_n_points_candidate = bounds_grid$max_n_points_candidate,
+                                                   max_n_neighbors_candidate = bounds_grid$max_n_neighbors_candidate,
+                                                   min_residuals_per_bin = 1000000L, random_seed = 1L,
+                                                   grid_points_factor = 6.7, grid_min_points = 240L)
+  assert_equal_int(as.integer(c(result_grid$n_points, result_grid$n_neighbors)), c(300L, 26L),
+                   "grid options: the first candidate")
+  undersized <- function() {
+    run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                      max_n_points_candidate = bounds$max_n_points_candidate,
+                                      max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                      min_residuals_per_bin = 1000000L, random_seed = 1L,
+                                      grid_points_factor = 6.7, grid_min_points = 240L)
+  }
+  assert_error(undersized(), "expected ERR_INVALID_INPUT for capacities below the optioned grid", ERR_INVALID_INPUT)
+  err <- tryCatch({ undersized(); NULL }, error = function(e) e)
+  assert_true(is.na(err$argument), "expected no argument named")
+  assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                                 grid_points_factor = -1.0),
+               "expected ERR_INVALID_INPUT for a negative grid_points_factor", ERR_INVALID_INPUT)
 }
 
 test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {
   # A max_n_points_candidate or max_n_neighbors_candidate one below what
-  # calc_js_comp_test_candidate_bounds returns for the gene count (299 and 3 for 300 genes) is
-  # rejected with invalid input instead of being written past
+  # calc_js_comp_test_candidate_bounds returns for the gene count (199 and 5 for 300 genes: the
+  # default grid is the single candidate (200, 6)) is rejected with invalid input, checked by the
+  # search against the grid options, instead of being written past
   # (test_param_search_rejects_undersized_max_n_points_candidate and
   # test_param_search_rejects_undersized_max_n_neighbors_candidate).
   n_genes <- 300L
@@ -1191,7 +1209,7 @@ test_run_js_comp_test_rejects_reversed_residual_range_quantiles <- function() {
 
   call <- function() {
     run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                     residuals = residuals, x_star = x_star,
                      min_residuals_per_bin = 1L, lower_residual_range_quantile = 0.95,
                      upper_residual_range_quantile = 0.05)
   }
@@ -1214,7 +1232,7 @@ test_run_js_comp_test_rejects_nan_x_star <- function() {
 
   call <- function() {
     run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                     residuals = residuals, x_star = x_star,
                      min_residuals_per_bin = 1L)
   }
   assert_error(call(), "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
@@ -1234,7 +1252,7 @@ test_run_js_comp_test_rejects_empty_study <- function() {
 
   call <- function() {
     run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                     residuals = residuals, x_star = x_star,
                      min_residuals_per_bin = 1L)
   }
   assert_error(call(), "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
@@ -1333,8 +1351,7 @@ test_run_js_comp_test_adaptive <- function() {
   ranges <- construction$pooled_neighborhood_range
   n_points <- ncol(ranges)
 
-  result <- run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 50L, random_seed = 3L,
-                                      min_residuals_per_bin = 2L, m_min = 2L, m_max = 8L)
+  result <- run_js_comp_test_adaptive(gene_means, residuals, ranges, min_residuals_per_bin = 2L, m_min = 2L, m_max = 8L)
   assert_true(is.list(result), "expected a list")
   assert_true(is.matrix(result$n_neighbors_per_point) &&
                 all(dim(result$n_neighbors_per_point) == c(n_studies, n_points)),
@@ -1355,16 +1372,31 @@ test_run_js_comp_test_adaptive <- function() {
     assert_equal_int(dim(result[[key]]), c(n_points, n_studies), paste(key, "shape"))
   }
   assert_equal_int(length(result$global_js_divergence), n_studies, "global_js_divergence length")
-  assert_equal_int(length(result$p_values), n_studies, "p_values length")
-  assert_equal_int(length(result$p_values_observed_consensus), n_studies, "p_values_observed_consensus length")
-  for (key in c("p_values", "p_values_observed_consensus")) {
-    assert_true(all(result[[key]] > 0.0 & result[[key]] <= 1.0), paste(key, "in (0, 1]"))
-  }
+  assert_true(is.null(result$p_values), "the final run has no permutation test")
   assert_true(all(is.finite(result$global_js_divergence)), "global JSD finite")
+
+  # divergence_mode reaches Fortran: on the first two studies (with three or more both modes
+  # coincide) the symmetric mode gives each study its own JSD against the consensus, the pairwise
+  # mode one value shared by both, and omitting the mode equals the pairwise mode.
+  gene_means_two <- gene_means[, 1:2]
+  residuals_two <- residuals[, , 1:2]
+  construction_two <- construct_adaptive_neighborhoods(gene_means_two, residuals_two, 6L, 3L, 12L)
+  assert_true(construction_two$construction_status == ERR_OK, "two studies: expected a construction")
+  ranges_two <- construction_two$pooled_neighborhood_range
+  two_study_run <- function(...) {
+    run_js_comp_test_adaptive(gene_means_two, residuals_two, ranges_two, min_residuals_per_bin = 2L, m_min = 2L,
+                              m_max = 8L, ...)$global_js_divergence
+  }
+  pairwise <- two_study_run(divergence_mode = "divergence_pairwise_k2")
+  assert_two_study_divergence_modes(two_study_run(divergence_mode = "divergence_symmetric"), pairwise,
+                                    "run_js_comp_test_adaptive")
+  assert_true(identical(two_study_run(), pairwise), "default is pairwise")
+  assert_error(run_js_comp_test_adaptive(gene_means, residuals, ranges, divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
 
   # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
   for (mode in BIN_COUNT_MODES) {
-    result_mode <- run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 0L,
+    result_mode <- run_js_comp_test_adaptive(gene_means, residuals, ranges,
                                              min_residuals_per_bin = 2L, m_min = 2L, m_max = 8L, bin_count_mode = mode)
     assert_equal_int(length(result_mode$n_bins_per_point), n_points, paste(mode, "n_bins_per_point length"))
     assert_true(is.logical(result_mode$occupancy_failed), paste(mode, "occupancy_failed must be logical"))
@@ -1372,13 +1404,13 @@ test_run_js_comp_test_adaptive <- function() {
                 paste(mode, "bin counts within [m_min, m_max]"))
     assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
   }
-  assert_error(run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 0L,
+  assert_error(run_js_comp_test_adaptive(gene_means, residuals, ranges,
                                          bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
 
   reversed_ranges <- ranges
   reversed_ranges[, 1] <- c(2L, 1L)
-  assert_error(run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations = 0L),
+  assert_error(run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges),
                "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
 }
 
@@ -1395,7 +1427,7 @@ test_run_js_comp_test_adaptive_rejects_empty_study <- function() {
   ranges <- matrix(c(1L, 3L, 4L, 5L), nrow = 2)
 
   call <- function() {
-    run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 0L, min_residuals_per_bin = 1L)
+    run_js_comp_test_adaptive(gene_means, residuals, ranges, min_residuals_per_bin = 1L)
   }
   assert_error(call(), "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
   err <- tryCatch({ call(); NULL }, error = function(e) e)
@@ -1420,7 +1452,7 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
                                                        plateau_mode = "plateau_both", tau = 0.1,
                                                        mad_distance_factor = 1.0, max_pooled_residuals = 0L,
                                                        min_study_neighbors = 1L, random_seed = 1L,
-                                                       delta_abs_tolerance = 0.001, bootstrap_mode = "bootstrap_pooled")
+                                                       delta_abs_tolerance = 0.001, divergence_mode = "divergence_symmetric")
   assert_true(is.list(result), "expected a list")
   for (key in c("k_start", "k_step", "k_max", "n_points")) {
     assert_true(is.numeric(result[[key]]) && length(result[[key]]) == 1, paste(key, "must be a single number"))
@@ -1483,10 +1515,23 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
                                                           join_method = "join_min", max_n_points_candidate = capacity,
                                                           bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+  assert_error(run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
+                                                          join_method = "join_min", max_n_points_candidate = capacity,
+                                                          divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
 }
 
 # Three studies of 5, 4 and 4 samples (the last slot of studies 2 and 3 is NaN padding), 300
 # genes spread over the expression range, as the Fortran suite's fixtures.
+# Two studies: the symmetric divergence gives the two studies different values, the pairwise one a
+# single shared value, and the two modes differ -- so a mode dropped by the binding fails.
+assert_two_study_divergence_modes <- function(symmetric, pairwise, label) {
+  assert_true(length(symmetric) == 2 && length(pairwise) == 2, paste(label, ": one value per study"))
+  assert_true(symmetric[1] != symmetric[2], paste(label, ": symmetric, the two studies differ"))
+  assert_true(pairwise[1] == pairwise[2], paste(label, ": pairwise, one shared value"))
+  assert_true(symmetric[1] != pairwise[1], paste(label, ": the two modes give different values"))
+}
+
 label_test_expression <- function() {
   set.seed(9001)
   n_genes <- 300L
@@ -1502,7 +1547,7 @@ label_test_expression <- function() {
 }
 
 test_calc_js_comp_test_permutation_bounds <- function() {
-  # Call + types only; the values are checked by hand in the Fortran suite.
+  # Types first; then the exact values for the default and an optioned grid, so dropped grid options fail.
   bounds <- calc_js_comp_test_permutation_bounds(300L, 10L, 30L)
   for (key in c("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds")) {
     assert_true(is.numeric(bounds[[key]]) && length(bounds[[key]]) == 1 && bounds[[key]] >= 1,
@@ -1510,6 +1555,21 @@ test_calc_js_comp_test_permutation_bounds <- function() {
   }
   assert_error(calc_js_comp_test_permutation_bounds(300L, 10L, 301L),
                "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
+  # Exact values, by hand (G = 300, n_points = 10, n_neighbors = 30):
+  # defaults: ceiling(4*sqrt(300)) = ceiling(69.28) = 70, clamped up to the floor 200; n_points_low = 200;
+  #   points max(10, 200) = 200, neighbors max(30, min(300, floor(300/(0.25*200)) = 6)) = 30.
+  # grid_points_factor = 20, grid_min_points = 300: ceiling(20*sqrt(300)) = ceiling(346.41) = 347,
+  #   n_points_low = max(300, ceiling(0.2*347) = 70) = 300; points max(10, 347) = 347,
+  #   neighbors max(30, floor(300/(0.25*300)) = 4) = 30. The heap size does not depend on the grid.
+  assert_true(bounds$max_n_points_candidate == 200, "defaults: expected 200 points")
+  assert_true(bounds$max_n_neighbors_candidate == 30, "defaults: expected 30 neighbors")
+  optioned <- calc_js_comp_test_permutation_bounds(300L, 10L, 30L, grid_points_factor = 20.0, grid_min_points = 300L)
+  assert_true(optioned$max_n_points_candidate == 347, "grid options: expected 347 points")
+  assert_true(optioned$max_n_neighbors_candidate == 30, "grid options: expected 30 neighbors")
+  assert_true(optioned$n_bootstrapping_top_k_jsds == bounds$n_bootstrapping_top_k_jsds,
+              "grid options: the heap size does not depend on the grid")
+  assert_error(calc_js_comp_test_permutation_bounds(300L, 10L, 30L, grid_min_points = 0L),
+               "expected ERR_INVALID_INPUT for grid_min_points = 0", ERR_INVALID_INPUT)
 }
 
 test_calc_adaptive_js_comp_test_permutation_bounds <- function() {
@@ -1537,6 +1597,31 @@ test_run_js_comp_test_on_sample_assignment <- function() {
   repeated[2] <- repeated[1]
   assert_error(run_js_comp_test_on_sample_assignment(expression, repeated, 10L, 30L),
                "expected ERR_INVALID_INPUT for an assignment that is not a permutation", ERR_INVALID_INPUT)
+
+  # divergence_mode reaches Fortran: the first two studies (9 samples), see
+  # assert_two_study_divergence_modes.
+  two_studies <- expression[, , 1:2]
+  by_mode <- lapply(c(symmetric = "divergence_symmetric", pairwise = "divergence_pairwise_k2"), function(mode) {
+    run_js_comp_test_on_sample_assignment(two_studies, 1:9, 10L, 30L, divergence_mode = mode)$global_js_divergence
+  })
+  assert_two_study_divergence_modes(by_mode$symmetric, by_mode$pairwise, "run_js_comp_test_on_sample_assignment")
+
+  # The grid options reach the rerun search (they only matter with it). G = 300: the default grid
+  # is the single candidate (200, 6) (ceiling(4*sqrt(300)) = 70 clamps up to the floor 200); with
+  # grid_points_factor 17.32 and grid_min_points 240 it is (300, 4), (240, 5)
+  # (ceiling(17.32*sqrt(300)) = 300, 0.8*300 = 240), so the rerun uses another n_points.
+  default_rerun <- run_js_comp_test_on_sample_assignment(expression, 1:13, 10L, 30L, rerun_parameter_search = TRUE,
+                                                         n_bootstraps = 20L)
+  assert_true(default_rerun$used_n_points == 200, "default grid: expected 200 points")
+  optioned_rerun <- run_js_comp_test_on_sample_assignment(expression, 1:13, 10L, 30L, rerun_parameter_search = TRUE,
+                                                          n_bootstraps = 20L, grid_points_factor = 17.32,
+                                                          grid_min_points = 240L)
+  assert_true(optioned_rerun$used_n_points %in% c(300, 240), "grid options: expected 300 or 240 points")
+  assert_error(run_js_comp_test_on_sample_assignment(expression, assignment, 10L, 30L, divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
+  assert_error(run_js_comp_test_on_sample_assignment(expression, assignment, 10L, 30L,
+                                                     neighborhood_size_mode = "neighborhood_size_both"),
+               "expected the removed neighborhood_size_mode 'both' to be rejected before Fortran")
 }
 
 test_run_js_comp_test_adaptive_on_sample_assignment <- function() {
@@ -1550,31 +1635,76 @@ test_run_js_comp_test_adaptive_on_sample_assignment <- function() {
   }
   assert_error(run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 2000L, 10L, 2000L),
                "expected ERR_INVALID_INPUT when no neighborhood is built", ERR_INVALID_INPUT)
+  assert_error(run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 30L, 10L, 90L,
+                                                              divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
+  two_studies <- expression[, , 1:2]
+  by_mode <- lapply(c(symmetric = "divergence_symmetric", pairwise = "divergence_pairwise_k2"), function(mode) {
+    run_js_comp_test_adaptive_on_sample_assignment(two_studies, 1:9, 30L, 10L, 90L,
+                                                   divergence_mode = mode)$global_js_divergence
+  })
+  assert_two_study_divergence_modes(by_mode$symmetric, by_mode$pairwise,
+                                    "run_js_comp_test_adaptive_on_sample_assignment")
+  # min_study_neighbors above every study's share of a neighborhood: construction status not ok.
+  assert_error(run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 30L, 10L, 90L,
+                                                              min_study_neighbors = 1000L),
+               "expected ERR_INVALID_INPUT when the construction status is not ok", ERR_INVALID_INPUT)
 }
 
-test_run_js_comp_test_label_permutation_test <- function() {
+test_run_js_comp_test_permutation <- function() {
   expression <- label_test_expression()
-  result <- run_js_comp_test_label_permutation_test(expression, 10L, 30L, 4L, random_seed = 3L)
+  result <- run_js_comp_test_permutation(expression, 10L, 30L, 4L, random_seed = 3L)
   assert_true(is.list(result), "expected a list")
   assert_equal_int(length(result$global_js_divergence_observed), 3L, "observed length")
   assert_equal_int(length(result$p_values), 3L, "p_values length")
   assert_equal_int(dim(result$jsd_null), c(4L, 3L), "jsd_null shape")
   assert_true(length(result$n_failed_permutations) == 1, "n_failed_permutations scalar")
   assert_true(all(result$p_values > 0 & result$p_values <= 1), "p-values in (0, 1]")
-  assert_error(run_js_comp_test_label_permutation_test(expression, 10L, 30L, 0L),
+  assert_error(run_js_comp_test_permutation(expression, 10L, 30L, 0L),
                "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+  # divergence_mode reaches Fortran: the observed values on the first two studies.
+  two_studies <- expression[, , 1:2]
+  by_mode <- lapply(c(symmetric = "divergence_symmetric", pairwise = "divergence_pairwise_k2"), function(mode) {
+    run_js_comp_test_permutation(two_studies, 10L, 30L, 1L, random_seed = 3L,
+                                 divergence_mode = mode)$global_js_divergence_observed
+  })
+  assert_two_study_divergence_modes(by_mode$symmetric, by_mode$pairwise, "run_js_comp_test_permutation")
+  # The grid options reach the rerun search: the observed values equal the rerun on the identity
+  # with the same options (whose n_points is checked in test_run_js_comp_test_on_sample_assignment)
+  # and differ from the default grid's.
+  optioned <- run_js_comp_test_permutation(expression, 10L, 30L, 1L, random_seed = 3L, rerun_parameter_search = TRUE,
+                                           n_bootstraps = 20L, grid_points_factor = 17.32, grid_min_points = 240L)
+  optioned_identity <- run_js_comp_test_on_sample_assignment(expression, 1:13, 10L, 30L,
+                                                             rerun_parameter_search = TRUE, n_bootstraps = 20L,
+                                                             grid_points_factor = 17.32, grid_min_points = 240L)
+  default_identity <- run_js_comp_test_on_sample_assignment(expression, 1:13, 10L, 30L,
+                                                            rerun_parameter_search = TRUE, n_bootstraps = 20L)
+  assert_true(identical(optioned$global_js_divergence_observed, optioned_identity$global_js_divergence),
+              "grid options: the observed values are the rerun's with the same options")
+  assert_true(!identical(optioned$global_js_divergence_observed, default_identity$global_js_divergence),
+              "grid options: another observed value than the default grid's")
+  assert_error(run_js_comp_test_permutation(expression, 10L, 30L, 4L, divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
 }
 
-test_run_js_comp_test_adaptive_label_permutation_test <- function() {
+test_run_js_comp_test_adaptive_permutation <- function() {
   expression <- label_test_expression()
-  result <- run_js_comp_test_adaptive_label_permutation_test(expression, 30L, 10L, 90L, 3L, random_seed = 3L)
+  result <- run_js_comp_test_adaptive_permutation(expression, 30L, 10L, 90L, 3L, random_seed = 3L)
   assert_true(is.list(result), "expected a list")
   assert_equal_int(length(result$global_js_divergence_observed), 3L, "observed length")
   assert_equal_int(length(result$p_values), 3L, "p_values length")
   assert_equal_int(dim(result$jsd_null), c(3L, 3L), "jsd_null shape")
   assert_true(length(result$n_failed_permutations) == 1, "n_failed_permutations scalar")
-  assert_error(run_js_comp_test_adaptive_label_permutation_test(expression, 30L, 10L, 90L, 0L),
+  assert_error(run_js_comp_test_adaptive_permutation(expression, 30L, 10L, 90L, 0L),
                "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+  two_studies <- expression[, , 1:2]
+  by_mode <- lapply(c(symmetric = "divergence_symmetric", pairwise = "divergence_pairwise_k2"), function(mode) {
+    run_js_comp_test_adaptive_permutation(two_studies, 30L, 10L, 90L, 1L, random_seed = 3L,
+                                          divergence_mode = mode)$global_js_divergence_observed
+  })
+  assert_two_study_divergence_modes(by_mode$symmetric, by_mode$pairwise, "run_js_comp_test_adaptive_permutation")
+  assert_error(run_js_comp_test_adaptive_permutation(expression, 30L, 10L, 90L, 3L, divergence_mode = "nonsense"),
+               "expected an unknown divergence_mode string to be rejected before Fortran")
 }
 
 run_all_tests()

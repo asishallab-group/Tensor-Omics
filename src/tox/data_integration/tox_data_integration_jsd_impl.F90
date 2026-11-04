@@ -1,4 +1,5 @@
 #include <src/macros.h>
+#include <src/tox/data_integration/macros.h>
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
 !|
@@ -9,6 +10,14 @@
 !| of all of them, built by
 !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
 !| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
+!|
+!| `divergence_mode` (an option of every JS-Comp-Test entry point) chooses how each study's
+!| per-point divergence is computed: by default, for exactly two studies, the pairwise JSD of the
+!| two studies
+!| ([[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]]), and for any
+!| other number of studies the JSD of each study against the consensus
+!| ([[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]], which can also
+!| be chosen for two studies).
 module tox_data_integration_jsd_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
@@ -20,14 +29,26 @@ module tox_data_integration_jsd_impl
     M_IMPLICIT_NONE
     private
     public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
-             build_residual_histograms_impl, calc_pmf_impl, &
+             build_residual_histograms_impl, calc_pmf_impl, pmf_entry, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
              jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
-             compute_consensus_divergences, has_study_without_residuals
+             compute_consensus_divergences, has_study_without_residuals, MODE_DIVERGENCE_SYMMETRIC, &
+             MODE_DIVERGENCE_PAIRWISE_K2
 
     ! `residual_range_quantile_level`'s default, shared by DM_DEFAULT and M_DEFAULT_VAL of both
     ! residual-range routines.
 #define CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT 0.95_real64
+
+    ! `divergence_mode`'s mode table, from the M_MODE_DIVERGENCE_* of
+    ! src/tox/data_integration/macros.h: M_MODE_DIVERGENCE_PAIRWISE_K2 is also the DM_DEFAULT of
+    ! every routine that takes the mode, which cannot name a Fortran parameter.
+    integer(int32), parameter :: MODE_DIVERGENCE_SYMMETRIC = M_MODE_DIVERGENCE_SYMMETRIC
+        !! Divergence mode: each study's JSD against the equal-weight consensus pmf of all studies,
+        !! weighted per point by the study's count plus the consensus's count
+    integer(int32), parameter :: MODE_DIVERGENCE_PAIRWISE_K2 = M_MODE_DIVERGENCE_PAIRWISE_K2
+        !! Divergence mode (the default): for exactly two studies the pairwise JSD of the two
+        !! studies, weighted per point by both studies' counts, the same value for both; for any
+        !! other number of studies the same as MODE_DIVERGENCE_SYMMETRIC
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
@@ -267,14 +288,29 @@ contains
 
         do concurrent(i_bin=1:n_bins)
             do concurrent(i_point=1:n_points) shared(pmf, i_bin, included_n_reps, counts)
-                if (included_n_reps(i_point) == 0) then
-                    pmf(i_point, i_bin) = 0.0_real64
-                else
-                    pmf(i_point, i_bin) = real(counts(i_point, i_bin), real64)/real(included_n_reps(i_point), real64)
-                end if
+                pmf(i_point, i_bin) = pmf_entry(counts(i_point, i_bin), included_n_reps(i_point))
             end do
         end do
     end subroutine calc_pmf_impl
+
+    !> summary: One entry of a pmf: one bin's count divided by its point's included residual count
+    !| AUTHOR_LASZLO_LANG
+    !| `bin_count / n_included`, or 0 when `n_included` is 0 (a point without residuals gets an all-zero
+    !| pmf instead of a division by 0). The formula of
+    !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]], one entry at a time, so
+    !| that a caller holding one point's counts (the bootstrap's draws) computes them identically.
+    !| Internal helper, not published; public because the bootstrap calls it.
+    elemental real(real64) function pmf_entry(bin_count, n_included) result(probability)
+        integer(int32), intent(in) :: bin_count
+            !! Residuals in this bin
+        integer(int32), intent(in) :: n_included
+            !! Included residuals at this reference point
+        if (n_included == 0_int32) then
+            probability = 0.0_real64
+        else
+            probability = real(bin_count, real64)/real(n_included, real64)
+        end if
+    end function pmf_entry
 
     !> summary: Whether some study has no included residual at some reference point
     !| AUTHOR_LASZLO_LANG
@@ -419,20 +455,29 @@ contains
         end if
     end subroutine compute_weighted_global_divergence_impl
 
-    !> summary: Each of K studies' per-point JSD against the consensus pmf, and its weighted global JSD
+    !> summary: Each of K studies' per-point JSD (against the consensus pmf, or pairwise for two studies) and its weighted global JSD
     !| AUTHOR_LASZLO_LANG
-    !| For every study `i_study`:
+    !| With `divergence_mode` symmetric, or with any number of studies other than two, for every
+    !| study `i_study`:
     !| [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
     !| of `pmfs(:, 1:n_bins, i_study)` against `mean_pmf(:, 1:n_bins)`, then
     !| [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]]
     !| with the study's and the consensus's included counts. The studies are independent, so the
-    !| loop over them is concurrent. Internal helper, not published; public because the final runs,
-    !| the parameter searches, the bootstrap and the permutation test call it. `n_bins_extent` is the
+    !| loop over them is concurrent.
+    !|
+    !| With `divergence_mode` pairwise and exactly two studies: the pairwise JSD of study 1's pmf
+    !| against study 2's per reference point, weighted by `n_1 + n_2` (both studies' included
+    !| counts), and both studies get this same per-point vector, weights and global value;
+    !| `mean_pmf` and `mean_pmf_included_n_reps` are then not read. This is the one place the mode
+    !| takes effect.
+    !|
+    !| Internal helper, not published; public because the final runs, the parameter searches and
+    !| the bootstrap call it. `n_bins_extent` is the
     !| second extent of `pmfs`/`mean_pmf`, so a caller can pass bin-sized arrays declared wider than
     !| the bins in use (the final runs' fixed maximum bin extent) without slicing them itself.
     pure subroutine compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins_extent, n_studies, &
-                                                  included_n_reps, mean_pmf_included_n_reps, js_divergences, &
-                                                  global_js_divergence, weights)
+                                                  included_n_reps, mean_pmf_included_n_reps, divergence_mode, &
+                                                  js_divergences, global_js_divergence, weights)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_bins
@@ -449,14 +494,28 @@ contains
             !! Count of non-NaN residuals per reference point, per study
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point of the consensus
+        integer(int32), intent(in) :: divergence_mode
+            !! One of the `MODE_DIVERGENCE_*` values, already resolved from its default by the caller
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
-            !! Per-reference-point JSD of each study against the consensus pmf
+            !! Per-reference-point JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
-            !! Weighted global JSD of each study against the consensus pmf
+            !! Weighted global JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(n_points, n_studies), intent(out) :: weights
             !! Per-reference-point weights of each study's `global_js_divergence`
 
         integer(int32) :: i_study
+
+        ! Pairwise, two studies only: one JSD of study 1 against study 2, shared by both.
+        if (divergence_mode == MODE_DIVERGENCE_PAIRWISE_K2 .and. n_studies == 2_int32) then
+            call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, 1), pmfs(:, 1:n_bins, 2), n_points, &
+                                                             n_bins, js_divergences(:, 1))
+            call compute_weighted_global_divergence_impl(js_divergences(:, 1), n_points, included_n_reps(:, 1), &
+                                                          included_n_reps(:, 2), global_js_divergence(1), weights(:, 1))
+            js_divergences(:, 2) = js_divergences(:, 1)
+            weights(:, 2) = weights(:, 1)
+            global_js_divergence(2) = global_js_divergence(1)
+            return
+        end if
 
         do concurrent(i_study=1:n_studies) shared(pmfs, mean_pmf, n_points, n_bins, js_divergences, included_n_reps, &
                                                   mean_pmf_included_n_reps, global_js_divergence, weights)
@@ -583,8 +642,8 @@ contains
 
         ! Sequential over i_study, outermost, so every element accumulates its studies in order.
         ! For some study counts (e.g. 9, 11, 18, 20) the sum exceeds 1.0 by a few ulps when every
-        ! study has all its mass in one bin, which gjct_permutation_test's DM_MAX(1.0) on mean_pmf
-        ! would reject. Deliberately not clamped, so outputs stay bit-identical.
+        ! study has all its mass in one bin, which a DM_MAX(1.0) on a pmf argument would reject.
+        ! Deliberately not clamped, so outputs stay bit-identical.
         do i_study = 1, n_studies
             do i_bin = 1, n_bins
                 do concurrent(i_point=1:n_points) shared(mean_pmf, pmfs, i_bin, i_study, n_studies, mean_pmf_counts, counts)
@@ -601,7 +660,7 @@ contains
     !> summary: Build only the consensus pmf from all studies' pmfs, without its histogram counts
     !| AUTHOR_LASZLO_LANG
     !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
-    !| callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
+    !| callers that need no counts (the bootstrap). Same known limitation: the consensus includes
     !| the study compared against it.
     pure subroutine create_mean_pmf_only_impl(pmfs, n_bins, n_points, n_studies, mean_pmf)
         integer(int32), intent(in) :: n_bins

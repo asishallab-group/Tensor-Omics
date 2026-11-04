@@ -1,229 +1,30 @@
 #include <src/macros.h>
 #include <src/tox/data_integration/macros.h>
 
-!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test and Bootstrap
-!|
-!| The permutation test of the JS-Comp-Test:
-!| [[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]] estimates an
-!| empirical p-value for each of K studies' weighted global JSD against the consensus pmf, by
-!| resampling every reference point's pooled histogram counts into the studies without
-!| replacement. `p_values` is the primary result; `p_values_observed_consensus` uses the older
-!| null (a fixed observed consensus) and is kept for comparison.
+!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Bootstrap
 !|
 !| The bootstrap
 !| [[tox_data_integration_stats_impl(module):bootstrap_histogram_impl(interface)]] gives each
 !| study's weighted global JSD an interval, by drawing each study's histograms again with
-!| replacement: by default from the study's own counts (a robustness interval: how much the
-!| observed value would move if each study's residuals were drawn again), or, with
-!| `bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
-!| studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
-!| caller that allocates its own.
+!| replacement from the study's own counts: a robustness interval, how much the observed value
+!| would move if each study's residuals were drawn again. `calc_js_comp_test_n_top_k_jsds` sizes
+!| its top-/bottom-k heaps for a caller that allocates its own. The significance test of the
+!| JS-Comp-Test is the study-label Permutation-Test,
+!| [[tox_data_integration_js_comp_test_permutation_fixed_k_impl(module):run_js_comp_test_permutation_impl(interface)]]
+!| and its adaptive counterpart.
 module tox_data_integration_stats_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multiv_hypergeom, random_multinomial
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multinomial
     use f42_sort_impl, only: top_k_heap_push, bottom_k_heap_push
-    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_only_impl
+    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, create_mean_pmf_only_impl, pmf_entry
     use tox_errors, only: set_ok, set_err_once, is_err, validate_in_range_int, validate_in_range_real, &
                           ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
-    public :: gjct_permutation_test_impl, calc_js_comp_test_n_top_k_jsds, bootstrap_histogram_impl, &
-              MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
-
-    ! `bootstrap_mode`'s mode table, from the M_MODE_BOOTSTRAP_* of src/tox/data_integration/macros.h:
-    ! M_MODE_BOOTSTRAP_PER_STUDY is also the DM_DEFAULT of both parameter searches and the
-    ! study-label Permutation-Test, which cannot name a Fortran parameter.
-    integer(int32), parameter :: MODE_BOOTSTRAP_PER_STUDY = M_MODE_BOOTSTRAP_PER_STUDY
-        !! Bootstrap mode: each study's histograms are drawn from the study's own counts, a robustness
-        !! interval of the observed JSD (the default)
-    integer(int32), parameter :: MODE_BOOTSTRAP_POOLED = M_MODE_BOOTSTRAP_POOLED
-        !! Bootstrap mode: each study's histograms are drawn from the pooled consensus counts of all
-        !! studies, a noise band of "no difference between the studies" (the bootstrap before the
-        !! mode existed, kept for comparison)
+    public :: calc_js_comp_test_n_top_k_jsds, bootstrap_heap_size, bootstrap_histogram_impl
 contains
-
-    !> summary: Estimate how likely each study's observed weighted global JSD is to occur by chance
-    !| AUTHOR_LASZLO_LANG
-    !| In every permutation, each reference point's pooled consensus counts (`mean_pmf_counts`) are
-    !| drawn without replacement (multivariate hypergeometric) into the studies, each study taking
-    !| as many residuals as it observed (`included_n_reps`). The permuted pmfs, their equal-weight
-    !| consensus (built exactly as
-    !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] builds the
-    !| observed one) and each study's weighted global JSD against that consensus are recomputed, and
-    !| compared with the observed `global_jsd_observed`. `p_values_observed_consensus` comes from the
-    !| same draws, taking each permuted study's JSD against the fixed observed `mean_pmf` instead.
-    !|
-    !| Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
-    !| `n_permutations = 0` no permutation runs and both are NaN ("not computed").
-    !|
-    !| This test permutes the pooled residual counts within fixed histograms (residual level); the
-    !| study-label Permutation-Test, which shuffles the samples' study labels and reruns the whole
-    !| JS-Comp-Test, is
-    !| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_label_permutation_test_impl(interface)]].
-    !|
-    !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
-    !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
-    !| is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
-    !| cannot be created. The p-values are then NaN. The count check, together with the wrappers'
-    !| bounds on the counts, establishes every draw's preconditions, so no draw can fail later on.
-    subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, tmp_permuted_mean_pmf, &
-                                          tmp_point_pool, tmp_point_draw, random_seed, ierr)
-        integer(int32), intent(in) :: n_permutations
-            !! Number of permutations; `0` skips the test (both p-value outputs are then NaN)
-            !! DM_MIN(0_int32)
-        integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins
-            !! DM_MIN(1_int32)
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points
-            !! DM_MIN(1_int32)
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-            !! DM_MIN(1_int32)
-        integer(int32), dimension(n_points, n_bins), intent(in) :: mean_pmf_counts
-            !! Pooled residual counts per bin of the consensus pmf: the pool each permutation draws from
-            !! DM_MIN(0_int32)
-        real(real64), dimension(n_points, n_bins), intent(in) :: mean_pmf
-            !! Observed consensus pmf; used only for `p_values_observed_consensus`
-            !! DM_MIN(0.0_real64)
-            !! DM_MAX(1.0_real64)
-        integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
-            !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
-            !! DM_MIN(0_int32)
-        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
-            !! Count of non-NaN replicates per reference point, per study: the size of each study's
-            !! draw. Every study needs at least one at every reference point
-            !! DM_MIN(1_int32)
-        real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
-            !! Observed weighted global JSD of each study against the consensus pmf
-        real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study, `(count + 1)/(n_permutations + 1)` over the permutations
-            !! whose global JSD reached the observed one; NaN when `n_permutations` is 0
-        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
-            !! Like `p_values`, from the same permutations, but against the fixed observed consensus
-            !! `mean_pmf`; kept for comparison only. NaN when `n_permutations` is 0
-        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_mean_pmf_counts
-            !! Working array: the remaining pool, reset to `mean_pmf_counts` every permutation
-        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
-            !! Working array for one study's resampled histogram counts, one permutation at a time
-        real(real64), dimension(n_points, n_bins, n_studies), intent(out) :: tmp_pmfs
-            !! Working array that holds one permutation's resampled pmfs, all studies
-        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_js_divergences
-            !! Working array for one permutation's per-point JSD values
-        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_weights
-            !! Working array for one permutation's per-point weights
-        real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
-            !! Working array for one permutation's global weighted JSD values
-        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_permuted_mean_pmf
-            !! Working array for one permutation's equal-weight consensus pmf of the permuted studies
-        integer(int32), dimension(n_bins), intent(out) :: tmp_point_pool
-            !! Working array: one reference point's remaining pool, drawn from and then written back
-        integer(int32), dimension(n_bins), intent(out) :: tmp_point_draw
-            !! Working array: one study's draw at one reference point
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator
-            !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
-        integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
-            !! number generator could not be created (see above)
-
-        integer(int32) :: i_permutation, i_point, i_study, actual_random_seed
-        type(rng_t) :: rng
-
-        call set_ok(ierr)
-        M_DEFAULT_VAL(random_seed, actual_random_seed, M_RANDOM_SEED_DEFAULT)
-        ! Inconsistent inputs, checked before the generator is created: at every point the studies'
-        ! draws must add up to the pool's total, and that total must be the sum of its bin counts,
-        ! so that a permutation splits the pool exactly. Not one argument's fault, so no position
-        ! (codegen_guide.md Sec 5.14).
-        do i_point = 1, n_points
-            if (sum(included_n_reps(i_point, :)) /= mean_pmf_included_n_reps(i_point) .or. &
-                mean_pmf_included_n_reps(i_point) /= sum(mean_pmf_counts(i_point, :))) then
-                call set_err_once(ierr, ERR_INVALID_INPUT)
-                exit
-            end if
-        end do
-        if (.not. is_err(ierr)) rng = create_rng(ierr, actual_random_seed)
-        if (is_err(ierr)) then
-            ! Inconsistent inputs or a genuine runtime failure -- nothing was tested, so the
-            ! p-values are NaN ("not computed"), not 0.0 (which would read as maximally
-            ! significant); every work array is left in a defined (zeroed) state.
-            p_values = M_NAN
-            p_values_observed_consensus = M_NAN
-            tmp_mean_pmf_counts = 0_int32
-            tmp_counts = 0_int32
-            tmp_pmfs = 0.0_real64
-            tmp_js_divergences = 0.0_real64
-            tmp_weights = 0.0_real64
-            tmp_global_js_divergence = 0.0_real64
-            tmp_permuted_mean_pmf = 0.0_real64
-            tmp_point_pool = 0_int32
-            tmp_point_draw = 0_int32
-            return
-        end if
-
-        p_values = 0.0_real64
-        p_values_observed_consensus = 0.0_real64
-        do i_permutation = 1, n_permutations
-            ! A point's bins are a strided row here, so each draw goes through the contiguous
-            ! tmp_point_pool/tmp_point_draw, and the reduced pool is written back.
-            tmp_mean_pmf_counts = mean_pmf_counts
-            do i_study = 1, n_studies
-                do i_point = 1, n_points
-                    tmp_point_pool = tmp_mean_pmf_counts(i_point, :)
-                    call random_multiv_hypergeom(rng, n_bins, tmp_point_pool, sum(tmp_point_pool), &
-                                                 included_n_reps(i_point, i_study), tmp_point_draw)
-                    tmp_mean_pmf_counts(i_point, :) = tmp_point_pool
-                    tmp_counts(i_point, :) = tmp_point_draw
-                end do
-                call calc_pmf_impl(tmp_counts, included_n_reps(:, i_study), n_points, n_bins, tmp_pmfs(:, :, i_study))
-            end do
-
-            ! Observed-consensus null first: the block below overwrites the tmp_* arrays.
-            call compute_consensus_divergences(tmp_pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included_n_reps, &
-                                               mean_pmf_included_n_reps, tmp_js_divergences, tmp_global_js_divergence, &
-                                               tmp_weights)
-            do concurrent(i_study=1:n_studies) shared(tmp_global_js_divergence, global_jsd_observed, &
-                                                      p_values_observed_consensus)
-                if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
-                    p_values_observed_consensus(i_study) = p_values_observed_consensus(i_study) + 1.0_real64
-                end if
-            end do
-
-            ! The observed consensus's arithmetic, so the two match bit for bit (a few-ulp excess
-            ! over 1.0 included, deliberately not clamped).
-            call create_mean_pmf_only_impl(tmp_pmfs, n_bins, n_points, n_studies, tmp_permuted_mean_pmf)
-
-            call compute_consensus_divergences(tmp_pmfs, tmp_permuted_mean_pmf, n_points, n_bins, n_bins, n_studies, &
-                                               included_n_reps, mean_pmf_included_n_reps, tmp_js_divergences, &
-                                               tmp_global_js_divergence, tmp_weights)
-            do concurrent(i_study=1:n_studies) shared(tmp_global_js_divergence, global_jsd_observed, p_values)
-                if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
-                    p_values(i_study) = p_values(i_study) + 1.0_real64
-                end if
-            end do
-        end do
-
-        if (n_permutations /= 0) then
-            do concurrent(i_study=1:n_studies) shared(p_values, p_values_observed_consensus, n_permutations)
-                p_values(i_study) = anint(p_values(i_study)+1.0_real64)/real(n_permutations+1.0_real64, real64)
-                p_values_observed_consensus(i_study) = anint(p_values_observed_consensus(i_study)+1.0_real64) &
-                                                       /real(n_permutations+1.0_real64, real64)
-            end do
-        else
-            ! No permutation ran, so nothing was tested: "not computed", not 0.0 (which would read as
-            ! maximally significant), as in the error branch above.
-            p_values = M_NAN
-            p_values_observed_consensus = M_NAN
-        end if
-
-        call destroy_rng(rng)
-    end subroutine gjct_permutation_test_impl
 
     !> M_EXPORT_C
     !| summary: Recommend the bootstrap top-/bottom-k heap size for a two-sided confidence interval
@@ -261,25 +62,103 @@ contains
 
         M_DEFAULT_VAL(two_sided_bootstrapping_significance_level, sig_level, M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
 
-        n_top_k = max(1_int32, floor(sig_level/100.0_real64*real(n_bootstraps, real64), kind=int32))
+        n_top_k = bootstrap_heap_size(n_bootstraps, sig_level)
     end subroutine calc_js_comp_test_n_top_k_jsds
+
+    !> summary: The bootstrap top-/bottom-k heap size, without validation
+    !| AUTHOR_LASZLO_LANG
+    !| `max(1, floor(level/100 * n_bootstraps))`, the formula of
+    !| [[tox_data_integration_stats_impl(module):calc_js_comp_test_n_top_k_jsds(subroutine)]], for a
+    !| caller whose inputs are already validated (`n_bootstraps >= 1`, the level in `[0, 100]`).
+    !| Internal helper, not published; public because the study-label Permutation-Test's sizing
+    !| routines call it.
+    pure integer(int32) function bootstrap_heap_size(n_bootstraps, two_sided_bootstrapping_significance_level) &
+        result(n_top_k)
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstrap resamples, at least 1
+        real(real64), intent(in) :: two_sided_bootstrapping_significance_level
+            !! Two-sided significance level in percent per end, in `[0, 100]`
+
+        n_top_k = max(1_int32, floor(two_sided_bootstrapping_significance_level/100.0_real64*real(n_bootstraps, real64), &
+                                     kind=int32))
+    end function bootstrap_heap_size
+
+    !> summary: Whether every reference point's pool total is the sum of the studies' draw sizes
+    !| AUTHOR_LASZLO_LANG
+    !| Private. `.true.` iff at every point the studies' `included_n_reps` add up to
+    !| `mean_pmf_included_n_reps`. The scan stops at the first point that fails; a point's studies
+    !| are a strided row, so the sum is a plain loop rather than a reduction over the section.
+    pure logical(c_bool) function pool_totals_consistent(n_points, n_studies, mean_pmf_included_n_reps, included_n_reps) &
+        result(consistent)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: mean_pmf_included_n_reps(n_points)
+            !! Pool total per reference point
+        integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
+            !! Each study's draw size per reference point
+
+        integer(int32) :: i_point, i_study, total
+
+        consistent = .false._c_bool
+        ! Sequential with an early exit: the first inconsistent point decides.
+        do i_point = 1, n_points
+            total = 0_int32
+            do i_study = 1, n_studies
+                total = total + included_n_reps(i_point, i_study)
+            end do
+            if (total /= mean_pmf_included_n_reps(i_point)) return
+        end do
+        consistent = .true._c_bool
+    end function pool_totals_consistent
+
+    !> summary: Whether every study's own counts add up to its draw size at every reference point
+    !| AUTHOR_LASZLO_LANG
+    !| Private. `.true.` iff `counts(i_point, :, i_study)` sums to `included_n_reps(i_point, i_study)`
+    !| for every point and study. The scan stops at the first mismatch; the bins are a strided row,
+    !| so each sum is a plain loop rather than a reduction over the section.
+    pure logical(c_bool) function study_totals_consistent(n_points, n_bins, n_studies, counts, included_n_reps) &
+        result(consistent)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_bins
+            !! Number of histogram bins
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: counts(n_points, n_bins, n_studies)
+            !! Every study's counts per bin
+        integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
+            !! Each study's draw size per reference point
+
+        integer(int32) :: i_point, i_study, i_bin, total
+
+        consistent = .false._c_bool
+        ! Sequential with an early exit: the first mismatch decides.
+        do i_study = 1, n_studies
+            do i_point = 1, n_points
+                total = 0_int32
+                do i_bin = 1, n_bins
+                    total = total + counts(i_point, i_bin, i_study)
+                end do
+                if (total /= included_n_reps(i_point, i_study)) return
+            end do
+        end do
+        consistent = .true._c_bool
+    end function study_totals_consistent
 
     !> summary: Bootstrap an interval for each study's global JSD by resampling the studies' histograms
     !| AUTHOR_LASZLO_LANG
     !| In every bootstrap, each study's histogram at each reference point is drawn again with
     !| replacement (multinomial), with as many residuals as the study observed
-    !| (`included_n_reps`); the consensus pmf, each study's JSD against it and its weighted global
-    !| JSD are recomputed from the draw. What a study is drawn from is `bootstrap_mode`:
-    !|
-    !| - by default its own counts (`counts`): the interval shows how much the observed JSD would
-    !|   move if each study's own residuals were drawn again -- a robustness interval of the
-    !|   observed value. Drawing again adds sampling noise, so the bootstrapped JSDs are larger
-    !|   than the observed one on average: when the studies hardly differ, the interval can lie
-    !|   entirely above the observed JSD;
-    !| - or the pooled consensus counts of all studies (`mean_pmf_counts`): the interval shows the
-    !|   spread of the JSD expected if the studies did not differ at all -- a noise band, not the
-    !|   robustness of the observed value. This was the only bootstrap before the mode existed and
-    !|   is kept for comparison.
+    !| (`included_n_reps`); the consensus pmf, each study's per-point JSD and its weighted global
+    !| JSD are recomputed from the draw, with the divergence `divergence_mode` selects (by default
+    !| for exactly two studies their pairwise JSD, otherwise against the consensus). Each study is
+    !| drawn from its own counts (`counts`): the interval shows how much the observed JSD would move
+    !| if each study's own residuals were drawn again -- a robustness interval of the observed
+    !| value. Drawing again adds sampling noise, so the bootstrapped JSDs are larger than the
+    !| observed one on average: when the studies hardly differ, the interval can lie entirely above
+    !| the observed JSD.
     !|
     !| `confidence_interval` is input and output: its incoming `[lower, upper]` values seed every
     !| slot of the bottom-k/top-k heaps, so they are only displaced by more extreme bootstrap
@@ -287,19 +166,19 @@ contains
     !| smallest of the n_bootstrapping_top_k_jsds largest values]`.
     !|
     !| Errors (`ierr`), with `confidence_interval` left unchanged: `ERR_INVALID_INPUT`, before any
-    !| draw, when at some reference point the studies' counts do not add up to
-    !| `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
+    !| draw, when at some reference point the studies' `included_n_reps` do not add up to
+    !| `mean_pmf_included_n_reps` (as
     !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] produces
-    !| them), or, in the per-study mode, when a study's `counts` at some reference point do not add
-    !| up to its `included_n_reps`; `ERR_ALLOC_FAIL` when the random number generator cannot be
+    !| them), or a study's `counts` at some reference point do not add up to its
+    !| `included_n_reps`; `ERR_ALLOC_FAIL` when the random number generator cannot be
     !| created. The count checks, together with the wrappers' bounds on the counts, establish every
     !| draw's preconditions, so no draw can fail later on.
-    subroutine bootstrap_histogram_impl(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+    subroutine bootstrap_histogram_impl(n_bootstraps, n_bins, n_points, n_studies, counts, &
                                         mean_pmf_included_n_reps, included_n_reps, n_bootstrapping_top_k_jsds, &
                                         confidence_interval, tmp_bootstrapping_top_k_jsds, tmp_pmfs, &
                                         tmp_mean_pmf, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                         tmp_point_pool, tmp_point_draw, two_sided_bootstrapping_significance_level, &
-                                        random_seed, bootstrap_mode, ierr)
+                                        random_seed, divergence_mode, ierr)
         integer(int32), intent(in) :: n_bootstraps
             !! Number of bootstrap resamples to perform
             !! DM_MIN(1_int32)
@@ -312,17 +191,14 @@ contains
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
-        integer(int32), dimension(n_points, n_bins), intent(in) :: mean_pmf_counts
-            !! Pooled residual counts per bin of the consensus pmf: what every study is drawn from in
-            !! the pooled mode
-            !! DM_MIN(0_int32)
         integer(int32), dimension(n_points, n_bins, n_studies), intent(in) :: counts
-            !! Every study's own residual counts per bin: what each study is drawn from in the
-            !! per-study mode (the default); at each reference point they must add up to the
-            !! study's `included_n_reps` there. Not drawn from in the pooled mode, but still required
+            !! Every study's own residual counts per bin: what each study is drawn from; at each
+            !! reference point they must add up to the study's `included_n_reps` there
             !! DM_MIN(0_int32)
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
-            !! Count of non-NaN replicates per reference point of the pool
+            !! Count of non-NaN replicates per reference point of all studies together (the
+            !! consensus's count, the denominator of the weights); must be the sum of the studies'
+            !! `included_n_reps` there
             !! DM_MIN(0_int32)
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
             !! Count of non-NaN replicates per reference point, per study: the size of each study's
@@ -361,49 +237,34 @@ contains
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
-        integer(int32), intent(in), optional :: bootstrap_mode
-            !! What each study's histograms are drawn from (see above). By default each study's own
-            !! counts: a robustness interval of the observed JSD. The pooled counts give a noise
-            !! band of "no difference between the studies" instead, kept for comparison
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence of every bootstrap draw is computed, as in the
+            !! routine whose interval this is
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
-            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
-            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+            !! | Each study's JSD against the consensus of all studies | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]] |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_PAIRWISE_K2)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
 
-        integer(int32) :: i_bootstrap, i_study, i_point, actual_random_seed, actual_bootstrap_mode
-        integer(int32) :: pool_total
+        integer(int32) :: i_bootstrap, i_study, i_point, i_bin, actual_random_seed, actual_divergence_mode
         type(rng_t) :: rng
 
         call set_ok(ierr)
         M_DEFAULT_VAL(random_seed, actual_random_seed, M_RANDOM_SEED_DEFAULT)
-        M_DEFAULT_VAL(bootstrap_mode, actual_bootstrap_mode, M_MODE_BOOTSTRAP_PER_STUDY)
-        ! The pool's total is the multinomial total and the weights' denominator, so it must match
-        ! the studies' draws and its own bin counts (also covers drawing from an empty pool). Not
-        ! one argument's fault, so no position.
-        do i_point = 1, n_points
-            if (sum(included_n_reps(i_point, :)) /= mean_pmf_included_n_reps(i_point) .or. &
-                mean_pmf_included_n_reps(i_point) /= sum(mean_pmf_counts(i_point, :))) then
-                call set_err_once(ierr, ERR_INVALID_INPUT)
-                exit
-            end if
-        end do
+        M_DEFAULT_VAL(divergence_mode, actual_divergence_mode, M_MODE_DIVERGENCE_PAIRWISE_K2)
+        ! The pool's total is the weights' denominator, so it must be the sum of the studies' draws.
+        ! Not one argument's fault, so no position.
+        if (.not. pool_totals_consistent(n_points, n_studies, mean_pmf_included_n_reps, included_n_reps)) &
+            call set_err_once(ierr, ERR_INVALID_INPUT)
         ! Per study, its own counts are the pool and its own total the multinomial total: they must
-        ! agree in the same way.
-        if (actual_bootstrap_mode == MODE_BOOTSTRAP_PER_STUDY .and. .not. is_err(ierr)) then
-            do i_study = 1, n_studies
-                do i_point = 1, n_points
-                    if (sum(counts(i_point, :, i_study)) /= included_n_reps(i_point, i_study)) then
-                        call set_err_once(ierr, ERR_INVALID_INPUT)
-                        exit
-                    end if
-                end do
-                if (is_err(ierr)) exit
-            end do
+        ! agree in the same way (also covers drawing from an empty pool).
+        if (.not. is_err(ierr)) then
+            if (.not. study_totals_consistent(n_points, n_bins, n_studies, counts, included_n_reps)) &
+                call set_err_once(ierr, ERR_INVALID_INPUT)
         end if
         if (.not. is_err(ierr)) rng = create_rng(ierr, actual_random_seed)
         if (is_err(ierr)) then
@@ -425,39 +286,30 @@ contains
         end do
 
         do i_bootstrap = 1, n_bootstraps
-            ! Sequential: every draw advances the rng state, in the same order in both modes (study
-            ! outer, point inner). A point's bins are a strided row here, so each draw goes through
-            ! the contiguous tmp_point_pool/tmp_point_draw.
+            ! Sequential: every draw advances the rng state (study outer, point inner). A point's
+            ! bins are a strided row here, so each draw goes through the contiguous
+            ! tmp_point_pool/tmp_point_draw.
             do i_study = 1, n_studies
                 do i_point = 1, n_points
-                    if (actual_bootstrap_mode == MODE_BOOTSTRAP_POOLED) then
-                        tmp_point_pool = mean_pmf_counts(i_point, :)
-                        pool_total = mean_pmf_included_n_reps(i_point)
-                    else
-                        tmp_point_pool = counts(i_point, :, i_study)
-                        pool_total = included_n_reps(i_point, i_study)
-                    end if
-                    call random_multinomial(rng, n_bins, tmp_point_pool, pool_total, &
+                    tmp_point_pool = counts(i_point, :, i_study)
+                    call random_multinomial(rng, n_bins, tmp_point_pool, included_n_reps(i_point, i_study), &
                                             included_n_reps(i_point, i_study), tmp_point_draw)
 
-                    ! The draw's pmf, computed exactly as calc_pmf_impl does, one point at a time.
-                    ! A study without residuals at a point is rejected by the wrappers (DM_MIN(1));
-                    ! such a point gets an all-zero pmf instead of a division by 0.
-                    if (included_n_reps(i_point, i_study) == 0_int32) then
-                        tmp_pmfs(i_point, :, i_study) = 0.0_real64
-                    else
-                        tmp_pmfs(i_point, :, i_study) = real(tmp_point_draw, real64) &
-                                                        /real(included_n_reps(i_point, i_study), real64)
-                    end if
+                    ! The draw's pmf, entry by entry with calc_pmf_impl's own formula (pmf_entry).
+                    do i_bin = 1, n_bins
+                        tmp_pmfs(i_point, i_bin, i_study) = pmf_entry(tmp_point_draw(i_bin), &
+                                                                      included_n_reps(i_point, i_study))
+                    end do
                 end do
             end do
 
             ! Drawn with replacement, so the consensus changes too.
+            ! (Built but not read in the pairwise mode with two studies, see compute_consensus_divergences.)
             call create_mean_pmf_only_impl(tmp_pmfs, n_bins, n_points, n_studies, tmp_mean_pmf)
 
             call compute_consensus_divergences(tmp_pmfs, tmp_mean_pmf, n_points, n_bins, n_bins, n_studies, &
-                                               included_n_reps, mean_pmf_included_n_reps, tmp_js_divergences, &
-                                               tmp_global_js_divergence, tmp_weights)
+                                               included_n_reps, mean_pmf_included_n_reps, actual_divergence_mode, &
+                                               tmp_js_divergences, tmp_global_js_divergence, tmp_weights)
             do concurrent(i_study=1:n_studies) shared(tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, &
                                                       tmp_global_js_divergence)
                 ! Keep the highest and lowest values seen so far.

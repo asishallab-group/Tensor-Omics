@@ -400,7 +400,7 @@ def check_effect_size_plateau_condition(
         delta_epsilon,
         delta_min_consecutive_transitions,
         n_consecutive_ok,
-        delta_abs_tolerance=0.0,
+        delta_abs_tolerance=0.0001,
 ):
     r"""Test one candidate's per-study JSD against the previous admissible candidate for a relative-effect-size plateau
 
@@ -447,10 +447,10 @@ def check_effect_size_plateau_condition(
         Running count of consecutive qualifying transitions; reset to zero when this one does
         not qualify or `has_previous` is `False`
         The minimum valid value is `0`.
-    delta_abs_tolerance : float, optional, default 0.0
+    delta_abs_tolerance : float, optional, default 0.0001
         Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
         The minimum valid value is `0.0`.
-        The default value is `0.0`.
+        The default value is `0.0001`.
 
     Returns
     -------

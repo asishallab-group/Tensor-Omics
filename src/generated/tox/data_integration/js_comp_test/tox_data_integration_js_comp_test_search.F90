@@ -187,11 +187,11 @@ contains
             !! How the studies' overlaps are joined into the plateau condition; the median method
             !! requires `count > (n_studies - 1) / 2`
             !!
-            !! | Method                                  | Value                                                                                  |
-            !! |-----------------------------------------|----------------------------------------------------------------------------------------|
-            !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]]    |
-            !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]]    |
-            !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+            !! | Method                                                  | Value                                                                                  |
+            !! |---------------------------------------------------------|----------------------------------------------------------------------------------------|
+            !! | Minimum overlap (all studies must pass)                 | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]]    |
+            !! | Maximum overlap (any one study passes)                  | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]]    |
+            !! | Median overlap (at least half of the studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         real(real64), intent(in) :: succeeding_ci_overlap
             !! Minimum fractional overlap with the best candidate's interval for a study to pass
             !! The minimum valid value is `0.0_real64`.
@@ -305,7 +305,7 @@ contains
         real(real64), intent(in), optional :: delta_abs_tolerance
             !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.0_real64`.
+            !! The default value is `0.0001_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: tmp_delta_perm
@@ -421,7 +421,7 @@ contains
         real(real64), intent(in), optional :: delta_abs_tolerance
             !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.0_real64`.
+            !! The default value is `0.0001_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 

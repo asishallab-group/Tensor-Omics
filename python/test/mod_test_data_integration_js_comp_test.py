@@ -44,8 +44,8 @@ from tensor_omics import (
     run_js_comp_test_adaptive_parameter_search,
     run_js_comp_test_on_sample_assignment,
     run_js_comp_test_adaptive_on_sample_assignment,
-    run_js_comp_test_label_permutation_test,
-    run_js_comp_test_adaptive_label_permutation_test,
+    run_js_comp_test_permutation,
+    run_js_comp_test_adaptive_permutation,
     calc_js_comp_test_permutation_bounds,
     calc_adaptive_js_comp_test_permutation_bounds,
 )
@@ -280,62 +280,58 @@ def test_determine_bin_count_stone():
 
 def test_generate_js_comp_test_candidates():
     # ============================================================
-    # Test 1 -- small-N candidate-grid collapse at its exact threshold
-    # (test_generate_js_comp_test_candidates_collapses_at_8742): with
-    # max_n_genes_all_studies=8742, n_points_high = clamp(ceil(4*sqrt(8742)), 300, 1500) = 374
-    # and n_points_low = max(300, ceil(0.2*374)) = 300; after one grid iteration n_points_high
-    # becomes 374*0.8=299.2 < 300, so every candidate the grid returns shares n_points=374.
+    # Test 1 -- the default grid by hand (grid_points_factor 4, grid_min_points 200): with
+    # max_n_genes_all_studies=8742, n_points_high = clamp(ceil(4*sqrt(8742)), 200, 1500) = 374 and
+    # n_points_low = max(200, ceil(0.2*374)) = 200. The GAMMA decay gives 374, 299.2 -> 299,
+    # 239.36 -> 239; 191.5 < 200 stops it, so the floor 200 is added as the last candidate.
+    # n_neighbors = floor(8742/(0.25*n_points)): 93, 116, 146 and, at the floor, 174.
+    # The routine's only DM_RESULT_SIZE_IS output, so the wrapper returns the trimmed array.
     # ============================================================
-    # Issue #187, Step 2.7: candidates_n_points_n_neighbors is now the routine's only
-    # DM_RESULT_SIZE_IS output, so the generated Python wrapper returns the already-trimmed
-    # array directly rather than a dict.
     candidates = generate_js_comp_test_candidates(8742)
-    n_candidates = candidates.shape[1]
-    assert n_candidates >= 1, "Test 1 failed: expected at least one candidate"
-    assert np.all(candidates[0, :] == candidates[0, 0]), \
-        "Test 1 failed: every candidate must share the same n_points"
-    assert candidates[0, 0] == 374, f"Test 1 failed: n_points should be 374, got {candidates[0, 0]}"
+    assert candidates.dtype == np.int32 and candidates.shape == (2, 4), \
+        f"Test 1 failed: expected an int32 (2, 4) grid, got {candidates.dtype} {candidates.shape}"
+    assert candidates[0, :].tolist() == [374, 299, 239, 200], f"Test 1 failed: n_points {candidates[0, :]}"
+    assert candidates[1, :].tolist() == [93, 116, 146, 174], f"Test 1 failed: n_neighbors {candidates[1, :]}"
 
     # ============================================================
-    # Test 2 -- the other side of the bracket (test_generate_js_comp_test_candidates_has_two_distinct_at_8743):
-    # with max_n_genes_all_studies=8743, n_points_high=ceil(4*sqrt(8743))=375 and
-    # n_points_low=300; after one iteration n_points_high becomes 375*0.8=300.0, which is NOT
-    # less than n_points_low=300, so a second, distinct n_points=300 candidate appears.
+    # Test 2 -- the two grid options: grid_min_points=300 stops the decay after 374 (299.2 < 300)
+    # and adds the floor 300 (n_neighbors floor(8742/75) = 116); grid_points_factor=2 gives
+    # ceil(2*sqrt(8742)) = 187, clamped up to the floor 200, a single candidate (200, 174).
     # ============================================================
-    candidates2 = generate_js_comp_test_candidates(8743)
-    n_candidates2 = candidates2.shape[1]
-    n_distinct = len(set(candidates2[0, :].tolist()))
-    assert n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values"
-    assert candidates2[0, 0] == 375, f"Test 2 failed: first n_points should be 375, got {candidates2[0, 0]}"
-    assert candidates2[0, n_candidates2 - 1] == 300, \
-        f"Test 2 failed: last n_points should collapse to 300, got {candidates2[0, n_candidates2 - 1]}"
+    floor_300 = generate_js_comp_test_candidates(8742, grid_min_points=300)
+    assert floor_300.tolist() == [[374, 300], [93, 116]], f"Test 2 failed: grid_min_points=300 gave {floor_300}"
+    factor_2 = generate_js_comp_test_candidates(8742, grid_points_factor=2.0)
+    assert factor_2.tolist() == [[200], [174]], f"Test 2 failed: grid_points_factor=2 gave {factor_2}"
+    assert_error(lambda: generate_js_comp_test_candidates(8742, grid_points_factor=0.0),
+                 "Test 2 failed: expected ERR_INVALID_INPUT for grid_points_factor=0", ERR_INVALID_INPUT)
+    assert_error(lambda: generate_js_comp_test_candidates(8742, grid_min_points=1501),
+                 "Test 2 failed: expected ERR_INVALID_INPUT for grid_min_points above 1500", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 3 -- validation (test_generate_js_comp_test_candidates_validation):
-    # max_n_genes_all_studies must be positive. Issue #187, Step 2.7: this routine's `_expert`
-    # tier no longer exists (no tmp_/work-array/permutation left in its signature once the
-    # bin-estimate side effect was removed), so this test no longer exercises it.
+    # max_n_genes_all_studies must be positive.
     # ============================================================
     assert_error(lambda: generate_js_comp_test_candidates(0),
                  "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 4 -- neighborhood_size_mode as a mode string (call, type, shape; the grids themselves
-    # are test_fixed_k_grid_neighborhood_size_modes_*): every mode gives positive pairs, and the
-    # grid of both modes holds the pairs of the large and of the small one.
+    # are checked in the Fortran suite): both modes give positive pairs on the same n_points, the
+    # small one with fewer neighbors; an unknown string is rejected before Fortran.
     # ============================================================
-    n_columns = {}
-    for mode in ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"):
-        candidates_mode = generate_js_comp_test_candidates(2000, neighborhood_size_mode=mode)
+    grids = {}
+    for mode in ("neighborhood_size_large", "neighborhood_size_small"):
+        candidates_mode = generate_js_comp_test_candidates(8742, neighborhood_size_mode=mode)
         assert candidates_mode.dtype == np.int32, f"Test 4 failed: {mode} dtype"
         assert candidates_mode.ndim == 2 and candidates_mode.shape[0] == 2, f"Test 4 failed: {mode} shape"
-        assert candidates_mode.shape[1] >= 1 and np.all(candidates_mode > 0), f"Test 4 failed: {mode} values"
-        n_columns[mode] = candidates_mode.shape[1]
-    assert n_columns["neighborhood_size_both"] == n_columns["neighborhood_size_large"] + \
-        n_columns["neighborhood_size_small"], "Test 4 failed: both = large + small"
-    assert generate_js_comp_test_candidates(2000).shape[0] == 2, "Test 4 failed: default shape"
+        assert np.all(candidates_mode > 0), f"Test 4 failed: {mode} values"
+        grids[mode] = candidates_mode
+    assert grids["neighborhood_size_small"][0, :].tolist() == grids["neighborhood_size_large"][0, :].tolist(), \
+        "Test 4 failed: both modes share the n_points"
+    assert np.all(grids["neighborhood_size_small"][1, :] < grids["neighborhood_size_large"][1, :]), \
+        "Test 4 failed: the small neighborhoods have fewer neighbors"
     assert_error(lambda: generate_js_comp_test_candidates(2000, neighborhood_size_mode="nonsense"),
-                 "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected")
+                 "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected before Fortran")
 
 
 def test_check_neighborhood_overlaps():
@@ -648,13 +644,8 @@ def test_create_mean_pmf_only():
     np.testing.assert_array_almost_equal(only, full["mean_pmf"], decimal=12)
 
 
-def test_bootstrap_histogram():
-    # ============================================================
-    # Test 1 -- same random_seed twice must give bit-for-bit identical confidence_interval
-    # (test_bootstrap_histogram_seeded_reproducibility).
-    # ============================================================
-    mean_pmf_counts = np.array([[5, 3, 2], [2, 2, 6]], dtype=np.int32, order='F')
-    # Every study's own counts (points x bins x studies), adding up to the pool.
+def _bootstrap_test_counts():
+    """Two points, three bins, two studies: every study's own counts and their included totals."""
     counts = np.zeros((2, 3, 2), dtype=np.int32, order='F')
     counts[0, :, 0] = [2, 1, 1]
     counts[0, :, 1] = [3, 2, 1]
@@ -662,47 +653,54 @@ def test_bootstrap_histogram():
     counts[1, :, 1] = [1, 1, 4]
     mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
     included_n_reps = np.array([[4, 6], [4, 6]], dtype=np.int32, order='F')
+    return counts, mean_pmf_included_n_reps, included_n_reps
+
+
+def test_bootstrap_histogram():
+    # ============================================================
+    # Test 1 -- same random_seed twice must give bit-for-bit identical confidence_interval
+    # (test_bootstrap_histogram_seeded_reproducibility).
+    # ============================================================
+    counts, mean_pmf_included_n_reps, included_n_reps = _bootstrap_test_counts()
 
     ci_first = np.array([[0.2, 0.3], [0.2, 0.3]], dtype=np.float64, order='F')
-    bootstrap_histogram(15, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_first,
-                        random_seed=123, bootstrap_mode="bootstrap_pooled")
+    bootstrap_histogram(15, counts, mean_pmf_included_n_reps, included_n_reps, ci_first, random_seed=123)
 
     ci_second = np.array([[0.2, 0.3], [0.2, 0.3]], dtype=np.float64, order='F')
-    bootstrap_histogram(15, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_second,
-                        random_seed=123, bootstrap_mode="bootstrap_pooled")
+    bootstrap_histogram(15, counts, mean_pmf_included_n_reps, included_n_reps, ci_second, random_seed=123)
 
-    np.testing.assert_array_almost_equal(ci_first, ci_second, decimal=12)
+    np.testing.assert_array_equal(ci_first, ci_second)
+    assert ci_first.dtype == np.float64 and ci_first.shape == (2, 2), "Test 1 failed: dtype/shape"
+    assert np.all(ci_first[0, :] <= ci_first[1, :]), "Test 1 failed: lower <= upper"
 
     # ============================================================
     # Test 2 -- degenerate single-bin histogram: JSD is always exactly 0.0, so seeding the
     # confidence interval at [0.0, 0.0] must leave it collapsed at [0.0, 0.0]
     # (test_bootstrap_histogram_degenerate_single_bin_zero_ci).
     # ============================================================
-    mean_pmf_counts_deg = np.array([[10]], dtype=np.int32, order='F')
     mean_pmf_included_n_reps_deg = np.array([10], dtype=np.int32)
     included_n_reps_deg = np.array([[5, 5]], dtype=np.int32, order='F')
     confidence_interval_deg = np.zeros((2, 2), dtype=np.float64, order='F')
 
     counts_deg = np.array([[[5, 5]]], dtype=np.int32, order='F')
-    bootstrap_histogram(5, mean_pmf_counts_deg, counts_deg, mean_pmf_included_n_reps_deg, included_n_reps_deg,
-                        confidence_interval_deg, random_seed=7, bootstrap_mode="bootstrap_pooled")
+    bootstrap_histogram(5, counts_deg, mean_pmf_included_n_reps_deg, included_n_reps_deg,
+                        confidence_interval_deg, random_seed=7)
 
-    np.testing.assert_array_almost_equal(confidence_interval_deg, np.zeros((2, 2)), decimal=12)
+    np.testing.assert_array_equal(confidence_interval_deg, np.zeros((2, 2)))
 
 
 def test_bootstrap_histogram_rejects_draws_from_empty_pool():
-    # A study drawing from a point whose pool is empty (counts [0, 0], 0 included replicates) fails
-    # with invalid input, not tied to any one argument
+    # Each study draws 3 residuals from its own counts, which are empty ([0, 0]) at the point, so
+    # the call fails with invalid input, not tied to any one argument
     # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
-    mean_pmf_counts = np.array([[0, 0]], dtype=np.int32, order='F')
     counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
-    mean_pmf_included_n_reps = np.array([0], dtype=np.int32)
+    mean_pmf_included_n_reps = np.array([6], dtype=np.int32)
     included_n_reps = np.array([[3, 3]], dtype=np.int32, order='F')
 
     def call():
         confidence_interval = np.zeros((2, 2), dtype=np.float64, order='F')
-        bootstrap_histogram(3, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
-                            confidence_interval, random_seed=7, bootstrap_mode="bootstrap_pooled")
+        bootstrap_histogram(3, counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval,
+                            random_seed=7)
 
     assert_error(call, "expected ERR_INVALID_INPUT for draws from an empty pool", ERR_INVALID_INPUT)
     try:
@@ -739,7 +737,6 @@ def test_bootstrap_histogram_rejects_zero_included_n_reps():
     # Every study needs at least one included residual at every reference point, so a single 0 in
     # included_n_reps is rejected on that argument, even where the counts otherwise add up
     # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
-    mean_pmf_counts = np.array([[2, 2]], dtype=np.int32, order='F')
     counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
     counts[0, :, 1] = [2, 2]
     mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
@@ -747,8 +744,8 @@ def test_bootstrap_histogram_rejects_zero_included_n_reps():
 
     def call():
         confidence_interval = np.full((2, 2), 0.5, dtype=np.float64, order='F')
-        bootstrap_histogram(3, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
-                            confidence_interval, random_seed=7, bootstrap_mode="bootstrap_pooled")
+        bootstrap_histogram(3, counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval,
+                            random_seed=7)
 
     assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
     try:
@@ -757,63 +754,73 @@ def test_bootstrap_histogram_rejects_zero_included_n_reps():
         assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
 
 
-def test_bootstrap_histogram_bootstrap_mode():
-    # Call + shape for both bootstrap modes (the numbers are checked in the Fortran suite): the
-    # default per-study mode and "bootstrap_pooled" both return a float64 (2, n_studies) interval
-    # with lower <= upper; an unknown mode is rejected, and so are per-study counts that do not
-    # add up to included_n_reps.
-    mean_pmf_counts = np.array([[5, 3, 2], [2, 2, 6]], dtype=np.int32, order='F')
-    counts = np.zeros((2, 3, 2), dtype=np.int32, order='F')
-    counts[0, :, 0] = [2, 1, 1]
-    counts[0, :, 1] = [3, 2, 1]
-    counts[1, :, 0] = [1, 1, 2]
-    counts[1, :, 1] = [1, 1, 4]
-    mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
-    included_n_reps = np.array([[4, 6], [4, 6]], dtype=np.int32, order='F')
+def test_bootstrap_histogram_divergence_mode():
+    # Call + shape for both divergence modes (the numbers are checked in the Fortran suite): each
+    # returns a float64 (2, n_studies) interval with lower <= upper; omitting the mode equals
+    # passing the default "divergence_pairwise_k2" exactly; with two studies the pairwise mode gives
+    # both studies the same interval. An unknown mode string is rejected before Fortran; per-study
+    # counts that do not add up to included_n_reps, and studies whose draw sizes do not add up to
+    # the pool total, are rejected with invalid input.
+    counts, mean_pmf_included_n_reps, included_n_reps = _bootstrap_test_counts()
 
-    for mode in (None, "bootstrap_per_study", "bootstrap_pooled"):
+    intervals = {}
+    for mode in (None, "divergence_symmetric", "divergence_pairwise_k2"):
         ci = np.array([[1.0, 1.0], [0.0, 0.0]], dtype=np.float64, order='F')
-        kwargs = {} if mode is None else {"bootstrap_mode": mode}
-        bootstrap_histogram(20, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci,
-                            random_seed=3, **kwargs)
+        kwargs = {} if mode is None else {"divergence_mode": mode}
+        bootstrap_histogram(20, counts, mean_pmf_included_n_reps, included_n_reps, ci, random_seed=3, **kwargs)
         assert ci.dtype == np.float64 and ci.shape == (2, 2), f"{mode}: dtype/shape"
         assert np.all(np.isfinite(ci)) and np.all(ci[0, :] <= ci[1, :]), f"{mode}: lower <= upper"
+        intervals[mode] = ci
+    np.testing.assert_array_equal(intervals[None], intervals["divergence_pairwise_k2"])
+    np.testing.assert_array_equal(intervals["divergence_pairwise_k2"][:, 0], intervals["divergence_pairwise_k2"][:, 1])
 
     def unknown_mode():
         ci = np.full((2, 2), 0.5, dtype=np.float64, order='F')
-        bootstrap_histogram(3, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci,
-                            bootstrap_mode="no_such_mode")
+        bootstrap_histogram(3, counts, mean_pmf_included_n_reps, included_n_reps, ci, divergence_mode="no_such_mode")
 
-    assert_error(unknown_mode, "expected an unknown bootstrap_mode to be rejected")
+    assert_error(unknown_mode, "expected an unknown divergence_mode to be rejected before Fortran")
 
     bad_counts = counts.copy(order='F')
     bad_counts[0, 0, 0] = 0
 
     def counts_not_adding_up():
         ci = np.full((2, 2), 0.5, dtype=np.float64, order='F')
-        bootstrap_histogram(3, mean_pmf_counts, bad_counts, mean_pmf_included_n_reps, included_n_reps, ci)
+        bootstrap_histogram(3, bad_counts, mean_pmf_included_n_reps, included_n_reps, ci)
 
     assert_error(counts_not_adding_up, "expected ERR_INVALID_INPUT for per-study counts not adding up",
                  ERR_INVALID_INPUT)
 
+    def pool_total_mismatch():
+        ci = np.full((2, 2), 0.5, dtype=np.float64, order='F')
+        bootstrap_histogram(3, counts, np.array([10, 9], dtype=np.int32), included_n_reps, ci)
+
+    assert_error(pool_total_mismatch, "expected ERR_INVALID_INPUT for a pool total that is not the studies' sum",
+                 ERR_INVALID_INPUT)
+
 
 def test_calc_js_comp_test_candidate_bounds():
-    # Cross-check against the already-verified candidate-grid collapse fixture: with
-    # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374
-    # (see test_generate_js_comp_test_candidates), and `max_n_points_candidate` is documented
-    # as being exactly that value.
+    # The bounds of the grid of test_generate_js_comp_test_candidates (8742 genes): the first
+    # n_points 374, and floor(8742/(0.25*200)) = 174 neighbors at the floor; with
+    # grid_min_points=300 the neighbor bound is floor(8742/(0.25*300)) = 116, and with
+    # grid_points_factor=8 the first n_points is ceil(8*sqrt(8742)) = 748.
     bounds = calc_js_comp_test_candidate_bounds(8742)
     assert bounds["max_n_points_candidate"] == 374, \
         f"expected max_n_points_candidate=374, got {bounds['max_n_points_candidate']}"
+    assert bounds["max_n_neighbors_candidate"] == 174, \
+        f"expected max_n_neighbors_candidate=174, got {bounds['max_n_neighbors_candidate']}"
 
     candidates = generate_js_comp_test_candidates(8742)
     assert bounds["max_n_neighbors_candidate"] >= int(np.max(candidates[1, :])), \
         "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors"
 
+    floor_300 = calc_js_comp_test_candidate_bounds(8742, grid_min_points=300)
+    assert (floor_300["max_n_points_candidate"], floor_300["max_n_neighbors_candidate"]) == (374, 116), \
+        f"grid_min_points=300: got {floor_300}"
+    factor_8 = calc_js_comp_test_candidate_bounds(8742, grid_points_factor=8.0)
+    assert factor_8["max_n_points_candidate"] == 748, f"grid_points_factor=8: got {factor_8}"
+
     assert_error(lambda: calc_js_comp_test_candidate_bounds(0),
                  "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
-
-
 def test_gather_pooled_neighborhood_residuals():
     # Call-ability and return type/shape only, per this project's testing philosophy
     # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness is the Fortran suite's job
@@ -888,8 +895,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
     # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
     result = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                               residuals=residuals, x_star=x_star,
-                               n_permutations=0, random_seed=1, min_residuals_per_bin=1)
+                               residuals=residuals, x_star=x_star, min_residuals_per_bin=1)
 
     n_points, n_studies = 1, 2
     assert result["neighborhood_indices"].shape == (1, n_points, n_studies)
@@ -914,8 +920,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert result["js_divergences"].shape == (n_points, n_studies)
     assert result["weights"].shape == (n_points, n_studies)
     assert result["global_js_divergence"].shape == (n_studies,)
-    assert result["p_values"].shape == (n_studies,)
-    assert result["p_values_observed_consensus"].shape == (n_studies,)
+    assert "p_values" not in result, "the final run has no permutation test (see run_js_comp_test_permutation)"
 
     # A caller must be able to slice down to the meaningful leading bins.
     max_n_bins = result["max_n_bins_per_point"]
@@ -924,15 +929,15 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert list(result["neighborhood_indices"][:, 0, 0]) == [1], "study 1 neighbor should be gene 1"
     assert list(result["neighborhood_indices"][:, 0, 1]) == [1], "study 2 neighbor should be gene 1"
 
-    assert np.all(np.isnan(result["p_values"])), "n_permutations=0 -> p_values are NaN (not computed)"
-    assert np.all(np.isnan(result["p_values_observed_consensus"])), \
-        "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)"
+    # Two studies with the default divergence_mode (pairwise): both studies get the same value.
+    assert result["global_js_divergence"][0] == result["global_js_divergence"][1], \
+        "pairwise default: both studies share one global JSD"
 
     # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves
     # are the Fortran suite's job), an unknown one is rejected by the C layer.
     for mode in BIN_COUNT_MODES:
         result_mode = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                                       residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                       residuals=residuals, x_star=x_star,
                                        min_residuals_per_bin=1, bin_count_mode=mode)
         assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
         assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
@@ -940,33 +945,24 @@ def test_run_js_comp_test_two_studies_hand_traceable():
         assert result_mode["pmfs"].shape == (n_points, 256, n_studies), f"{mode}: pmfs shape"
         assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
     assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                                          residuals=residuals, x_star=x_star, n_permutations=0,
+                                          residuals=residuals, x_star=x_star,
                                           bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected before Fortran")
 
-
-def test_run_js_comp_test_zero_permutations_gives_nan_p_values():
-    # n_permutations=0 skips the permutation test: both p-value arrays are NaN ("not computed"), not
-    # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
-    # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
-    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
-    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
-    residuals[:, 0, 0] = [-1.0, 1.0]
-    residuals[:, 0, 1] = [-3.0, 3.0]
-    x_star = np.array([1.0], dtype=np.float64)
-
-    skipped = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                               residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
-                               min_residuals_per_bin=1)
-    for key in ("p_values", "p_values_observed_consensus"):
-        assert np.all(np.isnan(skipped[key])), f"{key}: n_permutations=0 must give NaN"
-    assert np.all(np.isfinite(skipped["global_js_divergence"])), "the JSDs are still computed"
-
-    control = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                               residuals=residuals, x_star=x_star, n_permutations=2, random_seed=1,
-                               min_residuals_per_bin=1)
-    for key in ("p_values", "p_values_observed_consensus"):
-        assert np.all((control[key] > 0.0) & (control[key] <= 1.0)), f"{key}: control expected in (0, 1]"
+    # divergence_mode: both mode strings are accepted (type/shape; the values are the Fortran
+    # suite's job), omitting it equals the default "divergence_pairwise_k2" exactly, and an unknown
+    # string is rejected before Fortran.
+    for mode in ("divergence_symmetric", "divergence_pairwise_k2"):
+        result_mode = run_js_comp_test(n_neighbors=1, gene_means=gene_means, residuals=residuals, x_star=x_star,
+                                       min_residuals_per_bin=1, divergence_mode=mode)
+        assert result_mode["global_js_divergence"].dtype == np.float64, f"{mode}: dtype"
+        assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: shape"
+        assert result_mode["js_divergences"].shape == (n_points, n_studies), f"{mode}: js shape"
+        if mode == "divergence_pairwise_k2":
+            np.testing.assert_array_equal(result_mode["global_js_divergence"], result["global_js_divergence"])
+    assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means, residuals=residuals, x_star=x_star,
+                                          min_residuals_per_bin=1, divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
 
 
 def test_run_js_comp_test_expert_takes_the_callers_permutations():
@@ -982,7 +978,7 @@ def test_run_js_comp_test_expert_takes_the_callers_permutations():
     residuals[:, 0, 0] = [-1.0, 1.0]
     residuals[:, 0, 1] = [-3.0, 3.0]
     x_star = np.array([1.0], dtype=np.float64)
-    options = dict(n_permutations=2, random_seed=1, min_residuals_per_bin=1)
+    options = dict(min_residuals_per_bin=1)
 
     plain = run_js_comp_test(n_neighbors=1, gene_means=gene_means, residuals=residuals, x_star=x_star, **options)
     ascending = np.asfortranarray(np.argsort(gene_means, axis=0, kind='stable') + 1, dtype=np.int32)
@@ -1007,8 +1003,7 @@ def test_run_js_comp_test_expert_takes_the_callers_permutations():
     for order, gene in (([1, 2, 3], 1), ([2, 1, 3], 2)):
         perms = np.array([order, [1, 2, 3]], dtype=np.int32).T.copy(order='F')
         result = run_js_comp_test_expert(n_neighbors=1, gene_means=tied_means, gene_means_perms=perms,
-                                         residuals=tied_residuals, x_star=below, n_permutations=0,
-                                         min_residuals_per_bin=1)
+                                         residuals=tied_residuals, x_star=below, min_residuals_per_bin=1)
         assert result["neighborhood_indices"][0, 0, 0] == gene, f"order {order}: study 1 should take gene {gene}"
         assert result["neighborhood_indices"][0, 0, 1] == 1, f"order {order}: study 2 should take gene 1"
 
@@ -1028,8 +1023,9 @@ def test_run_js_comp_test_parameter_search():
     # Test 1 -- no candidate ever plateaus (min_residuals_per_bin impossibly high), so the
     # search falls back to the FIRST (finest-resolution) candidate and resets
     # best_candidate_pair_confidence_interval to -1.0 throughout
-    # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=26
-    # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
+    # (test_param_search_no_plateau_falls_back_to_finest). With max_n_genes_all_studies=2000 the
+    # default grid is the single candidate (200, 40): ceil(4*sqrt(2000)) = 179 is clamped up to the
+    # floor 200, and floor(2000/(0.25*200)) = 40.
     # ============================================================
     bounds = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
     result = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10,
@@ -1039,8 +1035,8 @@ def test_run_js_comp_test_parameter_search():
                                                 min_residuals_per_bin=1000000,
                                                 random_seed=1)
 
-    assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
-    assert result["n_neighbors"] == 26, f"expected n_neighbors=26, got {result['n_neighbors']}"
+    assert result["n_points"] == 200, f"expected n_points=200, got {result['n_points']}"
+    assert result["n_neighbors"] == 40, f"expected n_neighbors=40, got {result['n_neighbors']}"
     assert result["plateau_established"] == False, "no candidate ever plateaus here"
     np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 0], [-1.0, -1.0],
                                           decimal=12)
@@ -1049,7 +1045,8 @@ def test_run_js_comp_test_parameter_search():
 
     # ============================================================
     # Test 2 -- the GAMMA-decay grid collapses to exactly ONE candidate at
-    # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(300, 1)); with both admissibility
+    # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(200, 2): the floor 200 and
+    # floor(100/(0.25*200)) = 2); with both admissibility
     # gates relaxed to their most permissive settings the sole candidate is returned regardless
     # of plateau, and the bootstrap actually runs, giving a real (not -1.0) confidence interval
     # (test_param_search_single_candidate_bypasses_plateau).
@@ -1069,8 +1066,8 @@ def test_run_js_comp_test_parameter_search():
                                                  min_residuals_per_bin=0, min_neighbor_overlap=0.0,
                                                  random_seed=1)
 
-    assert result2["n_points"] == 300, f"expected n_points=300, got {result2['n_points']}"
-    assert result2["n_neighbors"] == 1, f"expected n_neighbors=1, got {result2['n_neighbors']}"
+    assert result2["n_points"] == 200, f"expected n_points=200, got {result2['n_points']}"
+    assert result2["n_neighbors"] == 2, f"expected n_neighbors=2, got {result2['n_neighbors']}"
     assert result2["plateau_established"] == True, "the single-candidate bypass counts as established"
     ci = result2["best_candidate_pair_confidence_interval"]
     assert ci[0, 0] >= 0.0 and ci[1, 0] <= 1.0, \
@@ -1146,7 +1143,7 @@ def test_run_js_comp_test_parameter_search():
     assert result2["trace_shared_residual_range_low"].dtype == np.float64
     assert result2["trace_shared_residual_range_low"].shape == result2["trace_selected_n_bins"].shape
     assert result2["trace_shared_residual_range_high"].shape == result2["trace_selected_n_bins"].shape
-    # n_points=300 leading entries of n_bins_per_point must match the sole admissible candidate's
+    # The n_points leading entries of n_bins_per_point must match the sole admissible candidate's
     # own trace_selected_n_bins column (test_param_search_final_n_bins_matches_selected_trace_column
     # is the Fortran suite's rigorous version of this same wiring check).
     n_points_2 = result2["n_points"]
@@ -1187,7 +1184,7 @@ def test_run_js_comp_test_parameter_search():
     # Test 6 -- neighborhood_size_mode: every mode string is accepted (type/shape only; the
     # Fortran suite's test_param_search_neighborhood_size_mode checks the grid it walks).
     # ============================================================
-    for mode in ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"):
+    for mode in ("neighborhood_size_large", "neighborhood_size_small"):
         result_size = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
                                                         max_n_points_candidate=bounds["max_n_points_candidate"],
                                                         max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
@@ -1200,7 +1197,7 @@ def test_run_js_comp_test_parameter_search():
                                                            max_n_points_candidate=bounds["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
                                                            neighborhood_size_mode="nonsense"),
-                 "expected an unknown neighborhood_size_mode string to be rejected")
+                 "expected an unknown neighborhood_size_mode string to be rejected before Fortran")
 
     # ============================================================
     # Test 7 -- delta_abs_tolerance is accepted (call + shape; test_param_search_delta_abs_tolerance
@@ -1221,29 +1218,71 @@ def test_run_js_comp_test_parameter_search():
                  "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 
     # ============================================================
-    # Test 8 -- bootstrap_mode: the pooled bootstrap is accepted (call + shape;
-    # test_param_search_bootstrap_mode is the Fortran check), an unknown mode rejected.
+    # Test 8 -- divergence_mode: both mode strings are accepted (call + shape; the values are the
+    # Fortran suite's job), an unknown one rejected before Fortran. Reuses Test 2's setup.
     # ============================================================
-    result_pooled = run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5, join_method='join_min',
-                                                      max_n_points_candidate=bounds_2["max_n_points_candidate"],
-                                                      max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
-                                                      min_residuals_per_bin=0, min_neighbor_overlap=0.0, random_seed=1,
-                                                      bootstrap_mode='bootstrap_pooled')
-    ci_pooled = result_pooled["best_candidate_pair_confidence_interval"]
-    assert ci_pooled.dtype == np.float64 and ci_pooled.shape == (2, 2), f"pooled: CI shape {ci_pooled.shape}"
-    assert result_pooled["trace_ci_lower"].shape == (2, 1), "pooled: trace_ci_lower shape"
+    for mode in ("divergence_symmetric", "divergence_pairwise_k2"):
+        result_div = run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5, join_method='join_min',
+                                                       max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                       max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                       min_residuals_per_bin=0, min_neighbor_overlap=0.0, random_seed=1,
+                                                       divergence_mode=mode)
+        ci_div = result_div["best_candidate_pair_confidence_interval"]
+        assert ci_div.dtype == np.float64 and ci_div.shape == (2, 2), f"{mode}: CI shape {ci_div.shape}"
+        assert result_div["trace_global_js_divergence"].shape == (2, 1), f"{mode}: trace shape"
     assert_error(lambda: run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5,
                                                            join_method='join_min',
                                                            max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
-                                                           bootstrap_mode='no_such_mode'),
-                 "expected an unknown bootstrap_mode to be rejected")
+                                                           divergence_mode='no_such_mode'),
+                 "expected an unknown divergence_mode to be rejected before Fortran")
+
+    # ============================================================
+    # Test 9 -- grid_points_factor and grid_min_points: with factor 6.7 and floor 240 the
+    # 2000-gene grid is (300, 26), (240, 33) (ceil(6.7*sqrt(2000)) = 300, 0.8*300 = 240 = the
+    # floor); no candidate is admissible here, so the search returns the first one. Capacities
+    # sized for the default grid (200, 40) are too small for it and are rejected with invalid
+    # input naming no argument (the search checks them against the options).
+    # ============================================================
+    bounds_grid = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, grid_points_factor=6.7,
+                                                     grid_min_points=240)
+    assert (bounds_grid["max_n_points_candidate"], bounds_grid["max_n_neighbors_candidate"]) == (300, 33), \
+        f"grid options: bounds {bounds_grid}"
+    result_grid = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
+                                                    max_n_points_candidate=bounds_grid["max_n_points_candidate"],
+                                                    max_n_neighbors_candidate=bounds_grid["max_n_neighbors_candidate"],
+                                                    min_residuals_per_bin=1000000, random_seed=1,
+                                                    grid_points_factor=6.7, grid_min_points=240)
+    assert (result_grid["n_points"], result_grid["n_neighbors"]) == (300, 26), \
+        f"grid options: expected the first candidate (300, 26), got {result_grid['n_points']}, {result_grid['n_neighbors']}"
+    assert result_grid["n_bins_per_point"].shape == (300,), "grid options: n_bins_per_point shape"
+
+    def undersized_for_options():
+        run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
+                                          max_n_points_candidate=bounds["max_n_points_candidate"],
+                                          max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
+                                          min_residuals_per_bin=1000000, random_seed=1,
+                                          grid_points_factor=6.7, grid_min_points=240)
+
+    assert_error(undersized_for_options, "expected ERR_INVALID_INPUT for capacities below the optioned grid",
+                 ERR_INVALID_INPUT)
+    try:
+        undersized_for_options()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=bounds["max_n_points_candidate"],
+                                                           max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
+                                                           grid_points_factor=-1.0),
+                 "expected ERR_INVALID_INPUT for a negative grid_points_factor", ERR_INVALID_INPUT)
 
 
 def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
     # A max_n_points_candidate or max_n_neighbors_candidate one below what
-    # calc_js_comp_test_candidate_bounds returns for the gene count (299 and 3 for 300 genes) is
-    # rejected with invalid input instead of being written past
+    # calc_js_comp_test_candidate_bounds returns for the gene count (199 and 5 for 300 genes: the
+    # default grid is the single candidate (200, 6)) is rejected with invalid input, checked by the
+    # search against the grid options, instead of being written past
     # (test_param_search_rejects_undersized_max_n_points_candidate and
     # test_param_search_rejects_undersized_max_n_neighbors_candidate).
     n_genes, n_reps, n_studies = 300, 3, 2
@@ -1282,7 +1321,7 @@ def test_run_js_comp_test_rejects_reversed_residual_range_quantiles():
 
     def call():
         return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                residuals=residuals, x_star=x_star,
                                 min_residuals_per_bin=1, lower_residual_range_quantile=0.95,
                                 upper_residual_range_quantile=0.05)
 
@@ -1307,7 +1346,7 @@ def test_run_js_comp_test_rejects_nan_x_star():
 
     def call():
         return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                residuals=residuals, x_star=x_star,
                                 min_residuals_per_bin=1)
 
     assert_error(call, "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
@@ -1329,7 +1368,7 @@ def test_run_js_comp_test_rejects_empty_study():
 
     def call():
         return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                residuals=residuals, x_star=x_star,
                                 min_residuals_per_bin=1)
 
     assert_error(call, "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
@@ -1424,8 +1463,7 @@ def test_run_js_comp_test_adaptive():
     ranges = construction["pooled_neighborhood_range"]
     n_points = ranges.shape[1]
 
-    result = run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=50, random_seed=3,
-                                       min_residuals_per_bin=2, m_min=2, m_max=8)
+    result = run_js_comp_test_adaptive(gene_means, residuals, ranges, min_residuals_per_bin=2, m_min=2, m_max=8)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     assert result["n_neighbors_per_point"].shape == (n_studies, n_points)
     np.testing.assert_array_equal(result["n_neighbors_per_point"], construction["n_neighbors_per_point"])
@@ -1441,15 +1479,30 @@ def test_run_js_comp_test_adaptive():
     for key in ("included_n_reps", "js_divergences", "weights"):
         assert result[key].shape == (n_points, n_studies), f"{key}: wrong shape {result[key].shape}"
     assert result["global_js_divergence"].shape == (n_studies,)
-    assert result["p_values"].shape == (n_studies,)
-    assert result["p_values_observed_consensus"].shape == (n_studies,)
-    for key in ("p_values", "p_values_observed_consensus"):
-        assert np.all((result[key] > 0.0) & (result[key] <= 1.0)), f"{key}: expected values in (0, 1]"
+    assert "p_values" not in result, "the final run has no permutation test (see run_js_comp_test_adaptive_permutation)"
     assert np.all(np.isfinite(result["global_js_divergence"]))
+
+    # divergence_mode reaches Fortran: on the first two studies (with three or more both modes
+    # coincide) the symmetric mode gives each study its own JSD against the consensus, the pairwise
+    # mode one value shared by both, and omitting the mode equals the pairwise mode.
+    gene_means_two = np.asfortranarray(gene_means[:, :2])
+    residuals_two = np.asfortranarray(residuals[:, :, :2])
+    construction_two = construct_adaptive_neighborhoods(gene_means_two, residuals_two, 6, 3, 12)
+    assert construction_two["construction_status"] == ERR_OK, "two studies: expected a construction"
+    ranges_two = construction_two["pooled_neighborhood_range"]
+    by_mode = {mode: run_js_comp_test_adaptive(gene_means_two, residuals_two, ranges_two, min_residuals_per_bin=2,
+                                               m_min=2, m_max=8, **({} if mode is None else {"divergence_mode": mode}))
+               ["global_js_divergence"]
+               for mode in (None, "divergence_symmetric", "divergence_pairwise_k2")}
+    _assert_two_study_divergence_modes(by_mode["divergence_symmetric"], by_mode["divergence_pairwise_k2"],
+                                       "run_js_comp_test_adaptive")
+    np.testing.assert_array_equal(by_mode[None], by_mode["divergence_pairwise_k2"])
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, ranges, divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
 
     # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
     for mode in BIN_COUNT_MODES:
-        result_mode = run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
+        result_mode = run_js_comp_test_adaptive(gene_means, residuals, ranges,
                                                 min_residuals_per_bin=2, m_min=2, m_max=8, bin_count_mode=mode)
         assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
         assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
@@ -1457,13 +1510,13 @@ def test_run_js_comp_test_adaptive():
         assert np.all((result_mode["n_bins_per_point"] >= 2) & (result_mode["n_bins_per_point"] <= 8)), \
             f"{mode}: bin counts within [m_min, m_max]"
         assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
-    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, ranges,
                                                    bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected before Fortran")
 
     reversed_ranges = ranges.copy()
     reversed_ranges[:, 0] = [2, 1]
-    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations=0),
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges),
                  "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
 
 
@@ -1480,7 +1533,7 @@ def test_run_js_comp_test_adaptive_rejects_empty_study():
     ranges = np.array([[1, 4], [3, 5]], dtype=np.int32, order='F')
 
     def call():
-        return run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0, min_residuals_per_bin=1)
+        return run_js_comp_test_adaptive(gene_means, residuals, ranges, min_residuals_per_bin=1)
 
     assert_error(call, "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
     try:
@@ -1505,7 +1558,7 @@ def test_run_js_comp_test_adaptive_parameter_search():
                                                         min_neighbor_overlap=0.0, plateau_mode='plateau_both',
                                                         tau=0.1, mad_distance_factor=1.0, max_pooled_residuals=0,
                                                         min_study_neighbors=1, random_seed=1, delta_abs_tolerance=0.001,
-                                                        bootstrap_mode='bootstrap_pooled')
+                                                        divergence_mode='divergence_symmetric')
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     for key in ("k_start", "k_step", "k_max", "n_points"):
         assert isinstance(result[key], (int, np.integer)), f"{key}: expected an int, got {type(result[key])}"
@@ -1563,7 +1616,20 @@ def test_run_js_comp_test_adaptive_parameter_search():
                                                                     max_n_points_candidate=capacity,
                                                                     bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected before Fortran")
+    assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                    join_method='join_min',
+                                                                    max_n_points_candidate=capacity,
+                                                                    divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
 
+
+def _assert_two_study_divergence_modes(symmetric, pairwise, label):
+    """Two studies: the symmetric divergence gives the two studies different values, the pairwise
+    one a single shared value, and the two modes differ -- so a mode dropped by the binding fails."""
+    assert symmetric.shape == (2,) and pairwise.shape == (2,), f"{label}: one value per study"
+    assert symmetric[0] != symmetric[1], f"{label}: symmetric, the two studies differ"
+    assert pairwise[0] == pairwise[1], f"{label}: pairwise, one shared value"
+    assert symmetric[0] != pairwise[0], f"{label}: the two modes give different values"
 
 
 def _label_test_expression():
@@ -1579,12 +1645,30 @@ def _label_test_expression():
 
 
 def test_calc_js_comp_test_permutation_bounds():
-    # Call + types only; the values are checked by hand in the Fortran suite.
+    # Types first; then the exact values for the default and an optioned grid, so dropped grid options fail.
     result = calc_js_comp_test_permutation_bounds(300, 10, 30)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     for key in ("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds"):
         assert isinstance(result[key], (int, np.integer)), f"{key}: wrong type {type(result[key])}"
         assert result[key] >= 1, f"{key}: expected at least 1"
+    # Exact values, by hand (G = 300, n_points = 10, n_neighbors = 30):
+    # defaults: ceiling(4*sqrt(300)) = ceiling(69.28) = 70, clamped up to the floor 200; n_points_low = 200;
+    #   points max(10, 200) = 200, neighbors max(30, min(300, floor(300/(0.25*200)) = 6)) = 30.
+    # grid_points_factor = 20, grid_min_points = 300: ceiling(20*sqrt(300)) = ceiling(346.41) = 347,
+    #   n_points_low = max(300, ceiling(0.2*347) = 70) = 300; points max(10, 347) = 347,
+    #   neighbors max(30, floor(300/(0.25*300)) = 4) = 30. The heap size does not depend on the grid.
+    assert result["max_n_points_candidate"] == 200, f"defaults: expected 200 points, got {result['max_n_points_candidate']}"
+    assert result["max_n_neighbors_candidate"] == 30, \
+        f"defaults: expected 30 neighbors, got {result['max_n_neighbors_candidate']}"
+    optioned = calc_js_comp_test_permutation_bounds(300, 10, 30, grid_points_factor=20.0, grid_min_points=300)
+    assert optioned["max_n_points_candidate"] == 347, \
+        f"grid options: expected 347 points, got {optioned['max_n_points_candidate']}"
+    assert optioned["max_n_neighbors_candidate"] == 30, \
+        f"grid options: expected 30 neighbors, got {optioned['max_n_neighbors_candidate']}"
+    assert optioned["n_bootstrapping_top_k_jsds"] == result["n_bootstrapping_top_k_jsds"], \
+        "grid options: the heap size does not depend on the grid"
+    assert_error(lambda: calc_js_comp_test_permutation_bounds(300, 10, 30, grid_min_points=0),
+                 "expected ERR_INVALID_INPUT for grid_min_points = 0", ERR_INVALID_INPUT)
     assert_error(lambda: calc_js_comp_test_permutation_bounds(300, 10, 301),
                  "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
 
@@ -1616,6 +1700,36 @@ def test_run_js_comp_test_on_sample_assignment():
     assert_error(lambda: run_js_comp_test_on_sample_assignment(expression, repeated, 10, 30),
                  "expected ERR_INVALID_INPUT for an assignment that is not a permutation", ERR_INVALID_INPUT)
 
+    # divergence_mode reaches Fortran: the first two studies (9 samples), see
+    # _assert_two_study_divergence_modes.
+    two_studies = np.asfortranarray(expression[:, :, :2])
+    identity_two = np.arange(1, 10, dtype=np.int32)
+    by_mode = {mode: run_js_comp_test_on_sample_assignment(two_studies, identity_two, 10, 30,
+                                                           divergence_mode=mode)["global_js_divergence"]
+               for mode in ("divergence_symmetric", "divergence_pairwise_k2")}
+    _assert_two_study_divergence_modes(by_mode["divergence_symmetric"], by_mode["divergence_pairwise_k2"],
+                                       "run_js_comp_test_on_sample_assignment")
+
+    # The grid options reach the rerun search (they only matter with it). G = 300: the default grid
+    # is the single candidate (200, 6) (ceiling(4*sqrt(300)) = 70 clamps up to the floor 200); with
+    # grid_points_factor 17.32 and grid_min_points 240 it is (300, 4), (240, 5)
+    # (ceiling(17.32*sqrt(300)) = 300, 0.8*300 = 240), so the rerun uses another n_points.
+    identity = np.arange(1, 14, dtype=np.int32)
+    default_rerun = run_js_comp_test_on_sample_assignment(expression, identity, 10, 30, rerun_parameter_search=True,
+                                                          n_bootstraps=20)
+    assert default_rerun["used_n_points"] == 200, f"default grid: expected 200, got {default_rerun['used_n_points']}"
+    optioned_rerun = run_js_comp_test_on_sample_assignment(expression, identity, 10, 30, rerun_parameter_search=True,
+                                                           n_bootstraps=20, grid_points_factor=17.32,
+                                                           grid_min_points=240)
+    assert optioned_rerun["used_n_points"] in (300, 240), \
+        f"grid options: expected 300 or 240 points, got {optioned_rerun['used_n_points']}"
+    assert_error(lambda: run_js_comp_test_on_sample_assignment(expression, assignment, 10, 30,
+                                                               divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
+    assert_error(lambda: run_js_comp_test_on_sample_assignment(expression, assignment, 10, 30,
+                                                               neighborhood_size_mode="neighborhood_size_both"),
+                 "expected the removed neighborhood_size_mode 'both' to be rejected before Fortran")
+
 
 def test_run_js_comp_test_adaptive_on_sample_assignment():
     expression = _label_test_expression()
@@ -1630,12 +1744,26 @@ def test_run_js_comp_test_adaptive_on_sample_assignment():
     # k_start beyond the data: the construction builds no neighborhood.
     assert_error(lambda: run_js_comp_test_adaptive_on_sample_assignment(expression, assignment, 2000, 10, 2000),
                  "expected ERR_INVALID_INPUT when no neighborhood is built", ERR_INVALID_INPUT)
+    assert_error(lambda: run_js_comp_test_adaptive_on_sample_assignment(expression, assignment, 30, 10, 90,
+                                                                        divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
+    two_studies = np.asfortranarray(expression[:, :, :2])
+    identity_two = np.arange(1, 10, dtype=np.int32)
+    by_mode = {mode: run_js_comp_test_adaptive_on_sample_assignment(two_studies, identity_two, 30, 10, 90,
+                                                                    divergence_mode=mode)["global_js_divergence"]
+               for mode in ("divergence_symmetric", "divergence_pairwise_k2")}
+    _assert_two_study_divergence_modes(by_mode["divergence_symmetric"], by_mode["divergence_pairwise_k2"],
+                                       "run_js_comp_test_adaptive_on_sample_assignment")
+    # min_study_neighbors above every study's share of a neighborhood: construction status not ok.
+    assert_error(lambda: run_js_comp_test_adaptive_on_sample_assignment(expression, assignment, 30, 10, 90,
+                                                                        min_study_neighbors=1000),
+                 "expected ERR_INVALID_INPUT when the construction status is not ok", ERR_INVALID_INPUT)
 
 
-def test_run_js_comp_test_label_permutation_test():
+def test_run_js_comp_test_permutation():
     expression = _label_test_expression()
     n_permutations = 4
-    result = run_js_comp_test_label_permutation_test(expression, 10, 30, n_permutations, random_seed=3)
+    result = run_js_comp_test_permutation(expression, 10, 30, n_permutations, random_seed=3)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     assert result["global_js_divergence_observed"].shape == (3,)
     assert result["p_values"].shape == (3,)
@@ -1643,22 +1771,54 @@ def test_run_js_comp_test_label_permutation_test():
     assert isinstance(result["n_failed_permutations"], (int, np.integer))
     assert np.all((result["p_values"] > 0.0) & (result["p_values"] <= 1.0))
 
-    assert_error(lambda: run_js_comp_test_label_permutation_test(expression, 10, 30, 0),
+    assert_error(lambda: run_js_comp_test_permutation(expression, 10, 30, 0),
                  "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+    # divergence_mode reaches Fortran: the observed values on the first two studies.
+    two_studies = np.asfortranarray(expression[:, :, :2])
+    by_mode = {mode: run_js_comp_test_permutation(two_studies, 10, 30, 1, random_seed=3,
+                                                  divergence_mode=mode)["global_js_divergence_observed"]
+               for mode in ("divergence_symmetric", "divergence_pairwise_k2")}
+    _assert_two_study_divergence_modes(by_mode["divergence_symmetric"], by_mode["divergence_pairwise_k2"],
+                                       "run_js_comp_test_permutation")
+    # The grid options reach the rerun search: the observed values equal the rerun on the identity
+    # with the same options (whose n_points is checked in test_run_js_comp_test_on_sample_assignment)
+    # and differ from the default grid's.
+    identity = np.arange(1, 14, dtype=np.int32)
+    optioned = run_js_comp_test_permutation(expression, 10, 30, 1, random_seed=3, rerun_parameter_search=True,
+                                            n_bootstraps=20, grid_points_factor=17.32, grid_min_points=240)
+    optioned_identity = run_js_comp_test_on_sample_assignment(expression, identity, 10, 30,
+                                                              rerun_parameter_search=True, n_bootstraps=20,
+                                                              grid_points_factor=17.32, grid_min_points=240)
+    default_identity = run_js_comp_test_on_sample_assignment(expression, identity, 10, 30,
+                                                             rerun_parameter_search=True, n_bootstraps=20)
+    np.testing.assert_array_equal(optioned["global_js_divergence_observed"], optioned_identity["global_js_divergence"])
+    assert not np.array_equal(optioned["global_js_divergence_observed"], default_identity["global_js_divergence"]), \
+        "grid options: another observed value than the default grid's"
+    assert_error(lambda: run_js_comp_test_permutation(expression, 10, 30, n_permutations, divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
 
 
-def test_run_js_comp_test_adaptive_label_permutation_test():
+def test_run_js_comp_test_adaptive_permutation():
     expression = _label_test_expression()
     n_permutations = 3
-    result = run_js_comp_test_adaptive_label_permutation_test(expression, 30, 10, 90, n_permutations, random_seed=3)
+    result = run_js_comp_test_adaptive_permutation(expression, 30, 10, 90, n_permutations, random_seed=3)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     assert result["global_js_divergence_observed"].shape == (3,)
     assert result["p_values"].shape == (3,)
     assert result["jsd_null"].shape == (n_permutations, 3)
     assert isinstance(result["n_failed_permutations"], (int, np.integer))
 
-    assert_error(lambda: run_js_comp_test_adaptive_label_permutation_test(expression, 30, 10, 90, 0),
+    assert_error(lambda: run_js_comp_test_adaptive_permutation(expression, 30, 10, 90, 0),
                  "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+    two_studies = np.asfortranarray(expression[:, :, :2])
+    by_mode = {mode: run_js_comp_test_adaptive_permutation(two_studies, 30, 10, 90, 1, random_seed=3,
+                                                           divergence_mode=mode)["global_js_divergence_observed"]
+               for mode in ("divergence_symmetric", "divergence_pairwise_k2")}
+    _assert_two_study_divergence_modes(by_mode["divergence_symmetric"], by_mode["divergence_pairwise_k2"],
+                                       "run_js_comp_test_adaptive_permutation")
+    assert_error(lambda: run_js_comp_test_adaptive_permutation(expression, 30, 10, 90, n_permutations,
+                                                               divergence_mode="nonsense"),
+                 "expected an unknown divergence_mode string to be rejected before Fortran")
 
 
 def main():

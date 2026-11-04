@@ -39,22 +39,23 @@ module mod_test_data_integration_js_comp_test
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
                                                        MAX_N_BINS, MAX_CANDIDATE_PAIRS, prepare_gene_means_perms
     use tox_data_integration_js_comp_test_fixed_k_search_impl, only: generate_js_comp_test_candidates_impl, &
-                                                                     KX_FACTORS, MAX_POINT_CANDIDATES, &
+                                                                     MAX_POINT_CANDIDATES, GAMMA, &
+                                                                     N_POINTS_LOW_FRACTION, &
                                                                      calc_fixed_k_n_points_range, &
                                                                      MODE_NEIGHBORHOOD_SIZE_LARGE, &
-                                                                     MODE_NEIGHBORHOOD_SIZE_SMALL, &
-                                                                     MODE_NEIGHBORHOOD_SIZE_BOTH
+                                                                     MODE_NEIGHBORHOOD_SIZE_SMALL, MAX_POINTS, &
+                                                                     fixed_k_n_neighbors_bound, KX_FACTOR_INDEX_LARGE
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: ADAPTIVE_GAMMA, &
                                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
                                                                       ADAPTIVE_K_MAX_FACTOR
-    use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds, MODE_BOOTSTRAP_PER_STUDY, &
-                                               MODE_BOOTSTRAP_POOLED
+    use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
     use tox_data_integration_preprocessing_impl, only: ADAPTIVE_MIN_VALID_RESIDUALS, &
                                                        materialize_pooled_neighborhood, sort_pooled_gene_means
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
-                                             compute_weighted_global_divergence_impl, compute_consensus_divergences
+                                             compute_weighted_global_divergence_impl, compute_consensus_divergences, &
+                                             MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_PAIRWISE_K2
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl
     use tox_errors
     use test_suite, only: test_case
@@ -62,6 +63,23 @@ module mod_test_data_integration_js_comp_test
     implicit none
 
     real(real64), parameter :: TOL = 1d-12
+    real(real64), parameter :: GRID_2000_POINTS_FACTOR = 6.7_real64
+        !! With GRID_2000_MIN_POINTS: the two-candidate large-neighborhood grid (300, 26), (240, 33)
+        !! at G = 2000 (`ceiling(6.7*sqrt(2000)) = ceiling(299.63) = 300`, `floor(2000/(0.25*300)) = 26`;
+        !! `0.8*300 = 240` is the floor itself, `floor(2000/(0.25*240)) = 33`; `0.8*240 = 192 < 240` stops)
+    integer(int32), parameter :: GRID_2000_MIN_POINTS = 240_int32
+        !! The floor of that grid, see GRID_2000_POINTS_FACTOR
+    integer(int32), parameter :: GRID_FLOOR_300 = 300_int32
+        !! `grid_min_points` of the grid before the default floor became 200: at G <= 5625
+        !! (`4*sqrt(G) <= 300`) it gives the single candidate `(300, floor(G/75))` the hand traces of
+        !! the tests passing it were made for
+    real(real64), parameter :: GRID_300_POINTS_FACTOR = 17.32_real64
+        !! With GRID_300_MIN_POINTS: the two-candidate large-neighborhood grid (300, 4), (240, 5) at
+        !! G = 300 (`ceiling(17.32*sqrt(300)) = ceiling(299.99) = 300`, `floor(300/(0.25*300)) = 4`;
+        !! `0.8*300 = 240` is the floor itself, `floor(300/(0.25*240)) = 5`; `0.8*240 = 192 < 240`
+        !! stops). Its first candidate is the first candidate of the retired `both` grid
+    integer(int32), parameter :: GRID_300_MIN_POINTS = 240_int32
+        !! The floor of that grid, see GRID_300_POINTS_FACTOR
 
     !> Test helper type: every output of run_js_comp_test_adaptive, sized by run_adaptive_final.
     type :: adaptive_run_outputs
@@ -71,8 +89,7 @@ module mod_test_data_integration_js_comp_test
         integer(int32) :: max_n_bins
         logical(c_bool), allocatable :: occ_failed(:)
         real(real64), allocatable :: range_low(:), range_high(:), mean_occ(:), pmfs(:, :, :), mean_pmf(:, :)
-        real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:), p_values(:)
-        real(real64), allocatable :: p_values_observed_consensus(:)
+        real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:)
     end type adaptive_run_outputs
 
     !> Test helper type: every output of run_js_comp_test_adaptive_parameter_search, sized by run_adaptive_search.
@@ -123,8 +140,7 @@ module mod_test_data_integration_js_comp_test
         integer(int32) :: max_n_bins
         logical(c_bool), allocatable :: occ_failed(:)
         real(real64), allocatable :: range_low(:), range_high(:), mean_occ(:), pmfs(:, :, :), mean_pmf(:, :)
-        real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:), p_values(:)
-        real(real64), allocatable :: p_values_observed_consensus(:)
+        real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:)
     end type fixed_k_run_outputs
 
 contains
@@ -132,9 +148,9 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(256))
-
-        all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
+        allocate (all_tests(254))
+        all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", &
+                                 test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
                                  test_construct_neighborhoods_ranged_tie_extends_range)
         all_tests(3) = test_case("test_construct_neighborhoods_ranged_all_nan_means", &
@@ -143,37 +159,32 @@ contains
                                  test_construct_neighborhoods_ranged_fewer_genes_than_neighbors)
         all_tests(5) = test_case("test_construct_neighborhoods_ranged_plain_and_validation", &
                                  test_construct_neighborhoods_ranged_plain_and_validation)
-
         all_tests(6) = test_case("test_calc_pmf_matches_build_residual_histograms", &
                                  test_calc_pmf_matches_build_residual_histograms)
         all_tests(7) = test_case("test_calc_pmf_zero_included_reps", test_calc_pmf_zero_included_reps)
         all_tests(8) = test_case("test_calc_pmf_rejects_negative_counts", test_calc_pmf_rejects_negative_counts)
-
-        all_tests(9) = test_case("test_estimate_bin_count_basic_hand_computed", test_estimate_bin_count_basic_hand_computed)
+        all_tests(9) = test_case("test_estimate_bin_count_basic_hand_computed", &
+                                 test_estimate_bin_count_basic_hand_computed)
         all_tests(10) = test_case("test_estimate_bin_count_all_nan_gives_one_bin", &
                                   test_estimate_bin_count_all_nan_gives_one_bin)
         all_tests(11) = test_case("test_estimate_bin_count_clamped_to_max_n_bins", &
                                   test_estimate_bin_count_clamped_to_max_n_bins)
-
-        all_tests(12) = test_case("test_generate_js_comp_test_candidates_collapses_at_8742", &
-                                  test_generate_js_comp_test_candidates_collapses_at_8742)
-        all_tests(13) = test_case("test_generate_js_comp_test_candidates_has_two_distinct_at_8743", &
-                                  test_generate_js_comp_test_candidates_has_two_distinct_at_8743)
+        all_tests(12) = test_case("test_generate_js_comp_test_candidates_collapses_at_2500", &
+                                  test_generate_js_comp_test_candidates_collapses_at_2500)
+        all_tests(13) = test_case("test_generate_js_comp_test_candidates_has_two_distinct_at_2501", &
+                                  test_generate_js_comp_test_candidates_has_two_distinct_at_2501)
         all_tests(14) = test_case("test_generate_js_comp_test_candidates_validation", &
                                   test_generate_js_comp_test_candidates_validation)
-
         all_tests(15) = test_case("test_neighborhood_overlaps_all_pass", test_neighborhood_overlaps_all_pass)
         all_tests(16) = test_case("test_neighborhood_overlaps_exactly_at_threshold_passes", &
                                   test_neighborhood_overlaps_exactly_at_threshold_passes)
         all_tests(17) = test_case("test_neighborhood_overlaps_below_threshold_fails", &
                                   test_neighborhood_overlaps_below_threshold_fails)
-
         all_tests(18) = test_case("test_mean_pmf_min_counts_all_pass", test_mean_pmf_min_counts_all_pass)
         all_tests(19) = test_case("test_mean_pmf_min_counts_exactly_at_threshold_passes", &
                                   test_mean_pmf_min_counts_exactly_at_threshold_passes)
         all_tests(20) = test_case("test_mean_pmf_min_counts_below_threshold_fails", &
                                   test_mean_pmf_min_counts_below_threshold_fails)
-
         all_tests(21) = test_case("test_check_plateau_condition_join_min_requires_all", &
                                   test_check_plateau_condition_join_min_requires_all)
         all_tests(22) = test_case("test_check_plateau_condition_join_max_requires_any", &
@@ -182,7 +193,6 @@ contains
                                   test_check_plateau_condition_join_median_requires_majority)
         all_tests(24) = test_case("test_check_plateau_condition_worse_than_previous_short_circuits", &
                                   test_check_plateau_condition_worse_than_previous_short_circuits)
-
         all_tests(25) = test_case("test_create_mean_pmf_two_studies_hand_computed", &
                                   test_create_mean_pmf_two_studies_hand_computed)
         all_tests(26) = test_case("test_create_mean_pmf_three_studies_includes_self", &
@@ -190,463 +200,420 @@ contains
         all_tests(27) = test_case("test_create_mean_pmf_only_matches_create_mean_pmf", &
                                   test_create_mean_pmf_only_matches_create_mean_pmf)
         all_tests(28) = test_case("test_create_mean_pmf_validation", test_create_mean_pmf_validation)
-
         all_tests(29) = test_case("test_calc_js_comp_test_n_top_k_jsds_default_hand_computed", &
                                   test_calc_js_comp_test_n_top_k_jsds_default_hand_computed)
         all_tests(30) = test_case("test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level", &
                                   test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level)
         all_tests(31) = test_case("test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one", &
                                   test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one)
-
         all_tests(32) = test_case("test_bootstrap_histogram_seeded_reproducibility", &
                                   test_bootstrap_histogram_seeded_reproducibility)
         all_tests(33) = test_case("test_bootstrap_histogram_degenerate_single_bin_zero_ci", &
                                   test_bootstrap_histogram_degenerate_single_bin_zero_ci)
-
-        all_tests(34) = test_case("test_gjct_permutation_test_conservation_of_counts", &
-                                  test_gjct_permutation_test_conservation_of_counts)
-        all_tests(35) = test_case("test_gjct_permutation_test_seeded_reproducibility", &
-                                  test_gjct_permutation_test_seeded_reproducibility)
-        all_tests(36) = test_case("test_permutation_pvalue_laplace_corrected_never_exactly_zero", &
-                                  test_permutation_pvalue_laplace_corrected_never_exactly_zero)
-
-        all_tests(37) = test_case("test_run_js_comp_test_two_studies_hand_traceable", &
+        all_tests(34) = test_case("test_run_js_comp_test_two_studies_hand_traceable", &
                                   test_run_js_comp_test_two_studies_hand_traceable)
-        all_tests(38) = test_case("test_run_js_comp_test_three_studies_outlier_has_small_p_value", &
-                                  test_run_js_comp_test_three_studies_outlier_has_small_p_value)
-        all_tests(39) = test_case("test_param_search_no_plateau_falls_back_to_finest", &
+        all_tests(35) = test_case("test_param_search_no_plateau_falls_back_to_finest", &
                                   test_param_search_no_plateau_falls_back_to_finest)
-        all_tests(40) = test_case("test_param_search_single_candidate_bypasses_plateau", &
+        all_tests(36) = test_case("test_param_search_single_candidate_bypasses_plateau", &
                                   test_param_search_single_candidate_bypasses_plateau)
-        all_tests(41) = test_case("test_param_search_finds_plateau_mid_grid", &
-                                  test_param_search_finds_plateau_mid_grid)
-
-        all_tests(42) = test_case("test_effect_size_plateau_first_candidate_no_delta", &
+        all_tests(37) = test_case("test_param_search_finds_plateau_mid_grid", test_param_search_finds_plateau_mid_grid)
+        all_tests(38) = test_case("test_effect_size_plateau_first_candidate_no_delta", &
                                   test_effect_size_plateau_first_candidate_no_delta)
-        all_tests(43) = test_case("test_effect_size_plateau_single_transition_insufficient", &
+        all_tests(39) = test_case("test_effect_size_plateau_single_transition_insufficient", &
                                   test_effect_size_plateau_single_transition_insufficient)
-        all_tests(44) = test_case("test_effect_size_plateau_two_consecutive_transitions", &
+        all_tests(40) = test_case("test_effect_size_plateau_two_consecutive_transitions", &
                                   test_effect_size_plateau_two_consecutive_transitions)
-        all_tests(45) = test_case("test_effect_size_plateau_resets_on_non_qualifying", &
+        all_tests(41) = test_case("test_effect_size_plateau_resets_on_non_qualifying", &
                                   test_effect_size_plateau_resets_on_non_qualifying)
-        all_tests(46) = test_case("test_effect_size_plateau_median_max_hand_computed", &
+        all_tests(42) = test_case("test_effect_size_plateau_median_max_hand_computed", &
                                   test_effect_size_plateau_median_max_hand_computed)
-        all_tests(47) = test_case("test_param_search_effect_size_mode_plateau", &
+        all_tests(43) = test_case("test_param_search_effect_size_mode_plateau", &
                                   test_param_search_effect_size_mode_plateau)
-        all_tests(48) = test_case("test_param_search_both_mode_uses_earlier_trigger", &
+        all_tests(44) = test_case("test_param_search_both_mode_uses_earlier_trigger", &
                                   test_param_search_both_mode_uses_earlier_trigger)
-        all_tests(49) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
+        all_tests(45) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
                                   test_param_search_no_plateau_uses_smallest_uncertainty)
-        all_tests(50) = test_case("test_param_search_no_plateau_effect_size_smallest_uncertainty", &
+        all_tests(46) = test_case("test_param_search_no_plateau_effect_size_smallest_uncertainty", &
                                   test_param_search_no_plateau_effect_size_smallest_uncertainty)
-        all_tests(51) = test_case("test_param_search_no_plateau_both_uses_smallest_uncertainty", &
+        all_tests(47) = test_case("test_param_search_no_plateau_both_uses_smallest_uncertainty", &
                                   test_param_search_no_plateau_both_uses_smallest_uncertainty)
-
-        all_tests(52) = test_case("test_estimate_bin_count_sturges_wins_when_greater_than_fd", &
+        all_tests(48) = test_case("test_estimate_bin_count_sturges_wins_when_greater_than_fd", &
                                   test_estimate_bin_count_sturges_wins_when_greater_than_fd)
-        all_tests(53) = test_case("test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges", &
+        all_tests(49) = test_case("test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges", &
                                   test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges)
-
-        all_tests(54) = test_case("test_determine_bin_count_occupancy_finds_valid_below_m_max", &
+        all_tests(50) = test_case("test_determine_bin_count_occupancy_finds_valid_below_m_max", &
                                   test_occupancy_finds_valid_below_m_max)
-        all_tests(55) = test_case("test_determine_bin_count_occupancy_reaches_m_max_validly", &
+        all_tests(51) = test_case("test_determine_bin_count_occupancy_reaches_m_max_validly", &
                                   test_occupancy_reaches_m_max_validly)
-        all_tests(56) = test_case("test_determine_bin_count_occupancy_m_min_itself_invalid_failure", &
+        all_tests(52) = test_case("test_determine_bin_count_occupancy_m_min_itself_invalid_failure", &
                                   test_occupancy_m_min_itself_invalid_failure)
-        all_tests(57) = test_case("test_determine_bin_count_occupancy_refinement_picks_above_m_valid", &
+        all_tests(53) = test_case("test_determine_bin_count_occupancy_refinement_picks_above_m_valid", &
                                   test_occupancy_refinement_picks_above_m_valid)
-        all_tests(58) = test_case("test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid", &
+        all_tests(54) = test_case("test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid", &
                                   test_occupancy_refinement_finds_nothing_above_m_valid)
-        all_tests(59) = test_case("test_determine_bin_count_occupancy_all_residuals_nan", &
+        all_tests(55) = test_case("test_determine_bin_count_occupancy_all_residuals_nan", &
                                   test_occupancy_all_residuals_nan)
-        all_tests(60) = test_case("test_determine_bin_count_occupancy_geometric_step_guarantees_progress", &
+        all_tests(56) = test_case("test_determine_bin_count_occupancy_geometric_step_guarantees_progress", &
                                   test_occupancy_geometric_step_guarantees_progress)
-        all_tests(61) = test_case("test_determine_bin_count_occupancy_diagnostics_hand_computed", &
+        all_tests(57) = test_case("test_determine_bin_count_occupancy_diagnostics_hand_computed", &
                                   test_occupancy_diagnostics_hand_computed)
-        all_tests(62) = test_case("test_determine_bin_count_occupancy_defaults_match_issue_suggestions", &
+        all_tests(58) = test_case("test_determine_bin_count_occupancy_defaults_match_issue_suggestions", &
                                   test_occupancy_defaults_match_issue_suggestions)
-
-        all_tests(63) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_all_pass", &
+        all_tests(59) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_all_pass", &
                                   test_mean_pmf_min_counts_per_point_bins_differ_all_pass)
-        all_tests(64) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails", &
+        all_tests(60) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails", &
                                   test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails)
-
-        all_tests(65) = test_case("test_param_search_occupancy_failure_rejects_candidate", &
+        all_tests(61) = test_case("test_param_search_occupancy_failure_rejects_candidate", &
                                   test_param_search_occupancy_failure_rejects_candidate)
-        all_tests(66) = test_case("test_param_search_different_neighborhoods_different_m_j", &
+        all_tests(62) = test_case("test_param_search_different_neighborhoods_different_m_j", &
                                   test_param_search_different_neighborhoods_different_m_j)
-        all_tests(67) = test_case("test_param_search_final_n_bins_matches_selected_trace_column", &
+        all_tests(63) = test_case("test_param_search_final_n_bins_matches_selected_trace_column", &
                                   test_param_search_final_n_bins_matches_selected_trace_column)
-        all_tests(68) = test_case("test_run_js_comp_test_occupancy_failed_point_still_contributes", &
+        all_tests(64) = test_case("test_run_js_comp_test_occupancy_failed_point_still_contributes", &
                                   test_run_js_comp_test_occupancy_failed_point_still_contributes)
-        all_tests(69) = test_case("test_occupancy_min_residuals_per_bin_zero_accepted", &
+        all_tests(65) = test_case("test_occupancy_min_residuals_per_bin_zero_accepted", &
                                   test_occupancy_min_residuals_per_bin_zero_accepted)
-        all_tests(70) = test_case("test_run_js_comp_test_accepts_min_residuals_per_bin_zero", &
+        all_tests(66) = test_case("test_run_js_comp_test_accepts_min_residuals_per_bin_zero", &
                                   test_run_js_comp_test_accepts_min_residuals_per_bin_zero)
-        all_tests(71) = test_case("test_occupancy_range_asymmetric_skewed_residuals", &
+        all_tests(67) = test_case("test_occupancy_range_asymmetric_skewed_residuals", &
                                   test_occupancy_range_asymmetric_skewed_residuals)
-        all_tests(72) = test_case("test_occupancy_range_hand_computed_percentile", &
+        all_tests(68) = test_case("test_occupancy_range_hand_computed_percentile", &
                                   test_occupancy_range_hand_computed_percentile)
-        all_tests(73) = test_case("test_occupancy_exhaustive_matches_production_on_all_fixtures", &
+        all_tests(69) = test_case("test_occupancy_exhaustive_matches_production_on_all_fixtures", &
                                   test_occupancy_exhaustive_matches_production_on_all_fixtures)
-        all_tests(74) = test_case("test_occupancy_exhaustive_diverges_on_adversarial_fixture", &
+        all_tests(70) = test_case("test_occupancy_exhaustive_diverges_on_adversarial_fixture", &
                                   test_occupancy_exhaustive_diverges_on_adversarial_fixture)
-        all_tests(75) = test_case("test_occupancy_exhaustive_hand_computed_own_correctness", &
+        all_tests(71) = test_case("test_occupancy_exhaustive_hand_computed_own_correctness", &
                                   test_occupancy_exhaustive_hand_computed_own_correctness)
-        all_tests(76) = test_case("test_gather_pooled_residuals_hand_computed", &
+        all_tests(72) = test_case("test_gather_pooled_residuals_hand_computed", &
                                   test_gather_pooled_residuals_hand_computed)
-        all_tests(77) = test_case("test_gather_pooled_residuals_rejects_empty_dimension", &
+        all_tests(73) = test_case("test_gather_pooled_residuals_rejects_empty_dimension", &
                                   test_gather_pooled_residuals_rejects_empty_dimension)
-        all_tests(78) = test_case("test_gather_pooled_residuals_rejects_gene_index_oob", &
+        all_tests(74) = test_case("test_gather_pooled_residuals_rejects_gene_index_oob", &
                                   test_gather_pooled_residuals_rejects_gene_index_oob)
-        all_tests(79) = test_case("test_run_js_comp_test_golden_regression", &
-                                  test_run_js_comp_test_golden_regression)
-        all_tests(80) = test_case("test_point_bin_count_uniform_matches_multi_study_gather", &
+        all_tests(75) = test_case("test_run_js_comp_test_golden_regression", test_run_js_comp_test_golden_regression)
+        all_tests(76) = test_case("test_point_bin_count_uniform_matches_multi_study_gather", &
                                   test_point_bin_count_uniform_matches_multi_study_gather)
-        all_tests(81) = test_case("test_point_bin_count_ragged_matches_hand_built_pool", &
+        all_tests(77) = test_case("test_point_bin_count_ragged_matches_hand_built_pool", &
                                   test_point_bin_count_ragged_matches_hand_built_pool)
-        all_tests(82) = test_case("test_point_bin_count_rounded_mean_diagnostic_count", &
+        all_tests(78) = test_case("test_point_bin_count_rounded_mean_diagnostic_count", &
                                   test_point_bin_count_rounded_mean_diagnostic_count)
-        all_tests(83) = test_case("test_point_study_histogram_matches_multi_point_builder", &
+        all_tests(79) = test_case("test_point_study_histogram_matches_multi_point_builder", &
                                   test_point_study_histogram_matches_multi_point_builder)
-        all_tests(84) = test_case("test_point_study_histogram_excludes_nan_residuals", &
+        all_tests(80) = test_case("test_point_study_histogram_excludes_nan_residuals", &
                                   test_point_study_histogram_excludes_nan_residuals)
-        all_tests(85) = test_case("test_run_js_comp_test_too_many_neighbors_sets_ierr", &
+        all_tests(81) = test_case("test_run_js_comp_test_too_many_neighbors_sets_ierr", &
                                   test_run_js_comp_test_too_many_neighbors_sets_ierr)
-        all_tests(86) = test_case("test_adaptive_candidates_small_n_does_not_collapse", &
+        all_tests(82) = test_case("test_adaptive_candidates_small_n_does_not_collapse", &
                                   test_adaptive_candidates_small_n_does_not_collapse)
-        all_tests(87) = test_case("test_adaptive_candidates_strictly_decreasing_and_formulas", &
+        all_tests(83) = test_case("test_adaptive_candidates_strictly_decreasing_and_formulas", &
                                   test_adaptive_candidates_strictly_decreasing_and_formulas)
-        all_tests(88) = test_case("test_adaptive_candidates_study_floor_binds", &
+        all_tests(84) = test_case("test_adaptive_candidates_study_floor_binds", &
                                   test_adaptive_candidates_study_floor_binds)
-        all_tests(89) = test_case("test_adaptive_candidates_tiny_n_single_candidate", &
+        all_tests(85) = test_case("test_adaptive_candidates_tiny_n_single_candidate", &
                                   test_adaptive_candidates_tiny_n_single_candidate)
-        all_tests(90) = test_case("test_adaptive_candidates_capped_at_16", &
-                                  test_adaptive_candidates_capped_at_16)
-        all_tests(91) = test_case("test_adaptive_bounds_matches_generator_last_k_start", &
+        all_tests(86) = test_case("test_adaptive_candidates_capped_at_16", test_adaptive_candidates_capped_at_16)
+        all_tests(87) = test_case("test_adaptive_bounds_matches_generator_last_k_start", &
                                   test_adaptive_bounds_matches_generator_last_k_start)
-        all_tests(92) = test_case("test_adaptive_candidates_validation", &
-                                  test_adaptive_candidates_validation)
-        all_tests(93) = test_case("test_adaptive_bounds_validation", &
-                                  test_adaptive_bounds_validation)
-        all_tests(94) = test_case("test_adaptive_constants_preclude_dead_clamps", &
+        all_tests(88) = test_case("test_adaptive_candidates_validation", test_adaptive_candidates_validation)
+        all_tests(89) = test_case("test_adaptive_bounds_validation", test_adaptive_bounds_validation)
+        all_tests(90) = test_case("test_adaptive_constants_preclude_dead_clamps", &
                                   test_adaptive_constants_preclude_dead_clamps)
-        all_tests(95) = test_case("test_adaptive_bounds_rejects_unrepresentable_k_start", &
+        all_tests(91) = test_case("test_adaptive_bounds_rejects_unrepresentable_k_start", &
                                   test_adaptive_bounds_rejects_unrepresentable_k_start)
-        all_tests(96) = test_case("test_candidate_bounds_rejects_nonpositive_genes", &
+        all_tests(92) = test_case("test_candidate_bounds_rejects_nonpositive_genes", &
                                   test_candidate_bounds_rejects_nonpositive_genes)
-        all_tests(97) = test_case("test_adaptive_x_star_chain_stops_on_k_max", &
+        all_tests(93) = test_case("test_adaptive_x_star_chain_stops_on_k_max", &
                                   test_adaptive_x_star_chain_stops_on_k_max)
-        all_tests(98) = test_case("test_adaptive_k_start_phase_ignores_tau", &
-                                  test_adaptive_k_start_phase_ignores_tau)
-        all_tests(99) = test_case("test_adaptive_tau_stop_discards_round", &
-                                  test_adaptive_tau_stop_discards_round)
-        all_tests(100) = test_case("test_adaptive_tau_ratchets_against_previous_round", &
+        all_tests(94) = test_case("test_adaptive_k_start_phase_ignores_tau", test_adaptive_k_start_phase_ignores_tau)
+        all_tests(95) = test_case("test_adaptive_tau_stop_discards_round", test_adaptive_tau_stop_discards_round)
+        all_tests(96) = test_case("test_adaptive_tau_ratchets_against_previous_round", &
                                   test_adaptive_tau_ratchets_against_previous_round)
-        all_tests(101) = test_case("test_adaptive_partial_last_round_near_k_max", &
+        all_tests(97) = test_case("test_adaptive_partial_last_round_near_k_max", &
                                   test_adaptive_partial_last_round_near_k_max)
-        all_tests(102) = test_case("test_adaptive_cap_truncated_round_committed_then_stops", &
+        all_tests(98) = test_case("test_adaptive_cap_truncated_round_committed_then_stops", &
                                   test_adaptive_cap_truncated_round_committed_then_stops)
-        all_tests(103) = test_case("test_adaptive_cap_truncated_round_rejected_by_tau", &
+        all_tests(99) = test_case("test_adaptive_cap_truncated_round_rejected_by_tau", &
                                   test_adaptive_cap_truncated_round_rejected_by_tau)
-        all_tests(104) = test_case("test_adaptive_cap_empty_round_stops", &
-                                  test_adaptive_cap_empty_round_stops)
-        all_tests(105) = test_case("test_adaptive_exhausted_after_partial_round", &
-                                  test_adaptive_exhausted_after_partial_round)
-        all_tests(106) = test_case("test_adaptive_k_max_takes_precedence_over_exhausted", &
-                                  test_adaptive_k_max_takes_precedence_over_exhausted)
-        all_tests(107) = test_case("test_adaptive_zero_dispersion_skips_adaptive_phase", &
-                                  test_adaptive_zero_dispersion_skips_adaptive_phase)
-        all_tests(108) = test_case("test_adaptive_too_few_residuals_after_k_start", &
-                                  test_adaptive_too_few_residuals_after_k_start)
-        all_tests(109) = test_case("test_adaptive_too_few_residuals_precedes_zero_dispersion", &
-                                  test_adaptive_too_few_residuals_precedes_zero_dispersion)
-        all_tests(110) = test_case("test_adaptive_no_valid_residual_gives_nan_dispersion", &
-                                  test_adaptive_no_valid_residual_gives_nan_dispersion)
-        all_tests(111) = test_case("test_adaptive_all_nan_staged_round_commits", &
-                                  test_adaptive_all_nan_staged_round_commits)
-        all_tests(112) = test_case("test_adaptive_ties_go_to_lower_mean_and_position", &
-                                  test_adaptive_ties_go_to_lower_mean_and_position)
-        all_tests(113) = test_case("test_adaptive_zero_mad_still_progresses", &
-                                  test_adaptive_zero_mad_still_progresses)
-        all_tests(114) = test_case("test_adaptive_seed_beyond_largest_mean", &
-                                  test_adaptive_seed_beyond_largest_mean)
-        all_tests(115) = test_case("test_adaptive_mad_distance_factor_zero_and_four", &
-                                  test_adaptive_mad_distance_factor_zero_and_four)
-        all_tests(116) = test_case("test_adaptive_multi_study_decode_nan_padded_study", &
-                                  test_adaptive_multi_study_decode_nan_padded_study)
-        all_tests(117) = test_case("test_adaptive_too_few_means", &
-                                  test_adaptive_too_few_means)
-        all_tests(118) = test_case("test_adaptive_all_means_nan", &
-                                  test_adaptive_all_means_nan)
-        all_tests(119) = test_case("test_adaptive_empty_study_neighborhood_min_one", &
-                                  test_adaptive_empty_study_neighborhood_min_one)
-        all_tests(120) = test_case("test_adaptive_empty_study_neighborhood_min_two", &
-                                  test_adaptive_empty_study_neighborhood_min_two)
-        all_tests(121) = test_case("test_adaptive_max_n_neighbors_later_point_and_study", &
-                                  test_adaptive_max_n_neighbors_later_point_and_study)
-        all_tests(122) = test_case("test_adaptive_status_too_few_residuals_beats_empty_study", &
-                                  test_adaptive_status_too_few_residuals_beats_empty_study)
-        all_tests(123) = test_case("test_adaptive_nan_residuals_excluded_from_s_and_cap", &
-                                  test_adaptive_nan_residuals_excluded_from_s_and_cap)
-        all_tests(124) = test_case("test_adaptive_wrapper_validation", &
-                                  test_adaptive_wrapper_validation)
-        all_tests(125) = test_case("test_adaptive_min_valid_residuals_positive", &
-                                  test_adaptive_min_valid_residuals_positive)
-        all_tests(126) = test_case("test_adaptive_seed_tie_run_takes_first_position", &
-                                  test_adaptive_seed_tie_run_takes_first_position)
-        all_tests(127) = test_case("test_adaptive_seed_beyond_tie_run_takes_first", &
-                                  test_adaptive_seed_beyond_tie_run_takes_first)
-        all_tests(128) = test_case("test_materialize_pooled_neighborhood_decode", &
-                                  test_materialize_pooled_neighborhood_decode)
-        all_tests(129) = test_case("test_run_adaptive_matches_fixed_k_exactly", &
-                                  test_run_adaptive_matches_fixed_k_exactly)
-        all_tests(130) = test_case("test_run_adaptive_ragged_hand_traceable", &
-                                  test_run_adaptive_ragged_hand_traceable)
-        all_tests(131) = test_case("test_run_adaptive_reversed_range_sets_ierr", &
-                                  test_run_adaptive_reversed_range_sets_ierr)
-        all_tests(132) = test_case("test_run_adaptive_range_beyond_valid_pool_sets_ierr", &
-                                  test_run_adaptive_range_beyond_valid_pool_sets_ierr)
-        all_tests(133) = test_case("test_run_adaptive_empty_study_sets_ierr", &
-                                  test_run_adaptive_empty_study_sets_ierr)
-        all_tests(134) = test_case("test_run_adaptive_end_to_end_after_construction", &
-                                  test_run_adaptive_end_to_end_after_construction)
-        all_tests(135) = test_case("test_run_adaptive_wrapper_validation", &
-                                  test_run_adaptive_wrapper_validation)
-        all_tests(136) = test_case("test_adaptive_search_ci_plateau_mid_sequence", &
-                                  test_adaptive_search_ci_plateau_mid_sequence)
-        all_tests(137) = test_case("test_adaptive_search_effect_size_plateau", &
-                                  test_adaptive_search_effect_size_plateau)
-        all_tests(138) = test_case("test_adaptive_search_both_mode_uses_earlier_trigger", &
-                                  test_adaptive_search_both_mode_uses_earlier_trigger)
-        all_tests(139) = test_case("test_adaptive_search_no_plateau_ci_smallest_uncertainty", &
-                                  test_adaptive_search_no_plateau_ci_smallest_uncertainty)
-        all_tests(140) = test_case("test_adaptive_search_no_plateau_effect_smallest_uncertainty", &
-                                  test_adaptive_search_no_plateau_effect_smallest_uncertainty)
-        all_tests(141) = test_case("test_adaptive_search_no_plateau_both_smallest_uncertainty", &
-                                  test_adaptive_search_no_plateau_both_smallest_uncertainty)
-        all_tests(142) = test_case("test_adaptive_search_nothing_admissible_falls_back_to_first", &
-                                  test_adaptive_search_nothing_admissible_falls_back_to_first)
-        all_tests(143) = test_case("test_adaptive_search_single_candidate_bypasses_plateau", &
-                                  test_adaptive_search_single_candidate_bypasses_plateau)
-        all_tests(144) = test_case("test_adaptive_search_single_rejected_candidate_m_min", &
-                                  test_adaptive_search_single_rejected_candidate_m_min)
-        all_tests(145) = test_case("test_adaptive_search_status_too_few_means", &
-                                  test_adaptive_search_status_too_few_means)
-        all_tests(146) = test_case("test_adaptive_search_status_too_few_residuals", &
-                                  test_adaptive_search_status_too_few_residuals)
-        all_tests(147) = test_case("test_adaptive_search_status_empty_study", &
-                                  test_adaptive_search_status_empty_study)
-        all_tests(148) = test_case("test_adaptive_search_status_capacity_exceeded", &
-                                  test_adaptive_search_status_capacity_exceeded)
-        all_tests(149) = test_case("test_adaptive_search_status_overlap_failed", &
-                                  test_adaptive_search_status_overlap_failed)
-        all_tests(150) = test_case("test_adaptive_search_status_min_count_failed", &
-                                  test_adaptive_search_status_min_count_failed)
-        all_tests(151) = test_case("test_adaptive_search_final_bins_match_selected_trace", &
-                                  test_adaptive_search_final_bins_match_selected_trace)
-        all_tests(152) = test_case("test_adaptive_search_round_trip_reproduces_trace", &
-                                  test_adaptive_search_round_trip_reproduces_trace)
-        all_tests(153) = test_case("test_adaptive_search_n_points_ascend_homoscedastic", &
-                                  test_adaptive_search_n_points_ascend_homoscedastic)
-        all_tests(154) = test_case("test_adaptive_search_wrapper_validation", &
-                                  test_adaptive_search_wrapper_validation)
-        all_tests(155) = test_case("test_adaptive_search_round_trip_non_default_options", &
-                                  test_adaptive_search_round_trip_non_default_options)
-        all_tests(156) = test_case("test_adaptive_search_nothing_admissible_clamped_to_capacity", &
-                                  test_adaptive_search_nothing_admissible_clamped_to_capacity)
-        all_tests(157) = test_case("test_adaptive_search_single_rejected_clamped_to_capacity", &
-                                  test_adaptive_search_single_rejected_clamped_to_capacity)
-        all_tests(158) = test_case("test_adaptive_search_ci_plateau_keeps_earlier_best", &
-                                  test_adaptive_search_ci_plateau_keeps_earlier_best)
-        all_tests(159) = test_case("test_gjct_permutation_depletes_pool_exactly", &
-                                  test_gjct_permutation_depletes_pool_exactly)
-        all_tests(160) = test_case("test_gjct_null_statistic_uses_permuted_consensus", &
-                                  test_gjct_null_statistic_uses_permuted_consensus)
-        all_tests(161) = test_case("test_gjct_observed_consensus_p_value", &
-                                  test_gjct_observed_consensus_p_value)
-        all_tests(162) = test_case("test_stone_theorem2_hand_computed_per_mode", &
-                                  test_stone_theorem2_hand_computed_per_mode)
-        all_tests(163) = test_case("test_stone_matches_brute_force_leave_one_out", &
-                                  test_stone_matches_brute_force_leave_one_out)
-        all_tests(164) = test_case("test_stone_scores_inside_residuals_not_clamped", &
-                                  test_stone_scores_inside_residuals_not_clamped)
-        all_tests(165) = test_case("test_stone_tie_goes_to_smaller_m", &
-                                  test_stone_tie_goes_to_smaller_m)
-        all_tests(166) = test_case("test_stone_floor_binds", &
-                                  test_stone_floor_binds)
-        all_tests(167) = test_case("test_stone_no_admissible_m_fails", &
-                                  test_stone_no_admissible_m_fails)
-        all_tests(168) = test_case("test_stone_all_residuals_nan_fails", &
-                                  test_stone_all_residuals_nan_fails)
-        all_tests(169) = test_case("test_stone_zero_range_fails", &
-                                  test_stone_zero_range_fails)
-        all_tests(170) = test_case("test_stone_skips_study_with_fewer_than_two_inside", &
-                                  test_stone_skips_study_with_fewer_than_two_inside)
-        all_tests(171) = test_case("test_stone_all_studies_below_two_inside_fails", &
-                                  test_stone_all_studies_below_two_inside_fails)
-        all_tests(172) = test_case("test_stone_pooled_total_below_two_fails", &
-                                  test_stone_pooled_total_below_two_fails)
-        all_tests(173) = test_case("test_stone_shuffled_labels_match_contiguous", &
-                                  test_stone_shuffled_labels_match_contiguous)
-        all_tests(174) = test_case("test_stone_rejects_non_stone_mode", &
-                                  test_stone_rejects_non_stone_mode)
-        all_tests(175) = test_case("test_stone_diagnostics_match_occupancy_routine", &
-                                  test_stone_diagnostics_match_occupancy_routine)
-        all_tests(176) = test_case("test_stone_expert_matches_plain", &
-                                  test_stone_expert_matches_plain)
-        all_tests(177) = test_case("test_stone_m_max_at_max_n_bins", &
-                                  test_stone_m_max_at_max_n_bins)
-        all_tests(178) = test_case("test_group_sorted_perm_matches_sort_per_block", &
-                                  test_group_sorted_perm_matches_sort_per_block)
-        all_tests(179) = test_case("test_run_js_comp_test_bin_count_mode_default_is_occupancy", &
-                                  test_run_js_comp_test_bin_count_mode_default_is_occupancy)
-        all_tests(180) = test_case("test_run_js_comp_test_stone_matches_standalone", &
-                                  test_run_js_comp_test_stone_matches_standalone)
-        all_tests(181) = test_case("test_run_js_comp_test_stone_ignores_gamma", &
-                                  test_run_js_comp_test_stone_ignores_gamma)
-        all_tests(182) = test_case("test_adaptive_final_bin_count_mode_default_is_occupancy", &
-                                  test_adaptive_final_bin_count_mode_default_is_occupancy)
-        all_tests(183) = test_case("test_adaptive_final_stone_matches_standalone", &
-                                  test_adaptive_final_stone_matches_standalone)
-        all_tests(184) = test_case("test_adaptive_final_stone_ignores_gamma", &
-                                  test_adaptive_final_stone_ignores_gamma)
-        all_tests(185) = test_case("test_adaptive_search_bin_count_mode_default_is_occupancy", &
-                                  test_adaptive_search_bin_count_mode_default_is_occupancy)
-        all_tests(186) = test_case("test_adaptive_search_stone_matches_standalone", &
-                                  test_adaptive_search_stone_matches_standalone)
-        all_tests(187) = test_case("test_adaptive_search_stone_ignores_gamma", &
-                                  test_adaptive_search_stone_ignores_gamma)
-        all_tests(188) = test_case("test_param_search_bin_count_mode_default_is_occupancy", &
-                                  test_param_search_bin_count_mode_default_is_occupancy)
-        all_tests(189) = test_case("test_param_search_stone_matches_standalone", &
-                                  test_param_search_stone_matches_standalone)
-        all_tests(190) = test_case("test_param_search_stone_ignores_gamma", &
-                                  test_param_search_stone_ignores_gamma)
-        all_tests(191) = test_case("test_stone_matches_brute_force_with_outside_values", &
-                                  test_stone_matches_brute_force_with_outside_values)
-        all_tests(192) = test_case("test_param_search_rejects_undersized_max_n_points_candidate", &
-                                  test_param_search_rejects_undersized_max_n_points_candidate)
-        all_tests(193) = test_case("test_param_search_rejects_undersized_max_n_neighbors_candidate", &
-                                  test_param_search_rejects_undersized_max_n_neighbors_candidate)
-        all_tests(194) = test_case("test_param_search_bounds_match_candidate_bounds", &
-                                  test_param_search_bounds_match_candidate_bounds)
-        all_tests(195) = test_case("test_run_js_comp_test_rejects_reversed_residual_range_quantiles", &
-                                  test_run_js_comp_test_rejects_reversed_residual_range_quantiles)
-        all_tests(196) = test_case("test_occupancy_rejects_reversed_residual_range_quantiles", &
-                                  test_occupancy_rejects_reversed_residual_range_quantiles)
-        all_tests(197) = test_case("test_occupancy_accepts_equal_residual_range_quantiles", &
-                                  test_occupancy_accepts_equal_residual_range_quantiles)
-        all_tests(198) = test_case("test_occupancy_upper_quantile_only", test_occupancy_upper_quantile_only)
-        all_tests(199) = test_case("test_stone_rejects_reversed_residual_range_quantiles", &
-                                  test_stone_rejects_reversed_residual_range_quantiles)
-        all_tests(200) = test_case("test_occupancy_expert_rejects_reversed_residual_range_quantiles", &
-                                  test_occupancy_expert_rejects_reversed_residual_range_quantiles)
-        all_tests(201) = test_case("test_occupancy_known_limitation_lower_only_above_default_upper", &
-                                  test_occupancy_known_limitation_lower_only_above_default_upper)
-        all_tests(202) = test_case("test_run_js_comp_test_empty_study_sets_ierr", &
-                                  test_run_js_comp_test_empty_study_sets_ierr)
-        all_tests(203) = test_case("test_run_js_comp_test_nan_residuals_only_study_sets_ierr", &
-                                  test_run_js_comp_test_nan_residuals_only_study_sets_ierr)
-        all_tests(204) = test_case("test_param_search_empty_study_not_admissible", &
-                                  test_param_search_empty_study_not_admissible)
-        all_tests(205) = test_case("test_run_js_comp_test_single_empty_point_sets_ierr", &
-                                  test_run_js_comp_test_single_empty_point_sets_ierr)
-        all_tests(206) = test_case("test_neighborhood_overlaps_counts_inclusive_positions", &
-                                  test_neighborhood_overlaps_counts_inclusive_positions)
-        all_tests(207) = test_case("test_param_search_lone_inadmissible_candidate_not_established", &
-                                  test_param_search_lone_inadmissible_candidate_not_established)
-        all_tests(208) = test_case("test_param_search_lone_admissible_candidate_established", &
-                                  test_param_search_lone_admissible_candidate_established)
-        all_tests(209) = test_case("test_run_adaptive_nan_residuals_only_study_sets_ierr", &
-                                  test_run_adaptive_nan_residuals_only_study_sets_ierr)
-        all_tests(210) = test_case("test_run_adaptive_single_empty_point_sets_ierr", &
-                                  test_run_adaptive_single_empty_point_sets_ierr)
-        all_tests(211) = test_case("test_adaptive_search_nan_residuals_study_not_admissible", &
-                                  test_adaptive_search_nan_residuals_study_not_admissible)
-        all_tests(212) = test_case("test_final_runs_accept_partly_different_gene_sets", &
-                                  test_final_runs_accept_partly_different_gene_sets)
-        all_tests(213) = test_case("test_construct_neighborhoods_ranged_expert_rejects_bad_perm", &
-                                  test_construct_neighborhoods_ranged_expert_rejects_bad_perm)
-        all_tests(214) = test_case("test_run_js_comp_test_rejects_nan_x_star", &
-                                  test_run_js_comp_test_rejects_nan_x_star)
-        all_tests(215) = test_case("test_gjct_permutation_test_rejects_draws_larger_than_pool", &
-                                  test_gjct_permutation_test_rejects_draws_larger_than_pool)
-        all_tests(216) = test_case("test_bootstrap_histogram_rejects_draws_from_empty_pool", &
-                                  test_bootstrap_histogram_rejects_draws_from_empty_pool)
-        all_tests(217) = test_case("test_gjct_permutation_test_zero_permutations_gives_nan_p_values", &
-                                  test_gjct_permutation_test_zero_permutations_gives_nan_p_values)
-        all_tests(218) = test_case("test_run_js_comp_test_zero_permutations_gives_nan_p_values", &
-                                  test_run_js_comp_test_zero_permutations_gives_nan_p_values)
-        all_tests(219) = test_case("test_adaptive_bounds_rejects_pool_beyond_int32", &
-                                  test_adaptive_bounds_rejects_pool_beyond_int32)
-        all_tests(220) = test_case("test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins", &
-                                  test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins)
-        all_tests(221) = test_case("test_check_plateau_condition_ci_overlap_fractional_values", &
+        all_tests(100) = test_case("test_adaptive_cap_empty_round_stops", test_adaptive_cap_empty_round_stops)
+        all_tests(101) = test_case("test_adaptive_exhausted_after_partial_round", &
+                                   test_adaptive_exhausted_after_partial_round)
+        all_tests(102) = test_case("test_adaptive_k_max_takes_precedence_over_exhausted", &
+                                   test_adaptive_k_max_takes_precedence_over_exhausted)
+        all_tests(103) = test_case("test_adaptive_zero_dispersion_skips_adaptive_phase", &
+                                   test_adaptive_zero_dispersion_skips_adaptive_phase)
+        all_tests(104) = test_case("test_adaptive_too_few_residuals_after_k_start", &
+                                   test_adaptive_too_few_residuals_after_k_start)
+        all_tests(105) = test_case("test_adaptive_too_few_residuals_precedes_zero_dispersion", &
+                                   test_adaptive_too_few_residuals_precedes_zero_dispersion)
+        all_tests(106) = test_case("test_adaptive_no_valid_residual_gives_nan_dispersion", &
+                                   test_adaptive_no_valid_residual_gives_nan_dispersion)
+        all_tests(107) = test_case("test_adaptive_all_nan_staged_round_commits", &
+                                   test_adaptive_all_nan_staged_round_commits)
+        all_tests(108) = test_case("test_adaptive_ties_go_to_lower_mean_and_position", &
+                                   test_adaptive_ties_go_to_lower_mean_and_position)
+        all_tests(109) = test_case("test_adaptive_zero_mad_still_progresses", test_adaptive_zero_mad_still_progresses)
+        all_tests(110) = test_case("test_adaptive_seed_beyond_largest_mean", test_adaptive_seed_beyond_largest_mean)
+        all_tests(111) = test_case("test_adaptive_mad_distance_factor_zero_and_four", &
+                                   test_adaptive_mad_distance_factor_zero_and_four)
+        all_tests(112) = test_case("test_adaptive_multi_study_decode_nan_padded_study", &
+                                   test_adaptive_multi_study_decode_nan_padded_study)
+        all_tests(113) = test_case("test_adaptive_too_few_means", test_adaptive_too_few_means)
+        all_tests(114) = test_case("test_adaptive_all_means_nan", test_adaptive_all_means_nan)
+        all_tests(115) = test_case("test_adaptive_empty_study_neighborhood_min_one", &
+                                   test_adaptive_empty_study_neighborhood_min_one)
+        all_tests(116) = test_case("test_adaptive_empty_study_neighborhood_min_two", &
+                                   test_adaptive_empty_study_neighborhood_min_two)
+        all_tests(117) = test_case("test_adaptive_max_n_neighbors_later_point_and_study", &
+                                   test_adaptive_max_n_neighbors_later_point_and_study)
+        all_tests(118) = test_case("test_adaptive_status_too_few_residuals_beats_empty_study", &
+                                   test_adaptive_status_too_few_residuals_beats_empty_study)
+        all_tests(119) = test_case("test_adaptive_nan_residuals_excluded_from_s_and_cap", &
+                                   test_adaptive_nan_residuals_excluded_from_s_and_cap)
+        all_tests(120) = test_case("test_adaptive_wrapper_validation", test_adaptive_wrapper_validation)
+        all_tests(121) = test_case("test_adaptive_min_valid_residuals_positive", &
+                                   test_adaptive_min_valid_residuals_positive)
+        all_tests(122) = test_case("test_adaptive_seed_tie_run_takes_first_position", &
+                                   test_adaptive_seed_tie_run_takes_first_position)
+        all_tests(123) = test_case("test_adaptive_seed_beyond_tie_run_takes_first", &
+                                   test_adaptive_seed_beyond_tie_run_takes_first)
+        all_tests(124) = test_case("test_materialize_pooled_neighborhood_decode", &
+                                   test_materialize_pooled_neighborhood_decode)
+        all_tests(125) = test_case("test_run_adaptive_matches_fixed_k_exactly", &
+                                   test_run_adaptive_matches_fixed_k_exactly)
+        all_tests(126) = test_case("test_run_adaptive_ragged_hand_traceable", test_run_adaptive_ragged_hand_traceable)
+        all_tests(127) = test_case("test_run_adaptive_reversed_range_sets_ierr", &
+                                   test_run_adaptive_reversed_range_sets_ierr)
+        all_tests(128) = test_case("test_run_adaptive_range_beyond_valid_pool_sets_ierr", &
+                                   test_run_adaptive_range_beyond_valid_pool_sets_ierr)
+        all_tests(129) = test_case("test_run_adaptive_empty_study_sets_ierr", test_run_adaptive_empty_study_sets_ierr)
+        all_tests(130) = test_case("test_run_adaptive_end_to_end_after_construction", &
+                                   test_run_adaptive_end_to_end_after_construction)
+        all_tests(131) = test_case("test_run_adaptive_wrapper_validation", test_run_adaptive_wrapper_validation)
+        all_tests(132) = test_case("test_adaptive_search_ci_plateau_mid_sequence", &
+                                   test_adaptive_search_ci_plateau_mid_sequence)
+        all_tests(133) = test_case("test_adaptive_search_effect_size_plateau", &
+                                   test_adaptive_search_effect_size_plateau)
+        all_tests(134) = test_case("test_adaptive_search_both_mode_uses_earlier_trigger", &
+                                   test_adaptive_search_both_mode_uses_earlier_trigger)
+        all_tests(135) = test_case("test_adaptive_search_no_plateau_ci_smallest_uncertainty", &
+                                   test_adaptive_search_no_plateau_ci_smallest_uncertainty)
+        all_tests(136) = test_case("test_adaptive_search_no_plateau_effect_smallest_uncertainty", &
+                                   test_adaptive_search_no_plateau_effect_smallest_uncertainty)
+        all_tests(137) = test_case("test_adaptive_search_no_plateau_both_smallest_uncertainty", &
+                                   test_adaptive_search_no_plateau_both_smallest_uncertainty)
+        all_tests(138) = test_case("test_adaptive_search_nothing_admissible_falls_back_to_first", &
+                                   test_adaptive_search_nothing_admissible_falls_back_to_first)
+        all_tests(139) = test_case("test_adaptive_search_single_candidate_bypasses_plateau", &
+                                   test_adaptive_search_single_candidate_bypasses_plateau)
+        all_tests(140) = test_case("test_adaptive_search_single_rejected_candidate_m_min", &
+                                   test_adaptive_search_single_rejected_candidate_m_min)
+        all_tests(141) = test_case("test_adaptive_search_status_too_few_means", &
+                                   test_adaptive_search_status_too_few_means)
+        all_tests(142) = test_case("test_adaptive_search_status_too_few_residuals", &
+                                   test_adaptive_search_status_too_few_residuals)
+        all_tests(143) = test_case("test_adaptive_search_status_empty_study", test_adaptive_search_status_empty_study)
+        all_tests(144) = test_case("test_adaptive_search_status_capacity_exceeded", &
+                                   test_adaptive_search_status_capacity_exceeded)
+        all_tests(145) = test_case("test_adaptive_search_status_overlap_failed", &
+                                   test_adaptive_search_status_overlap_failed)
+        all_tests(146) = test_case("test_adaptive_search_status_min_count_failed", &
+                                   test_adaptive_search_status_min_count_failed)
+        all_tests(147) = test_case("test_adaptive_search_final_bins_match_selected_trace", &
+                                   test_adaptive_search_final_bins_match_selected_trace)
+        all_tests(148) = test_case("test_adaptive_search_round_trip_reproduces_trace", &
+                                   test_adaptive_search_round_trip_reproduces_trace)
+        all_tests(149) = test_case("test_adaptive_search_n_points_ascend_homoscedastic", &
+                                   test_adaptive_search_n_points_ascend_homoscedastic)
+        all_tests(150) = test_case("test_adaptive_search_wrapper_validation", test_adaptive_search_wrapper_validation)
+        all_tests(151) = test_case("test_adaptive_search_round_trip_non_default_options", &
+                                   test_adaptive_search_round_trip_non_default_options)
+        all_tests(152) = test_case("test_adaptive_search_nothing_admissible_clamped_to_capacity", &
+                                   test_adaptive_search_nothing_admissible_clamped_to_capacity)
+        all_tests(153) = test_case("test_adaptive_search_single_rejected_clamped_to_capacity", &
+                                   test_adaptive_search_single_rejected_clamped_to_capacity)
+        all_tests(154) = test_case("test_adaptive_search_ci_plateau_keeps_earlier_best", &
+                                   test_adaptive_search_ci_plateau_keeps_earlier_best)
+        all_tests(155) = test_case("test_stone_theorem2_hand_computed_per_mode", &
+                                   test_stone_theorem2_hand_computed_per_mode)
+        all_tests(156) = test_case("test_stone_matches_brute_force_leave_one_out", &
+                                   test_stone_matches_brute_force_leave_one_out)
+        all_tests(157) = test_case("test_stone_scores_inside_residuals_not_clamped", &
+                                   test_stone_scores_inside_residuals_not_clamped)
+        all_tests(158) = test_case("test_stone_tie_goes_to_smaller_m", test_stone_tie_goes_to_smaller_m)
+        all_tests(159) = test_case("test_stone_floor_binds", test_stone_floor_binds)
+        all_tests(160) = test_case("test_stone_no_admissible_m_fails", test_stone_no_admissible_m_fails)
+        all_tests(161) = test_case("test_stone_all_residuals_nan_fails", test_stone_all_residuals_nan_fails)
+        all_tests(162) = test_case("test_stone_zero_range_fails", test_stone_zero_range_fails)
+        all_tests(163) = test_case("test_stone_skips_study_with_fewer_than_two_inside", &
+                                   test_stone_skips_study_with_fewer_than_two_inside)
+        all_tests(164) = test_case("test_stone_all_studies_below_two_inside_fails", &
+                                   test_stone_all_studies_below_two_inside_fails)
+        all_tests(165) = test_case("test_stone_pooled_total_below_two_fails", test_stone_pooled_total_below_two_fails)
+        all_tests(166) = test_case("test_stone_shuffled_labels_match_contiguous", &
+                                   test_stone_shuffled_labels_match_contiguous)
+        all_tests(167) = test_case("test_stone_rejects_non_stone_mode", test_stone_rejects_non_stone_mode)
+        all_tests(168) = test_case("test_stone_diagnostics_match_occupancy_routine", &
+                                   test_stone_diagnostics_match_occupancy_routine)
+        all_tests(169) = test_case("test_stone_expert_matches_plain", test_stone_expert_matches_plain)
+        all_tests(170) = test_case("test_stone_m_max_at_max_n_bins", test_stone_m_max_at_max_n_bins)
+        all_tests(171) = test_case("test_group_sorted_perm_matches_sort_per_block", &
+                                   test_group_sorted_perm_matches_sort_per_block)
+        all_tests(172) = test_case("test_run_js_comp_test_bin_count_mode_default_is_stone_equal", &
+                                   test_run_js_comp_test_bin_count_mode_default_is_stone_equal)
+        all_tests(173) = test_case("test_run_js_comp_test_stone_matches_standalone", &
+                                   test_run_js_comp_test_stone_matches_standalone)
+        all_tests(174) = test_case("test_run_js_comp_test_stone_ignores_gamma", &
+                                   test_run_js_comp_test_stone_ignores_gamma)
+        all_tests(175) = test_case("test_adaptive_final_bin_count_mode_default_is_stone_equal", &
+                                   test_adaptive_final_bin_count_mode_default_is_stone_equal)
+        all_tests(176) = test_case("test_adaptive_final_stone_matches_standalone", &
+                                   test_adaptive_final_stone_matches_standalone)
+        all_tests(177) = test_case("test_adaptive_final_stone_ignores_gamma", test_adaptive_final_stone_ignores_gamma)
+        all_tests(178) = test_case("test_adaptive_search_bin_count_mode_default_is_stone_equal", &
+                                   test_adaptive_search_bin_count_mode_default_is_stone_equal)
+        all_tests(179) = test_case("test_adaptive_search_stone_matches_standalone", &
+                                   test_adaptive_search_stone_matches_standalone)
+        all_tests(180) = test_case("test_adaptive_search_stone_ignores_gamma", &
+                                   test_adaptive_search_stone_ignores_gamma)
+        all_tests(181) = test_case("test_param_search_bin_count_mode_default_is_stone_equal", &
+                                   test_param_search_bin_count_mode_default_is_stone_equal)
+        all_tests(182) = test_case("test_param_search_stone_matches_standalone", &
+                                   test_param_search_stone_matches_standalone)
+        all_tests(183) = test_case("test_param_search_stone_ignores_gamma", test_param_search_stone_ignores_gamma)
+        all_tests(184) = test_case("test_stone_matches_brute_force_with_outside_values", &
+                                   test_stone_matches_brute_force_with_outside_values)
+        all_tests(185) = test_case("test_param_search_rejects_undersized_max_n_points_candidate", &
+                                   test_param_search_rejects_undersized_max_n_points_candidate)
+        all_tests(186) = test_case("test_param_search_rejects_undersized_max_n_neighbors_candidate", &
+                                   test_param_search_rejects_undersized_max_n_neighbors_candidate)
+        all_tests(187) = test_case("test_param_search_bounds_match_candidate_bounds", &
+                                   test_param_search_bounds_match_candidate_bounds)
+        all_tests(188) = test_case("test_run_js_comp_test_rejects_reversed_residual_range_quantiles", &
+                                   test_run_js_comp_test_rejects_reversed_residual_range_quantiles)
+        all_tests(189) = test_case("test_occupancy_rejects_reversed_residual_range_quantiles", &
+                                   test_occupancy_rejects_reversed_residual_range_quantiles)
+        all_tests(190) = test_case("test_occupancy_accepts_equal_residual_range_quantiles", &
+                                   test_occupancy_accepts_equal_residual_range_quantiles)
+        all_tests(191) = test_case("test_occupancy_upper_quantile_only", test_occupancy_upper_quantile_only)
+        all_tests(192) = test_case("test_stone_rejects_reversed_residual_range_quantiles", &
+                                   test_stone_rejects_reversed_residual_range_quantiles)
+        all_tests(193) = test_case("test_occupancy_expert_rejects_reversed_residual_range_quantiles", &
+                                   test_occupancy_expert_rejects_reversed_residual_range_quantiles)
+        all_tests(194) = test_case("test_occupancy_known_limitation_lower_only_above_default_upper", &
+                                   test_occupancy_known_limitation_lower_only_above_default_upper)
+        all_tests(195) = test_case("test_run_js_comp_test_empty_study_sets_ierr", &
+                                   test_run_js_comp_test_empty_study_sets_ierr)
+        all_tests(196) = test_case("test_run_js_comp_test_nan_residuals_only_study_sets_ierr", &
+                                   test_run_js_comp_test_nan_residuals_only_study_sets_ierr)
+        all_tests(197) = test_case("test_param_search_empty_study_not_admissible", &
+                                   test_param_search_empty_study_not_admissible)
+        all_tests(198) = test_case("test_run_js_comp_test_single_empty_point_sets_ierr", &
+                                   test_run_js_comp_test_single_empty_point_sets_ierr)
+        all_tests(199) = test_case("test_neighborhood_overlaps_counts_inclusive_positions", &
+                                   test_neighborhood_overlaps_counts_inclusive_positions)
+        all_tests(200) = test_case("test_param_search_lone_inadmissible_candidate_not_established", &
+                                   test_param_search_lone_inadmissible_candidate_not_established)
+        all_tests(201) = test_case("test_param_search_lone_admissible_candidate_established", &
+                                   test_param_search_lone_admissible_candidate_established)
+        all_tests(202) = test_case("test_run_adaptive_nan_residuals_only_study_sets_ierr", &
+                                   test_run_adaptive_nan_residuals_only_study_sets_ierr)
+        all_tests(203) = test_case("test_run_adaptive_single_empty_point_sets_ierr", &
+                                   test_run_adaptive_single_empty_point_sets_ierr)
+        all_tests(204) = test_case("test_adaptive_search_nan_residuals_study_not_admissible", &
+                                   test_adaptive_search_nan_residuals_study_not_admissible)
+        all_tests(205) = test_case("test_final_runs_accept_partly_different_gene_sets", &
+                                   test_final_runs_accept_partly_different_gene_sets)
+        all_tests(206) = test_case("test_construct_neighborhoods_ranged_expert_rejects_bad_perm", &
+                                   test_construct_neighborhoods_ranged_expert_rejects_bad_perm)
+        all_tests(207) = test_case("test_run_js_comp_test_rejects_nan_x_star", &
+                                   test_run_js_comp_test_rejects_nan_x_star)
+        all_tests(208) = test_case("test_bootstrap_histogram_rejects_draws_from_empty_pool", &
+                                   test_bootstrap_histogram_rejects_draws_from_empty_pool)
+        all_tests(209) = test_case("test_adaptive_bounds_rejects_pool_beyond_int32", &
+                                   test_adaptive_bounds_rejects_pool_beyond_int32)
+        all_tests(210) = test_case("test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins", &
+                                   test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins)
+        all_tests(211) = test_case("test_check_plateau_condition_ci_overlap_fractional_values", &
                                    test_check_plateau_condition_ci_overlap_fractional_values)
-        all_tests(222) = test_case("test_construct_neighborhoods_ranged_rejects_nan_x_star", &
+        all_tests(212) = test_case("test_construct_neighborhoods_ranged_rejects_nan_x_star", &
                                    test_construct_neighborhoods_ranged_rejects_nan_x_star)
-        all_tests(223) = test_case("test_neighborhood_overlaps_reversed_first_span_counts_as_empty", &
+        all_tests(213) = test_case("test_neighborhood_overlaps_reversed_first_span_counts_as_empty", &
                                    test_neighborhood_overlaps_reversed_first_span_counts_as_empty)
-        all_tests(224) = test_case("test_construct_neighborhoods_ranged_impl_nan_x_star", &
+        all_tests(214) = test_case("test_construct_neighborhoods_ranged_impl_nan_x_star", &
                                    test_construct_neighborhoods_ranged_impl_nan_x_star)
-        all_tests(225) = test_case("test_create_mean_pmf_rejects_zero_included_n_reps", &
+        all_tests(215) = test_case("test_create_mean_pmf_rejects_zero_included_n_reps", &
                                    test_create_mean_pmf_rejects_zero_included_n_reps)
-        all_tests(226) = test_case("test_bootstrap_histogram_rejects_zero_included_n_reps", &
+        all_tests(216) = test_case("test_bootstrap_histogram_rejects_zero_included_n_reps", &
                                    test_bootstrap_histogram_rejects_zero_included_n_reps)
-        all_tests(227) = test_case("test_gjct_permutation_test_rejects_zero_included_n_reps", &
-                                   test_gjct_permutation_test_rejects_zero_included_n_reps)
-        all_tests(228) = test_case("test_gjct_permutation_test_rejects_pool_total_not_bin_sum", &
-                                   test_gjct_permutation_test_rejects_pool_total_not_bin_sum)
-        all_tests(229) = test_case("test_gjct_permutation_test_rejects_draws_fewer_than_pool", &
-                                   test_gjct_permutation_test_rejects_draws_fewer_than_pool)
-        all_tests(230) = test_case("test_bootstrap_histogram_rejects_pool_total_not_bin_sum", &
-                                   test_bootstrap_histogram_rejects_pool_total_not_bin_sum)
-        all_tests(231) = test_case("test_bootstrap_histogram_rejects_study_sum_not_pool_total", &
+        all_tests(217) = test_case("test_bootstrap_histogram_rejects_study_sum_not_pool_total", &
                                    test_bootstrap_histogram_rejects_study_sum_not_pool_total)
-        all_tests(232) = test_case("test_prepare_gene_means_perms_matches_heapsort", &
+        all_tests(218) = test_case("test_prepare_gene_means_perms_matches_heapsort", &
                                    test_prepare_gene_means_perms_matches_heapsort)
-        all_tests(233) = test_case("test_run_js_comp_test_plain_matches_expert_bit_identical", &
+        all_tests(219) = test_case("test_run_js_comp_test_plain_matches_expert_bit_identical", &
                                    test_run_js_comp_test_plain_matches_expert_bit_identical)
-        all_tests(234) = test_case("test_run_js_comp_test_expert_uses_caller_tie_order", &
+        all_tests(220) = test_case("test_run_js_comp_test_expert_uses_caller_tie_order", &
                                    test_run_js_comp_test_expert_uses_caller_tie_order)
-        all_tests(235) = test_case("test_fixed_k_grid_fills_max_candidate_pairs_exactly", &
-                                   test_fixed_k_grid_fills_max_candidate_pairs_exactly)
-        all_tests(236) = test_case("test_calc_js_comp_test_n_top_k_jsds_validation", &
+        all_tests(221) = test_case("test_fixed_k_grid_point_candidates_bound", &
+                                   test_fixed_k_grid_point_candidates_bound)
+        all_tests(222) = test_case("test_calc_js_comp_test_n_top_k_jsds_validation", &
                                    test_calc_js_comp_test_n_top_k_jsds_validation)
-        all_tests(237) = test_case("test_param_search_pads_unused_per_point_slots_with_zero", &
+        all_tests(223) = test_case("test_param_search_pads_unused_per_point_slots_with_zero", &
                                    test_param_search_pads_unused_per_point_slots_with_zero)
-        all_tests(238) = test_case("test_adaptive_search_pads_unused_per_point_slots_with_zero", &
+        all_tests(224) = test_case("test_adaptive_search_pads_unused_per_point_slots_with_zero", &
                                    test_adaptive_search_pads_unused_per_point_slots_with_zero)
-        all_tests(239) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
+        all_tests(225) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
                                    test_sort_pooled_gene_means_matches_heapsort)
-        all_tests(240) = test_case("test_calc_fixed_k_n_points_range", test_calc_fixed_k_n_points_range)
-        all_tests(241) = test_case("test_gather_pooled_residuals_rejects_infinite_residual", &
+        all_tests(226) = test_case("test_calc_fixed_k_n_points_range", test_calc_fixed_k_n_points_range)
+        all_tests(227) = test_case("test_gather_pooled_residuals_rejects_infinite_residual", &
                                    test_gather_pooled_residuals_rejects_infinite_residual)
-        all_tests(242) = test_case("test_gather_pooled_residuals_accepts_nan_residual", &
+        all_tests(228) = test_case("test_gather_pooled_residuals_accepts_nan_residual", &
                                    test_gather_pooled_residuals_accepts_nan_residual)
-        all_tests(243) = test_case("test_param_search_plateau_mode_default_is_effect_size", &
+        all_tests(229) = test_case("test_param_search_plateau_mode_default_is_effect_size", &
                                    test_param_search_plateau_mode_default_is_effect_size)
-        all_tests(244) = test_case("test_adaptive_search_plateau_mode_default_is_effect_size", &
+        all_tests(230) = test_case("test_adaptive_search_plateau_mode_default_is_effect_size", &
                                    test_adaptive_search_plateau_mode_default_is_effect_size)
-        all_tests(245) = test_case("test_fixed_k_grid_neighborhood_size_modes_2000", &
+        all_tests(231) = test_case("test_fixed_k_grid_neighborhood_size_modes_2000", &
                                    test_fixed_k_grid_neighborhood_size_modes_2000)
-        all_tests(246) = test_case("test_fixed_k_grid_neighborhood_size_modes_26097", &
+        all_tests(232) = test_case("test_fixed_k_grid_neighborhood_size_modes_26097", &
                                    test_fixed_k_grid_neighborhood_size_modes_26097)
-        all_tests(247) = test_case("test_param_search_neighborhood_size_mode", test_param_search_neighborhood_size_mode)
-        all_tests(248) = test_case("test_effect_size_abs_tolerance_tiny_jsd", test_effect_size_abs_tolerance_tiny_jsd)
-        all_tests(249) = test_case("test_effect_size_abs_tolerance_boundary_and_large_jsd", &
+        all_tests(233) = test_case("test_param_search_neighborhood_size_mode", &
+                                   test_param_search_neighborhood_size_mode)
+        all_tests(234) = test_case("test_effect_size_abs_tolerance_tiny_jsd", test_effect_size_abs_tolerance_tiny_jsd)
+        all_tests(235) = test_case("test_effect_size_abs_tolerance_boundary_and_large_jsd", &
                                    test_effect_size_abs_tolerance_boundary_and_large_jsd)
-        all_tests(250) = test_case("test_param_search_delta_abs_tolerance", test_param_search_delta_abs_tolerance)
-        all_tests(251) = test_case("test_adaptive_search_delta_abs_tolerance", test_adaptive_search_delta_abs_tolerance)
-        all_tests(252) = test_case("test_bootstrap_histogram_per_study_one_bin_studies_collapse", &
+        all_tests(236) = test_case("test_param_search_delta_abs_tolerance", test_param_search_delta_abs_tolerance)
+        all_tests(237) = test_case("test_adaptive_search_delta_abs_tolerance", &
+                                   test_adaptive_search_delta_abs_tolerance)
+        all_tests(238) = test_case("test_bootstrap_histogram_per_study_one_bin_studies_collapse", &
                                    test_bootstrap_histogram_per_study_one_bin_studies_collapse)
-        all_tests(253) = test_case("test_bootstrap_histogram_per_study_contains_observed_jsd", &
+        all_tests(239) = test_case("test_bootstrap_histogram_per_study_contains_observed_jsd", &
                                    test_bootstrap_histogram_per_study_contains_observed_jsd)
-        all_tests(254) = test_case("test_bootstrap_histogram_per_study_counts_must_add_up", &
+        all_tests(240) = test_case("test_bootstrap_histogram_per_study_counts_must_add_up", &
                                    test_bootstrap_histogram_per_study_counts_must_add_up)
-        all_tests(255) = test_case("test_param_search_bootstrap_mode", test_param_search_bootstrap_mode)
-        all_tests(256) = test_case("test_adaptive_search_bootstrap_mode", test_adaptive_search_bootstrap_mode)
+        all_tests(241) = test_case("test_fixed_k_grid_options_by_hand", test_fixed_k_grid_options_by_hand)
+        all_tests(242) = test_case("test_fixed_k_grid_options_defaults", test_fixed_k_grid_options_defaults)
+        all_tests(243) = test_case("test_consensus_divergences_pairwise_k2", test_consensus_divergences_pairwise_k2)
+        all_tests(244) = test_case("test_consensus_divergences_three_studies_pairwise_is_symmetric", &
+                                   test_consensus_divergences_three_studies_pairwise_is_symmetric)
+        all_tests(245) = test_case("test_run_js_comp_test_pairwise_k2_by_hand", &
+                                   test_run_js_comp_test_pairwise_k2_by_hand)
+        all_tests(246) = test_case("test_run_js_comp_test_three_studies_pairwise_is_symmetric", &
+                                   test_run_js_comp_test_three_studies_pairwise_is_symmetric)
+        all_tests(247) = test_case("test_param_search_divergence_mode_default_is_pairwise", &
+                                   test_param_search_divergence_mode_default_is_pairwise)
+        all_tests(248) = test_case("test_effect_size_abs_tolerance_default_is_one_ten_thousandth", &
+                                   test_effect_size_abs_tolerance_default_is_one_ten_thousandth)
+        all_tests(249) = test_case("test_run_adaptive_divergence_mode_default_is_pairwise", &
+                                   test_run_adaptive_divergence_mode_default_is_pairwise)
+        all_tests(250) = test_case("test_adaptive_search_divergence_mode_default_is_pairwise", &
+                                   test_adaptive_search_divergence_mode_default_is_pairwise)
+        all_tests(251) = test_case("test_fixed_k_grid_caps_n_neighbors_at_gene_count", &
+                                   test_fixed_k_grid_caps_n_neighbors_at_gene_count)
+        all_tests(252) = test_case("test_param_search_two_genes_low_grid_floor", test_param_search_two_genes_low_grid_floor)
+        all_tests(253) = test_case("test_fixed_k_grid_longest_grid_200000", test_fixed_k_grid_longest_grid_200000)
+        all_tests(254) = test_case("test_fixed_k_grid_huge_points_factor_capped", &
+                                   test_fixed_k_grid_huge_points_factor_capped)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1124,71 +1091,66 @@ contains
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: n_bins should be 256 (infinite ratio)")
     end subroutine test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins
 
-    !> The documented small-N candidate-grid collapse, bracketed at its exact threshold: with
-    !| `max_n_genes_all_studies=8742`, `n_points_high = clamp(ceil(4*sqrt(8742)), 300, 1500) = 374`
-    !| and `n_points_low = max(300, ceil(0.2*374)) = 300`; after one grid iteration
-    !| `n_points_high` becomes `374*0.8 = 299.2 < 300`, so the loop exits before a second distinct
-    !| `n_points` value is ever produced -- every candidate pair the grid returns must share the
-    !| same `n_points`. This is real, derived behavior the grid depends on, not a bug.
-    subroutine test_generate_js_comp_test_candidates_collapses_at_8742()
+    !> The small-G candidate-grid collapse of the default grid, bracketed at its exact threshold:
+    !| with `max_n_genes_all_studies=2500`, `n_points_high = clamp(ceil(4*sqrt(2500)), 200, 1500) =
+    !| 200` (`4*50 = 200` exactly) and `n_points_low = max(200, ceil(0.2*200)) = 200`; one GAMMA step
+    !| gives `160 < 200`, and the coarsest candidate already is the floor, so the floor clamp adds
+    !| nothing: the single candidate `(200, floor(2500/(0.25*200)) = 50)`.
+    subroutine test_generate_js_comp_test_candidates_collapses_at_2500()
+        character(len=*), parameter :: name = "test_generate_js_comp_test_candidates_collapses_at_2500: "
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
-        call generate_js_comp_test_candidates(8742_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(2500_int32, candidates, n_candidates, ierr=ierr)
 
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_generate_js_comp_test_candidates_collapses_at_8742: ierr should be OK")
-        call assert_true(n_candidates >= 1_int32, &
-                         "test_generate_js_comp_test_candidates_collapses_at_8742: at least one candidate")
-        call assert_equal_int(count(candidates(1, 1:n_candidates) == candidates(1, 1)), n_candidates, &
-                              "test_generate_js_comp_test_candidates_collapses_at_8742: "// &
-                              "every candidate must share the same n_points")
-        call assert_equal_int(candidates(1, 1), 374_int32, &
-                              "test_generate_js_comp_test_candidates_collapses_at_8742: n_points should be 374")
-    end subroutine test_generate_js_comp_test_candidates_collapses_at_8742
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_int(n_candidates, 1_int32, name//"a single candidate")
+        call assert_equal_array_int(candidates(:, 1), [200_int32, 50_int32], 2_int32, name//"(200, 50)")
+    end subroutine test_generate_js_comp_test_candidates_collapses_at_2500
 
-    !> The other side of the bracket: with `max_n_genes_all_studies=8743`,
-    !| `n_points_high = ceil(4*sqrt(8743)) = 375` and `n_points_low = max(300, ceil(0.2*375)) = 300`;
-    !| after one iteration `n_points_high` becomes `375*0.8 = 300.0`, which is NOT less than
-    !| `n_points_low=300`, so the loop proceeds to a second, distinct `n_points=300` candidate. At
-    !| least two distinct `n_points` values must appear in the grid.
-    subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_8743()
+    !> The other side of the bracket: with `max_n_genes_all_studies=2501`,
+    !| `n_points_high = ceil(4*sqrt(2501)) = ceil(200.04) = 201` and `n_points_low = 200`. The first
+    !| candidate is `(201, floor(2501/(0.25*201)) = floor(49.77) = 49)`; one GAMMA step gives
+    !| `160.8 < 200`, and since the coarsest candidate (201) is not the floor, the floor clamp adds
+    !| `(200, floor(2501/(0.25*200)) = floor(50.02) = 50)` as the last candidate: two distinct
+    !| `n_points` values.
+    subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_2501()
+        character(len=*), parameter :: name = "test_generate_js_comp_test_candidates_has_two_distinct_at_2501: "
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
-        integer(int32) :: n_distinct_n_points, i_candidate
 
-        call generate_js_comp_test_candidates(8743_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(2501_int32, candidates, n_candidates, ierr=ierr)
 
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_generate_js_comp_test_candidates_has_two_distinct_at_8743: ierr should be OK")
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_int(n_candidates, 2_int32, name//"two candidates")
+        call assert_equal_array_int(candidates(:, 1:2), [201_int32, 49_int32, 200_int32, 50_int32], 4_int32, &
+                                    name//"(201, 49) then the floor (200, 50)", n_rows=2_int32)
+    end subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_2501
 
-        n_distinct_n_points = 0_int32
-        do i_candidate = 1, n_candidates
-            if (i_candidate == 1) then
-                n_distinct_n_points = n_distinct_n_points + 1_int32
-            else if (candidates(1, i_candidate) /= candidates(1, i_candidate - 1)) then
-                n_distinct_n_points = n_distinct_n_points + 1_int32
-            end if
-        end do
-        call assert_true(n_distinct_n_points >= 2_int32, &
-                         "test_generate_js_comp_test_candidates_has_two_distinct_at_8743: "// &
-                         "at least two distinct n_points values expected")
-        call assert_equal_int(candidates(1, 1), 375_int32, &
-                              "test_generate_js_comp_test_candidates_has_two_distinct_at_8743: "// &
-                              "first n_points should be 375")
-        call assert_equal_int(candidates(1, n_candidates), 300_int32, &
-                              "test_generate_js_comp_test_candidates_has_two_distinct_at_8743: "// &
-                              "last n_points should collapse to 300")
-    end subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_8743
-
-    !> `max_n_genes_all_studies` must be positive. Issue #187, Step 2.7: this routine's `_expert`
-    !| tier no longer exists (no `tmp_`/work-array/permutation left in its signature once the
-    !| bin-estimate side effect was removed), so this test no longer exercises it.
+    !> `max_n_genes_all_studies` must be positive (position 1); `grid_points_factor` must be above 0
+    !| (position 5: 0 and a negative value are rejected) and `grid_min_points` in `[1, MAX_POINTS]`
+    !| (position 6: 0 and `MAX_POINTS + 1` are rejected, both ends themselves accepted). Issue
+    !| #187, Step 2.7: this routine's `_expert` tier no longer exists, so this test does not
+    !| exercise it.
     subroutine test_generate_js_comp_test_candidates_validation()
+        character(len=*), parameter :: name = "test_generate_js_comp_test_candidates_validation: "
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
         call generate_js_comp_test_candidates(0_int32, candidates, n_candidates, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-                        "test_generate_js_comp_test_candidates_validation: max_n_genes_all_studies=0 rejected", &
-                        arg_pos=1_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"max_n_genes_all_studies=0 rejected", arg_pos=1_int32)
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_points_factor=0.0_real64, &
+                                              ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"grid_points_factor=0 rejected", arg_pos=5_int32)
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_points_factor=-1.0_real64, &
+                                              ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"grid_points_factor=-1 rejected", arg_pos=5_int32)
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_min_points=0_int32, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"grid_min_points=0 rejected", arg_pos=6_int32)
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_min_points=MAX_POINTS + 1_int32, &
+                                              ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"grid_min_points=MAX_POINTS+1 rejected", arg_pos=6_int32)
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_min_points=1_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"grid_min_points=1 accepted")
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_min_points=MAX_POINTS, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"grid_min_points=MAX_POINTS accepted")
     end subroutine test_generate_js_comp_test_candidates_validation
 
     !> Three reference points whose neighborhood ranges fully overlap (identical spans): the
@@ -2132,17 +2094,16 @@ contains
     !> Calling `bootstrap_histogram` twice with the same `random_seed` and otherwise identical
     !| inputs must produce bit-for-bit identical `confidence_interval` output: the GSL stream is
     !| deterministic once seeded, so nothing here should be able to introduce drift between calls.
-    !| Checked in both bootstrap modes (the pooled one explicitly, as before the mode existed).
+    !| Checked under both divergence modes (with two studies they compute different JSDs).
     subroutine test_bootstrap_histogram_seeded_reproducibility()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_bootstraps = 15
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32), parameter :: divergence_modes(2) = [MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_PAIRWISE_K2]
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: ci_first(2, n_studies), ci_second(2, n_studies)
         integer(int32) :: ierr, i_mode
 
-        mean_pmf_counts(1, :) = [5, 3, 2]
-        mean_pmf_counts(2, :) = [2, 2, 6]
-        ! The studies' own counts, adding up to the pool per bin and to included_n_reps per point.
+        ! The studies' own counts, adding up to included_n_reps per point.
         counts(1, :, 1) = [2, 1, 1]
         counts(1, :, 2) = [3, 2, 1]
         counts(2, :, 1) = [1, 1, 2]
@@ -2151,23 +2112,23 @@ contains
         included_n_reps(:, 1) = [4, 4]
         included_n_reps(:, 2) = [6, 6]
 
-        do i_mode = MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
+        do i_mode = 1, size(divergence_modes, kind=int32)
 
             ci_first(:, 1) = [0.2_real64, 0.2_real64]
             ci_first(:, 2) = [0.3_real64, 0.3_real64]
 
-            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                     mean_pmf_included_n_reps, included_n_reps, ci_first, ierr=ierr, random_seed=123_int32, &
-                                     bootstrap_mode=i_mode)
+            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                     mean_pmf_included_n_reps, included_n_reps, ci_first, random_seed=123_int32, &
+                                     divergence_mode=divergence_modes(i_mode), ierr=ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, &
                                   "test_bootstrap_histogram_seeded_reproducibility: first call ierr should be OK")
 
             ci_second(:, 1) = [0.2_real64, 0.2_real64]
             ci_second(:, 2) = [0.3_real64, 0.3_real64]
 
-            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                     mean_pmf_included_n_reps, included_n_reps, ci_second, ierr=ierr, random_seed=123_int32, &
-                                     bootstrap_mode=i_mode)
+            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                     mean_pmf_included_n_reps, included_n_reps, ci_second, random_seed=123_int32, &
+                                     divergence_mode=divergence_modes(i_mode), ierr=ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, &
                                   "test_bootstrap_histogram_seeded_reproducibility: second call ierr should be OK")
 
@@ -2178,145 +2139,111 @@ contains
     end subroutine test_bootstrap_histogram_seeded_reproducibility
 
     !> Degenerate, exactly hand-computable case: a single histogram bin means every resample's pmf
-    !| is `[1.0]`, for both a study and the (resampled) consensus mean alike, so the Jensen-Shannon
-    !| divergence between them is exactly 0.0 on every single bootstrap draw, regardless of which
-    !| counts random_multinomial happens to draw. Seeding `confidence_interval` at `[0.0, 0.0]`
-    !| (the true observed value, since the un-bootstrapped JSD is 0.0 too for the same reason)
-    !| means neither heap push (`value > heap(1)` / `value < heap(1)`) is ever strictly true, so the
-    !| confidence interval must collapse to exactly `[0.0, 0.0]` for every study.
+    !| is `[1.0]`, for both studies and the resampled consensus alike, so the Jensen-Shannon
+    !| divergence (a study against the consensus, or study 1 against study 2) is exactly 0.0 on
+    !| every single bootstrap draw, regardless of which counts random_multinomial happens to draw.
+    !| Seeding `confidence_interval` at `[0.0, 0.0]` (the true observed value, since the
+    !| un-bootstrapped JSD is 0.0 too for the same reason) means neither heap push
+    !| (`value > heap(1)` / `value < heap(1)`) is ever strictly true, so the confidence interval
+    !| must collapse to exactly `[0.0, 0.0]` for every study, under both divergence modes.
     subroutine test_bootstrap_histogram_degenerate_single_bin_zero_ci()
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 2, n_bootstraps = 5
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32), parameter :: divergence_modes(2) = [MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_PAIRWISE_K2]
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr, i_mode
 
-        mean_pmf_counts(1, 1) = 10_int32
         counts(1, 1, :) = [5_int32, 5_int32]
         mean_pmf_included_n_reps = [10_int32]
         included_n_reps(1, :) = [5_int32, 5_int32]
         expected = 0.0_real64
 
-        ! The pooled mode explicitly (as before the mode existed), then the per-study default.
-        do i_mode = MODE_BOOTSTRAP_POOLED, MODE_BOOTSTRAP_PER_STUDY, -1
+        do i_mode = 1, size(divergence_modes, kind=int32)
             confidence_interval = 0.0_real64
-            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                     mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                     random_seed=7_int32, bootstrap_mode=i_mode)
+            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                     mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                     random_seed=7_int32, divergence_mode=divergence_modes(i_mode), ierr=ierr)
 
             call assert_equal_int(get_err_code(ierr), ERR_OK, &
                                   "test_bootstrap_histogram_degenerate_single_bin_zero_ci: ierr should be OK")
-            call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+            call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), 0.0_real64, &
                                          "test_bootstrap_histogram_degenerate_single_bin_zero_ci: "// &
                                          "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
         end do
     end subroutine test_bootstrap_histogram_degenerate_single_bin_zero_ci
 
-    !> The public `bootstrap_histogram` with a study drawing from an empty pool: one point whose
-    !| pooled counts are `[0, 0]` (`mean_pmf_included_n_reps = 0`), while both studies ask for
-    !| `included_n_reps = 3`. That is rejected as invalid input before any draw. It used to put
-    !| every draw into the last bin, with `ierr` OK. A runtime error of the implementation carries
-    !| no argument position (the wrapper clears it). The incoming `confidence_interval` comes back
-    !| unchanged, which shows that no bootstrap ran.
+    !> The public `bootstrap_histogram` with a study drawing from an empty histogram: at the one
+    !| point both studies ask for `included_n_reps = 3` draws, but their own counts are `[0, 0]`.
+    !| The point totals are consistent (`3 + 3 = 6 = mean_pmf_included_n_reps`), so the only fault
+    !| is that a study's counts do not add up to its draw size. That is rejected as invalid input
+    !| before any draw (it would otherwise put every draw into the last bin). A runtime error of
+    !| the implementation carries no argument position (the wrapper clears it). The incoming
+    !| `confidence_interval` comes back unchanged, which shows that no bootstrap ran.
     subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(1, :) = [0_int32, 0_int32]
         counts = 0_int32
-        mean_pmf_included_n_reps = [0_int32]
+        mean_pmf_included_n_reps = [6_int32]
         included_n_reps(1, :) = [3_int32, 3_int32]
         confidence_interval = reshape([0.25_real64, 0.75_real64, 0.25_real64, 0.75_real64], [2, n_studies])
         expected = confidence_interval
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, ierr=ierr)
 
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_draws_from_empty_pool: "// &
-                        "draws from an empty pool are invalid input, with no argument position", &
+                        "draws from an empty histogram are invalid input, with no argument position", &
                         arg_pos=0_int32)
-        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), 0.0_real64, &
                                      "test_bootstrap_histogram_rejects_draws_from_empty_pool: "// &
                                      "confidence_interval comes back unchanged, so no bootstrap ran")
     end subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool
 
     !> Every study needs at least one included residual at every reference point, so the public
     !| `bootstrap_histogram` rejects a single 0 in `included_n_reps` as invalid input on that
-    !| argument, position 8 of the plain wrapper (after `counts`). The rest of the input is consistent (the studies'
-    !| counts `[0, 4]` add up to the pool's total 4, which is also the sum of its bin counts), so
-    !| the 0 is the only fault; it used to be accepted with `ierr` OK.
+    !| argument, position 7 of the plain wrapper. The rest of the input is consistent (study 1's
+    !| counts `[0, 0]` add up to its 0, study 2's `[2, 2]` to its 4, and `0 + 4` is the point
+    !| total 4), so the 0 is the only fault.
     subroutine test_bootstrap_histogram_rejects_zero_included_n_reps()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         counts(1, :, 1) = [0_int32, 0_int32]
         counts(1, :, 2) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [0_int32, 4_int32]
         confidence_interval = 0.5_real64
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_zero_included_n_reps: "// &
                         "a study without a residual at a point is rejected on included_n_reps", &
-                        arg_pos=8_int32)
+                        arg_pos=7_int32)
     end subroutine test_bootstrap_histogram_rejects_zero_included_n_reps
 
-    !> The pool's total (`mean_pmf_included_n_reps = 3`) is not the sum of its bin counts
-    !| (`[1, 1]`, so 2), while the studies' counts `[1, 2]` do add up to the total. That is
-    !| rejected as invalid input before any draw, with no argument position (not one argument's
-    !| fault), and `confidence_interval` comes back unchanged. The check has to run before any
-    !| draw: the multinomial draws validate nothing, so on such a pool their result is undefined.
-    subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum()
-        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
-        real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, :) = [1_int32, 1_int32]
-        counts(1, :, 1) = [1_int32, 0_int32]
-        counts(1, :, 2) = [1_int32, 1_int32]
-        mean_pmf_included_n_reps = [3_int32]
-        included_n_reps(1, :) = [1_int32, 2_int32]
-        confidence_interval = 0.5_real64
-        expected = confidence_interval
-
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-                        "test_bootstrap_histogram_rejects_pool_total_not_bin_sum: "// &
-                        "a pool total that is not its bin-count sum is invalid input, with no argument position", &
-                        arg_pos=0_int32)
-        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
-                                     "test_bootstrap_histogram_rejects_pool_total_not_bin_sum: "// &
-                                     "confidence_interval comes back unchanged, so no bootstrap ran")
-    end subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum
-
-    !> The pool is consistent in itself (total 4, bin counts `[2, 2]`), but the studies' counts
-    !| `[1, 1]` add up to 2, not to the pool's total. That is rejected as invalid input before any
-    !| draw, with no argument position, and `confidence_interval` comes back unchanged. It used to
-    !| run with `ierr` OK and weights that did not add up.
+    !> Each study's counts add up to its `included_n_reps` (`[1, 0]` and `[0, 1]`, 1 each), but the
+    !| studies' `1 + 1 = 2` is not the point total `mean_pmf_included_n_reps = 4`. That is rejected
+    !| as invalid input before any draw, with no argument position, and `confidence_interval`
+    !| comes back unchanged. It used to run with `ierr` OK and weights that did not add up.
     subroutine test_bootstrap_histogram_rejects_study_sum_not_pool_total()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         counts(1, :, 1) = [1_int32, 0_int32]
         counts(1, :, 2) = [0_int32, 1_int32]
         mean_pmf_included_n_reps = [4_int32]
@@ -2324,625 +2251,21 @@ contains
         confidence_interval = 0.5_real64
         expected = confidence_interval
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_study_sum_not_pool_total: "// &
-                        "study counts that do not add up to the pool total are invalid input, with no argument position", &
+                        "study totals that do not add up to the point total are invalid input, with no argument position", &
                         arg_pos=0_int32)
-        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), 0.0_real64, &
                                      "test_bootstrap_histogram_rejects_study_sum_not_pool_total: "// &
                                      "confidence_interval comes back unchanged, so no bootstrap ran")
     end subroutine test_bootstrap_histogram_rejects_study_sum_not_pool_total
 
-    !> Basic conservation-of-counts: a single reference point, two studies, single permutation --
-    !| `tmp_counts` (the last permutation's resampled histogram for the last study processed) must
-    !| sum to exactly `included_n_reps` for that study/point, since `random_multiv_hypergeom` draws
-    !| without replacement and every drawn element must land in exactly one bin. The first study's
-    !| resampled pmf (its counts divided by its draw size) must sum to 1 for the same reason. The
-    !| two draw sizes (4 and 6) add up to the pool's 10, as the routine requires.
-    subroutine test_gjct_permutation_test_conservation_of_counts()
-        integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 2, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
-        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
-        real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
-        real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
-        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, :) = [5, 3, 2]
-        mean_pmf_included_n_reps = [10]
-        included_n_reps(1, :) = [4, 6]
-        mean_pmf(1, :) = real(mean_pmf_counts(1, :), real64)/10.0_real64
-        global_jsd_observed = 0.0_real64
-
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=1_int32)
-
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_gjct_permutation_test_conservation_of_counts: ierr should be OK")
-        call assert_equal_int(sum(tmp_counts(1, :)), included_n_reps(1, n_studies), &
-                              "test_gjct_permutation_test_conservation_of_counts: "// &
-                              "resampled counts must sum to the last study's per-point draw size")
-        call assert_equal_real(sum(tmp_pmfs(1, :, 1)), 1.0_real64, TOL, &
-                               "test_gjct_permutation_test_conservation_of_counts: "// &
-                               "the first study's resampled counts must sum to its draw size, so its pmf sums to 1")
-    end subroutine test_gjct_permutation_test_conservation_of_counts
-
-    !> One permutation must partition every reference point's pooled consensus counts exactly
-    !| between the studies, as a without-replacement permutation does: the studies draw one after
-    !| another from the same pool (`tmp_mean_pmf_counts`), and their draw sizes sum per point to
-    !| the pool size, so the pool must end all zero and the studies' resampled counts must add up
-    !| per bin to the original pool. Both hold for any seed. The last bin is non-empty at every
-    !| point, since that is the bin `random_multiv_hypergeom` used to leave undepleted: the pool
-    !| then kept its full last-bin count, and later studies drew from an inflated last bin.
-    subroutine test_gjct_permutation_depletes_pool_exactly()
-        integer(int32), parameter :: n_bins = 4, n_points = 3, n_studies = 3, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
-        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
-        real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
-        real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
-        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
-        integer(int32) :: permuted_counts_total(n_bins), ierr, i_point, i_study
-        character(len=*), parameter :: name = "test_gjct_permutation_depletes_pool_exactly: "
-
-        mean_pmf_counts(1, :) = [4_int32, 2_int32, 3_int32, 5_int32]
-        mean_pmf_counts(2, :) = [1_int32, 6_int32, 2_int32, 3_int32]
-        mean_pmf_counts(3, :) = [2_int32, 0_int32, 3_int32, 7_int32]
-        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=2)
-        included_n_reps(1, :) = [5_int32, 4_int32, 5_int32]
-        included_n_reps(2, :) = [4_int32, 4_int32, 4_int32]
-        included_n_reps(3, :) = [3_int32, 5_int32, 4_int32]
-        do i_point = 1, n_points
-            mean_pmf(i_point, :) = real(mean_pmf_counts(i_point, :), real64) &
-                                   /real(mean_pmf_included_n_reps(i_point), real64)
-        end do
-        global_jsd_observed = 0.0_real64
-
-        call assert_equal_array_int(sum(included_n_reps, dim=2), mean_pmf_included_n_reps, n_points, &
-                                    name//"fixture draw sizes sum per point to the pool size")
-        call assert_true(all(mean_pmf_counts(:, n_bins) > 0_int32), name//"fixture has a non-empty last bin")
-
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=3_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
-
-        call assert_equal_array_int(tmp_mean_pmf_counts, spread(0_int32, 1, n_bins*n_points), n_bins*n_points, &
-                                    name//"the pool is used up exactly, the last bin included", n_rows=n_points)
-
-        do i_point = 1, n_points
-            permuted_counts_total = 0_int32
-            do i_study = 1, n_studies
-                permuted_counts_total = permuted_counts_total + &
-                    nint(tmp_pmfs(i_point, :, i_study)*real(included_n_reps(i_point, i_study), real64), kind=int32)
-            end do
-            call assert_equal_array_int(permuted_counts_total, mean_pmf_counts(i_point, :), n_bins, &
-                                        name//"the studies' permuted counts sum per bin to the original pool")
-        end do
-    end subroutine test_gjct_permutation_depletes_pool_exactly
-
-    !> The null statistic must be computed exactly like the observed one: each permuted study's
-    !| JSD against the equal-weight consensus of the *permuted* studies (as `create_mean_pmf`
-    !| builds it), not against the observed consensus. From the returned `tmp_pmfs` (the one
-    !| permutation's resampled pmfs) the test rebuilds that consensus with `create_mean_pmf`'s own
-    !| formula and accumulation order -- start at 0, then add `pmf/real(n_studies)` study by study
-    !| -- recomputes the per-point and the weighted global JSD with the same two routines the
-    !| permutation test calls, and requires `tmp_js_divergences`/`tmp_global_js_divergence` to
-    !| match exactly (tolerance 0): the same inputs pass through the same arithmetic in the same
-    !| order, and no fast-math flag lets the compiler reassociate or turn the division into a
-    !| reciprocal multiplication, so the results are bit-identical.
-    !|
-    !| The study sizes differ clearly (`[1, 4, 15]` and `[2, 5, 13]` per point), so the
-    !| equal-weight mixture of the permuted pmfs moves with the permutation. The replicate-weighted
-    !| pool pmf -- passed here as the fixed observed consensus `mean_pmf`, which `p_values` compared
-    !| against before the routine recomputed the consensus itself -- differs from the permuted
-    !| consensus for any seed, so the test fails for that old behaviour: point 1's first bin holds
-    !| a single residual, so the permuted consensus there is `1/(3*n_k)` for whichever study `k`
-    !| draws it -- `1/3`, `1/12` or `1/45` -- while the pool pmf is `1/20`. The equality with
-    !| `tmp_global_js_divergence` holds for any seed as well.
-    subroutine test_gjct_null_statistic_uses_permuted_consensus()
-        integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 3, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: pool_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
-        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
-        real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
-        real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
-        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
-        real(real64) :: permuted_consensus(n_points, n_bins), expected_js_divergences(n_points)
-        real(real64) :: expected_weights(n_points), expected_global_jsd
-        integer(int32) :: ierr, i_point, i_study, i_bin
-        character(len=*), parameter :: name = "test_gjct_null_statistic_uses_permuted_consensus: "
-
-        mean_pmf_counts(1, :) = [1_int32, 7_int32, 12_int32]
-        mean_pmf_counts(2, :) = [3_int32, 8_int32, 9_int32]
-        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=2)
-        included_n_reps(1, :) = [1_int32, 4_int32, 15_int32]
-        included_n_reps(2, :) = [2_int32, 5_int32, 13_int32]
-        do i_point = 1, n_points
-            pool_pmf(i_point, :) = real(mean_pmf_counts(i_point, :), real64) &
-                                   /real(mean_pmf_included_n_reps(i_point), real64)
-        end do
-        global_jsd_observed = 0.0_real64
-
-        call assert_equal_array_int(sum(included_n_reps, dim=2), mean_pmf_included_n_reps, n_points, &
-                                    name//"fixture draw sizes sum per point to the pool size")
-
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, pool_pmf, &
-                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=5_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
-
-        ! The equal-weight consensus of the permuted pmfs, in create_mean_pmf_impl's own order.
-        permuted_consensus = 0.0_real64
-        do i_study = 1, n_studies
-            do i_point = 1, n_points
-                do i_bin = 1, n_bins
-                    permuted_consensus(i_point, i_bin) = permuted_consensus(i_point, i_bin) &
-                                                         + tmp_pmfs(i_point, i_bin, i_study)/real(n_studies, real64)
-                end do
-            end do
-        end do
-
-        call assert_true(abs(permuted_consensus(1, 1) - pool_pmf(1, 1)) > 0.01_real64, &
-                         name//"fixture: the replicate-weighted pool pmf differs from the permuted consensus")
-
-        do i_study = 1, n_studies
-            call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), &
-                                                             permuted_consensus, n_points, n_bins, &
-                                                             expected_js_divergences)
-            call compute_weighted_global_divergence_impl(expected_js_divergences, n_points, included_n_reps(:, i_study), &
-                                                          mean_pmf_included_n_reps, expected_global_jsd, expected_weights)
-            ! relative 1e-13, not exact: ifx's default fast floating-point model may round the
-            ! routine's own computation and this direct one differently in the last bit
-            call assert_allclose_array_real(tmp_js_divergences(:, i_study), expected_js_divergences, n_points, &
-                                            1.0e-13_real64, 0.0_real64, &
-                                            name//"per-point null JSD is taken against the permuted consensus")
-            call assert_allclose_array_real([tmp_global_js_divergence(i_study)], [expected_global_jsd], 1_int32, &
-                                            1.0e-13_real64, 0.0_real64, &
-                                            name//"weighted global null JSD is taken against the permuted consensus")
-        end do
-    end subroutine test_gjct_null_statistic_uses_permuted_consensus
-
-    !> The second p-value, `p_values_observed_consensus`, must use the null the permutation test
-    !| used before it recomputed the consensus per permutation: each permuted study's JSD against
-    !| the fixed observed consensus `mean_pmf`, from the same draws as `p_values`. A first call
-    !| (observed JSD 0) returns the one permutation's resampled pmfs in `tmp_pmfs` and its
-    !| recomputed-consensus null global JSD in `tmp_global_js_divergence`; the test recomputes the
-    !| observed-consensus null global JSD from `tmp_pmfs` and `mean_pmf` with the same two routines
-    !| the permutation test calls. A second call with the same seed (so the same draws) then passes,
-    !| per study, the midpoint of the two null values as the observed JSD. With one permutation the
-    !| Laplace correction gives `p = (count+1)/2`, so each p-value is `1` if its own null reached the
-    !| observed value and `1/2` otherwise, and both are compared exactly.
-    !|
-    !| The fixture is the one of `test_gjct_null_statistic_uses_permuted_consensus`, with the
-    !| replicate-weighted pool pmf as the observed consensus: the study sizes differ clearly, so the
-    !| two nulls differ and the midpoint separates them. The two p-values must then differ for at
-    !| least one study, which a routine that returned `p_values` twice would fail.
-    subroutine test_gjct_observed_consensus_p_value()
-        integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 3, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies)
-        real(real64) :: p_values(n_studies), p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
-        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
-        real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
-        real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
-        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
-        real(real64) :: permuted_consensus_null(n_studies), observed_consensus_null(n_studies)
-        real(real64) :: expected_js_divergences(n_points), expected_weights(n_points)
-        real(real64) :: expected_p_values(n_studies), expected_p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr, i_point, i_study
-        character(len=*), parameter :: name = "test_gjct_observed_consensus_p_value: "
-
-        mean_pmf_counts(1, :) = [1_int32, 7_int32, 12_int32]
-        mean_pmf_counts(2, :) = [3_int32, 8_int32, 9_int32]
-        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=2)
-        included_n_reps(1, :) = [1_int32, 4_int32, 15_int32]
-        included_n_reps(2, :) = [2_int32, 5_int32, 13_int32]
-        do i_point = 1, n_points
-            mean_pmf(i_point, :) = real(mean_pmf_counts(i_point, :), real64) &
-                                   /real(mean_pmf_included_n_reps(i_point), real64)
-        end do
-        global_jsd_observed = 0.0_real64
-
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=5_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"first call: ierr should be OK")
-
-        permuted_consensus_null = tmp_global_js_divergence
-        do i_study = 1, n_studies
-            call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), mean_pmf, &
-                                                             n_points, n_bins, expected_js_divergences)
-            call compute_weighted_global_divergence_impl(expected_js_divergences, n_points, included_n_reps(:, i_study), &
-                                                          mean_pmf_included_n_reps, observed_consensus_null(i_study), &
-                                                          expected_weights)
-        end do
-
-        global_jsd_observed = 0.5_real64*(permuted_consensus_null + observed_consensus_null)
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=5_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"second call: ierr should be OK")
-        call assert_equal_array_real(tmp_global_js_divergence, permuted_consensus_null, n_studies, 0.0_real64, &
-                                     name//"the same seed gives the same draws and the same recomputed-consensus null")
-
-        do i_study = 1, n_studies
-            expected_p_values(i_study) = merge(1.0_real64, 0.5_real64, &
-                                               permuted_consensus_null(i_study) >= global_jsd_observed(i_study))
-            expected_p_values_observed_consensus(i_study) = merge(1.0_real64, 0.5_real64, &
-                                                                  observed_consensus_null(i_study) >= &
-                                                                  global_jsd_observed(i_study))
-        end do
-        call assert_true(any(expected_p_values /= expected_p_values_observed_consensus), &
-                         name//"fixture: the two nulls differ, so the midpoint separates the two p-values")
-        call assert_equal_array_real(p_values_observed_consensus, expected_p_values_observed_consensus, n_studies, &
-                                     0.0_real64, name//"p_values_observed_consensus uses the observed consensus")
-        call assert_equal_array_real(p_values, expected_p_values, n_studies, 0.0_real64, &
-                                     name//"p_values still uses the permuted consensus")
-    end subroutine test_gjct_observed_consensus_p_value
-
-    !> Calling `gjct_permutation_test` twice with the same `random_seed` and otherwise identical
-    !| inputs must produce bit-for-bit identical `p_values` and `p_values_observed_consensus`: the
-    !| GSL stream is deterministic once seeded, so nothing here should be able to introduce drift
-    !| between calls.
-    subroutine test_gjct_permutation_test_seeded_reproducibility()
-        integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_permutations = 20
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies)
-        real(real64) :: p_values_first(n_studies), p_values_second(n_studies)
-        real(real64) :: p_values_observed_consensus_first(n_studies), p_values_observed_consensus_second(n_studies)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, :) = [5, 3, 2]
-        mean_pmf_counts(2, :) = [2, 2, 6]
-        mean_pmf_included_n_reps = [10, 10]
-        included_n_reps(:, 1) = [4, 4]
-        included_n_reps(:, 2) = [6, 6]
-        mean_pmf(1, :) = real(mean_pmf_counts(1, :), real64)/10.0_real64
-        mean_pmf(2, :) = real(mean_pmf_counts(2, :), real64)/10.0_real64
-        global_jsd_observed = 0.3_real64
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values_first, &
-                                   p_values_observed_consensus_first, ierr=ierr, random_seed=123_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_gjct_permutation_test_seeded_reproducibility: first call ierr should be OK")
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values_second, &
-                                   p_values_observed_consensus_second, ierr=ierr, random_seed=123_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_gjct_permutation_test_seeded_reproducibility: second call ierr should be OK")
-
-        call assert_equal_array_real(p_values_first, p_values_second, size(p_values_first, kind=int32), TOL, &
-                                     "test_gjct_permutation_test_seeded_reproducibility: "// &
-                                     "same random_seed twice must give identical p_values")
-        call assert_equal_array_real(p_values_observed_consensus_first, p_values_observed_consensus_second, &
-                                     size(p_values_observed_consensus_first, kind=int32), TOL, &
-                                     "test_gjct_permutation_test_seeded_reproducibility: "// &
-                                     "same random_seed twice must give identical p_values_observed_consensus")
-    end subroutine test_gjct_permutation_test_seeded_reproducibility
-
-    !> Verifies the `(1+count)/(n+1)` Laplace add-one correction in `gjct_permutation_test_impl`:
-    !| even in the worst-case, deterministic scenario where `count` is guaranteed to be `0` across
-    !| every permutation, `p` must come out as `1/(n_permutations+1)`, never exactly `0.0`.
-    !| Contrived, deterministically (not merely probabilistically) so: a single-bin histogram
-    !| (`n_bins=1`) means every resample's pmf is `[1.0]`, for both the study and the consensus --
-    !| recomputed from the permuted pmfs, or the observed `mean_pmf = [1.0]` for
-    !| `p_values_observed_consensus` -- alike, so the Jensen-Shannon divergence between them is exactly `0.0` on
-    !| *every* permutation, regardless of which counts `random_multiv_hypergeom` happens to draw.
-    !| Observing a strictly positive `global_jsd_observed` then guarantees no permutation's JSD can
-    !| reach it, so `count=0` for all `n_permutations=10` permutations, and the corrected formula
-    !| gives `p_values = anint(0+1)/(10+1) = 1/11`.
-    subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero()
-        integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 1, n_permutations = 10
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, 1) = 10_int32
-        mean_pmf_included_n_reps = [10_int32]
-        included_n_reps(1, :) = [10_int32] ! the only study's draws add up to the pool, as required
-        mean_pmf(1, 1) = 1.0_real64
-        global_jsd_observed = 0.5_real64 ! strictly greater than the always-0.0 resampled JSD
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_permutation_pvalue_laplace_corrected_never_exactly_zero: ierr should be OK")
-        call assert_equal_real(p_values(1), 1.0_real64/11.0_real64, TOL, &
-                               "test_permutation_pvalue_laplace_corrected_never_exactly_zero: "// &
-                               "Laplace correction: p must be (0+1)/(n_permutations+1) = 1/11, not 0.0")
-        call assert_equal_real(p_values_observed_consensus(1), 1.0_real64/11.0_real64, TOL, &
-                               "test_permutation_pvalue_laplace_corrected_never_exactly_zero: "// &
-                               "Laplace correction of p_values_observed_consensus: 1/11, not 0.0")
-    end subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero
-
-    !> The public `gjct_permutation_test` with per-study draws that do not fit the pooled counts:
-    !| one point, a consistent pool `mean_pmf_counts = [2, 2]` (total 4), and each of the two studies asking
-    !| for `included_n_reps = 4`. The first study would take the whole pool, so the second would
-    !| draw 4 from an empty one. That is rejected as invalid input before any draw. It used to be
-    !| capped silently: the second study got an all-zero pmf and `ierr` stayed OK. A runtime error
-    !| of the implementation carries no argument position (the wrapper clears it). The p-values come
-    !| back NaN ("not computed"), element by element; they used to come back zeroed, which reads as
-    !| maximally significant.
-    subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool()
-        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr, i_study
-
-        mean_pmf_counts(1, :) = [2_int32, 2_int32]
-        mean_pmf_included_n_reps = [4_int32] ! consistent pool: only the draws exceed it
-        included_n_reps(1, :) = [4_int32, 4_int32]
-        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
-        global_jsd_observed = 0.1_real64
-        p_values = -1.0_real64
-        p_values_observed_consensus = -1.0_real64
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-                        "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
-                        "draws larger than the pooled counts are invalid input, with no argument position", &
-                        arg_pos=0_int32)
-        do i_study = 1, n_studies
-            call assert_true(ieee_is_nan(p_values(i_study)), &
-                             "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
-                             "p_values are NaN (not computed)")
-            call assert_true(ieee_is_nan(p_values_observed_consensus(i_study)), &
-                             "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
-                             "p_values_observed_consensus are NaN (not computed)")
-        end do
-    end subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool
-
-    !> Every study needs at least one included residual at every reference point, so the public
-    !| `gjct_permutation_test` rejects a single 0 in `included_n_reps` as invalid input on that
-    !| argument, position 8 of the plain wrapper. The rest of the input is consistent (the studies'
-    !| counts `[0, 4]` add up to the pool's total 4, which is also the sum of its bin counts), so
-    !| the 0 is the only fault; it used to be accepted with `ierr` OK.
-    subroutine test_gjct_permutation_test_rejects_zero_included_n_reps()
-        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, :) = [2_int32, 2_int32]
-        mean_pmf_included_n_reps = [4_int32]
-        included_n_reps(1, :) = [0_int32, 4_int32]
-        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
-        global_jsd_observed = 0.1_real64
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-                        "test_gjct_permutation_test_rejects_zero_included_n_reps: "// &
-                        "a study without a residual at a point is rejected on included_n_reps", &
-                        arg_pos=8_int32)
-    end subroutine test_gjct_permutation_test_rejects_zero_included_n_reps
-
-    !> The pool's total (`mean_pmf_included_n_reps = 3`) is not the sum of its bin counts
-    !| (`[1, 1]`, so 2), while the studies' counts `[1, 1]` fit into the bins. That is rejected as
-    !| invalid input before any draw, with no argument position (not one argument's fault). It used
-    !| to run with `ierr` OK, and the global-JSD weights were taken against the wrong total 3. Both
-    !| p-value arrays come back NaN ("not computed"), checked element by element.
-    subroutine test_gjct_permutation_test_rejects_pool_total_not_bin_sum()
-        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr, i_study
-        character(len=*), parameter :: name = "test_gjct_permutation_test_rejects_pool_total_not_bin_sum: "
-
-        mean_pmf_counts(1, :) = [1_int32, 1_int32]
-        mean_pmf_included_n_reps = [3_int32]
-        included_n_reps(1, :) = [1_int32, 1_int32]
-        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
-        global_jsd_observed = 0.1_real64
-        p_values = -1.0_real64
-        p_values_observed_consensus = -1.0_real64
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-                        name//"a pool total that is not its bin-count sum is invalid input, with no argument position", &
-                        arg_pos=0_int32)
-        do i_study = 1, n_studies
-            call assert_true(ieee_is_nan(p_values(i_study)), name//"p_values are NaN (not computed)")
-            call assert_true(ieee_is_nan(p_values_observed_consensus(i_study)), &
-                             name//"p_values_observed_consensus are NaN (not computed)")
-        end do
-    end subroutine test_gjct_permutation_test_rejects_pool_total_not_bin_sum
-
-    !> The pool is consistent in itself (total 4, bin counts `[2, 2]`), but the studies' counts
-    !| `[1, 1]` add up to 2, fewer than the pool holds. A permutation must split the pool exactly
-    !| between the studies, so this is rejected as invalid input before any draw, with no argument
-    !| position. It used to run with `ierr` OK.
-    subroutine test_gjct_permutation_test_rejects_draws_fewer_than_pool()
-        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, :) = [2_int32, 2_int32]
-        mean_pmf_included_n_reps = [4_int32]
-        included_n_reps(1, :) = [1_int32, 1_int32]
-        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
-        global_jsd_observed = 0.1_real64
-
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-        call assert_err(ierr, ERR_INVALID_INPUT, &
-                        "test_gjct_permutation_test_rejects_draws_fewer_than_pool: "// &
-                        "study counts that do not add up to the pool total are invalid input, with no argument position", &
-                        arg_pos=0_int32)
-    end subroutine test_gjct_permutation_test_rejects_draws_fewer_than_pool
-
-    !> `n_permutations = 0` skips the permutation test: nothing is tested, so both p-value arrays
-    !| come back NaN ("not computed") with `ierr` OK, not `0.0`, which would read as "maximally
-    !| significant". The control, with one permutation on the same input, gives finite p-values in
-    !| (0, 1] (the Laplace correction keeps them above 0).
-    subroutine test_gjct_permutation_test_zero_permutations_gives_nan_p_values()
-        character(len=*), parameter :: name = "test_gjct_permutation_test_zero_permutations_gives_nan_p_values: "
-        integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 2
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr
-
-        mean_pmf_counts(1, :) = [5, 3, 2]
-        mean_pmf_included_n_reps = [10]
-        included_n_reps(1, :) = [4, 6]
-        mean_pmf(1, :) = real(mean_pmf_counts(1, :), real64)/10.0_real64
-        global_jsd_observed = 0.3_real64
-
-        p_values = -1.0_real64
-        p_values_observed_consensus = -1.0_real64
-        call gjct_permutation_test(0_int32, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"n_permutations=0: ierr should be OK")
-        call assert_true(all(ieee_is_nan(p_values)), name//"n_permutations=0: p_values are NaN (not computed)")
-        call assert_true(all(ieee_is_nan(p_values_observed_consensus)), &
-                         name//"n_permutations=0: p_values_observed_consensus are NaN (not computed)")
-
-        p_values = -1.0_real64
-        p_values_observed_consensus = -1.0_real64
-        call gjct_permutation_test(1_int32, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
-                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"control, n_permutations=1: ierr should be OK")
-        call assert_true(all(.not. ieee_is_nan(p_values) .and. p_values > 0.0_real64 .and. p_values <= 1.0_real64), &
-                         name//"control, n_permutations=1: p_values are finite in (0, 1]")
-        call assert_true(all(.not. ieee_is_nan(p_values_observed_consensus) .and. p_values_observed_consensus > 0.0_real64 &
-                             .and. p_values_observed_consensus <= 1.0_real64), &
-                         name//"control, n_permutations=1: p_values_observed_consensus are finite in (0, 1]")
-    end subroutine test_gjct_permutation_test_zero_permutations_gives_nan_p_values
-
-    !> The same through `run_js_comp_test` (the fixture of
-    !| `test_run_js_comp_test_two_studies_hand_traceable`): `n_permutations=0` gives NaN
-    !| `p_values` and `p_values_observed_consensus`, while the JSDs and `ierr` are unaffected;
-    !| the control with `n_permutations=2` on the same input gives finite p-values in (0, 1].
-    subroutine test_run_js_comp_test_zero_permutations_gives_nan_p_values()
-        character(len=*), parameter :: name = "test_run_js_comp_test_zero_permutations_gives_nan_p_values: "
-        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
-        integer(int32), parameter :: n_points = 1, n_neighbors = 1
-        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        real(real64) :: x_star(n_points)
-        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
-        integer(int32) :: neighborhood_range(2, n_points, n_studies)
-        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
-        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        logical(c_bool) :: occupancy_failed(n_points)
-        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
-        real(real64) :: mean_bin_occupancy(n_points)
-        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
-        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
-        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
-        integer(int32) :: mean_pmf_included_n_reps(n_points)
-        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr, i_run
-        integer(int32), parameter :: n_permutations_runs(2) = [0_int32, 2_int32]
-        real(real64) :: nan_val
-
-        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
-        gene_means(:, 1) = [1.0_real64, 5.0_real64]
-        gene_means(:, 2) = [1.0_real64, 5.0_real64]
-        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
-        residuals(:, 2, 1) = nan_val
-        residuals(:, 1, 2) = [-3.0_real64, 3.0_real64]
-        residuals(:, 2, 2) = nan_val
-        x_star = [1.0_real64]
-
-        do i_run = 1, 2
-            p_values = -1.0_real64
-            p_values_observed_consensus = -1.0_real64
-            call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                                  gene_means, residuals, x_star, neighborhood_indices, &
-                                  neighborhood_range, n_bins_per_point, shared_residual_range_low, &
-                                  shared_residual_range_high, max_n_bins_per_point, occupancy_failed, &
-                                  n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
-                                  sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                                  mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                                  p_values_observed_consensus, ierr=ierr, n_permutations=n_permutations_runs(i_run), &
-                                  random_seed=1_int32, min_residuals_per_bin=1_int32)
-            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
-            call assert_true(all(.not. ieee_is_nan(global_js_divergence)), name//"global_js_divergence is finite")
-            if (n_permutations_runs(i_run) == 0_int32) then
-                call assert_true(all(ieee_is_nan(p_values)), name//"n_permutations=0: p_values are NaN (not computed)")
-                call assert_true(all(ieee_is_nan(p_values_observed_consensus)), &
-                                 name//"n_permutations=0: p_values_observed_consensus are NaN (not computed)")
-            else
-                call assert_true(all(.not. ieee_is_nan(p_values) .and. p_values > 0.0_real64 .and. p_values <= 1.0_real64), &
-                                 name//"control, n_permutations=2: p_values are finite in (0, 1]")
-                call assert_true(all(.not. ieee_is_nan(p_values_observed_consensus) &
-                                     .and. p_values_observed_consensus > 0.0_real64 &
-                                     .and. p_values_observed_consensus <= 1.0_real64), &
-                                 name//"control, n_permutations=2: p_values_observed_consensus are finite in (0, 1]")
-            end if
-        end do
-    end subroutine test_run_js_comp_test_zero_permutations_gives_nan_p_values
-
-    !> End-to-end 2-study case run through `run_js_comp_test` with `n_permutations=0`: GSL's
-    !| `create_rng` still runs (so `ierr` is genuinely exercised), but the permutation loop itself
-    !| never executes, so `gjct_permutation_test_impl` leaves the JSDs untouched and returns NaN
-    !| p-values (not computed), and `run_js_comp_test_impl`'s final re-derivation step reproduces
-    !| exactly the same values it already had -- making the whole pipeline deterministic and
-    !| hand-traceable.
+    !> End-to-end 2-study case run through `run_js_comp_test`, with the occupancy bin-count search
+    !| and the symmetric divergence passed explicitly (the derivation below is for those): the whole
+    !| pipeline is deterministic and hand-traceable.
     !|
     !| One reference point, one neighbor per study (`x_star=1.0` sits exactly on gene 1's mean, so
     !| both studies trivially pick gene 1 -- see test_construct_neighborhoods_ranged_basic's own
@@ -2998,8 +2321,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
         real(real64) :: nan_val
 
@@ -3021,9 +2343,9 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, &
-                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              ierr=ierr, min_residuals_per_bin=1_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                              divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_run_js_comp_test_two_studies_hand_traceable: ierr should be OK")
 
@@ -3075,11 +2397,6 @@ contains
         call assert_equal_real(weights(1, 2), 1.0_real64, TOL, &
                                "test_run_js_comp_test_two_studies_hand_traceable: single reference point weight is 1.0")
 
-        call assert_true(all(ieee_is_nan(p_values)), &
-                         "test_run_js_comp_test_two_studies_hand_traceable: n_permutations=0 -> p_values are NaN (not computed)")
-        call assert_true(all(ieee_is_nan(p_values_observed_consensus)), &
-                         "test_run_js_comp_test_two_studies_hand_traceable: "// &
-                         "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)")
     end subroutine test_run_js_comp_test_two_studies_hand_traceable
 
     !> Compliance-review fix (Issue #187 cleanup): `min_residuals_per_bin`'s `DM_MIN` used to
@@ -3104,6 +2421,9 @@ contains
     !| did, so every downstream numeric result (`counts`, `mean_pmf`, `global_js_divergence`) is
     !| unchanged from before Step 3 -- only `occupancy_failed`'s reason for being `.false.` differs
     !| (trivially satisfied here vs. genuinely satisfied in a from-scratch search).
+    !| The occupancy bin-count search and the symmetric divergence (the defaults before Stone-equal and
+    !| pairwise K = 2 became the defaults) are passed explicitly, because the expected values above were
+    !| derived for them.
     subroutine test_run_js_comp_test_accepts_min_residuals_per_bin_zero()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 1
@@ -3127,8 +2447,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
         real(real64) :: nan_val
 
@@ -3150,10 +2469,9 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, &
-                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=0_int32, &
-                              m_max=4_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              ierr=ierr, min_residuals_per_bin=0_int32, &
+                              m_max=4_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
@@ -3185,107 +2503,6 @@ contains
         call assert_equal_real(global_js_divergence(2), EXPECTED_JSD, 1d-9, &
                                "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 2 global JSD, closed form")
     end subroutine test_run_js_comp_test_accepts_min_residuals_per_bin_zero
-
-    !> Three studies, same single-point/single-neighbor topology as the hand-traceable case above.
-    !| Studies 1 and 2 are identical to each other (residuals `[-1,-1,1,1]`, pmf `[0, 0.5, 0.5, 0]`);
-    !| study 3 is a deliberately constructed outlier whose every replicate lands in the SAME bin
-    !| (`[-3.9,-3.9,-3.9,-3.9]`, pmf `[1, 0, 0, 0]`). `m_min=4` is passed explicitly so Issue #187's
-    !| occupancy search reproduces the same forced `n_bins=4` this test hand-traced before Issue
-    !| #187, but Step 3's own per-neighborhood range changes WHICH bin ends up empty: pooled
-    !| residuals sorted are `[-3.9,-3.9,-3.9,-3.9,-1,-1,-1,-1,1,1,1,1]` (`N=12`), giving
-    !| `rank(0.05,12)=1.55` -> `R_low=-3.9` (interpolating between two `-3.9` values) and
-    !| `rank(0.95,12)=11.45` -> `R_high=1.0` (interpolating between two `1` values) -- an
-    !| asymmetric range, unlike the old caller-supplied symmetric `[-4,4]`. At `M=4` over
-    !| `[-3.9, 1.0]` (bin width `1.225`), the SECOND bin (`[-2.675,-1.45)`) is the one that ends up
-    !| empty, not the fourth: the `-3.9`s land in bin 1, both studies' `-1`s land in bin 3, and both
-    !| studies' `1`s land in bin 4 (clamped/capped to the last bin). Occupancy still fails even at
-    !| `m=4` (an empty bin can never reach any positive `min_residuals_per_bin`) regardless of that
-    !| threshold's value: `occupancy_failed(1) = .true.` and `n_bins_per_point(1) = m_min = 4` by
-    !| construction, exactly the asymmetry `run_js_comp_test_impl`'s own doc block describes -- this
-    !| occupancy-failed point still gets a real histogram and still contributes to
-    !| `global_js_divergence`/the permutation test below, entirely unaffected by the occupancy
-    !| search's own verdict. The consensus mean pmf, averaging all three, is `[1/3, 0, 1/3, 1/3]`
-    !| with `mean_pmf_counts=[4, 0, 4, 4]`. Study 3's own pmf puts everything in a bin that holds
-    !| only 4 of the pooled pool's 12 replicates, so drawing (without
-    !| replacement, `random_multiv_hypergeom`) another 4-for-4 landing entirely in that one bin
-    !| purely by chance is exceedingly rare -- its empirical p-value must come out small, while
-    !| studies 1/2's own draws, being close to what the consensus itself is built from, should not
-    !| be nearly as extreme. A fixed random_seed makes the outcome fully deterministic, so this is
-    !| not a flaky probabilistic assertion.
-    subroutine test_run_js_comp_test_three_studies_outlier_has_small_p_value()
-        integer(int32), parameter :: n_studies = 3, max_n_genes_all_studies = 2, max_n_reps_all_studies = 4
-        integer(int32), parameter :: n_points = 1, n_neighbors = 1, n_permutations = 500
-        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        real(real64) :: x_star(n_points)
-        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
-        integer(int32) :: neighborhood_range(2, n_points, n_studies)
-        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
-        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        logical(c_bool) :: occupancy_failed(n_points)
-        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
-        real(real64) :: mean_bin_occupancy(n_points)
-        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
-        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
-        integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
-        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
-        integer(int32) :: mean_pmf_included_n_reps(n_points)
-        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr, i_study
-        real(real64) :: nan_val
-
-        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
-
-        do i_study = 1, n_studies
-            gene_means(:, i_study) = [1.0_real64, 5.0_real64]
-            residuals(:, 2, i_study) = nan_val
-        end do
-        residuals(:, 1, 1) = [-1.0_real64, -1.0_real64, 1.0_real64, 1.0_real64]
-        residuals(:, 1, 2) = [-1.0_real64, -1.0_real64, 1.0_real64, 1.0_real64]
-        residuals(:, 1, 3) = [-3.9_real64, -3.9_real64, -3.9_real64, -3.9_real64]
-
-        x_star = [1.0_real64]
-
-        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
-                              max_n_bins_per_point, occupancy_failed, &
-                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
-                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, &
-                              ierr=ierr, n_permutations=n_permutations, random_seed=42_int32, m_min=4_int32)
-
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_run_js_comp_test_three_studies_outlier_has_small_p_value: ierr should be OK")
-
-        call assert_equal_real(shared_residual_range_low(1), -3.9_real64, TOL, &
-                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: shared_residual_range_low")
-        call assert_equal_real(shared_residual_range_high(1), 1.0_real64, TOL, &
-                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: shared_residual_range_high")
-        call assert_equal_int(n_bins_per_point(1), 4_int32, &
-                              "test_run_js_comp_test_three_studies_outlier_has_small_p_value: n_bins_per_point == m_min")
-        call assert_true(occupancy_failed(1), &
-                         "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
-                         "the pooled pool's 2nd bin is always empty, so occupancy fails even at m_min")
-
-        call assert_equal_array_int(mean_pmf_counts(1, 1:4), [4, 0, 4, 4], 4_int32, &
-                                    "test_run_js_comp_test_three_studies_outlier_has_small_p_value: mean_pmf_counts")
-
-        call assert_true(p_values(3) <= 0.05_real64, &
-                         "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
-                         "the outlier study's p-value should be small")
-        call assert_true(p_values(3) < p_values(1), &
-                         "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
-                         "the outlier's p-value should be smaller than study 1's")
-        call assert_true(p_values(3) < p_values(2), &
-                         "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
-                         "the outlier's p-value should be smaller than study 2's")
-    end subroutine test_run_js_comp_test_three_studies_outlier_has_small_p_value
 
     !> Issue #187's own documented asymmetry between `run_js_comp_test` and
     !| `run_js_comp_test_parameter_search`: THIS routine has no admissibility gate, so a reference
@@ -3339,6 +2556,9 @@ contains
     !| `0.5*0.0 + 0.5*point_2_jsd_study_i` per study -- clearly different from `0.0` alone, which is
     !| what would happen if point 2's occupancy-failed contribution were instead silently rejected
     !| or zero-weighted.
+    !| The occupancy bin-count search and the symmetric divergence (the defaults before Stone-equal and
+    !| pairwise K = 2 became the defaults) are passed explicitly, because the expected values above were
+    !| derived for them.
     subroutine test_run_js_comp_test_occupancy_failed_point_still_contributes()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 2, n_neighbors = 1
@@ -3365,8 +2585,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
 
         gene_means(:, 1) = [1.0_real64, 5.0_real64]
@@ -3388,9 +2607,9 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, &
-                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              ierr=ierr, min_residuals_per_bin=1_int32, &
+                              bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: ierr should be OK")
@@ -3451,13 +2670,13 @@ contains
     !> Forces `run_js_comp_test_parameter_search`'s second admissibility gate
     !| (`min_residuals_per_bin`) impossibly high, so no candidate in the grid can ever pass it and
     !| `check_plateau_condition` is never even called: `plateau_found` stays `.false.` for the whole
-    !| search. With `max_n_genes_all_studies=2000` the GAMMA-decay grid produces two candidates that
-    !| both share `n_points=300` (`ceil(4*sqrt(2000))=179`, clamped up to `MIN_POINTS=300`, and a
-    !| single GAMMA step already drops below `n_points_low=300`) with `n_neighbors=26` and `13`
-    !| (`floor(2000/(0.25*300))=26`, `max(1,floor(2000/(0.5*300)))=13`) -- both values derived purely
-    !| from the GAMMA-decay constants and `max_n_genes_all_studies`, independent of the synthetic
-    !| gene/residual data below. Since no candidate ever plateaus, the search must fall back to the
-    !| FIRST (finest resolution) candidate, `(n_points, n_neighbors) = (300, 26)`, and reset
+    !| search. With `max_n_genes_all_studies=2000`, `grid_points_factor=GRID_2000_POINTS_FACTOR`
+    !| (6.7) and `grid_min_points=GRID_2000_MIN_POINTS` (240) the GAMMA-decay grid has two
+    !| candidates, (300, 26) and (240, 33) (derivation at GRID_2000_POINTS_FACTOR; the default grid
+    !| would have the single candidate (200, 40)) -- derived purely from the grid options and
+    !| `max_n_genes_all_studies`, independent of the synthetic gene/residual data below. Since no
+    !| candidate ever plateaus, the search must fall back to the FIRST (finest resolution) candidate,
+    !| `(n_points, n_neighbors) = (300, 26)`, and reset
     !| `best_candidate_pair_confidence_interval` to `-1.0` throughout.
     subroutine test_param_search_no_plateau_falls_back_to_finest()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2000, max_n_reps_all_studies = 3
@@ -3492,7 +2711,9 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                grid_points_factor=GRID_2000_POINTS_FACTOR, &
+                                                grid_min_points=GRID_2000_MIN_POINTS, &
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: "// &
                               "candidate bounds ierr should be OK")
@@ -3525,7 +2746,8 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=1000000_int32, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               grid_points_factor=GRID_2000_POINTS_FACTOR, &
+                                               grid_min_points=GRID_2000_MIN_POINTS, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: ierr should be OK")
@@ -3552,10 +2774,11 @@ contains
                               "n_bins_per_point falls back to m_min (default 3)")
     end subroutine test_param_search_no_plateau_falls_back_to_finest
 
-    !> With `max_n_genes_all_studies=100`, the GAMMA-decay grid collapses to exactly ONE candidate
-    !| (`floor(100/(0.25*300))=1` and `max(1,floor(100/(0.5*300)))=max(1,0)=1` are the same value, so
-    !| the second `KX_FACTORS` entry does not add a distinct candidate, and a single GAMMA step
-    !| already drops `n_points_high` below `n_points_low=300`): `(n_points, n_neighbors) = (300, 1)`. Both
+    !> With `max_n_genes_all_studies=100` and `grid_min_points=GRID_FLOOR_300` (the floor this test
+    !| was written for; the default floor 200 would give the single candidate (200, 2)), the
+    !| GAMMA-decay grid is exactly ONE candidate (`ceil(4*sqrt(100))=40` clamps up to 300, which is
+    !| also `n_points_low`, so a single GAMMA step drops below it and the coarsest candidate already
+    !| is the floor): `(n_points, n_neighbors) = (300, floor(100/(0.25*300))=1)`. Both
     !| admissibility gates are relaxed to their most permissive settings
     !| (`min_neighbor_overlap=0.0`, `min_residuals_per_bin=0`) so the sole candidate exercises the
     !| full pipeline -- both gates pass, `bootstrap_histogram` and `check_plateau_condition` really
@@ -3597,7 +2820,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                grid_min_points=GRID_FLOOR_300, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_single_candidate_bypasses_plateau: "// &
                               "candidate bounds ierr should be OK")
@@ -3631,7 +2854,7 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               grid_min_points=GRID_FLOOR_300, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_single_candidate_bypasses_plateau: ierr should be OK")
@@ -3657,17 +2880,16 @@ contains
     !| than either the no-plateau fallback (`test_param_search_no_plateau_falls_back_to_finest`) or
     !| the single-candidate bypass (`test_param_search_single_candidate_bypasses_plateau`) above.
     !|
-    !| With `max_n_genes_all_studies=10000`, the GAMMA-decay grid produces exactly FOUR candidates:
-    !| `n_points_high = clamp(ceil(4*sqrt(10000)), 300, 1500) = 400`,
-    !| `n_points_low = max(300, ceil(0.2*400)) = 300`.
-    !| - i=1: `n_points=400`, neighbors `floor(10000/(0.25*400))=100` and
-    !|   `max(1,floor(10000/(0.5*400)))=50` -> candidates (400,100), (400,50). `n_points_high *= 0.8
-    !|   -> 320`.
-    !| - i=2: `320 >= 300`, so `n_points=320`, neighbors `floor(10000/(0.25*320))=125` and
-    !|   `max(1,floor(10000/(0.5*320)))=62` -> candidates (320,125), (320,62). `n_points_high *= 0.8
-    !|   -> 256`.
-    !| - i=3: `256 < 300` -> loop exits.
-    !| So the grid is `[(400,100), (400,50), (320,125), (320,62)]`.
+    !| With `max_n_genes_all_studies=10000`, the default GAMMA-decay grid (large neighborhoods,
+    !| `grid_points_factor=4`, `grid_min_points=200`) produces exactly FIVE candidates:
+    !| `n_points_high = clamp(ceil(4*sqrt(10000)), 200, 1500) = 400`,
+    !| `n_points_low = max(200, ceil(0.2*400)) = 200`.
+    !| - 400 -> (400, `floor(10000/(0.25*400))=100`); 320 -> (320, `floor(10000/80)=125`);
+    !|   256 -> (256, `floor(10000/64)=156`); 204.8 -> (`nint=205`, `floor(10000/51.2)=195`);
+    !|   `163.84 < 200` -> loop exits.
+    !| - The coarsest decayed candidate (205) is not the floor, so the floor is added:
+    !|   (200, `floor(10000/(0.25*200))=200`).
+    !| So the grid is `[(400,100), (320,125), (256,156), (205,195), (200,200)]`.
     !|
     !| Every gene's residual and gene mean is the SAME constant across every study (0.0 and 5.0
     !| respectively). This deterministically produces a plateau at the SECOND candidate, regardless
@@ -3689,7 +2911,7 @@ contains
     !|   (candidate 2, once candidate 1 became the new "best") gives overlap 1.0 for every study,
     !|   which exceeds the default `succeeding_ci_overlap=0.9` for every study at once -- so
     !|   METHOD_JOIN_MIN/MAX/MEDIAN would all detect the plateau there. The search must therefore
-    !|   stop at candidate 2 = `(n_points, n_neighbors) = (400, 50)`, never reaching candidates 3/4,
+    !|   stop at candidate 2 = `(n_points, n_neighbors) = (320, 125)`, never reaching candidates 3-5,
     !|   and must NOT fall back to candidate 1 or reset the CI to the `-1.0` sentinel.
     !|
     !| Gate thresholds are relaxed to the same permissive settings
@@ -3730,7 +2952,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "candidate bounds ierr should be OK")
@@ -3764,7 +2986,7 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: ierr should be OK")
@@ -3772,7 +2994,7 @@ contains
                          "test_param_search_finds_plateau_mid_grid: plateau_established is true")
 
         ! Both candidates the search actually reached (1 and 2) passed both admissibility gates,
-        ! so n_admissible_evaluated == 2 -- candidates 3/4 have no trace entry at all, not a
+        ! so n_admissible_evaluated == 2 -- candidates 3-5 have no trace entry at all, not a
         ! zero-filled one, since the search stopped before reaching them.
         call assert_equal_int(n_admissible_evaluated, 2_int32, &
                               "test_param_search_finds_plateau_mid_grid: two admissible candidates evaluated")
@@ -3780,9 +3002,9 @@ contains
                               "test_param_search_finds_plateau_mid_grid: trace_n_points(1)")
         call assert_equal_int(trace_n_neighbors(1), 100_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_neighbors(1)")
-        call assert_equal_int(trace_n_points(2), 400_int32, &
+        call assert_equal_int(trace_n_points(2), 320_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_points(2)")
-        call assert_equal_int(trace_n_neighbors(2), 50_int32, &
+        call assert_equal_int(trace_n_neighbors(2), 125_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_neighbors(2)")
         call assert_equal_array_real(trace_global_js_divergence(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
                                      "test_param_search_finds_plateau_mid_grid: trace_global_js_divergence(:,1) is 0.0")
@@ -3826,13 +3048,13 @@ contains
         call assert_equal_real(trace_delta_max(2), 0.0_real64, TOL, &
                               "test_param_search_finds_plateau_mid_grid: trace_delta_max(2) is 0.0")
 
-        ! The grid's SECOND candidate, (400, 50) -- not the first (finest, 400/100) and not the
+        ! The grid's SECOND candidate, (320, 125) -- not the first (finest, 400/100) and not the
         ! no-plateau fallback's candidate either -- proving the search stopped early at a genuine
         ! plateau rather than running to completion or falling back.
-        call assert_equal_int(n_points, 400_int32, &
+        call assert_equal_int(n_points, 320_int32, &
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "should stop at the second candidate's n_points")
-        call assert_equal_int(n_neighbors, 50_int32, &
+        call assert_equal_int(n_neighbors, 125_int32, &
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "should stop at the second candidate's n_neighbors")
 
@@ -3848,14 +3070,14 @@ contains
 
     !> Same degenerate data as `test_param_search_finds_plateau_mid_grid` (constant gene means and
     !| residuals -> JSD exactly 0.0 and CI exactly [0.0, 0.0] for every candidate in the 4-candidate
-    !| grid `[(400,100), (400,50), (320,125), (320,62)]`), but with `plateau_mode=MODE_PLATEAU_EFFECT_SIZE`.
+    !| grid `[(400,100), (320,125), (256,156), (205,195), (200,200)]`), but with `plateau_mode=MODE_PLATEAU_EFFECT_SIZE`.
     !| Under `plateau_mode=MODE_PLATEAU_CI_OVERLAP` (passed there explicitly), that test's search stops at the SECOND
     !| candidate. Under effect size alone, `delta_min_consecutive_transitions=2` (the default) needs
     !| TWO consecutive qualifying transitions before it plateaus: the first (candidate 1 -> 2) is
     !| only the first, so the search must continue past candidate 2 -- proving CI overlap is
     !| genuinely ignored under this mode, not just usually also satisfied -- and stop only once the
     !| second consecutive qualifying transition (candidate 2 -> 3) completes, at the THIRD candidate,
-    !| `(320, 125)`.
+    !| `(256, 156)`.
     subroutine test_param_search_effect_size_mode_plateau()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -3889,7 +3111,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "candidate bounds ierr should be OK")
@@ -3923,7 +3145,7 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_effect_size_mode_plateau: ierr should be OK")
@@ -3932,10 +3154,10 @@ contains
         call assert_equal_int(n_admissible_evaluated, 3_int32, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "needs two consecutive qualifying transitions -> three candidates evaluated")
-        call assert_equal_int(n_points, 320_int32, &
+        call assert_equal_int(n_points, 256_int32, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "stops at the THIRD candidate's n_points, later than CI-overlap mode's second")
-        call assert_equal_int(n_neighbors, 125_int32, &
+        call assert_equal_int(n_neighbors, 156_int32, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "stops at the third candidate's n_neighbors")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
@@ -3986,7 +3208,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "candidate bounds ierr should be OK")
@@ -4020,7 +3242,7 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_both_mode_uses_earlier_trigger: ierr should be OK")
@@ -4029,10 +3251,10 @@ contains
         call assert_equal_int(n_admissible_evaluated, 2_int32, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "CI overlap's earlier plateau wins -> only two candidates evaluated")
-        call assert_equal_int(n_points, 400_int32, &
+        call assert_equal_int(n_points, 320_int32, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "stops at the second candidate's n_points, same as CI-overlap-only mode")
-        call assert_equal_int(n_neighbors, 50_int32, &
+        call assert_equal_int(n_neighbors, 125_int32, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "stops at the second candidate's n_neighbors")
     end subroutine test_param_search_both_mode_uses_earlier_trigger
@@ -4082,6 +3304,61 @@ contains
                                      name//"CI upper bounds are the selected candidate's traced ones")
     end subroutine assert_selected_ci_matches_trace
 
+    !> Test helper: the selected candidate is the admissible one with the smallest median CI width
+    !| across studies (the first such one on a tie), replayed from `trace_ci_width`: the documented
+    !| no-plateau fallback of the fixed-k search.
+    subroutine assert_selected_is_smallest_median_width(trace_ci_width, trace_n_points, trace_n_neighbors, n_studies, &
+                                                        n_admissible, n_points, n_neighbors, name)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), intent(in) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS)
+            !! Traced CI widths
+        integer(int32), intent(in) :: trace_n_points(MAX_CANDIDATE_PAIRS)
+            !! Traced n_points
+        integer(int32), intent(in) :: trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+            !! Traced n_neighbors
+        integer(int32), intent(in) :: n_admissible
+            !! Number of valid trace columns
+        integer(int32), intent(in) :: n_points
+            !! The selected n_points
+        integer(int32), intent(in) :: n_neighbors
+            !! The selected n_neighbors
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        real(real64) :: widths(n_studies), median, best_median, held
+        integer(int32) :: t, i, j, best_t
+
+        best_median = huge(1.0_real64)
+        best_t = 0_int32
+        do t = 1, n_admissible
+            widths = trace_ci_width(:, t)
+            ! Insertion sort of the few studies' widths, then the median.
+            do i = 2, n_studies
+                held = widths(i)
+                j = i - 1_int32
+                do while (j >= 1_int32)
+                    if (widths(j) <= held) exit
+                    widths(j + 1) = widths(j)
+                    j = j - 1_int32
+                end do
+                widths(j + 1) = held
+            end do
+            if (mod(n_studies, 2_int32) == 1_int32) then
+                median = widths(n_studies/2 + 1)
+            else
+                median = 0.5_real64*(widths(n_studies/2) + widths(n_studies/2 + 1))
+            end if
+            if (median < best_median) then
+                best_median = median
+                best_t = t
+            end if
+        end do
+        call assert_true(best_t > 0_int32, name//"some admissible candidate")
+        if (best_t == 0_int32) return
+        call assert_equal_array_int([n_points, n_neighbors], [trace_n_points(best_t), trace_n_neighbors(best_t)], 2_int32, &
+                                    name//"the selected candidate has the smallest median CI width")
+    end subroutine assert_selected_is_smallest_median_width
+
     !> Test helper: checks a search's `trace_ci_overlap` against the traced confidence intervals.
     !| Column 1 (the first admissible candidate, no previous best) must be the `-1.0` sentinel.
     !| Every later column must be, per study, the fraction of that candidate's interval
@@ -4129,45 +3406,36 @@ contains
         end do
     end subroutine assert_ci_overlap_trace_vs_previous_column
 
-    !> Exercises the new Issue #178 no-plateau fallback (`plateau_established = .false.` +
-    !| smallest-bootstrap-uncertainty candidate selection), which only the tests above never
-    !| reach: they all either plateau or bypass the plateau machinery entirely via a
-    !| single/zero-admissible-candidate grid. This one needs real, non-degenerate data -- the
-    !| all-constant fixture the other tests use gives an exactly-[0,0] CI for every candidate,
-    !| which trivially plateaus (perfect overlap) rather than ever exercising this fallback.
-    !|
-    !| `max_n_genes_all_studies=20000` gives a 6-candidate grid (`[(566,141),(566,70),(453,176),
-    !| (453,88),(362,220),(362,110)]`). Both studies' residuals are independent draws from the
-    !| same simple linear-congruential pseudo-random sequence (`x_{n+1} = (1103515245*n + 12345)
-    !| mod 2^31`, scaled to `[-2, 2]`) -- no systematic per-study difference, so the observed JSD
-    !| stays small and the bootstrapped CIs genuinely vary in width from one candidate to the next
-    !| without any one of them ever nesting inside the running best closely enough to satisfy
-    !| `succeeding_ci_overlap`'s default 90% threshold. This was found empirically (per the
-    !| project's own plan for this change, which flagged the exact fixture as needing
-    !| construction/iteration, not something derivable on paper) -- confirmed via direct
-    !| experimentation that every candidate here is genuinely evaluated, no plateau is ever found
-    !| under any of the three `join_method`s, and candidate 5 = `(362, 220)` has a distinctly
-    !| smaller confidence-interval width than every other candidate, in both studies. The routine
-    !| must therefore return candidate 5's own `(n_points, n_neighbors)` and its real, bootstrapped
-    !| confidence interval (not `-1.0`), with `plateau_established = .false.` The exact
-    !| confidence-interval values below come directly from running this fixture through the actual
-    !| implementation (not hand-derived), since they depend on the real bootstrap resampling --
-    !| reproducible bit-for-bit given the fixed `random_seed` and deterministic input data.
-    !| Re-verified after Issue #187's per-point occupancy search replaced the old global-pool
-    !| Sturges/Freedman-Diaconis bin-count broadcast this routine used to use: with
-    !| `min_residuals_per_bin=0` here, every neighborhood's occupancy search is trivially satisfied
-    !| at every candidate bin count up to `m_max` (default 120), so it always selects the ceiling
-    !| `m_max=120` bins per point -- a real, different bin count from before, which is why the
-    !| bootstrapped confidence-interval values below (script-verified via a temporary debug print,
-    !| not hand-derived) differ from this test's pre-#187 values, even though the candidate
-    !| selection itself (still candidate 5) does not. Re-verified again after Step 3 (per-neighborhood
-    !| residual range): `m_max=120` bins is still selected everywhere, unchanged, but each point's
-    !| histogram range is now its own percentile-derived `[R_low, R_high]` instead of the old
-    !| dataset-wide symmetric range, which shifts the actual bin boundaries -- and therefore the
-    !| bootstrapped CI values below -- even though candidate selection (still candidate 5) and every
-    !| other structural assertion in this test are unaffected. The CI values are those of the pooled
-    !| bootstrap, so it is passed explicitly (`MODE_BOOTSTRAP_POOLED`, the only bootstrap when they
-    !| were recorded); the two sibling tests below do the same.
+    !> The no-plateau fallback (`plateau_established = .false.` and the admissible candidate with the
+    !| smallest median confidence-interval width) under `plateau_mode=MODE_PLATEAU_CI_OVERLAP`, which
+    !| the tests above never reach: they plateau or bypass the plateau machinery.
+    !| Fixture: `max_n_genes_all_studies=20000`, two studies, three replicates, gene means `1..G`,
+    !| residuals from a linear-congruential sequence (`x_{n+1} = (1103515245*n + 12345) mod 2^31`,
+    !| scaled to `[-2, 2]`). The default grid is (566, 141), (453, 176), (362, 220), (290, 276),
+    !| (232, 345), (200, 400) (`n_points_high = ceiling(4*sqrt(20000)) = 566`, GAMMA decay 452.8,
+    !| 362.2, 289.8, 231.9, then 185.5 < 200 and the floor 200 added; `n_neighbors =
+    !| floor(20000/(0.25*h))`).
+    !| Study 2's residuals are multiplied by SCALED_BLOCK_FACTOR (6) in every second block of
+    !| SCALED_BLOCK_GENES (300) genes, so the studies really differ and the per-point JSD depends
+    !| on how a neighborhood mixes the blocks: the observed JSD drifts from candidate to candidate
+    !| by more than its narrow bootstrap interval. On the plain LCG data the per-study bootstrap
+    !| intervals `[J, J + bias]` shrink and nest from one candidate to the next, so CI overlap
+    !| plateaus there (found by running it); with the scaled blocks no overlap reaches 0.9 for
+    !| both studies, and all six candidates are evaluated.
+    !| The factor was 3 until 2026-11-04. With 3 the largest per-transition minimum overlap over
+    !| the two studies was 0.889 (candidate 5 to 6), only 0.011 below the threshold 0.9, so a
+    !| small numerical change could have made the search plateau and the test fail for no real
+    !| reason. With 6 the traced minima are 0.736, 0.697, 0.534, 0.011 and 0.000 (found by running
+    !| the search with factors 3 to 6), so the largest is 0.164 below the threshold; the test
+    !| asserts that this margin stays at least MIN_OVERLAP_MARGIN (0.1), replayed from the traces.
+    !| The selected candidate must be the one with the smallest median traced CI width (replayed
+    !| here from the traces): (200, 400), the last one, since the intervals shrink with the
+    !| coarser grid (median widths 0.0044 against 0.0057 for the runner-up). Its CI must be its
+    !| own traced CI.
+    !| Pinned to the occupancy bin-count search, the symmetric divergence and
+    !| `delta_abs_tolerance = 0` (the defaults when this fixture was built) to stay close to it;
+    !| the interval below is RE-CAPTURED (run through the implementation, not hand-derived: its
+    !| bounds are order statistics of the bootstrap JSDs), the selection is replayed from the traces.
     subroutine test_param_search_no_plateau_uses_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -4191,7 +3459,16 @@ contains
             trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
         real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
             trace_delta_max(MAX_CANDIDATE_PAIRS)
-        integer(int32) :: i_gene, i_study, i_rep, k
+        integer(int32), parameter :: SCALED_BLOCK_GENES = 300_int32
+            !! Length of the gene blocks whose study-2 residuals alternate between scaled and not
+        real(real64), parameter :: SCALED_BLOCK_FACTOR = 6.0_real64
+            !! Factor of study 2's residuals in every second block
+        real(real64), parameter :: OVERLAP_THRESHOLD = 0.9_real64
+            !! The default `succeeding_ci_overlap` the search applies
+        real(real64), parameter :: MIN_OVERLAP_MARGIN = 0.1_real64
+            !! Least distance the largest per-transition minimum overlap keeps below OVERLAP_THRESHOLD
+        integer(int32) :: i_gene, i_study, i_rep, k, i_transition
+        real(real64) :: largest_min_overlap
 
         do i_study = 1, n_studies
             do i_gene = 1, max_n_genes_all_studies
@@ -4206,8 +3483,15 @@ contains
             end do
         end do
 
+        ! Study 2's residuals SCALED_BLOCK_FACTOR times larger in every second block of
+        ! SCALED_BLOCK_GENES genes (see the doc comment).
+        do i_gene = 1, max_n_genes_all_studies
+            if (mod((i_gene - 1)/SCALED_BLOCK_GENES, 2_int32) == 1_int32) &
+                residuals(:, i_gene, 2) = SCALED_BLOCK_FACTOR*residuals(:, i_gene, 2)
+        end do
+
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
@@ -4241,8 +3525,9 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+                                               random_seed=1_int32, &
+                                               bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                                               divergence_mode=MODE_DIVERGENCE_SYMMETRIC, delta_abs_tolerance=0.0_real64)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: ierr should be OK")
@@ -4252,10 +3537,10 @@ contains
         call assert_false(plateau_established, &
                           "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                           "no candidate ever plateaus under this fixture")
-        call assert_equal_int(n_points, 362_int32, &
+        call assert_equal_int(n_points, 200_int32, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                               "smallest-uncertainty candidate's n_points")
-        call assert_equal_int(n_neighbors, 220_int32, &
+        call assert_equal_int(n_neighbors, 400_int32, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                               "smallest-uncertainty candidate's n_neighbors")
         call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
@@ -4265,15 +3550,29 @@ contains
         ! ifx's default fast floating-point model a residual on a bin edge can land in the other bin,
         ! which moved a bound by 0.4%. Which candidate is selected is checked exactly above, and that
         ! the CI is that candidate's own bootstrap CI is checked exactly below.
+        ! The pinned bounds are regression values, captured from the code's own output (gfortran),
+        ! not derived independently: a change in them signals that something changed, not that the
+        ! new or the old value is wrong.
         call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                        [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, &
+                                        [1.1404567238247240e-01_real64, 1.1739126333224699e-01_real64], 2_int32, &
                                         1.0e-2_real64, 0.0_real64, &
                                         "test_param_search_no_plateau_uses_smallest_uncertainty: study 1 CI")
         call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                        [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, &
+                                        [4.0739786527379751e-02_real64, 4.6168603987081377e-02_real64], 2_int32, &
                                         1.0e-2_real64, 0.0_real64, &
                                         "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
 
+        ! The margin to the plateau: no transition comes close to every study passing the threshold.
+        largest_min_overlap = -1.0_real64
+        do i_transition = 2, n_admissible_evaluated
+            largest_min_overlap = max(largest_min_overlap, minval(trace_ci_overlap(:, i_transition)))
+        end do
+        call assert_true(largest_min_overlap <= OVERLAP_THRESHOLD - MIN_OVERLAP_MARGIN, &
+                         "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                         "the largest per-transition minimum overlap stays clearly below the threshold")
+
+        call assert_selected_is_smallest_median_width(trace_ci_width, trace_n_points, trace_n_neighbors, n_studies, &
+                                                      n_admissible_evaluated, n_points, n_neighbors, "test_param_search_no_plateau_uses_smallest_uncertainty: ")
         call assert_selected_ci_matches_trace(best_candidate_pair_confidence_interval, n_points, n_neighbors, &
                                               trace_n_points, trace_n_neighbors, trace_ci_lower, trace_ci_upper, &
                                               n_studies, n_admissible_evaluated, &
@@ -4284,16 +3583,22 @@ contains
 
     end subroutine test_param_search_no_plateau_uses_smallest_uncertainty
 
-    !> Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
-    !| (guaranteed no CI-overlap plateau across all 6 candidates), but with
-    !| `plateau_mode=MODE_PLATEAU_EFFECT_SIZE` -- confirming Issue #178's own fallback ("retain the
-    !| previously defined fallback of selecting the admissible parameter setting with the smallest
-    !| bootstrap uncertainty") now applies to effect-size mode too, not just CI-overlap. Since
-    !| effect size also never plateaus on this fixture, the routine must land on the exact same
-    !| smallest-uncertainty candidate (candidate 5, `(362, 220)`) and the exact same bootstrapped CI
-    !| values as `test_param_search_no_plateau_uses_smallest_uncertainty` -- the ranking computation
-    !| doesn't depend on which plateau criterion selected the no-plateau branch, only the gate that
-    !| used to restrict its use to CI-overlap, which is now gone.
+    !> The no-plateau fallback under `plateau_mode=MODE_PLATEAU_EFFECT_SIZE` on the plain LCG fixture
+    !| (no scaled blocks): the studies hardly differ, the observed JSD changes by more than 5%/10%
+    !| between candidates, so the effect size never plateaus and all six candidates are evaluated.
+    !| Fixture: `max_n_genes_all_studies=20000`, two studies, three replicates, gene means `1..G`,
+    !| residuals from a linear-congruential sequence (`x_{n+1} = (1103515245*n + 12345) mod 2^31`,
+    !| scaled to `[-2, 2]`). The default grid is (566, 141), (453, 176), (362, 220), (290, 276),
+    !| (232, 345), (200, 400) (`n_points_high = ceiling(4*sqrt(20000)) = 566`, GAMMA decay 452.8,
+    !| 362.2, 289.8, 231.9, then 185.5 < 200 and the floor 200 added; `n_neighbors =
+    !| floor(20000/(0.25*h))`).
+    !| The selected candidate must be the one with the smallest median traced CI width (replayed
+    !| here): (200, 400). Its CI must be its own traced CI.
+    !| Pinned to the occupancy bin-count search, the symmetric divergence and
+    !| `delta_abs_tolerance = 0` (the defaults when this fixture was built) to stay close to it;
+    !| the selection and interval below are nevertheless RE-CAPTURED (run through the
+    !| implementation, not hand-derived), because the pooled bootstrap they were first recorded
+    !| with is gone and the default grid changed.
     subroutine test_param_search_no_plateau_effect_size_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -4333,7 +3638,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
@@ -4367,20 +3672,22 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+                                               random_seed=1_int32, &
+                                               bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                                               divergence_mode=MODE_DIVERGENCE_SYMMETRIC, delta_abs_tolerance=0.0_real64)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: ierr should be OK")
         call assert_false(plateau_established, &
                           "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                           "no candidate ever plateaus under effect-size mode on this fixture")
-        call assert_equal_int(n_points, 362_int32, &
+        call assert_equal_int(n_points, 200_int32, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
-                              "smallest-uncertainty candidate's n_points, same as CI-overlap mode's own fallback")
-        call assert_equal_int(n_neighbors, 220_int32, &
+                              "smallest-uncertainty candidate's n_points")
+        call assert_equal_int(n_neighbors, 400_int32, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                               "smallest-uncertainty candidate's n_neighbors")
+        call assert_equal_int(n_admissible_evaluated, 6_int32, "test_param_search_no_plateau_effect_size_smallest_uncertainty: all six candidates evaluated")
         call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
                          "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
@@ -4388,29 +3695,36 @@ contains
         ! ifx's default fast floating-point model a residual on a bin edge can land in the other bin,
         ! which moved a bound by 0.4%. Which candidate is selected is checked exactly above, and that
         ! the CI is that candidate's own bootstrap CI is checked exactly below.
+        ! The pinned bounds are regression values, captured from the code's own output (gfortran),
+        ! not derived independently: a change in them signals that something changed, not that the
+        ! new or the old value is wrong.
         call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                        [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, &
+                                        [3.4260799566692790e-04_real64, 9.9783227086857430e-03_real64], 2_int32, &
                                         1.0e-2_real64, 0.0_real64, &
                                         "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 1 CI")
         call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                        [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, &
+                                        [3.4264408075780086e-04_real64, 1.0035674179409808e-02_real64], 2_int32, &
                                         1.0e-2_real64, 0.0_real64, &
                                         "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 2 CI")
 
+        call assert_selected_is_smallest_median_width(trace_ci_width, trace_n_points, trace_n_neighbors, n_studies, &
+                                                      n_admissible_evaluated, n_points, n_neighbors, "test_param_search_no_plateau_effect_size_smallest_uncertainty: ")
         call assert_selected_ci_matches_trace(best_candidate_pair_confidence_interval, n_points, n_neighbors, &
                                               trace_n_points, trace_n_neighbors, trace_ci_lower, trace_ci_upper, &
                                               n_studies, n_admissible_evaluated, &
                                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: ")
     end subroutine test_param_search_no_plateau_effect_size_smallest_uncertainty
 
-    !> Same fixture again, `plateau_mode=MODE_PLATEAU_BOTH`. Since CI overlap never plateaus here
-    !| (confirmed by `test_param_search_no_plateau_uses_smallest_uncertainty`) and effect size never
-    !| plateaus here either (confirmed by
-    !| `test_param_search_no_plateau_effect_size_smallest_uncertainty`), BOTH mode's
-    !| `ci_plateau_found .or. effect_size_plateau_found` is false for every candidate too -- so this
-    !| must land on Issue #178's own smallest-uncertainty fallback exactly like the other two modes
-    !| now do, not the old finest-resolution/-1.0 sentinel: the fallback no longer depends on
-    !| `plateau_mode` at all, only on whether at least one candidate was ever admissible.
+    !> The no-plateau fallback under `plateau_mode=MODE_PLATEAU_BOTH`, on the scaled-block fixture of
+    !| test_param_search_no_plateau_uses_smallest_uncertainty, where CI overlap never plateaus. The
+    !| effect-size thresholds are 1e-300 here, so that only a zero change could qualify and the
+    !| effect size does not plateau either (with the default thresholds it would on this fixture).
+    !| Same selection and CI as the CI-overlap test (SCALED_BLOCK_FACTOR 6 there and here; see
+    !| there why it is no longer 3).
+    !| Pinned to the occupancy bin-count search, the symmetric divergence and
+    !| `delta_abs_tolerance = 0` (the defaults when this fixture was built) to stay close to it;
+    !| the interval below is RE-CAPTURED (run through the implementation, not hand-derived), the
+    !| selection is replayed from the traces.
     subroutine test_param_search_no_plateau_both_uses_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -4434,6 +3748,10 @@ contains
             trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
         real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
             trace_delta_max(MAX_CANDIDATE_PAIRS)
+        integer(int32), parameter :: SCALED_BLOCK_GENES = 300_int32
+            !! Length of the gene blocks whose study-2 residuals alternate between scaled and not
+        real(real64), parameter :: SCALED_BLOCK_FACTOR = 6.0_real64
+            !! Factor of study 2's residuals in every second block
         integer(int32) :: i_gene, i_study, i_rep, k
 
         do i_study = 1, n_studies
@@ -4449,8 +3767,15 @@ contains
             end do
         end do
 
+        ! Study 2's residuals SCALED_BLOCK_FACTOR times larger in every second block of
+        ! SCALED_BLOCK_GENES genes (see the doc comment).
+        do i_gene = 1, max_n_genes_all_studies
+            if (mod((i_gene - 1)/SCALED_BLOCK_GENES, 2_int32) == 1_int32) &
+                residuals(:, i_gene, 2) = SCALED_BLOCK_FACTOR*residuals(:, i_gene, 2)
+        end do
+
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
@@ -4483,21 +3808,24 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
-                                               plateau_mode=MODE_PLATEAU_BOTH, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+                                               plateau_mode=MODE_PLATEAU_BOTH, delta_median_threshold=1.0e-300_real64, &
+                                               delta_max_threshold=1.0e-300_real64, &
+                                               random_seed=1_int32, &
+                                               bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                                               divergence_mode=MODE_DIVERGENCE_SYMMETRIC, delta_abs_tolerance=0.0_real64)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: ierr should be OK")
         call assert_false(plateau_established, &
                           "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                           "neither criterion ever plateaus under this fixture")
-        call assert_equal_int(n_points, 362_int32, &
+        call assert_equal_int(n_points, 200_int32, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
-                              "smallest-uncertainty candidate's n_points, same as the other 2 modes' own fallback")
-        call assert_equal_int(n_neighbors, 220_int32, &
+                              "smallest-uncertainty candidate's n_points, same as the CI-overlap mode's fallback")
+        call assert_equal_int(n_neighbors, 400_int32, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                               "smallest-uncertainty candidate's n_neighbors")
+        call assert_equal_int(n_admissible_evaluated, 6_int32, "test_param_search_no_plateau_both_uses_smallest_uncertainty: all six candidates evaluated")
         call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
                          "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
@@ -4505,15 +3833,20 @@ contains
         ! ifx's default fast floating-point model a residual on a bin edge can land in the other bin,
         ! which moved a bound by 0.4%. Which candidate is selected is checked exactly above, and that
         ! the CI is that candidate's own bootstrap CI is checked exactly below.
+        ! The pinned bounds are regression values, captured from the code's own output (gfortran),
+        ! not derived independently: a change in them signals that something changed, not that the
+        ! new or the old value is wrong.
         call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                        [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, &
+                                        [1.1404567238247240e-01_real64, 1.1739126333224699e-01_real64], 2_int32, &
                                         1.0e-2_real64, 0.0_real64, &
                                         "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 1 CI")
         call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                        [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, &
+                                        [4.0739786527379751e-02_real64, 4.6168603987081377e-02_real64], 2_int32, &
                                         1.0e-2_real64, 0.0_real64, &
                                         "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 2 CI")
 
+        call assert_selected_is_smallest_median_width(trace_ci_width, trace_n_points, trace_n_neighbors, n_studies, &
+                                                      n_admissible_evaluated, n_points, n_neighbors, "test_param_search_no_plateau_both_uses_smallest_uncertainty: ")
         call assert_selected_ci_matches_trace(best_candidate_pair_confidence_interval, n_points, n_neighbors, &
                                               trace_n_points, trace_n_neighbors, trace_ci_lower, trace_ci_upper, &
                                               n_studies, n_admissible_evaluated, &
@@ -4527,7 +3860,7 @@ contains
     !| counted as admissible.
     !|
     !| Same grid as `test_param_search_no_plateau_falls_back_to_finest`
-    !| (`max_n_genes_all_studies=2000`, finest candidate `(300, 26)`), and `min_neighbor_overlap=0.0`
+    !| (`max_n_genes_all_studies=2000` with the GRID_2000_* options, finest candidate `(300, 26)`), and `min_neighbor_overlap=0.0`
     !| so gate 1 always passes trivially (tie-extended full-range neighborhoods from constant gene
     !| means, exactly as that test's own comment explains). Unlike that test, `min_residuals_per_bin`
     !| is left at its DEFAULT (10) here -- the rejection instead comes from making every residual in
@@ -4582,7 +3915,9 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                grid_points_factor=GRID_2000_POINTS_FACTOR, &
+                                                grid_min_points=GRID_2000_MIN_POINTS, &
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_occupancy_failure_rejects_candidate: "// &
                               "candidate bounds ierr should be OK")
@@ -4616,7 +3951,8 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               grid_points_factor=GRID_2000_POINTS_FACTOR, &
+                                               grid_min_points=GRID_2000_MIN_POINTS, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_occupancy_failure_rejects_candidate: ierr should be OK")
@@ -4647,7 +3983,8 @@ contains
     !| SINGLE candidate whose 300 reference points split into two clearly different residual
     !| dispersion regimes must end up with a genuinely non-constant `trace_selected_n_bins` column.
     !|
-    !| `max_n_genes_all_studies=100` collapses the grid to exactly one candidate, `(300, 1)` --
+    !| `max_n_genes_all_studies=100` with `grid_min_points=GRID_FLOOR_300` collapses the grid to
+    !| exactly one candidate, `(300, 1)` --
     !| exactly `test_param_search_single_candidate_bypasses_plateau`'s own grid collapse, so with
     !| `n_neighbors=1` every reference point's pooled neighborhood is just ONE gene's residuals,
     !| repeated across `max_n_reps_all_studies=3` replicates and `n_studies=2` studies: exactly 6
@@ -4696,6 +4033,8 @@ contains
     !| its own pooled residuals actually support, gate 2 also passes for every point, so the single
     !| candidate is genuinely admissible (`n_admissible_evaluated=1`) -- script-verified against the
     !| actual implementation, matching this hand trace exactly.
+    !| The occupancy bin-count search (the default before Stone-equal) is passed explicitly, because the
+    !| bin counts above are hand-traced through it.
     subroutine test_param_search_different_neighborhoods_different_m_j()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 100, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -4738,7 +4077,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                grid_min_points=GRID_FLOOR_300, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_different_neighborhoods_different_m_j: "// &
                               "candidate bounds ierr should be OK")
@@ -4773,7 +4112,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=1_int32, min_neighbor_overlap=0.0_real64, &
                                                m_min=1_int32, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               grid_min_points=GRID_FLOOR_300, random_seed=1_int32, &
+                                               bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_different_neighborhoods_different_m_j: ierr should be OK")
@@ -4817,17 +4157,17 @@ contains
     !| every point's own pooled residual set is the same size for a fixed candidate regardless of
     !| which genes it pools, and this fixture's residuals are close enough to identically distributed
     !| that the occupancy search converges on one answer everywhere at a high threshold; `30` sits low
-    !| enough to still show real point-to-point spread): `n_admissible_evaluated=2` (this fixture now
-    !| plateaus one candidate earlier than it did before Step 3 -- a genuine consequence of the new
-    !| per-point range changing the observed JSD/CI, not a test bug), `plateau_established=.true.`,
-    !| selecting the SECOND admissible candidate `(566, 70)` -- not the first, so the running
-    !| best-candidate bin-count snapshot (`tmp_best_n_bins_per_point`/`tmp_best_shared_residual_range_low`/
-    !| `_high`, and `trace_selected_n_bins` column bookkeeping) is genuinely overwritten as the loop
-    !| progresses, not written once and left alone. That column's own bin counts range over `{10, 12}`
-    !| (not constant), while column 1's own range over `{23, 24}` -- both non-constant, but with
-    !| clearly different values -- so a wiring bug that returned column 1's snapshot instead would
-    !| still be caught by the final elementwise comparison below (exact per-point equality against
-    !| column 2, not merely "non-constant"), not silently masked by both columns looking similar.
+    !| enough to still show real point-to-point spread). Pinned to the occupancy bin-count search
+    !| (whose `min_residuals_per_bin` this fixture tunes), the symmetric divergence and
+    !| `delta_abs_tolerance = 0` (the defaults it was built with). RE-CAPTURED (run through the
+    !| implementation, not hand-derived) for the default grid of
+    !| test_param_search_no_plateau_uses_smallest_uncertainty and the per-study bootstrap:
+    !| `n_admissible_evaluated=2`, `plateau_established=.true.` (CI overlap of candidate 2 with
+    !| candidate 1 above 0.9 for both studies), selecting the SECOND admissible candidate
+    !| `(453, 176)` -- not the first, so the running best-candidate bin-count snapshot is genuinely
+    !| overwritten as the loop progresses. That column's own bin counts range over `{28, ..., 31}`
+    !| (not constant), while column 1's range over `{23, 24}` -- so a wiring bug that returned
+    !| column 1's snapshot instead would be caught by the final elementwise comparison below.
     subroutine test_param_search_final_n_bins_matches_selected_trace_column()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -4867,7 +4207,7 @@ contains
         end do
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                               "candidate bounds ierr should be OK")
@@ -4902,7 +4242,9 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=30_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               random_seed=1_int32, &
+                                               bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                                               divergence_mode=MODE_DIVERGENCE_SYMMETRIC, delta_abs_tolerance=0.0_real64)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: ierr should be OK")
@@ -4912,10 +4254,10 @@ contains
         call assert_true(plateau_established, &
                          "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                          "a genuine CI-overlap plateau is found under this stricter min_residuals_per_bin")
-        call assert_equal_int(n_points, 566_int32, &
+        call assert_equal_int(n_points, 453_int32, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                               "selects the SECOND admissible candidate's n_points, not the first")
-        call assert_equal_int(n_neighbors, 70_int32, &
+        call assert_equal_int(n_neighbors, 176_int32, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                               "selects the second admissible candidate's n_neighbors")
 
@@ -4935,7 +4277,7 @@ contains
         call assert_true(logical(minval(trace_selected_n_bins(1:n_points, selected_column)) /= &
                                  maxval(trace_selected_n_bins(1:n_points, selected_column)), kind=c_bool), &
                          "test_param_search_final_n_bins_matches_selected_trace_column: "// &
-                         "the selected column's own bin counts are not constant either (10 and 12)")
+                         "the selected column's own bin counts are not constant either (28 to 31)")
         call assert_true(all(n_bins_per_point(1:n_points) == trace_selected_n_bins(1:n_points, selected_column)), &
                          "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                          "returned n_bins_per_point equals the ACTUALLY-selected candidate's trace column, "// &
@@ -6191,17 +5533,11 @@ contains
     !| output, printed at full precision (es25.17); integers are compared exactly, reals to a relative
     !| 1e-13 (an optimised build may contract into FMA and move the last bit). This is
     !| deliberately not a hand-derived test -- it exists purely to prove the refactor is
-    !| bit-for-bit behavior-preserving. Exception: `p_values` were re-captured after two fixes to
-    !| the permutation test -- the random_multiv_hypergeom last-population depletion fix, and
-    !| recomputing the equal-weight consensus from the permuted pmfs in every permutation instead
-    !| of comparing against the observed consensus (the old values characterised both bugs); all
-    !| other values are still the pre-refactor capture. `p_values_observed_consensus` keeps the
-    !| observed-consensus null on the same draws, so it must equal the `p_values` captured after the
-    !| depletion fix but before the consensus fix. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
+    !| bit-for-bit behavior-preserving; every value is still the pre-refactor capture. The capture
+    !| used the occupancy bin-count search, so it is passed explicitly. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
     !| uneven replicate counts, NaN means and residuals), 3 reference points, 4 neighbors,
     !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3` (so the points pick different bin counts,
-    !| 6/5/3, exercising the zero padding up to `max_n_bins_per_point`),
-    !| 300 permutations with `random_seed=7`.
+    !| 6/5/3, exercising the zero padding up to `max_n_bins_per_point`).
     subroutine test_run_js_comp_test_golden_regression()
         integer(int32), parameter :: n_studies = 3, max_n_genes_all_studies = 10, max_n_reps_all_studies = 4
         integer(int32), parameter :: n_points = 3, n_neighbors = 4
@@ -6224,8 +5560,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
         character(len=*), parameter :: name = "test_run_js_comp_test_golden_regression: "
         ! Reals are compared to 1e-13 relative: an optimised build (`-O3 -march=native`, CI's
@@ -6241,10 +5576,10 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, &
-                              ierr=ierr, n_permutations=300_int32, random_seed=7_int32, m_min=2_int32, &
-                              m_max=12_int32, min_residuals_per_bin=3_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              ierr=ierr, m_min=2_int32, &
+                              m_max=12_int32, min_residuals_per_bin=3_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                              divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_equal_int(max_n_bins_per_point, 6_int32, name//"max_n_bins_per_point")
         call assert_equal_array_int(n_bins_per_point, [6, 5, 3], n_points, name//"n_bins_per_point")
@@ -6282,16 +5617,6 @@ contains
                                      name//"weights", n_rows=n_points)
         call assert_allclose_array_real(global_js_divergence, [4.78588898838338689e-02_real64, 8.48617529169309465e-02_real64, &
                 1.74576296864357827e-01_real64], n_studies, GOLDEN_RTOL, 0.0_real64, name//"global_js_divergence")
-        ! p_values re-captured after the random_multiv_hypergeom last-bin depletion fix and the
-        ! per-permutation consensus fix (100/301, 32/301, 1/301)
-        call assert_allclose_array_real(p_values, [3.32225913621262470e-01_real64, 1.06312292358803989e-01_real64, &
-                3.32225913621262466e-03_real64], n_studies, GOLDEN_RTOL, 0.0_real64, name//"p_values")
-        ! p_values_observed_consensus compares the same permutations against the observed
-        ! consensus, as p_values did before the per-permutation consensus fix, so it must
-        ! reproduce that capture exactly (49/301, 26/301, 8/301)
-        call assert_allclose_array_real(p_values_observed_consensus, [1.62790697674418616e-01_real64, &
-                8.63787375415282360e-02_real64, 2.65780730897009973e-02_real64], n_studies, GOLDEN_RTOL, 0.0_real64, &
-                name//"p_values_observed_consensus")
         ! counts per (point, study), rows 1:max_n_bins_per_point -- rows beyond the point's own
         ! n_bins_per_point are the zero padding build_residual_histograms_impl guarantees
         call assert_equal_array_int(counts(1, 1:6, 1), [0, 3, 5, 2, 3, 2], 6_int32, name//"counts(1,1)")
@@ -6335,6 +5660,8 @@ contains
     !| options. Every output and the pooled buffer itself must match exactly. The same point as
     !| the middle one of three in a points-first index array (`i_index_point = 2`, the other
     !| points holding the out-of-range gene 999) must give the same pool and bin count.
+    !| The occupancy bin-count search (the default before Stone-equal) is passed explicitly to
+    !| determine_point_bin_count, because the reference is determine_bin_count_occupancy.
     subroutine test_point_bin_count_uniform_matches_multi_study_gather()
         integer(int32), parameter :: n_studies = 3, n_genes = 10, n_reps = 4, k = 4, n_pool = n_reps*k*n_studies
         real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(3)
@@ -6358,7 +5685,7 @@ contains
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, m_min=2_int32, m_max=12_int32, &
-                                       min_residuals_per_bin=3_int32)
+                                       min_residuals_per_bin=3_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
 
         call gather_pooled_neighborhood_residuals(residuals, n_reps, n_genes, k, n_studies, point_indices, &
                                                    reference_pool, ref_ierr)
@@ -6387,7 +5714,7 @@ contains
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, m_min=2_int32, m_max=12_int32, &
-                                       min_residuals_per_bin=3_int32)
+                                       min_residuals_per_bin=3_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
         call assert_equal_array_real_nan_exact(tmp_pooled, reference_pool, n_pool, name//"middle of three points: pool")
         call assert_equal_int(n_bins, ref_n_bins, name//"middle of three points: selected_n_bins")
     end subroutine test_point_bin_count_uniform_matches_multi_study_gather
@@ -6403,6 +5730,8 @@ contains
     !| neighbor count `(2+1+3 + 3/2)/3 = 7/3 = 2`.
     !| In MODE_BIN_COUNT_STONE_EQUAL the same ragged, NaN-holding pool must give exactly what
     !| determine_bin_count_stone gives on it, with study blocks of 4, 2 and 6 slots.
+    !| The first call passes the occupancy bin-count search (the default before Stone-equal) explicitly,
+    !| because its reference is determine_bin_count_occupancy.
     subroutine test_point_bin_count_ragged_matches_hand_built_pool()
         integer(int32), parameter :: n_studies = 3, n_genes = 4, n_reps = 2, max_k = 3
         real(real64) :: residuals(n_reps, n_genes, n_studies), hand_pool(12)
@@ -6442,7 +5771,7 @@ contains
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, m_min=2_int32, m_max=8_int32, &
-                                       min_residuals_per_bin=1_int32)
+                                       min_residuals_per_bin=1_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
         call assert_equal_array_real_nan_exact(tmp_pooled(1:12), hand_pool, 12_int32, name//"pooled layout")
         call assert_equal_int(n_pooled, 10_int32, name//"n_pooled_residuals: 12 slots minus 2 NaN")
 
@@ -6649,8 +5978,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
 
         gene_means = reshape([1.0_real64, 2.0_real64, 1.0_real64, 2.0_real64], [2, 2])
@@ -6666,8 +5994,6 @@ contains
         js_divergences = -7.0_real64
         weights = -7.0_real64
         global_js_divergence = -7.0_real64
-        p_values = -7.0_real64
-        p_values_observed_consensus = -7.0_real64
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
                               gene_means, residuals, x_star, neighborhood_indices, &
@@ -6675,8 +6001,7 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, ierr=ierr, n_permutations=10_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, ierr=ierr)
 
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: wrapper range validation rejects "// &
@@ -6699,10 +6024,6 @@ contains
                          "test_run_js_comp_test_too_many_neighbors_sets_ierr: weights untouched")
         call assert_true(all(global_js_divergence == -7.0_real64), &
                          "test_run_js_comp_test_too_many_neighbors_sets_ierr: global_js_divergence untouched")
-        call assert_true(all(p_values == -7.0_real64), &
-                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: p_values untouched")
-        call assert_true(all(p_values_observed_consensus == -7.0_real64), &
-                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: p_values_observed_consensus untouched")
     end subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr
 
     !> Issue #217 (D1), the small-N collapse criterion. `G=2000`, `S=2`: `N=4000`,
@@ -6711,11 +6032,11 @@ contains
     !| (32.768), 26 (26.2144), 20 (20.97), 16 (16.78), 13 (13.42), 10 (10.74), then 8 (8.59) < 10
     !| stops -> 10 candidates. `k_step=max(1,ceil(k/4))`: 20,16,13,10,8,7,5,4,4,3. `k_max=4k`:
     !| 320,256,204,160,128,104,80,64,52,40.
-    !| Contrast (asserted below): the fixed-k grid at `max_n_genes_all_studies=2000` has
-    !| `n_points_high=clamp(ceil(4*sqrt(2000))=179, 300, 1500)=300`, `n_points_low=max(300, 60)=300`,
-    !| and `300*0.8=240 < 300` ends the grid after its first `n_points`: in MODE_NEIGHBORHOOD_SIZE_BOTH 2 pairs
-    !| (`n_neighbors = floor(2000/(0.25*300)) = 26` and `floor(2000/(0.5*300)) = 13`), but only
-    !| ONE distinct `n_points` value (300) -- the collapse this sequence must not have.
+    !| Contrast (asserted below): the default fixed-k grid at `max_n_genes_all_studies=2000` has
+    !| `n_points_high=clamp(ceil(4*sqrt(2000))=179, 200, 1500)=200`, `n_points_low=max(200, 40)=200`,
+    !| and `200*0.8=160 < 200` ends the grid after its first `n_points`, which already is the floor:
+    !| the single pair (200, `floor(2000/(0.25*200)) = 40`), ONE distinct `n_points` value -- the
+    !| collapse this sequence must not have.
     subroutine test_adaptive_candidates_small_n_does_not_collapse()
         integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr
         integer(int32) :: fixed_candidates(2, MAX_CANDIDATE_PAIRS), n_fixed_candidates
@@ -6734,15 +6055,14 @@ contains
         call assert_equal_array_int(candidates(:, 1:10), expected, 30_int32, &
                                     "test_adaptive_candidates_small_n_does_not_collapse: full sequence", n_rows=3_int32)
 
-        call generate_js_comp_test_candidates(2000_int32, fixed_candidates, n_fixed_candidates, &
-                                              neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, ierr=ierr)
+        call generate_js_comp_test_candidates(2000_int32, fixed_candidates, n_fixed_candidates, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_adaptive_candidates_small_n_does_not_collapse: fixed-k ierr should be OK")
-        call assert_equal_int(n_fixed_candidates, 2_int32, &
-                              "test_adaptive_candidates_small_n_does_not_collapse: fixed-k gives 2 pairs")
-        call assert_equal_int(count(fixed_candidates(1, 1:n_fixed_candidates) == 300_int32), 2_int32, &
-                              "test_adaptive_candidates_small_n_does_not_collapse: "// &
-                              "fixed-k pairs share the single n_points=300")
+        call assert_equal_int(n_fixed_candidates, 1_int32, &
+                              "test_adaptive_candidates_small_n_does_not_collapse: fixed-k gives 1 pair")
+        call assert_equal_array_int(fixed_candidates(:, 1), [200_int32, 40_int32], 2_int32, &
+                                    "test_adaptive_candidates_small_n_does_not_collapse: "// &
+                                    "the fixed-k pair is (200, 40), a single n_points")
     end subroutine test_adaptive_candidates_small_n_does_not_collapse
 
     !> Issue #217 (D2), on a Kidney-sized case `G=26097`, `S=6`: `N=156582`,
@@ -6902,13 +6222,23 @@ contains
                          "test_adaptive_constants_preclude_dead_clamps: k_max factor >= 1")
     end subroutine test_adaptive_constants_preclude_dead_clamps
 
-    !> The fixed-k grid derives MAX_POINT_CANDIDATES as `MAX_CANDIDATE_PAIRS / size(KX_FACTORS)`, so
-    !| it can never write past its candidate array. The division must also be exact (16 / 2 = 8): a
-    !| retuning that leaves a remainder would silently shorten the grid instead, and fails here.
-    subroutine test_fixed_k_grid_fills_max_candidate_pairs_exactly()
-        call assert_equal_int(MAX_POINT_CANDIDATES*size(KX_FACTORS, kind=int32), MAX_CANDIDATE_PAIRS, &
-                              "test_fixed_k_grid_fills_max_candidate_pairs_exactly: size(KX_FACTORS)*MAX_POINT_CANDIDATES")
-    end subroutine test_fixed_k_grid_fills_max_candidate_pairs_exactly
+    !> MAX_POINT_CANDIDATES, the loop bound of the fixed-k grid's GAMMA decay, is 8 (the value the
+    !| grid has always used, so no grid changes) and is exactly the most decayed values the decay can
+    !| keep: `GAMMA**7 = 0.2097 >= N_POINTS_LOW_FRACTION = 0.2`, so an eighth value can still lie at or
+    !| above `n_points_low = ceiling(0.2 * n_points_high)`, while `GAMMA**8 = 0.1678 < 0.2`, so a ninth
+    !| never does and the bound never cuts the grid short. With the floor candidate the grid then
+    !| holds at most 9 candidates, within MAX_CANDIDATE_PAIRS. A retuning of GAMMA or
+    !| N_POINTS_LOW_FRACTION that breaks one of these fails here.
+    subroutine test_fixed_k_grid_point_candidates_bound()
+        character(*), parameter :: name = "test_fixed_k_grid_point_candidates_bound: "
+
+        call assert_equal_int(MAX_POINT_CANDIDATES, 8_int32, name//"the value 8")
+        call assert_true(GAMMA**(MAX_POINT_CANDIDATES - 1_int32) >= N_POINTS_LOW_FRACTION, &
+                         name//"an eighth decayed value can still be kept")
+        call assert_true(GAMMA**MAX_POINT_CANDIDATES < N_POINTS_LOW_FRACTION, name//"a ninth never is")
+        call assert_true(MAX_POINT_CANDIDATES + 1_int32 <= MAX_CANDIDATE_PAIRS, &
+                         name//"decayed values plus the floor fit MAX_CANDIDATE_PAIRS")
+    end subroutine test_fixed_k_grid_point_candidates_bound
 
     !> Issue #217: the producer enforces the generator's representability bound
     !| `k_start_1 <= huge(1_int32)/4 = 536870911` (hand-derived cases):
@@ -6985,13 +6315,13 @@ contains
     subroutine test_candidate_bounds_rejects_nonpositive_genes()
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
 
-        call calc_js_comp_test_candidate_bounds(0_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(0_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_candidate_bounds_rejects_nonpositive_genes: G=0 rejected", arg_pos=1_int32)
-        call calc_js_comp_test_candidate_bounds(-5_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(-5_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_candidate_bounds_rejects_nonpositive_genes: G=-5 rejected", arg_pos=1_int32)
-        call calc_js_comp_test_candidate_bounds(1_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(1_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_candidate_bounds_rejects_nonpositive_genes: G=1 accepted")
     end subroutine test_candidate_bounds_rejects_nonpositive_genes
@@ -8053,9 +7383,10 @@ contains
     !> Test helper: call the generated run_js_comp_test_adaptive wrapper, sizes taken from the
     !| arrays. Every output is pre-filled with the sentinel -7 first, so a test can see which
     !| outputs an early error return left untouched.
-    subroutine run_adaptive_final(gene_means, residuals, ranges, out, ierr, n_permutations, random_seed, m_min, &
+    subroutine run_adaptive_final(gene_means, residuals, ranges, out, ierr, m_min, &
                                   m_max, min_residuals_per_bin, n_points, gamma_occupancy, &
-                                  lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
+                                  lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode, &
+                                  divergence_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -8066,10 +7397,6 @@ contains
             !! Every output of run_js_comp_test_adaptive, pre-filled with the sentinel -7
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure
-        integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations, forwarded to run_js_comp_test_adaptive
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count the occupancy search tests
         integer(int32), intent(in), optional :: m_max
@@ -8087,6 +7414,8 @@ contains
             !! Quantile of each point's upper residual-range bound, forwarded to run_js_comp_test_adaptive
         integer(int32), intent(in), optional :: bin_count_mode
             !! Bin-count search, forwarded to run_js_comp_test_adaptive
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Divergence mode, forwarded to run_js_comp_test_adaptive
         integer(int32) :: n_studies, n_genes, n_reps, n_pts, n_passed
 
         n_genes = size(gene_means, 1, kind=int32)
@@ -8101,8 +7430,7 @@ contains
                   out%included(n_pts, n_studies), out%mean_pmf_counts(n_pts, MAX_N_BINS), out%mean_included(n_pts), &
                   out%occ_failed(n_pts), out%range_low(n_pts), out%range_high(n_pts), out%mean_occ(n_pts), &
                   out%pmfs(n_pts, MAX_N_BINS, n_studies), out%mean_pmf(n_pts, MAX_N_BINS), out%js(n_pts, n_studies), &
-                  out%weights(n_pts, n_studies), out%global_jsd(n_studies), out%p_values(n_studies), &
-                  out%p_values_observed_consensus(n_studies))
+                  out%weights(n_pts, n_studies), out%global_jsd(n_studies))
         out%n_per_point = -7_int32
         out%n_bins = -7_int32
         out%n_pooled = -7_int32
@@ -8124,21 +7452,17 @@ contains
         out%js = -7.0_real64
         out%weights = -7.0_real64
         out%global_jsd = -7.0_real64
-        out%p_values = -7.0_real64
-        out%p_values_observed_consensus = -7.0_real64
 
         call run_js_comp_test_adaptive(n_studies, n_genes, n_reps, n_passed, gene_means, residuals, ranges, &
                                        out%n_per_point, out%n_bins, out%range_low, out%range_high, out%max_n_bins, &
                                        out%occ_failed, out%n_pooled, out%min_occ, out%mean_occ, out%max_occ, &
                                        out%sturges, out%fd, out%pmfs, out%counts, out%included, out%mean_pmf, &
                                        out%mean_pmf_counts, out%mean_included, out%js, out%weights, out%global_jsd, &
-                                       out%p_values, out%p_values_observed_consensus, &
-                                       n_permutations=n_permutations, random_seed=random_seed, &
                                        min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, m_max=m_max, &
                                        gamma_occupancy=gamma_occupancy, &
                                        lower_residual_range_quantile=lower_residual_range_quantile, &
                                        upper_residual_range_quantile=upper_residual_range_quantile, &
-                                       bin_count_mode=bin_count_mode, ierr=ierr)
+                                       bin_count_mode=bin_count_mode, divergence_mode=divergence_mode, ierr=ierr)
     end subroutine run_adaptive_final
 
     !> Test helper: the fixture shared by the error tests. G = 3, two studies, 2 replicates: study
@@ -8219,8 +7543,7 @@ contains
         real(real64) :: mean_bin_occupancy(n_points), pmfs(n_points, MAX_N_BINS, n_studies), &
             mean_pmf(n_points, MAX_N_BINS)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         logical(c_bool) :: occupancy_failed(n_points)
         type(adaptive_run_outputs) :: out
         integer(int32) :: ierr, i_gene, i_study, i_rep, i_point, n_bins
@@ -8252,9 +7575,7 @@ contains
                               shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
                               occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                               max_bin_occupancy, sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, &
-                              mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
-                              p_values, p_values_observed_consensus, ierr=ierr, n_permutations=200_int32, &
-                              random_seed=5_int32, m_min=2_int32, &
+                              mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, ierr=ierr, m_min=2_int32, &
                               m_max=12_int32, min_residuals_per_bin=2_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"fixed-k ierr")
         ! the fixed-k gene sets really are {1,2,3}, {3,4,5}, {6,7,8} in both studies
@@ -8267,8 +7588,7 @@ contains
                                         name//"fixed-k set start")
         end do
 
-        call run_adaptive_final(gene_means, residuals, ranges, out, ierr, n_permutations=200_int32, &
-                                random_seed=5_int32, m_min=2_int32, m_max=12_int32, min_residuals_per_bin=2_int32)
+        call run_adaptive_final(gene_means, residuals, ranges, out, ierr, m_min=2_int32, m_max=12_int32, min_residuals_per_bin=2_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive ierr")
         call assert_equal_array_int(out%n_per_point, [(3, i_gene=1, n_studies*n_points)], n_studies*n_points, &
                                     name//"three genes per study and point", n_rows=n_studies)
@@ -8306,9 +7626,6 @@ contains
                                      n_rows=n_points)
         call assert_equal_array_real(out%global_jsd, global_js_divergence, n_studies, 0.0_real64, &
                                      name//"global_js_divergence")
-        call assert_equal_array_real(out%p_values, p_values, n_studies, 0.0_real64, name//"p_values")
-        call assert_equal_array_real(out%p_values_observed_consensus, p_values_observed_consensus, n_studies, &
-                                     0.0_real64, name//"p_values_observed_consensus")
 
         ! bins max_n_bins_per_point+1:MAX_N_BINS of both runs' bin-sized outputs are exactly zero,
         ! which finish_js_comp_test's consensus over all MAX_N_BINS bins relies on
@@ -8342,7 +7659,10 @@ contains
     !| - JSD(P, M) = (sum_i P_i ln(P_i/m_i) + sum_i M_i ln(M_i/m_i))/(2 ln 2), m = (P + M)/2:
     !|   study 1, m = [3/8, 1/4, 3/8]: (2/3) ln(8/9) + (1/3) ln(4/3) + (5/6) ln(10/9) + (1/6) ln(2/3);
     !|   study 2, m = [11/24, 1/12, 11/24]: ln(12/11) + (5/6) ln(10/11) + (1/6) ln 2.
-    !| - One point: weight 1 each, global JSD = the point's JSD; n_permutations 0 gives NaN p-values (not computed).
+    !| - One point: weight 1 each, global JSD = the point's JSD.
+    !| The occupancy bin-count search and the symmetric divergence (the defaults before Stone-equal and
+    !| pairwise K = 2 became the defaults) are passed explicitly, because the expected values above were
+    !| derived for them.
     subroutine test_run_adaptive_ragged_hand_traceable()
         real(real64) :: gene_means(3, 2), residuals(2, 3, 2), expected_js(2)
         integer(int32) :: ierr, i_bin
@@ -8350,8 +7670,8 @@ contains
         character(len=*), parameter :: name = "test_run_adaptive_ragged_hand_traceable: "
 
         call build_adaptive_final_fixture(gene_means, residuals)
-        call run_adaptive_final(gene_means, residuals, reshape([1, 3], [2, 1]), out, ierr, n_permutations=0_int32, &
-                                m_min=2_int32, m_max=4_int32, min_residuals_per_bin=1_int32)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3], [2, 1]), out, ierr, m_min=2_int32, m_max=4_int32, &
+                                min_residuals_per_bin=1_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
 
         expected_js(1) = ((2.0_real64/3.0_real64)*log(8.0_real64/9.0_real64) + (1.0_real64/3.0_real64)*log(4.0_real64/3.0_real64) &
@@ -8386,9 +7706,6 @@ contains
         call assert_equal_array_real(out%js(1, :), expected_js, 2_int32, TOL, name//"js_divergences")
         call assert_equal_array_real(out%global_jsd, expected_js, 2_int32, TOL, name//"global_js_divergence")
         call assert_equal_array_real(out%weights(1, :), [1.0_real64, 1.0_real64], 2_int32, TOL, name//"weights")
-        call assert_true(all(ieee_is_nan(out%p_values)), name//"n_permutations=0 -> p_values are NaN (not computed)")
-        call assert_true(all(ieee_is_nan(out%p_values_observed_consensus)), &
-                         name//"n_permutations=0 -> p_values_observed_consensus are NaN (not computed)")
     end subroutine test_run_adaptive_ragged_hand_traceable
 
     !> Issue #217 (D4): a reversed range is a runtime error. build_adaptive_final_fixture with the
@@ -8406,10 +7723,6 @@ contains
                                 min_residuals_per_bin=1_int32)
         call assert_err(ierr, ERR_INVALID_INPUT, name//"first > last", arg_pos=0_int32)
         call assert_equal_array_int(out%n_bins, [-7, -7], 2_int32, name//"Pass B never ran")
-        call assert_equal_array_real(out%p_values, [-7.0_real64, -7.0_real64], 2_int32, 0.0_real64, &
-                                     name//"permutation test never ran")
-        call assert_equal_array_real(out%p_values_observed_consensus, [-7.0_real64, -7.0_real64], 2_int32, 0.0_real64, &
-                                     name//"permutation test never ran (observed-consensus p-values)")
     end subroutine test_run_adaptive_reversed_range_sets_ierr
 
     !> Issue #217 (D4b): a range reaching past the non-NaN pooled means is a runtime error.
@@ -8430,7 +7743,7 @@ contains
 
         ! the same point ending at the last non-NaN position 5 is accepted
         call run_adaptive_final(gene_means, residuals, reshape([1, 3, 4, 5], [2, 2]), out, ierr, &
-                                n_permutations=0_int32, min_residuals_per_bin=1_int32)
+                                min_residuals_per_bin=1_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[4,5] accepted")
         call assert_equal_array_int(out%n_per_point(:, 2), [1, 1], 2_int32, name//"[4,5] = s2g2, s1g3")
     end subroutine test_run_adaptive_range_beyond_valid_pool_sets_ierr
@@ -8495,8 +7808,7 @@ contains
         call assert_equal_int(status, ERR_OK, name//"construction status")
         call assert_true(n_points >= 2_int32, name//"several reference points")
 
-        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), out, ierr, n_permutations=200_int32, &
-                                random_seed=11_int32, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), out, ierr, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_equal_array_int(out%n_per_point, n_per_point(:, 1:n_points), n_studies*n_points, &
                                     name//"counts equal the construction's", n_rows=n_studies)
@@ -8517,12 +7829,8 @@ contains
         do i_study = 1, n_studies
             call assert_equal_real(sum(out%weights(:, i_study)), 1.0_real64, TOL, name//"weights sum to 1")
         end do
-        call assert_true(all(out%p_values > 0.0_real64 .and. out%p_values <= 1.0_real64), name//"p-values in (0, 1]")
-        call assert_true(all(out%p_values_observed_consensus > 0.0_real64 .and. &
-                             out%p_values_observed_consensus <= 1.0_real64), name//"observed-consensus p-values in (0, 1]")
 
-        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), again, ierr, n_permutations=200_int32, &
-                                random_seed=11_int32, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), again, ierr, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"repeat ierr")
         call assert_equal_array_int(again%n_bins, out%n_bins, n_points, name//"repeat n_bins_per_point")
         call assert_equal_array_int(again%counts(:, 1:n_bins, :), out%counts(:, 1:n_bins, :), n_bins*n_points*n_studies, &
@@ -8533,9 +7841,6 @@ contains
         call assert_equal_array_real(again%weights, out%weights, n_points*n_studies, 0.0_real64, name//"repeat weights", &
                                      n_rows=n_points)
         call assert_equal_array_real(again%global_jsd, out%global_jsd, n_studies, 0.0_real64, name//"repeat global JSD")
-        call assert_equal_array_real(again%p_values, out%p_values, n_studies, 0.0_real64, name//"repeat p-values")
-        call assert_equal_array_real(again%p_values_observed_consensus, out%p_values_observed_consensus, n_studies, &
-                                     0.0_real64, name//"repeat observed-consensus p-values")
     end subroutine test_run_adaptive_end_to_end_after_construction
 
     !> Issue #217 (D7): the generated wrapper's validation, each blamed by its position: a range
@@ -8640,7 +7945,7 @@ contains
                                    delta_min_consecutive_transitions, min_study_neighbors, succeeding_ci_overlap, &
                                    random_seed, tau, mad_distance_factor, max_pooled_residuals, m_min, m_max, &
                                    gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, &
-                                   bin_count_mode, omit_plateau_mode, delta_abs_tolerance, bootstrap_mode)
+                                   bin_count_mode, omit_plateau_mode, delta_abs_tolerance, divergence_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -8691,7 +7996,7 @@ contains
             !! `.true.`: call the search without `plateau_mode` (`plateau_mode` must then be absent)
         real(real64), intent(in), optional :: delta_abs_tolerance
             !! Forwarded to the search
-        integer(int32), intent(in), optional :: bootstrap_mode
+        integer(int32), intent(in), optional :: divergence_mode
             !! Forwarded to the search (absent: the search's default)
         integer(int32) :: n_studies, n_genes, n_reps, cap, bounds_ierr, seed
         ! Left unallocated to call the search without plateau_mode: an unallocated allocatable
@@ -8771,7 +8076,7 @@ contains
                                                         max_pooled_residuals=max_pooled_residuals, &
                                                         min_study_neighbors=min_study_neighbors, &
                                                         bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
-                                                        bootstrap_mode=bootstrap_mode, ierr=ierr)
+                                                        divergence_mode=divergence_mode, ierr=ierr)
     end subroutine run_adaptive_search
 
     !> Test helper: the trace column whose `trace_k_start` equals the selected `k_start`, or 0.
@@ -9297,8 +8602,7 @@ contains
             call assert_equal_int(status, ERR_OK, name//"construction ok")
             n_pts = out%trace_n_points(t)
             call assert_equal_int(n_points, n_pts, name//"point count")
-            call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), run, ierr, n_permutations=10_int32, &
-                                    m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
+            call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), run, ierr, m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
                                     gamma_occupancy=gamma_occupancy, &
                                     lower_residual_range_quantile=lower_residual_range_quantile, &
                                     upper_residual_range_quantile=upper_residual_range_quantile)
@@ -9446,14 +8750,17 @@ contains
     end function replay_fractional_overlap
 
     !> CI-overlap plateau whose best candidate is EARLIER than the one the loop stops at: fixture B,
-    !| default CI-overlap mode with METHOD_JOIN_MIN and 0.9, seed 1 (found by running it: the search
-    !| stops at candidate 3 while candidate 2 is the best). The expected best is replayed here from
+    !| CI-overlap mode with METHOD_JOIN_MIN and 0.9, the symmetric divergence, seed 7 (a pinned seed,
+    !| found by running seeds 1, 2, ... with the per-study bootstrap: the search stops at candidate 3
+    !| while candidate 2 is the best). The symmetric divergence is passed explicitly: with two
+    !| studies the default pairwise divergence gives both studies the same interval, so the number
+    !| of studies passing the overlap is 0 or 2 and a best with exactly one passing study, which
+    !| this case needs, cannot occur. The expected best is replayed here from
     !| the traced intervals with the documented rule: a candidate whose number of studies with
     !| overlap >= 0.9 against the running best is smaller than the best's own stops the search and
     !| keeps the best; otherwise it becomes the best, and all studies passing stops the search.
     !| The selected knobs and point count must be the replayed best's, taken from the candidate
-    !| log, not the stopping candidate's. The fixture was found with the pooled bootstrap, so it is
-    !| passed explicitly (`MODE_BOOTSTRAP_POOLED`).
+    !| log, not the stopping candidate's.
     subroutine test_adaptive_search_ci_plateau_keeps_earlier_best()
         character(len=*), parameter :: name = "test_adaptive_search_ci_plateau_keeps_earlier_best: "
         real(real64) :: gene_means(500, 2), residuals(3, 500, 2), best_ci(2, 2)
@@ -9461,7 +8768,8 @@ contains
         integer(int32) :: ierr, t, i_study, n_exceeded, best_count, best_t, stop_t
 
         call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
-        call run_adaptive_search(gene_means, residuals, out, ierr, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call run_adaptive_search(gene_means, residuals, out, ierr, random_seed=7_int32, &
+                                 divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_equal_array_int(out%cand_status(1:out%n_tried), [(ERR_OK, t=1, out%n_tried)], &
@@ -10447,9 +9755,8 @@ contains
     !> Test helper: run_js_comp_test on the golden fixture (3 points, 4 neighbors, m in [2, 12]),
     !| `bin_count_mode` passed only when given. Returns the outputs needed by the Stone tests.
     subroutine run_golden_with_mode(neighborhood_indices, n_bins, failed, range_low, range_high, n_pooled, min_occ, &
-                                    mean_occ, max_occ, sturges, fd, pmfs, counts, js, weights, global_jsd, p_values, &
-                                    p_values_observed, ierr, min_residuals_per_bin, n_permutations, gamma_occupancy, &
-                                    bin_count_mode)
+                                    mean_occ, max_occ, sturges, fd, pmfs, counts, js, weights, global_jsd, ierr, &
+                                    min_residuals_per_bin, gamma_occupancy, bin_count_mode)
         integer(int32), intent(out) :: neighborhood_indices(4, 3, 3)
             !! Pass A gene indices
         integer(int32), intent(out) :: n_bins(3)
@@ -10482,15 +9789,9 @@ contains
             !! Per-point weights
         real(real64), intent(out) :: global_jsd(3)
             !! Global JSD per study
-        real(real64), intent(out) :: p_values(3)
-            !! Permutation p-values
-        real(real64), intent(out) :: p_values_observed(3)
-            !! Permutation p-values against the observed consensus
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), intent(in) :: min_residuals_per_bin
-            !! Forwarded to run_js_comp_test
-        integer(int32), intent(in) :: n_permutations
             !! Forwarded to run_js_comp_test
         real(real64), intent(in), optional :: gamma_occupancy
             !! Forwarded to run_js_comp_test
@@ -10504,33 +9805,34 @@ contains
         call run_js_comp_test(3_int32, 10_int32, 4_int32, 3_int32, 4_int32, gene_means, residuals, &
                               x_star, neighborhood_indices, ranges, n_bins, range_low, range_high, max_n_bins, failed, &
                               n_pooled, min_occ, mean_occ, max_occ, sturges, fd, pmfs, counts, included, mean_pmf, &
-                              mean_pmf_counts, mean_included, js, weights, global_jsd, p_values, p_values_observed, &
-                              ierr=ierr, n_permutations=n_permutations, random_seed=7_int32, m_min=2_int32, &
+                              mean_pmf_counts, mean_included, js, weights, global_jsd, &
+                              ierr=ierr, m_min=2_int32, &
                               m_max=12_int32, min_residuals_per_bin=min_residuals_per_bin, gamma_occupancy=gamma_occupancy, &
                               bin_count_mode=bin_count_mode)
     end subroutine run_golden_with_mode
 
-    !> run_js_comp_test with `bin_count_mode` omitted and with MODE_BIN_COUNT_OCCUPANCY passed
-    !| explicitly gives identical outputs, exactly (golden fixture, floor 3, 300 permutations,
-    !| seed 7) -- and those are the golden capture's bin counts 6/5/3.
-    subroutine test_run_js_comp_test_bin_count_mode_default_is_occupancy()
-        character(len=*), parameter :: name = "test_run_js_comp_test_bin_count_mode_default_is_occupancy: "
+    !> run_js_comp_test with `bin_count_mode` omitted and with MODE_BIN_COUNT_STONE_EQUAL passed
+    !| explicitly gives identical outputs, exactly (golden fixture, floor 3) -- and not the
+    !| occupancy search's golden bin counts 6/5/3, so a default that fell back to occupancy fails.
+    subroutine test_run_js_comp_test_bin_count_mode_default_is_stone_equal()
+        character(len=*), parameter :: name = "test_run_js_comp_test_bin_count_mode_default_is_stone_equal: "
         integer(int32) :: idx_a(4, 3, 3), idx_b(4, 3, 3), bins_a(3), bins_b(3), pooled_a(3), pooled_b(3)
         integer(int32) :: min_a(3), min_b(3), max_a(3), max_b(3), st_a(3), st_b(3), fd_a(3), fd_b(3)
         integer(int32) :: counts_a(3, MAX_N_BINS, 3), counts_b(3, MAX_N_BINS, 3), ierr_a, ierr_b
         logical(c_bool) :: failed_a(3), failed_b(3)
         real(real64) :: low_a(3), low_b(3), high_a(3), high_b(3), mean_a(3), mean_b(3)
         real(real64) :: pmfs_a(3, MAX_N_BINS, 3), pmfs_b(3, MAX_N_BINS, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
-        real(real64) :: g_a(3), g_b(3), p_a(3), p_b(3), po_a(3), po_b(3)
+        real(real64) :: g_a(3), g_b(3)
 
         call run_golden_with_mode(idx_a, bins_a, failed_a, low_a, high_a, pooled_a, min_a, mean_a, max_a, st_a, fd_a, &
-                                  pmfs_a, counts_a, js_a, w_a, g_a, p_a, po_a, ierr_a, 3_int32, 300_int32)
+                                  pmfs_a, counts_a, js_a, w_a, g_a, ierr_a, 3_int32)
         call run_golden_with_mode(idx_b, bins_b, failed_b, low_b, high_b, pooled_b, min_b, mean_b, max_b, st_b, fd_b, &
-                                  pmfs_b, counts_b, js_b, w_b, g_b, p_b, po_b, ierr_b, 3_int32, 300_int32, &
-                                  bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
+                                  pmfs_b, counts_b, js_b, w_b, g_b, ierr_b, 3_int32, &
+                                  bin_count_mode=MODE_BIN_COUNT_STONE_EQUAL)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"omitted: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"explicit: ierr")
-        call assert_equal_array_int(bins_a, [6, 5, 3], 3_int32, name//"omitted: the golden bin counts")
+        call assert_true(logical(any(bins_a /= [6, 5, 3]), kind=c_bool), &
+                         name//"omitted: not the occupancy search's golden bin counts")
         call assert_equal_array_int(bins_b, bins_a, 3_int32, name//"n_bins_per_point")
         call assert_equal_array_logical(failed_b, failed_a, 3_int32, name//"occupancy_failed")
         call assert_equal_array_real(low_b, low_a, 3_int32, 0.0_real64, name//"R_low")
@@ -10547,9 +9849,7 @@ contains
         call assert_equal_array_real(js_b, js_a, 9_int32, 0.0_real64, name//"js_divergences")
         call assert_equal_array_real(w_b, w_a, 9_int32, 0.0_real64, name//"weights")
         call assert_equal_array_real(g_b, g_a, 3_int32, 0.0_real64, name//"global_js_divergence")
-        call assert_equal_array_real(p_b, p_a, 3_int32, 0.0_real64, name//"p_values")
-        call assert_equal_array_real(po_b, po_a, 3_int32, 0.0_real64, name//"p_values_observed_consensus")
-    end subroutine test_run_js_comp_test_bin_count_mode_default_is_occupancy
+    end subroutine test_run_js_comp_test_bin_count_mode_default_is_stone_equal
 
     !> run_js_comp_test in every Stone mode: each point's bin count, failure flag, range and
     !| occupancy diagnostics equal determine_bin_count_stone on that point's pool, for the floors
@@ -10566,7 +9866,7 @@ contains
             counts(3, MAX_N_BINS, 3)
         integer(int32) :: ierr, i_mode, i_floor, i_point, bins_floor0(3)
         logical(c_bool) :: failed(3)
-        real(real64) :: low(3), high(3), mean_occ(3), pmfs(3, MAX_N_BINS, 3), js(3, 3), w(3, 3), g(3), p(3), po(3)
+        real(real64) :: low(3), high(3), mean_occ(3), pmfs(3, MAX_N_BINS, 3), js(3, 3), w(3, 3), g(3)
         real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
         integer(int32) :: gene_means_perms(10, 3)
         type(stone_outputs) :: ref
@@ -10577,7 +9877,7 @@ contains
             do i_floor = 1, 4
                 write (case_text, '(a,i0,a,i0,a)') "mode ", modes(i_mode), ", floor ", floors(i_floor), ": "
                 call run_golden_with_mode(idx, bins, failed, low, high, pooled, min_occ, mean_occ, max_occ, st, fd, &
-                                          pmfs, counts, js, w, g, p, po, ierr, floors(i_floor), 0_int32, &
+                                          pmfs, counts, js, w, g, ierr, floors(i_floor), &
                                           bin_count_mode=modes(i_mode))
                 call assert_equal_int(get_err_code(ierr), ERR_OK, name//trim(case_text)//"ierr")
                 do i_point = 1, 3
@@ -10603,13 +9903,13 @@ contains
                              name//"a Stone pick differs from the occupancy search")
         end do
         call run_golden_with_mode(idx, bins, failed, low, high, pooled, min_occ, mean_occ, max_occ, st, fd, &
-                                  pmfs, counts, js, w, g, p, po, ierr, 0_int32, 0_int32, &
+                                  pmfs, counts, js, w, g, ierr, 0_int32, &
                                   bin_count_mode=MODE_BIN_COUNT_STONE_EQUAL)
         call assert_equal_array_int(bins, [5, 4, 2], 3_int32, name//"equal weights, floor 0: 5/4/2")
     end subroutine test_run_js_comp_test_stone_matches_standalone
 
     !> In a Stone mode `gamma_occupancy` has no effect: run_js_comp_test with gamma 1.05 and 4.0
-    !| (floor 5, size-weighted, 300 permutations) gives identical outputs, p-values included.
+    !| (floor 5, size-weighted) gives identical outputs.
     subroutine test_run_js_comp_test_stone_ignores_gamma()
         character(len=*), parameter :: name = "test_run_js_comp_test_stone_ignores_gamma: "
         integer(int32) :: idx_a(4, 3, 3), idx_b(4, 3, 3), bins_a(3), bins_b(3), pooled_a(3), pooled_b(3)
@@ -10618,13 +9918,13 @@ contains
         logical(c_bool) :: failed_a(3), failed_b(3)
         real(real64) :: low_a(3), low_b(3), high_a(3), high_b(3), mean_a(3), mean_b(3)
         real(real64) :: pmfs_a(3, MAX_N_BINS, 3), pmfs_b(3, MAX_N_BINS, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
-        real(real64) :: g_a(3), g_b(3), p_a(3), p_b(3), po_a(3), po_b(3)
+        real(real64) :: g_a(3), g_b(3)
 
         call run_golden_with_mode(idx_a, bins_a, failed_a, low_a, high_a, pooled_a, min_a, mean_a, max_a, st_a, fd_a, &
-                                  pmfs_a, counts_a, js_a, w_a, g_a, p_a, po_a, ierr_a, 5_int32, 300_int32, &
+                                  pmfs_a, counts_a, js_a, w_a, g_a, ierr_a, 5_int32, &
                                   gamma_occupancy=1.05_real64, bin_count_mode=MODE_BIN_COUNT_STONE_SIZE_WEIGHTED)
         call run_golden_with_mode(idx_b, bins_b, failed_b, low_b, high_b, pooled_b, min_b, mean_b, max_b, st_b, fd_b, &
-                                  pmfs_b, counts_b, js_b, w_b, g_b, p_b, po_b, ierr_b, 5_int32, 300_int32, &
+                                  pmfs_b, counts_b, js_b, w_b, g_b, ierr_b, 5_int32, &
                                   gamma_occupancy=4.0_real64, bin_count_mode=MODE_BIN_COUNT_STONE_SIZE_WEIGHTED)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"gamma 1.05: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"gamma 4.0: ierr")
@@ -10636,8 +9936,6 @@ contains
         call assert_equal_int(maxval(bins_a), 3_int32, name//"widest bin count")
         call assert_equal_array_int(counts_b(:, 1:3, :), counts_a(:, 1:3, :), 3_int32*9_int32, name//"counts")
         call assert_equal_array_real(g_b, g_a, 3_int32, 0.0_real64, name//"global_js_divergence")
-        call assert_equal_array_real(p_b, p_a, 3_int32, 0.0_real64, name//"p_values")
-        call assert_equal_array_real(po_b, po_a, 3_int32, 0.0_real64, name//"p_values_observed_consensus")
     end subroutine test_run_js_comp_test_stone_ignores_gamma
 
     !> Test helper: the adaptive Stone fixture. Means as fixture B of the adaptive search tests
@@ -10759,11 +10057,10 @@ contains
         n_per_point = all_n_per_point(:, 1:n_points)
     end subroutine construct_adaptive_stone_fixture
 
-    !> run_js_comp_test_adaptive with `bin_count_mode` omitted and with MODE_BIN_COUNT_OCCUPANCY
-    !| passed explicitly gives identical outputs, exactly (adaptive Stone fixture, floor 10, 50
-    !| permutations).
-    subroutine test_adaptive_final_bin_count_mode_default_is_occupancy()
-        character(len=*), parameter :: name = "test_adaptive_final_bin_count_mode_default_is_occupancy: "
+    !> run_js_comp_test_adaptive with `bin_count_mode` omitted and with MODE_BIN_COUNT_STONE_EQUAL
+    !| passed explicitly gives identical outputs, exactly (adaptive Stone fixture, floor 10).
+    subroutine test_adaptive_final_bin_count_mode_default_is_stone_equal()
+        character(len=*), parameter :: name = "test_adaptive_final_bin_count_mode_default_is_stone_equal: "
         real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
         integer(int32), allocatable :: ranges(:, :), n_per_point(:, :)
         type(adaptive_run_outputs) :: a, b
@@ -10771,10 +10068,8 @@ contains
 
         call build_adaptive_stone_fixture(gene_means, residuals)
         call construct_adaptive_stone_fixture(gene_means, residuals, ranges, n_per_point, n_points)
-        call run_adaptive_final(gene_means, residuals, ranges, a, ierr_a, n_permutations=50_int32, &
-                                min_residuals_per_bin=10_int32)
-        call run_adaptive_final(gene_means, residuals, ranges, b, ierr_b, n_permutations=50_int32, &
-                                min_residuals_per_bin=10_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
+        call run_adaptive_final(gene_means, residuals, ranges, a, ierr_a, min_residuals_per_bin=10_int32)
+        call run_adaptive_final(gene_means, residuals, ranges, b, ierr_b, min_residuals_per_bin=10_int32, bin_count_mode=MODE_BIN_COUNT_STONE_EQUAL)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"omitted: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"explicit: ierr")
         n = n_points
@@ -10791,10 +10086,7 @@ contains
         call assert_equal_array_int(b%counts, a%counts, size(a%counts, kind=int32), name//"counts")
         call assert_equal_array_real(b%js, a%js, size(a%js, kind=int32), 0.0_real64, name//"js_divergences")
         call assert_equal_array_real(b%global_jsd, a%global_jsd, 3_int32, 0.0_real64, name//"global_js_divergence")
-        call assert_equal_array_real(b%p_values, a%p_values, 3_int32, 0.0_real64, name//"p_values")
-        call assert_equal_array_real(b%p_values_observed_consensus, a%p_values_observed_consensus, 3_int32, 0.0_real64, &
-                                     name//"p_values_observed_consensus")
-    end subroutine test_adaptive_final_bin_count_mode_default_is_occupancy
+    end subroutine test_adaptive_final_bin_count_mode_default_is_stone_equal
 
     !> run_js_comp_test_adaptive in every Stone mode, with per-study gene counts that differ
     !| between studies: every point's bin count, flag, range and diagnostics equal
@@ -10819,8 +10111,7 @@ contains
         do i_mode = 1, 3
             do i_floor = 1, 3
                 write (case_text, '(a,i0,a,i0,a)') "mode ", modes(i_mode), ", floor ", floors(i_floor), ": "
-                call run_adaptive_final(gene_means, residuals, ranges, run, ierr, n_permutations=0_int32, &
-                                        min_residuals_per_bin=floors(i_floor), bin_count_mode=modes(i_mode))
+                call run_adaptive_final(gene_means, residuals, ranges, run, ierr, min_residuals_per_bin=floors(i_floor), bin_count_mode=modes(i_mode))
                 call assert_equal_int(get_err_code(ierr), ERR_OK, name//trim(case_text)//"ierr")
                 call assert_equal_array_int(run%n_per_point, n_per_point, 3_int32*n_points, &
                                             name//trim(case_text)//"decoded counts")
@@ -10848,11 +10139,9 @@ contains
 
         call build_adaptive_stone_fixture(gene_means, residuals)
         call construct_adaptive_stone_fixture(gene_means, residuals, ranges, n_per_point, n_points)
-        call run_adaptive_final(gene_means, residuals, ranges, a, ierr_a, n_permutations=50_int32, &
-                                min_residuals_per_bin=20_int32, gamma_occupancy=1.05_real64, &
+        call run_adaptive_final(gene_means, residuals, ranges, a, ierr_a, min_residuals_per_bin=20_int32, gamma_occupancy=1.05_real64, &
                                 bin_count_mode=MODE_BIN_COUNT_STONE_POOLED)
-        call run_adaptive_final(gene_means, residuals, ranges, b, ierr_b, n_permutations=50_int32, &
-                                min_residuals_per_bin=20_int32, gamma_occupancy=4.0_real64, &
+        call run_adaptive_final(gene_means, residuals, ranges, b, ierr_b, min_residuals_per_bin=20_int32, gamma_occupancy=4.0_real64, &
                                 bin_count_mode=MODE_BIN_COUNT_STONE_POOLED)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"gamma 1.05: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"gamma 4.0: ierr")
@@ -10860,14 +10149,13 @@ contains
         call assert_equal_array_logical(b%occ_failed, a%occ_failed, n_points, name//"occupancy_failed")
         call assert_equal_array_int(b%counts, a%counts, size(a%counts, kind=int32), name//"counts")
         call assert_equal_array_real(b%global_jsd, a%global_jsd, 3_int32, 0.0_real64, name//"global_js_divergence")
-        call assert_equal_array_real(b%p_values, a%p_values, 3_int32, 0.0_real64, name//"p_values")
     end subroutine test_adaptive_final_stone_ignores_gamma
 
     !> run_js_comp_test_adaptive_parameter_search with `bin_count_mode` omitted and with
-    !| MODE_BIN_COUNT_OCCUPANCY passed explicitly gives identical outputs, exactly (fixture B,
+    !| MODE_BIN_COUNT_STONE_EQUAL passed explicitly gives identical outputs, exactly (fixture B,
     !| effect size with loose thresholds, as test_adaptive_search_final_bins_match_selected_trace).
-    subroutine test_adaptive_search_bin_count_mode_default_is_occupancy()
-        character(len=*), parameter :: name = "test_adaptive_search_bin_count_mode_default_is_occupancy: "
+    subroutine test_adaptive_search_bin_count_mode_default_is_stone_equal()
+        character(len=*), parameter :: name = "test_adaptive_search_bin_count_mode_default_is_stone_equal: "
         real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
         type(adaptive_search_outputs) :: a, b
         integer(int32) :: ierr_a, ierr_b
@@ -10877,7 +10165,7 @@ contains
                                  delta_median_threshold=10.0_real64, delta_max_threshold=10.0_real64)
         call run_adaptive_search(gene_means, residuals, b, ierr_b, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
                                  delta_median_threshold=10.0_real64, delta_max_threshold=10.0_real64, &
-                                 bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
+                                 bin_count_mode=MODE_BIN_COUNT_STONE_EQUAL)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"omitted: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"explicit: ierr")
         call assert_equal_array_int([b%k_start, b%k_step, b%k_max, b%n_points, b%n_admissible, b%n_tried], &
@@ -10894,7 +10182,7 @@ contains
         ! whatever the caller's buffer held, which differs between two calls under -O3
         call assert_equal_array_int(b%cand_status(1:a%n_tried), a%cand_status(1:a%n_tried), a%n_tried, &
                                     name//"candidate_status")
-    end subroutine test_adaptive_search_bin_count_mode_default_is_occupancy
+    end subroutine test_adaptive_search_bin_count_mode_default_is_stone_equal
 
     !> run_js_comp_test_adaptive_parameter_search in every Stone mode (adaptive Stone fixture,
     !| effect size with tiny thresholds so every candidate gets a trace column): for every traced
@@ -11013,8 +10301,8 @@ contains
     ! ---------------------------------------------------------------------------------------------
     ! `bin_count_mode` on run_js_comp_test_parameter_search (the fixed-k search). Fixture: the
     ! adaptive Stone fixture (300 genes, 3 studies, 4 replicates, distinct means, logistic
-    ! residuals), whose grid in MODE_NEIGHBORHOOD_SIZE_BOTH (passed by run_fixed_k_search) has the
-    ! two candidates (300, 4) and (300, 2). Both gates are relaxed
+    ! residuals), whose grid with the GRID_300_* options (passed by run_fixed_k_search) has the
+    ! two candidates (300, 4) and (240, 5). Both gates are relaxed
     ! (overlap 0) and the effect-size plateau thresholds are tiny, so every admissible candidate
     ! gets a trace column. The Stone expectations are not hand values: every traced point must
     ! equal determine_bin_count_stone on that point's own pool, rebuilt here.
@@ -11023,10 +10311,11 @@ contains
     !> Test helper: run_js_comp_test_parameter_search on `gene_means`/`residuals` with every
     !| output allocated from calc_js_comp_test_candidate_bounds, 5 bootstraps, `METHOD_JOIN_MIN`,
     !| `min_neighbor_overlap = 0`, the effect-size plateau with thresholds 1e-300 (never reached by
-    !| a nonzero change), seed 1; the remaining optionals are forwarded.
+    !| a nonzero change), seed 1, and unless given the two-candidate grid of GRID_300_POINTS_FACTOR
+    !| (300, 4), (240, 5); the remaining optionals are forwarded.
     subroutine run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin, gamma_occupancy, &
-                                  bin_count_mode, delta_abs_tolerance, delta_min_consecutive_transitions, bootstrap_mode, &
-                                  plateau_mode)
+                                  bin_count_mode, delta_abs_tolerance, delta_min_consecutive_transitions, divergence_mode, &
+                                  plateau_mode, grid_points_factor, grid_min_points)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -11045,16 +10334,27 @@ contains
             !! Forwarded to the search
         integer(int32), intent(in), optional :: delta_min_consecutive_transitions
             !! Forwarded to the search
-        integer(int32), intent(in), optional :: bootstrap_mode
+        integer(int32), intent(in), optional :: divergence_mode
             !! Forwarded to the search (absent: the search's default)
         integer(int32), intent(in), optional :: plateau_mode
             !! Forwarded to the search; MODE_PLATEAU_EFFECT_SIZE when absent
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Forwarded to the search and the candidate bounds; GRID_300_POINTS_FACTOR when absent
+        integer(int32), intent(in), optional :: grid_min_points
+            !! Forwarded to the search and the candidate bounds; GRID_300_MIN_POINTS when absent
         integer(int32) :: n_studies, n_genes, n_reps, max_points, max_neighbors, bounds_ierr, actual_plateau_mode
+        integer(int32) :: actual_grid_min_points
+        real(real64) :: actual_grid_points_factor
 
         n_genes = size(gene_means, 1, kind=int32)
         n_studies = size(gene_means, 2, kind=int32)
         n_reps = size(residuals, 1, kind=int32)
-        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
+        actual_grid_points_factor = GRID_300_POINTS_FACTOR
+        if (present(grid_points_factor)) actual_grid_points_factor = grid_points_factor
+        actual_grid_min_points = GRID_300_MIN_POINTS
+        if (present(grid_min_points)) actual_grid_min_points = grid_min_points
+        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, actual_grid_points_factor, &
+                                                actual_grid_min_points, ierr=bounds_ierr)
         call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_search: bounds ierr")
         actual_plateau_mode = MODE_PLATEAU_EFFECT_SIZE
         if (present(plateau_mode)) actual_plateau_mode = plateau_mode
@@ -11093,10 +10393,11 @@ contains
                                                min_neighbor_overlap=0.0_real64, plateau_mode=actual_plateau_mode, &
                                                delta_median_threshold=1.0e-300_real64, &
                                                delta_max_threshold=1.0e-300_real64, gamma_occupancy=gamma_occupancy, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_points_factor=actual_grid_points_factor, &
+                                               grid_min_points=actual_grid_min_points, random_seed=1_int32, &
                                                bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
                                                delta_min_consecutive_transitions=delta_min_consecutive_transitions, &
-                                               bootstrap_mode=bootstrap_mode)
+                                               divergence_mode=divergence_mode)
     end subroutine run_fixed_k_search
 
     !> Test helper: two fixed-k searches returned the same selection, the same final bin counts and
@@ -11154,10 +10455,10 @@ contains
     end subroutine assert_fixed_k_searches_equal
 
     !> run_js_comp_test_parameter_search with `bin_count_mode` omitted and with
-    !| MODE_BIN_COUNT_OCCUPANCY passed explicitly gives identical outputs, exactly (Stone fixture,
+    !| MODE_BIN_COUNT_STONE_EQUAL passed explicitly gives identical outputs, exactly (Stone fixture,
     !| floor 3: both candidates are traced, as simulated with the Python bindings).
-    subroutine test_param_search_bin_count_mode_default_is_occupancy()
-        character(len=*), parameter :: name = "test_param_search_bin_count_mode_default_is_occupancy: "
+    subroutine test_param_search_bin_count_mode_default_is_stone_equal()
+        character(len=*), parameter :: name = "test_param_search_bin_count_mode_default_is_stone_equal: "
         real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
         type(fixed_k_search_outputs) :: a, b
         integer(int32) :: ierr_a, ierr_b
@@ -11165,12 +10466,12 @@ contains
         call build_adaptive_stone_fixture(gene_means, residuals)
         call run_fixed_k_search(gene_means, residuals, a, ierr_a, min_residuals_per_bin=3_int32)
         call run_fixed_k_search(gene_means, residuals, b, ierr_b, min_residuals_per_bin=3_int32, &
-                                bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
+                                bin_count_mode=MODE_BIN_COUNT_STONE_EQUAL)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"omitted: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"explicit: ierr")
         call assert_equal_int(a%n_admissible, 2_int32, name//"both candidates traced")
         call assert_fixed_k_searches_equal(name, a, b)
-    end subroutine test_param_search_bin_count_mode_default_is_occupancy
+    end subroutine test_param_search_bin_count_mode_default_is_stone_equal
 
     !> run_js_comp_test_parameter_search in every Stone mode (Stone fixture, floors 0 and 3): for
     !| every traced candidate, its neighborhoods rebuilt from the traced `(n_points, n_neighbors)`
@@ -11182,6 +10483,7 @@ contains
     !| candidate 1 sum to 1819/1798/1250 at floor 0 and 1735/1703/1234 at floor 3 for equal,
     !| size-weighted and pooled). Candidate 1's Stone picks also differ from the occupancy
     !| search's.
+    !| The occupancy run passes MODE_BIN_COUNT_OCCUPANCY explicitly, since it is no longer the default.
     subroutine test_param_search_stone_matches_standalone()
         character(len=*), parameter :: name = "test_param_search_stone_matches_standalone: "
         integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
@@ -11196,7 +10498,8 @@ contains
         character(len=48) :: case_text
 
         call build_adaptive_stone_fixture(gene_means, residuals)
-        call run_fixed_k_search(gene_means, residuals, occupancy, ierr, min_residuals_per_bin=0_int32)
+        call run_fixed_k_search(gene_means, residuals, occupancy, ierr, min_residuals_per_bin=0_int32, &
+                                bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"occupancy run: ierr")
         do i_mode = 1, 3
             do i_floor = 1, 2
@@ -11264,22 +10567,33 @@ contains
     ! ---------------------------------------------------------------------------------------------
     ! The lower bounds of run_js_comp_test_parameter_search's `max_n_points_candidate` and
     ! `max_n_neighbors_candidate`: both size its outputs and work arrays, so a value below what
-    ! calc_js_comp_test_candidate_bounds returns for the gene count must be rejected by the
-    ! wrapper's validation rather than written past. Fixture: 300 genes, 2 studies, 3 replicates.
-    ! The grid (MODE_NEIGHBORHOOD_SIZE_BOTH, passed by the helper below) is (300, 4) and (300, 2)
-    ! (`ceil(4*sqrt(300))=70`, clamped up to `MIN_POINTS=300`;
-    ! `floor(300/(0.25*300))=4`, `floor(300/(0.5*300))=2`), and the bounds are exactly 300 and 4.
+    ! calc_js_comp_test_candidate_bounds returns for the gene count and the same grid options must
+    ! be rejected rather than written past. The wrappers only check DM_MIN(1); the implementation
+    ! checks both jointly against the bounds of the grid the call's own `grid_points_factor` and
+    ! `grid_min_points` give, before any work, as a runtime error (ERR_INVALID_INPUT, its argument
+    ! position cleared by the wrapper, codegen guide 5.14), with `n_admissible_evaluated = 0`.
+    ! Fixture: 300 genes, 2 studies, 3 replicates. Default grid: `ceil(4*sqrt(300)) = 70` clamps up
+    ! to the floor 200, which is also `n_points_low`, so the single candidate
+    ! (200, `floor(300/(0.25*200)) = 6`), and the bounds are exactly 200 and 6.
     ! ---------------------------------------------------------------------------------------------
 
     !> Test helper: run_js_comp_test_parameter_search on the 300-gene fixture above with the given
     !| bounds, every output allocated from those bounds exactly as a caller who trusted them would.
-    subroutine run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr)
+    !| The grid options are forwarded (absent: the search's defaults).
+    subroutine run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr, n_admissible, &
+                                              grid_points_factor, grid_min_points)
         integer(int32), intent(in) :: max_n_points_candidate
             !! Passed as the search's `max_n_points_candidate`, and the extent of every output it sizes
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Passed as the search's `max_n_neighbors_candidate`
         integer(int32), intent(out) :: ierr
             !! The search's error code
+        integer(int32), intent(out) :: n_admissible
+            !! The search's `n_admissible_evaluated`
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: grid_min_points
+            !! Forwarded to the search
         integer(int32), parameter :: n_studies = 2, n_genes = 300, n_reps = 3
         real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies)
         type(fixed_k_search_outputs) :: out
@@ -11325,57 +10639,89 @@ contains
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
                                                out%trace_range_low, out%trace_range_high, ierr=ierr, &
                                                min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               random_seed=1_int32, grid_points_factor=grid_points_factor, &
+                                               grid_min_points=grid_min_points)
+        n_admissible = out%n_admissible
     end subroutine run_fixed_k_search_with_bounds
 
-    !> A `max_n_points_candidate` one below the bound (299 for the grid's first `n_points` of 300,
-    !| `max_n_neighbors_candidate` correct) is rejected with ERR_INVALID_INPUT at argument 8 by the
-    !| wrapper's validation, instead of the 300th reference point being written past the arrays it
-    !| sizes. The exact bounds run the search to completion.
+    !> A `max_n_points_candidate` one below the bound (199 for the default grid's first `n_points`
+    !| of 200, `max_n_neighbors_candidate` correct) is rejected by the implementation's joint
+    !| capacity check: ERR_INVALID_INPUT with no argument position through the wrapper,
+    !| `n_admissible_evaluated = 0`, instead of the 200th reference point being written past the
+    !| arrays it sizes. The exact bounds run the search to completion. The check uses the call's
+    !| grid options: the capacity (200, 6) that fits the default grid is rejected for the grid of
+    !| GRID_300_POINTS_FACTOR/GRID_300_MIN_POINTS, whose first `n_points` is 300 (its bounds are
+    !| (300, `floor(300/(0.25*240)) = 5`)), and that grid's own bounds are accepted.
     subroutine test_param_search_rejects_undersized_max_n_points_candidate()
         character(len=*), parameter :: name = "test_param_search_rejects_undersized_max_n_points_candidate: "
-        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr, n_admissible
+        integer(int32) :: grid_points_bound, grid_neighbors_bound
 
-        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr=ierr)
         call assert_equal_array_int([get_err_code(ierr), max_n_points_candidate, max_n_neighbors_candidate], &
-                                    [ERR_OK, 300_int32, 4_int32], 3_int32, name//"bounds of the 300-gene grid")
+                                    [ERR_OK, 200_int32, 6_int32], 3_int32, name//"bounds of the 300-gene default grid")
 
-        call run_fixed_k_search_with_bounds(max_n_points_candidate - 1_int32, max_n_neighbors_candidate, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected at argument 8", 8_int32)
+        call run_fixed_k_search_with_bounds(max_n_points_candidate - 1_int32, max_n_neighbors_candidate, ierr, n_admissible)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected by the implementation, no position", 0_int32)
+        call assert_equal_int(n_admissible, 0_int32, name//"rejected: n_admissible_evaluated is 0")
 
-        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr, n_admissible)
         call assert_err(ierr, ERR_OK, name//"the exact bounds are accepted")
+
+        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr, n_admissible, &
+                                            grid_points_factor=GRID_300_POINTS_FACTOR, grid_min_points=GRID_300_MIN_POINTS)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"the default grid's bounds are too small for a larger grid", 0_int32)
+        call assert_equal_int(n_admissible, 0_int32, name//"larger grid: n_admissible_evaluated is 0")
+
+        call calc_js_comp_test_candidate_bounds(300_int32, grid_points_bound, grid_neighbors_bound, &
+                                                grid_points_factor=GRID_300_POINTS_FACTOR, &
+                                                grid_min_points=GRID_300_MIN_POINTS, ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), grid_points_bound, grid_neighbors_bound], &
+                                    [ERR_OK, 300_int32, 5_int32], 3_int32, name//"bounds of the larger grid")
+        call run_fixed_k_search_with_bounds(grid_points_bound, grid_neighbors_bound, ierr, n_admissible, &
+                                            grid_points_factor=GRID_300_POINTS_FACTOR, grid_min_points=GRID_300_MIN_POINTS)
+        call assert_err(ierr, ERR_OK, name//"the larger grid's own bounds are accepted")
     end subroutine test_param_search_rejects_undersized_max_n_points_candidate
 
-    !> A `max_n_neighbors_candidate` one below the bound (3 for the grid's largest `n_neighbors` of
-    !| 4, `max_n_points_candidate` correct) is rejected with ERR_INVALID_INPUT at argument 9 by the
-    !| wrapper's validation, instead of the 4th neighbor being written past the arrays it sizes.
+    !> A `max_n_neighbors_candidate` one below the bound (5 for the default grid's largest
+    !| `n_neighbors` of 6, `max_n_points_candidate` correct) is rejected by the implementation's
+    !| joint capacity check (ERR_INVALID_INPUT, no argument position through the wrapper,
+    !| `n_admissible_evaluated = 0`), instead of the 6th neighbor being written past the arrays it
+    !| sizes.
     subroutine test_param_search_rejects_undersized_max_n_neighbors_candidate()
         character(len=*), parameter :: name = "test_param_search_rejects_undersized_max_n_neighbors_candidate: "
-        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr, n_admissible
 
-        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr=ierr)
         call assert_equal_array_int([get_err_code(ierr), max_n_points_candidate, max_n_neighbors_candidate], &
-                                    [ERR_OK, 300_int32, 4_int32], 3_int32, name//"bounds of the 300-gene grid")
+                                    [ERR_OK, 200_int32, 6_int32], 3_int32, name//"bounds of the 300-gene default grid")
 
-        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate - 1_int32, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected at argument 9", 9_int32)
+        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate - 1_int32, ierr, n_admissible)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected by the implementation, no position", 0_int32)
+        call assert_equal_int(n_admissible, 0_int32, name//"rejected: n_admissible_evaluated is 0")
     end subroutine test_param_search_rejects_undersized_max_n_neighbors_candidate
 
-    !> Test helper: validation-only call of run_js_comp_test_parameter_search for `n_genes` genes
-    !| (1 study, 1 replicate) with the given bounds and every output sized by them.
-    !| `min_residuals_per_bin = -1` (argument 39) is always invalid and is validated after the two
-    !| bounds, so the call returns before any search work: at argument 39 when both bounds pass,
-    !| at 8 or 9 when one of them fails.
-    subroutine validate_fixed_k_bounds(n_genes, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+    !> Test helper: run_js_comp_test_parameter_search for `n_genes` genes (1 study, 1 replicate,
+    !| constant data) with the given bounds and grid options and every output sized by the bounds.
+    !| Made cheap: 1 bootstrap, the occupancy bin-count search and `min_residuals_per_bin =
+    !| huge(1)`, so gate 2 rejects every candidate and no bootstrap runs. An undersized bound
+    !| returns before any work.
+    subroutine validate_fixed_k_bounds(n_genes, max_n_points_candidate, max_n_neighbors_candidate, grid_points_factor, &
+                                       grid_min_points, ierr, n_admissible)
         integer(int32), intent(in) :: n_genes
             !! Number of genes of the single study
         integer(int32), intent(in) :: max_n_points_candidate
             !! Passed as the search's `max_n_points_candidate`, and the extent of every output it sizes
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Passed as the search's `max_n_neighbors_candidate`
+        real(real64), intent(in) :: grid_points_factor
+            !! Passed to the search
+        integer(int32), intent(in) :: grid_min_points
+            !! Passed to the search
         integer(int32), intent(out) :: ierr
             !! The search's error code
+        integer(int32), intent(out) :: n_admissible
+            !! The search's `n_admissible_evaluated`
         real(real64), allocatable :: gene_means(:, :), residuals(:, :, :)
         type(fixed_k_search_outputs) :: out
         integer(int32) :: n_points_alloc
@@ -11399,8 +10745,9 @@ contains
                   out%trace_fd(n_points_alloc, MAX_CANDIDATE_PAIRS), &
                   out%trace_range_low(n_points_alloc, MAX_CANDIDATE_PAIRS), &
                   out%trace_range_high(n_points_alloc, MAX_CANDIDATE_PAIRS))
+        out%n_admissible = -1_int32
 
-        call run_js_comp_test_parameter_search(1_int32, n_genes, 1_int32, gene_means, residuals, 5_int32, &
+        call run_js_comp_test_parameter_search(1_int32, n_genes, 1_int32, gene_means, residuals, 1_int32, &
                                                METHOD_JOIN_MIN, max_n_points_candidate, max_n_neighbors_candidate, &
                                                out%n_points, out%n_neighbors, out%n_bins, out%range_low, &
                                                out%range_high, out%ci, out%plateau, out%n_admissible, &
@@ -11412,44 +10759,65 @@ contains
                                                out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
                                                out%trace_range_low, out%trace_range_high, ierr=ierr, &
-                                               min_residuals_per_bin=-1_int32)
+                                               min_residuals_per_bin=huge(1_int32), bin_count_mode=MODE_BIN_COUNT_OCCUPANCY, &
+                                               grid_points_factor=grid_points_factor, grid_min_points=grid_min_points)
+        n_admissible = out%n_admissible
     end subroutine validate_fixed_k_bounds
 
-    !> The two lower bounds of run_js_comp_test_parameter_search stay in sync with
+    !> The two lower bounds run_js_comp_test_parameter_search checks stay in sync with
     !| calc_js_comp_test_candidate_bounds, for every gene count 1..3000 and then every 997th up to
-    !| 200,406. For each count: the producer's bounds pass validation (the call fails only at the
-    !| later argument 39), one below either bound fails at its own position (8 or 9), and the
-    !| producer's bounds cover the real grid in every `neighborhood_size_mode`: `max_n_points_candidate`
-    !| equals its first `n_points` exactly, and `max_n_neighbors_candidate` is at least its largest
-    !| `n_neighbors`. No search
-    !| runs, so the sweep stays cheap.
+    !| 200,406, for the default grid options and for GRID_2000_POINTS_FACTOR/GRID_2000_MIN_POINTS.
+    !| For each count and option set: the producer's bounds cover the real grid in both
+    !| `neighborhood_size_mode`s (`max_n_points_candidate` equals its first `n_points` exactly,
+    !| `max_n_neighbors_candidate` is at least its largest `n_neighbors`), and one below either
+    !| bound is rejected by the search's capacity check (ERR_INVALID_INPUT, no position,
+    !| `n_admissible_evaluated = 0`), or by the wrapper's DM_MIN(1) at its own position when the
+    !| bound is 1. Those rejections return before any work, so the sweep stays cheap; that the exact
+    !| bounds pass the check needs a search run, so it is checked at a few gene counts only
+    !| (EXACT_GENE_COUNTS).
     subroutine test_param_search_bounds_match_candidate_bounds()
         character(len=*), parameter :: name = "test_param_search_bounds_match_candidate_bounds: "
+        integer(int32), parameter :: N_OPTION_SETS = 2
+        integer(int32), parameter :: EXACT_GENE_COUNTS(4) = [1_int32, 300_int32, 2000_int32, 5626_int32]
+        real(real64), parameter :: points_factors(N_OPTION_SETS) = [4.0_real64, GRID_2000_POINTS_FACTOR]
+        integer(int32), parameter :: min_points(N_OPTION_SETS) = [200_int32, GRID_2000_MIN_POINTS]
+        integer(int32), parameter :: modes(2) = [MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL]
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS)
-        integer(int32) :: n_genes, max_points, max_neighbors, n_candidates, ierr, n_mismatches, i_mode
-        integer(int32), parameter :: modes(3) = [MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL, &
-                                                 MODE_NEIGHBORHOOD_SIZE_BOTH]
+        integer(int32) :: n_genes, max_points, max_neighbors, n_candidates, ierr, n_mismatches, i_mode, i_set
+        integer(int32) :: n_admissible, i_exact
         character(len=16) :: genes_text
 
         n_mismatches = 0_int32
         n_genes = 1_int32
         do while (n_genes <= 200406_int32)
             write (genes_text, '(i0)') n_genes
-            call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, ierr)
-            call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
-            ! Every neighborhood_size_mode's grid lies within the same bounds.
-            do i_mode = 1, 3
-                call generate_js_comp_test_candidates_impl(n_genes, candidates, n_candidates, modes(i_mode))
-                if (maxval(candidates(1, 1:n_candidates)) /= max_points .or. &
-                    maxval(candidates(2, 1:n_candidates)) > max_neighbors) n_mismatches = n_mismatches + 1_int32
-            end do
+            do i_set = 1, N_OPTION_SETS
+                call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, points_factors(i_set), &
+                                                        min_points(i_set), ierr=ierr)
+                call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
+                ! Every neighborhood_size_mode's grid lies within the same bounds.
+                do i_mode = 1, size(modes, kind=int32)
+                    call generate_js_comp_test_candidates_impl(n_genes, candidates, n_candidates, modes(i_mode), &
+                                                               points_factors(i_set), min_points(i_set))
+                    if (maxval(candidates(1, 1:n_candidates)) /= max_points .or. &
+                        maxval(candidates(2, 1:n_candidates)) > max_neighbors) n_mismatches = n_mismatches + 1_int32
+                end do
 
-            call validate_fixed_k_bounds(n_genes, max_points, max_neighbors, ierr)
-            call assert_err(ierr, ERR_INVALID_INPUT, name//"exact bounds pass, G="//trim(genes_text), 39_int32)
-            call validate_fixed_k_bounds(n_genes, max_points - 1_int32, max_neighbors, ierr)
-            call assert_err(ierr, ERR_INVALID_INPUT, name//"points bound - 1 fails, G="//trim(genes_text), 8_int32)
-            call validate_fixed_k_bounds(n_genes, max_points, max_neighbors - 1_int32, ierr)
-            call assert_err(ierr, ERR_INVALID_INPUT, name//"neighbors bound - 1 fails, G="//trim(genes_text), 9_int32)
+                call validate_fixed_k_bounds(n_genes, max_points - 1_int32, max_neighbors, points_factors(i_set), &
+                                             min_points(i_set), ierr, n_admissible)
+                call assert_err(ierr, ERR_INVALID_INPUT, name//"points bound - 1 fails, G="//trim(genes_text), 0_int32)
+                call assert_equal_int(n_admissible, 0_int32, name//"points bound - 1: nothing evaluated, G="//trim(genes_text))
+                call validate_fixed_k_bounds(n_genes, max_points, max_neighbors - 1_int32, points_factors(i_set), &
+                                             min_points(i_set), ierr, n_admissible)
+                if (max_neighbors > 1_int32) then
+                    call assert_err(ierr, ERR_INVALID_INPUT, name//"neighbors bound - 1 fails, G="//trim(genes_text), 0_int32)
+                    call assert_equal_int(n_admissible, 0_int32, &
+                                          name//"neighbors bound - 1: nothing evaluated, G="//trim(genes_text))
+                else
+                    call assert_err(ierr, ERR_INVALID_INPUT, name//"neighbors bound 0 fails DM_MIN, G="//trim(genes_text), &
+                                    9_int32)
+                end if
+            end do
 
             if (n_genes < 3000_int32) then
                 n_genes = n_genes + 1_int32
@@ -11458,10 +10826,22 @@ contains
             end if
         end do
         call assert_equal_int(n_mismatches, 0_int32, name//"producer bounds cover the generated grid")
+
+        do i_exact = 1, size(EXACT_GENE_COUNTS, kind=int32)
+            n_genes = EXACT_GENE_COUNTS(i_exact)
+            write (genes_text, '(i0)') n_genes
+            do i_set = 1, N_OPTION_SETS
+                call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, points_factors(i_set), &
+                                                        min_points(i_set), ierr=ierr)
+                call validate_fixed_k_bounds(n_genes, max_points, max_neighbors, points_factors(i_set), &
+                                             min_points(i_set), ierr, n_admissible)
+                call assert_err(ierr, ERR_OK, name//"exact bounds pass, G="//trim(genes_text))
+            end do
+        end do
     end subroutine test_param_search_bounds_match_candidate_bounds
 
     !> A reversed residual-range quantile pair (lower 0.95 above upper 0.05) is rejected by
-    !| run_js_comp_test at the upper quantile's position (40 in the plain wrapper). Before the
+    !| run_js_comp_test at the upper quantile's position (36 in the plain wrapper). Before the
     !| check existed, R_low ended up above R_high, every residual was clamped into bin 1, every
     !| JSD became 0 and ierr stayed OK. Reuses test_run_js_comp_test_two_studies_hand_traceable's
     !| fixture.
@@ -11487,8 +10867,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
         real(real64) :: nan_val
 
@@ -11510,12 +10889,11 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, &
-                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              ierr=ierr, min_residuals_per_bin=1_int32, &
                               lower_residual_range_quantile=0.95_real64, upper_residual_range_quantile=0.05_real64)
 
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 40_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 36_int32)
     end subroutine test_run_js_comp_test_rejects_reversed_residual_range_quantiles
 
     !> A NaN reference point is rejected by run_js_comp_test with ERR_NAN_INF at `x_star`'s
@@ -11545,8 +10923,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
 
         gene_means(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
@@ -11562,9 +10939,7 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, ierr=ierr, n_permutations=0_int32, random_seed=1_int32, &
-                              min_residuals_per_bin=1_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, ierr=ierr, min_residuals_per_bin=1_int32)
 
         call assert_err(ierr, ERR_NAN_INF, name//"a NaN reference point is rejected", arg_pos=8_int32)
     end subroutine test_run_js_comp_test_rejects_nan_x_star
@@ -11787,8 +11162,7 @@ contains
         integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         integer(int32) :: ierr
 
         gene_means(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
@@ -11804,8 +11178,6 @@ contains
         js_divergences = -7.0_real64
         weights = -7.0_real64
         global_js_divergence = -7.0_real64
-        p_values = -7.0_real64
-        p_values_observed_consensus = -7.0_real64
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
                               gene_means, residuals, x_star, neighborhood_indices, &
@@ -11813,9 +11185,7 @@ contains
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
-                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              p_values_observed_consensus, ierr=ierr, n_permutations=10_int32, &
-                              min_residuals_per_bin=1_int32)
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, ierr=ierr, min_residuals_per_bin=1_int32)
 
         call assert_err(ierr, ERR_INVALID_INPUT, name//"a study without an included residual is rejected", &
                         arg_pos=0_int32)
@@ -11827,8 +11197,6 @@ contains
         call assert_true(all(js_divergences == -7.0_real64), name//"js_divergences untouched")
         call assert_true(all(weights == -7.0_real64), name//"weights untouched")
         call assert_true(all(global_js_divergence == -7.0_real64), name//"global_js_divergence untouched")
-        call assert_true(all(p_values == -7.0_real64), name//"p_values untouched")
-        call assert_true(all(p_values_observed_consensus == -7.0_real64), name//"p_values_observed_consensus untouched")
     end subroutine assert_run_js_comp_test_rejects_empty_study
 
     !> run_js_comp_test with study 2 entirely missing (every gene mean and residual NaN): study 2
@@ -11873,8 +11241,8 @@ contains
                                                          study_2_residuals, reshape([4, 4, 0, 4], [2, 2]))
     end subroutine test_run_js_comp_test_single_empty_point_sets_ierr
 
-    !> The fixed-k search on 300 genes, 2 studies, 3 replicates (grid (300, 4) and (300, 2), see
-    !| the bounds tests above), `min_residuals_per_bin = 0` so the second gate cannot reject
+    !> The fixed-k search on 300 genes, 2 studies, 3 replicates (run_fixed_k_search's grid
+    !| (300, 4), (240, 5), see GRID_300_POINTS_FACTOR), `min_residuals_per_bin = 0` so the second gate cannot reject
     !| anything, overlap 0 and the effect-size plateau with unreachable thresholds
     !| (run_fixed_k_search). Study 1 has means 1..300 and residuals `[-0.5, 0, 0.5]`.
     !| - Control, study 2 a copy of study 1: both candidates are admissible.
@@ -11923,10 +11291,12 @@ contains
     end subroutine test_param_search_empty_study_not_admissible
 
     !> Test helper: the lone-candidate fixture, 100 genes, 2 studies, 3 replicates, means 1..100 and
-    !| residuals `[-0.5, 0, 0.5]` in both studies. With `max_n_genes_all_studies = 100` the fixed-k
-    !| grid collapses to the single candidate (300, 1), see
-    !| test_param_search_single_candidate_bypasses_plateau; this helper asserts that through
-    !| generate_js_comp_test_candidates, so the tests using it really have one candidate.
+    !| residuals `[-0.5, 0, 0.5]` in both studies. With `max_n_genes_all_studies = 100`,
+    !| `grid_points_factor = GRID_300_POINTS_FACTOR` (run_fixed_k_search's) and `grid_min_points =
+    !| GRID_FLOOR_300` (passed by the tests using it; `ceiling(17.32*10) = 174` clamps up to 300,
+    !| also the floor) the fixed-k grid is the single candidate (300, `floor(100/75) = 1`); this
+    !| helper asserts that through generate_js_comp_test_candidates, so the tests using it really
+    !| have one candidate.
     subroutine build_lone_candidate_fixture(name, gene_means, residuals)
         character(len=*), intent(in) :: name
             !! Message prefix
@@ -11936,7 +11306,8 @@ contains
             !! Fixture residuals
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, i_gene
 
-        call generate_js_comp_test_candidates(100_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(100_int32, candidates, n_candidates, grid_points_factor=GRID_300_POINTS_FACTOR, &
+                                              grid_min_points=GRID_FLOOR_300, ierr=ierr)
         call assert_err(ierr, ERR_OK, name//"candidate grid ierr")
         call assert_equal_int(n_candidates, 1_int32, name//"the grid has exactly one candidate")
         call assert_equal_array_int(candidates(:, 1), [300_int32, 1_int32], 2_int32, name//"the lone candidate is (300, 1)")
@@ -11960,7 +11331,8 @@ contains
         integer(int32) :: ierr
 
         call build_lone_candidate_fixture(name, gene_means, residuals)
-        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=1000000_int32)
+        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=1000000_int32, &
+                                grid_min_points=GRID_FLOOR_300)
 
         call assert_err(ierr, ERR_OK, name//"ierr")
         call assert_equal_int(out%n_admissible, 0_int32, name//"the lone candidate is not admissible")
@@ -11986,7 +11358,8 @@ contains
         integer(int32) :: ierr
 
         call build_lone_candidate_fixture(name, gene_means, residuals)
-        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                grid_min_points=GRID_FLOOR_300)
 
         call assert_err(ierr, ERR_OK, name//"ierr")
         call assert_equal_int(out%n_admissible, 1_int32, name//"the lone candidate is admissible")
@@ -12026,7 +11399,7 @@ contains
         call build_adaptive_final_fixture(gene_means, residuals)
         residuals(:, :, 2) = study_2_residuals
         call run_adaptive_final(gene_means, residuals, reshape([1, 3, 4, 5], [2, 2]), out, ierr, &
-                                n_permutations=10_int32, min_residuals_per_bin=1_int32)
+                                min_residuals_per_bin=1_int32)
 
         call assert_err(ierr, ERR_INVALID_INPUT, name//"a study without an included residual is rejected", &
                         arg_pos=0_int32)
@@ -12041,8 +11414,6 @@ contains
         call assert_true(all(out%js == -7.0_real64), name//"js_divergences untouched")
         call assert_true(all(out%weights == -7.0_real64), name//"weights untouched")
         call assert_true(all(out%global_jsd == -7.0_real64), name//"global_js_divergence untouched")
-        call assert_true(all(out%p_values == -7.0_real64), name//"p_values untouched")
-        call assert_true(all(out%p_values_observed_consensus == -7.0_real64), name//"p_values_observed_consensus untouched")
     end subroutine assert_run_adaptive_rejects_empty_study
 
     !> run_js_comp_test_adaptive with study 2's gene means valid (so both ranges decode to at least
@@ -12153,8 +11524,7 @@ contains
         real(real64) :: mean_bin_occupancy(n_points), pmfs(n_points, MAX_N_BINS, n_studies), &
             mean_pmf(n_points, MAX_N_BINS)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
-        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
-        real(real64) :: p_values_observed_consensus(n_studies)
+        real(real64) :: global_js_divergence(n_studies)
         logical(c_bool) :: occupancy_failed(n_points)
         real(real64) :: adaptive_x_star(pool), dispersion(pool), mads(pool)
         integer(int32) :: ranges(2, pool), n_per_point(n_studies, pool), stops(pool)
@@ -12185,9 +11555,7 @@ contains
                               shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
                               occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                               max_bin_occupancy, sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, &
-                              mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
-                              p_values, p_values_observed_consensus, ierr=ierr, n_permutations=20_int32, &
-                              random_seed=3_int32, m_min=2_int32, m_max=6_int32, min_residuals_per_bin=1_int32)
+                              mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, ierr=ierr, m_min=2_int32, m_max=6_int32, min_residuals_per_bin=1_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"fixed-k ierr")
         call assert_false(any(neighborhood_indices(:, :, 1) == 4_int32), name//"fixed-k: study 1 never uses its missing gene 4")
         call assert_false(any(neighborhood_indices(:, :, 2) == 9_int32), name//"fixed-k: study 2 never uses its missing gene 9")
@@ -12211,8 +11579,7 @@ contains
         call assert_true(all(n_per_point(:, 1:n_adaptive_points) >= 1_int32), &
                          name//"the construction gives every study a gene at every point")
 
-        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_adaptive_points), out, ierr, n_permutations=20_int32, &
-                                random_seed=3_int32, m_min=2_int32, m_max=6_int32, min_residuals_per_bin=1_int32)
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_adaptive_points), out, ierr, m_min=2_int32, m_max=6_int32, min_residuals_per_bin=1_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive ierr")
         call assert_equal_array_int(out%n_per_point, n_per_point(:, 1:n_adaptive_points), n_studies*n_adaptive_points, &
                                     name//"adaptive: decoded counts equal the construction's", n_rows=n_studies)
@@ -12299,38 +11666,57 @@ contains
     end subroutine test_sort_pooled_gene_means_matches_heapsort
 
     !> calc_fixed_k_n_points_range, the one place of the fixed-k grid's n_points_high/n_points_low
-    !| formula: G = 1 and G = 2000 (`ceiling(4*sqrt(G))` = 4 and 179) are clamped up to
-    !| MIN_POINTS = 300; G = 5625 lands on it exactly (`4*75`); G = 10000 gives 400 unclamped;
-    !| G = 140625 lands on MAX_POINTS = 1500 exactly (`4*375`) and G = 200000 (1789) is clamped down
-    !| to it. `n_points_low = max(300, ceiling(0.2*n_points_high))` is 300 throughout, because
-    !| `0.2*MAX_POINTS` is 300. The bounds producer's `max_n_points_candidate` is the same value.
+    !| formula, at the default options (`grid_points_factor = 4`, `grid_min_points = 200`): G = 1 and
+    !| G = 2000 (`ceiling(4*sqrt(G))` = 4 and 179) are clamped up to the floor 200; G = 2500 lands
+    !| on it exactly (`4*50`); G = 10000 gives 400 unclamped; G = 140625 lands on MAX_POINTS = 1500
+    !| exactly (`4*375`) and G = 200000 (1789) is clamped down to it.
+    !| `n_points_low = max(200, ceiling(0.2*n_points_high))` is 200 up to `n_points_high = 1000`
+    !| and 300 at 1500. The bounds producer's `max_n_points_candidate` is `n_points_high`, and its
+    !| `max_n_neighbors_candidate` is `min(G, max(1, floor(G/(0.25*n_points_low))))` (the cap at G does
+    !| not bind at a floor of 200 or more): 1 (`floor(1/50) = 0`),
+    !| 40, 50, 200, `floor(140625/75) = 1875` and `floor(200000/75) = 2666`.
     subroutine test_calc_fixed_k_n_points_range()
         character(len=*), parameter :: name = "test_calc_fixed_k_n_points_range: "
         integer(int32), parameter :: n_cases = 6
-        integer(int32), parameter :: gene_counts(n_cases) = [1_int32, 2000_int32, 5625_int32, 10000_int32, &
+        real(real64), parameter :: DEFAULT_GRID_POINTS_FACTOR = 4.0_real64
+            !! The documented default of `grid_points_factor`
+        integer(int32), parameter :: DEFAULT_GRID_MIN_POINTS = 200_int32
+            !! The documented default of `grid_min_points`
+        integer(int32), parameter :: gene_counts(n_cases) = [1_int32, 2000_int32, 2500_int32, 10000_int32, &
                                                              140625_int32, 200000_int32]
-        integer(int32), parameter :: expected_high(n_cases) = [300_int32, 300_int32, 300_int32, 400_int32, &
+        integer(int32), parameter :: expected_high(n_cases) = [200_int32, 200_int32, 200_int32, 400_int32, &
                                                                1500_int32, 1500_int32]
+        integer(int32), parameter :: expected_low(n_cases) = [200_int32, 200_int32, 200_int32, 200_int32, &
+                                                              300_int32, 300_int32]
+        integer(int32), parameter :: expected_neighbors(n_cases) = [1_int32, 40_int32, 50_int32, 200_int32, &
+                                                                    1875_int32, 2666_int32]
         integer(int32) :: i_case, n_points_high, n_points_low, bound_n_points, bound_n_neighbors, ierr
         character(len=16) :: genes_text
 
         do i_case = 1, n_cases
             write (genes_text, '(i0)') gene_counts(i_case)
-            call calc_fixed_k_n_points_range(gene_counts(i_case), n_points_high, n_points_low)
+            call calc_fixed_k_n_points_range(gene_counts(i_case), DEFAULT_GRID_POINTS_FACTOR, DEFAULT_GRID_MIN_POINTS, &
+                                             n_points_high, n_points_low)
             call assert_equal_int(n_points_high, expected_high(i_case), name//"n_points_high, G="//trim(genes_text))
-            call assert_equal_int(n_points_low, 300_int32, name//"n_points_low, G="//trim(genes_text))
-            call calc_js_comp_test_candidate_bounds(gene_counts(i_case), bound_n_points, bound_n_neighbors, ierr)
+            call assert_equal_int(n_points_low, expected_low(i_case), name//"n_points_low, G="//trim(genes_text))
+            call calc_js_comp_test_candidate_bounds(gene_counts(i_case), bound_n_points, bound_n_neighbors, ierr=ierr)
             call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
             call assert_equal_int(bound_n_points, n_points_high, name//"bounds producer agrees, G="//trim(genes_text))
+            call assert_equal_int(bound_n_neighbors, expected_neighbors(i_case), &
+                                  name//"neighbors bound, G="//trim(genes_text))
+            call assert_equal_int(fixed_k_n_neighbors_bound(gene_counts(i_case), n_points_low), expected_neighbors(i_case), &
+                                  name//"fixed_k_n_neighbors_bound, G="//trim(genes_text))
         end do
     end subroutine test_calc_fixed_k_n_points_range
 
     !> The plain run_js_comp_test (prologue-built permutations) and run_js_comp_test_expert handed
     !| `init_perm` + `sort_array_heapsort` permutations give bit-identical outputs, every one of
     !| them: the golden fixture with the golden regression's options (3 points, 4 neighbors,
-    !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3`, 300 permutations, seed 7). The heapsort
+    !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3`). The heapsort
     !| permutations also equal the fixture's hand-sorted ones (the fixture has no ties), so the
     !| golden regression still runs on the order it was captured with.
+    !| The occupancy bin-count search (the default before Stone-equal) is passed explicitly, because the
+    !| golden bin counts 6/5/3 asserted here are its result.
     subroutine test_run_js_comp_test_plain_matches_expert_bit_identical()
         character(len=*), parameter :: name = "test_run_js_comp_test_plain_matches_expert_bit_identical: "
         real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
@@ -12345,11 +11731,11 @@ contains
         call assert_equal_array_int(heapsort_perms, hand_perms, 30_int32, name//"heapsort == hand-sorted fixture order", &
                                     n_rows=10_int32)
 
-        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, plain, ierr_plain, n_permutations=300_int32, &
-                               random_seed=7_int32, m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32)
+        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, plain, ierr_plain, m_min=2_int32, m_max=12_int32, &
+                               min_residuals_per_bin=3_int32, bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
         call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, expert, ierr_expert, &
-                               gene_means_perms=heapsort_perms, n_permutations=300_int32, random_seed=7_int32, &
-                               m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32)
+                               gene_means_perms=heapsort_perms, m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32, &
+                               bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
         call assert_equal_int(get_err_code(ierr_plain), ERR_OK, name//"plain ierr")
         call assert_equal_int(get_err_code(ierr_expert), ERR_OK, name//"expert ierr")
         call assert_fixed_k_runs_bit_identical(plain, expert, name)
@@ -12384,9 +11770,9 @@ contains
         order_b = reshape([2, 1, 3, 1, 2, 3], [3, 2])
 
         call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, run_a, ierr_a, gene_means_perms=order_a, &
-                               n_permutations=0_int32, min_residuals_per_bin=1_int32)
+                               min_residuals_per_bin=1_int32)
         call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, run_b, ierr_b, gene_means_perms=order_b, &
-                               n_permutations=0_int32, min_residuals_per_bin=1_int32)
+                               min_residuals_per_bin=1_int32)
         call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"order [1, 2, 3]: ierr")
         call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"order [2, 1, 3]: ierr")
         call assert_equal_int(run_a%indices(1, 1, 1), 1_int32, name//"order [1, 2, 3]: study 1 takes gene 1")
@@ -12399,10 +11785,9 @@ contains
             call init_perm(heapsort_perms(:, i_study))
             call sort_array_heapsort(gene_means(:, i_study), heapsort_perms(:, i_study))
         end do
-        call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, plain, ierr_plain, n_permutations=0_int32, &
-                               min_residuals_per_bin=1_int32)
+        call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, plain, ierr_plain, min_residuals_per_bin=1_int32)
         call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, heap, ierr_heap, &
-                               gene_means_perms=heapsort_perms, n_permutations=0_int32, min_residuals_per_bin=1_int32)
+                               gene_means_perms=heapsort_perms, min_residuals_per_bin=1_int32)
         call assert_equal_int(get_err_code(ierr_plain), ERR_OK, name//"plain: ierr")
         call assert_equal_int(get_err_code(ierr_heap), ERR_OK, name//"expert with heapsort order: ierr")
         call assert_fixed_k_runs_bit_identical(plain, heap, name//"plain vs expert with heapsort order: ")
@@ -12413,7 +11798,7 @@ contains
     !| itself; with it, run_js_comp_test_expert on that order, with locally allocated work arrays.
     !| Every output is pre-filled with the sentinel -7 first.
     subroutine run_fixed_k_final(gene_means, residuals, x_star, n_neighbors, out, ierr, gene_means_perms, &
-                                 n_permutations, random_seed, m_min, m_max, min_residuals_per_bin)
+                                 m_min, m_max, min_residuals_per_bin, bin_count_mode, divergence_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -12428,22 +11813,20 @@ contains
             !! Error code; zero on success, non-zero on failure
         integer(int32), intent(in), optional :: gene_means_perms(:, :)
             !! Per-study sort order for run_js_comp_test_expert; absent: the plain run_js_comp_test
-        integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations, forwarded
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator, forwarded
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count, forwarded
         integer(int32), intent(in), optional :: m_max
             !! Largest candidate bin count, forwarded
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Occupancy floor per bin, forwarded
+        integer(int32), intent(in), optional :: bin_count_mode
+            !! Forwarded to the run
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Forwarded to the run
         integer(int32) :: n_studies, n_genes, n_reps, n_pts, n_pool
-        real(real64), allocatable :: tmp_gathered(:, :, :), tmp_perm_mean_pmf(:, :), tmp_pooled(:), tmp_perm_pmfs(:, :, :)
-        real(real64), allocatable :: tmp_perm_js(:, :), tmp_perm_weights(:, :), tmp_perm_global(:)
-        integer(int32), allocatable :: tmp_point_pool(:), tmp_point_draw(:), tmp_pooled_perm(:), tmp_bin_counts(:)
+        real(real64), allocatable :: tmp_gathered(:, :, :), tmp_pooled(:)
+        integer(int32), allocatable :: tmp_pooled_perm(:), tmp_bin_counts(:)
         integer(int32), allocatable :: tmp_to_study_perm(:), tmp_block_ends(:), tmp_block_sizes(:), tmp_point_n(:)
-        integer(int32), allocatable :: tmp_perm_mean_pmf_counts(:, :), tmp_perm_counts(:, :)
 
         n_genes = size(gene_means, 1, kind=int32)
         n_studies = size(gene_means, 2, kind=int32)
@@ -12456,8 +11839,7 @@ contains
                   out%mean_pmf_counts(n_pts, MAX_N_BINS), out%mean_included(n_pts), out%occ_failed(n_pts), &
                   out%range_low(n_pts), out%range_high(n_pts), out%mean_occ(n_pts), &
                   out%pmfs(n_pts, MAX_N_BINS, n_studies), out%mean_pmf(n_pts, MAX_N_BINS), out%js(n_pts, n_studies), &
-                  out%weights(n_pts, n_studies), out%global_jsd(n_studies), out%p_values(n_studies), &
-                  out%p_values_observed_consensus(n_studies))
+                  out%weights(n_pts, n_studies), out%global_jsd(n_studies))
         out%indices = -7_int32
         out%ranges = -7_int32
         out%n_bins = -7_int32
@@ -12480,40 +11862,31 @@ contains
         out%js = -7.0_real64
         out%weights = -7.0_real64
         out%global_jsd = -7.0_real64
-        out%p_values = -7.0_real64
-        out%p_values_observed_consensus = -7.0_real64
 
         if (.not. present(gene_means_perms)) then
             call run_js_comp_test(n_studies, n_genes, n_reps, n_pts, n_neighbors, gene_means, residuals, x_star, &
                                   out%indices, out%ranges, out%n_bins, out%range_low, out%range_high, out%max_n_bins, &
                                   out%occ_failed, out%n_pooled, out%min_occ, out%mean_occ, out%max_occ, out%sturges, &
                                   out%fd, out%pmfs, out%counts, out%included, out%mean_pmf, out%mean_pmf_counts, &
-                                  out%mean_included, out%js, out%weights, out%global_jsd, out%p_values, &
-                                  out%p_values_observed_consensus, n_permutations=n_permutations, &
-                                  random_seed=random_seed, min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, &
-                                  m_max=m_max, ierr=ierr)
+                                  out%mean_included, out%js, out%weights, out%global_jsd, min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, &
+                                  m_max=m_max, bin_count_mode=bin_count_mode, divergence_mode=divergence_mode, ierr=ierr)
             return
         end if
 
         n_pool = n_reps*n_neighbors*n_studies
-        allocate (tmp_gathered(n_reps, n_neighbors, n_pts), tmp_perm_mean_pmf(n_pts, MAX_N_BINS), &
-                  tmp_point_pool(MAX_N_BINS), tmp_point_draw(MAX_N_BINS), tmp_pooled(n_pool), tmp_pooled_perm(n_pool), &
+        allocate (tmp_gathered(n_reps, n_neighbors, n_pts), tmp_pooled(n_pool), tmp_pooled_perm(n_pool), &
                   tmp_bin_counts(MAX_N_BINS), tmp_to_study_perm(n_pool), tmp_block_ends(n_studies), &
-                  tmp_block_sizes(n_studies), tmp_point_n(n_studies), tmp_perm_mean_pmf_counts(n_pts, MAX_N_BINS), &
-                  tmp_perm_counts(n_pts, MAX_N_BINS), tmp_perm_pmfs(n_pts, MAX_N_BINS, n_studies), &
-                  tmp_perm_js(n_pts, n_studies), tmp_perm_weights(n_pts, n_studies), tmp_perm_global(n_studies))
+                  tmp_block_sizes(n_studies), tmp_point_n(n_studies))
         call run_js_comp_test_expert(n_studies, n_genes, n_reps, n_pts, n_neighbors, gene_means, gene_means_perms, &
                                      residuals, x_star, out%indices, out%ranges, out%n_bins, out%range_low, &
                                      out%range_high, out%max_n_bins, out%occ_failed, out%n_pooled, out%min_occ, &
                                      out%mean_occ, out%max_occ, out%sturges, out%fd, out%pmfs, out%counts, out%included, &
                                      out%mean_pmf, out%mean_pmf_counts, out%mean_included, out%js, out%weights, &
-                                     out%global_jsd, out%p_values, out%p_values_observed_consensus, tmp_gathered, &
-                                     tmp_perm_mean_pmf, tmp_point_pool, tmp_point_draw, tmp_pooled, tmp_pooled_perm, &
+                                     out%global_jsd, tmp_gathered, &
+                                     tmp_pooled, tmp_pooled_perm, &
                                      tmp_bin_counts, tmp_to_study_perm, tmp_block_ends, tmp_block_sizes, tmp_point_n, &
-                                     tmp_perm_mean_pmf_counts, tmp_perm_counts, tmp_perm_pmfs, tmp_perm_js, &
-                                     tmp_perm_weights, tmp_perm_global, n_permutations=n_permutations, &
-                                     random_seed=random_seed, min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, &
-                                     m_max=m_max, ierr=ierr)
+                                     min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, &
+                                     m_max=m_max, bin_count_mode=bin_count_mode, divergence_mode=divergence_mode, ierr=ierr)
     end subroutine run_fixed_k_final
 
     !> Test helper: every output of two fixed-k final runs is bit-for-bit the same -- integers and
@@ -12552,9 +11925,6 @@ contains
         call assert_bits_equal(a%js, b%js, size(a%js, kind=int32), msg//"js_divergences")
         call assert_bits_equal(a%weights, b%weights, size(a%weights, kind=int32), msg//"weights")
         call assert_bits_equal(a%global_jsd, b%global_jsd, size(a%global_jsd, kind=int32), msg//"global_js_divergence")
-        call assert_bits_equal(a%p_values, b%p_values, size(a%p_values, kind=int32), msg//"p_values")
-        call assert_bits_equal(a%p_values_observed_consensus, b%p_values_observed_consensus, &
-                               size(a%p_values_observed_consensus, kind=int32), msg//"p_values_observed_consensus")
     end subroutine assert_fixed_k_runs_bit_identical
 
     !> Test helper: two real arrays of `n` elements hold the same bit patterns, element by element.
@@ -12642,11 +12012,11 @@ contains
         call assert_true(any_padding, name//"the fixture leaves some per-point slot unused")
     end subroutine assert_search_padding_zero
 
-    !> Padding of the fixed-k search: test_param_search_finds_plateau_mid_grid's fixture (grid
-    !| `[(400,100), (400,50), (320,125), (320,62)]`), but with 7 spare rows (`max_n_points_candidate =
-    !| 407`) and `MODE_PLATEAU_EFFECT_SIZE` needing 16 consecutive transitions, so no plateau is found:
-    !| all four candidates are evaluated (columns of 400 and 320 points) and the smallest-uncertainty
-    !| fallback returns a 400- or 320-point candidate. Every output is pre-filled with -7 (`.true.`);
+    !> Padding of the fixed-k search: test_param_search_finds_plateau_mid_grid's fixture (default grid
+    !| `[(400,100), (320,125), (256,156), (205,195), (200,200)]`), but with 7 spare rows
+    !| (`max_n_points_candidate = 407`) and `MODE_PLATEAU_EFFECT_SIZE` needing 16 consecutive
+    !| transitions, so no plateau is found: all five candidates are evaluated (columns of 400, 320,
+    !| 256, 205 and 200 points) and the smallest-uncertainty fallback returns one of them. Every output is pre-filled with -7 (`.true.`);
     !| every unused slot must come back as 0 (`.false.`).
     subroutine test_param_search_pads_unused_per_point_slots_with_zero()
         character(len=*), parameter :: name = "test_param_search_pads_unused_per_point_slots_with_zero: "
@@ -12674,7 +12044,7 @@ contains
         residuals = 0.0_real64
 
         call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+                                                ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate bounds ierr")
         max_n_points_candidate = max_n_points_candidate + 7_int32
         allocate (n_bins_per_point(max_n_points_candidate), shared_residual_range_low(max_n_points_candidate), &
@@ -12719,12 +12089,12 @@ contains
                                                ierr=ierr, min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
                                                delta_min_consecutive_transitions=16_int32, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_false(plateau_established, name//"no plateau")
-        call assert_equal_int(n_admissible_evaluated, 4_int32, name//"all four candidates evaluated")
-        call assert_equal_array_int(trace_n_points(1:4), [400_int32, 400_int32, 320_int32, 320_int32], 4_int32, &
+        call assert_equal_int(n_admissible_evaluated, 5_int32, name//"all five candidates evaluated")
+        call assert_equal_array_int(trace_n_points(1:5), [400_int32, 320_int32, 256_int32, 205_int32, 200_int32], 5_int32, &
                                     name//"trace_n_points")
         call assert_search_padding_zero(n_points, n_admissible_evaluated, trace_n_points, n_bins_per_point, &
                                         shared_residual_range_low, shared_residual_range_high, trace_selected_n_bins, &
@@ -12776,20 +12146,22 @@ contains
     ! The default `plateau_mode` of both parameter searches is MODE_PLATEAU_EFFECT_SIZE (the change
     ! of the observed JSD values). Fixed-k fixture: test_param_search_finds_plateau_mid_grid's
     ! constant data (10000 genes, 2 studies, 3 replicates, every mean 5.0 and every residual 0.0),
-    ! whose grid in MODE_NEIGHBORHOOD_SIZE_BOTH is (400, 100), (400, 50), (320, 125), (320, 62)
-    ! (the default large-only grid is (400, 100), (320, 125)): every candidate is admissible
-    ! with JSD 0 and interval [0, 0], so CI overlap stops at candidate 2 (overlap 1.0 >= 0.9 with
-    ! candidate 1's [0, 0]) and the effect size at candidate 3 (deltas 0/max(0, 1e-10) = 0 below
-    ! 0.05/0.10 on the transitions 1 -> 2 and 2 -> 3, the two consecutive ones the default asks for).
+    ! whose default grid is (400, 100), (320, 125), (256, 156), (205, 195), (200, 200) (derived at
+    ! test_param_search_finds_plateau_mid_grid): every candidate is admissible with JSD 0 and
+    ! interval [0, 0], so CI overlap stops at candidate 2 (overlap 1.0 >= 0.9 with candidate 1's
+    ! [0, 0]) and the effect size at candidate 3 (deltas 0 below 0.05/0.10 on the transitions
+    ! 1 -> 2 and 2 -> 3, the two consecutive ones the default asks for).
     ! Adaptive fixture: fixture A of the adaptive search tests (E1 stops at candidate 2 under CI
     ! overlap, E2 at candidate 3 under the effect size).
     ! ---------------------------------------------------------------------------------------------
 
     !> Test helper: run_js_comp_test_parameter_search on the constant fixture above, every output
     !| allocated from calc_js_comp_test_candidate_bounds, 10 bootstraps, METHOD_JOIN_MIN, both gates
-    !| relaxed (`min_residuals_per_bin = 0`, `min_neighbor_overlap = 0`), seed 1; `plateau_mode` and
-    !| `neighborhood_size_mode` are forwarded as given, so an absent one leaves the search's default.
-    subroutine run_fixed_k_constant_fixture(out, ierr, plateau_mode, neighborhood_size_mode)
+    !| relaxed (`min_residuals_per_bin = 0`, `min_neighbor_overlap = 0`), seed 1; `plateau_mode`,
+    !| `neighborhood_size_mode` and the grid options are forwarded as given, so an absent one leaves
+    !| the search's default.
+    subroutine run_fixed_k_constant_fixture(out, ierr, plateau_mode, neighborhood_size_mode, grid_points_factor, &
+                                            grid_min_points)
         type(fixed_k_search_outputs), intent(out) :: out
             !! Every output of run_js_comp_test_parameter_search
         integer(int32), intent(out) :: ierr
@@ -12798,6 +12170,10 @@ contains
             !! Forwarded to the search
         integer(int32), intent(in), optional :: neighborhood_size_mode
             !! Forwarded to the search
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Forwarded to the search and the candidate bounds
+        integer(int32), intent(in), optional :: grid_min_points
+            !! Forwarded to the search and the candidate bounds
         integer(int32), parameter :: n_studies = 2, n_genes = 10000, n_reps = 3
         real(real64), allocatable :: gene_means(:, :), residuals(:, :, :)
         integer(int32) :: max_points, max_neighbors, bounds_ierr
@@ -12805,7 +12181,8 @@ contains
         allocate (gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies))
         gene_means = 5.0_real64
         residuals = 0.0_real64
-        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
+        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, grid_points_factor=grid_points_factor, &
+                                                grid_min_points=grid_min_points, ierr=bounds_ierr)
         call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_constant_fixture: bounds ierr")
 
         allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
@@ -12839,7 +12216,8 @@ contains
                                                out%trace_sturges, out%trace_fd, out%trace_range_low, &
                                                out%trace_range_high, ierr=ierr, min_residuals_per_bin=0_int32, &
                                                min_neighbor_overlap=0.0_real64, plateau_mode=plateau_mode, &
-                                               neighborhood_size_mode=neighborhood_size_mode, random_seed=1_int32)
+                                               neighborhood_size_mode=neighborhood_size_mode, random_seed=1_int32, &
+                                               grid_points_factor=grid_points_factor, grid_min_points=grid_min_points)
     end subroutine run_fixed_k_constant_fixture
 
     !> Test helper: two fixed-k searches agree on every output exactly -- the selection, the final
@@ -12979,18 +12357,16 @@ contains
 
     !> run_js_comp_test_parameter_search without `plateau_mode` returns exactly what it returns with
     !| MODE_PLATEAU_EFFECT_SIZE passed explicitly, every output compared exactly, and stops later
-    !| than with MODE_PLATEAU_CI_OVERLAP: at candidate 3 = (320, 125) after three admissible
-    !| candidates instead of candidate 2 = (400, 50) after two (see the section comment above).
+    !| than with MODE_PLATEAU_CI_OVERLAP: at candidate 3 = (256, 156) after three admissible
+    !| candidates instead of candidate 2 = (320, 125) after two (see the section comment above).
     subroutine test_param_search_plateau_mode_default_is_effect_size()
         character(len=*), parameter :: name = "test_param_search_plateau_mode_default_is_effect_size: "
         type(fixed_k_search_outputs) :: omitted, effect_size, ci_overlap
         integer(int32) :: ierr_omitted, ierr_effect_size, ierr_ci_overlap
 
-        call run_fixed_k_constant_fixture(omitted, ierr_omitted, neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH)
-        call run_fixed_k_constant_fixture(effect_size, ierr_effect_size, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                          neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH)
-        call run_fixed_k_constant_fixture(ci_overlap, ierr_ci_overlap, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                          neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH)
+        call run_fixed_k_constant_fixture(omitted, ierr_omitted)
+        call run_fixed_k_constant_fixture(effect_size, ierr_effect_size, plateau_mode=MODE_PLATEAU_EFFECT_SIZE)
+        call run_fixed_k_constant_fixture(ci_overlap, ierr_ci_overlap, plateau_mode=MODE_PLATEAU_CI_OVERLAP)
         call assert_equal_int(get_err_code(ierr_omitted), ERR_OK, name//"omitted: ierr")
         call assert_equal_int(get_err_code(ierr_effect_size), ERR_OK, name//"effect size: ierr")
         call assert_equal_int(get_err_code(ierr_ci_overlap), ERR_OK, name//"CI overlap: ierr")
@@ -12999,10 +12375,10 @@ contains
 
         call assert_true(omitted%plateau, name//"omitted: plateau established")
         call assert_equal_array_int([omitted%n_points, omitted%n_neighbors, omitted%n_admissible], &
-                                    [320_int32, 125_int32, 3_int32], 3_int32, name//"omitted: stops at candidate 3")
+                                    [256_int32, 156_int32, 3_int32], 3_int32, name//"omitted: stops at candidate 3")
         call assert_true(ci_overlap%plateau, name//"CI overlap: plateau established")
         call assert_equal_array_int([ci_overlap%n_points, ci_overlap%n_neighbors, ci_overlap%n_admissible], &
-                                    [400_int32, 50_int32, 2_int32], 3_int32, name//"CI overlap: stops at candidate 2")
+                                    [320_int32, 125_int32, 2_int32], 3_int32, name//"CI overlap: stops at candidate 2")
     end subroutine test_param_search_plateau_mode_default_is_effect_size
 
     !> run_js_comp_test_adaptive_parameter_search without `plateau_mode` returns exactly what it
@@ -13038,9 +12414,10 @@ contains
 
     ! ---------------------------------------------------------------------------------------------
     ! `neighborhood_size_mode` of the fixed-k grid. Each `n_points` candidate (GAMMA decay of the
-    ! real `n_points_high`, rounded with nint) is paired with `n_neighbors = max(1,
-    ! floor(G/(f*n_points_high)))` for f = KX_FACTORS(1) = 0.25 (large), KX_FACTORS(2) = 0.5
-    ! (small), or both in that order.
+    ! real `n_points_high`, rounded with nint) is paired with `n_neighbors = min(G, max(1,
+    ! floor(G/(f*n_points_high))))` for f = KX_FACTORS(1) = 0.25 (large) or KX_FACTORS(2) = 0.5
+    ! (small); the floor candidate, when the floor clamp adds it, uses `n_points_low` instead. The
+    ! cap at G binds only for `grid_min_points` below 4 (test_fixed_k_grid_caps_n_neighbors_at_gene_count).
     ! ---------------------------------------------------------------------------------------------
 
     !> Test helper: generate_js_comp_test_candidates for `n_genes` in `mode` (absent: the default)
@@ -13065,95 +12442,91 @@ contains
                                         n_rows=2_int32)
     end subroutine assert_fixed_k_grid
 
-    !> G = 2000: `n_points_high = clamp(ceiling(4*sqrt(2000)) = ceiling(178.89) = 179, 300, 1500) =
-    !| 300`, `n_points_low = max(300, ceiling(0.2*300) = 60) = 300`, and `300*0.8 = 240 < 300` ends
-    !| the grid after one `n_points`. Large: `floor(2000/(0.25*300)) = floor(26.67) = 26`; small:
-    !| `floor(2000/(0.5*300)) = floor(13.33) = 13`. So large [(300, 26)], small [(300, 13)], both
-    !| [(300, 26), (300, 13)] (today's list, the 2 pairs of
-    !| test_adaptive_candidates_small_n_does_not_collapse), and the default is large.
+    !> G = 2000: `n_points_high = clamp(ceiling(4*sqrt(2000)) = ceiling(178.89) = 179, 200, 1500) =
+    !| 200`, `n_points_low = max(200, ceiling(0.2*200) = 40) = 200`, and `200*0.8 = 160 < 200` ends
+    !| the grid after one `n_points`, which already is the floor (no floor candidate added). Large:
+    !| `floor(2000/(0.25*200)) = 40`; small: `floor(2000/(0.5*200)) = 20`. So large [(200, 40)],
+    !| small [(200, 20)] (the single pair of test_adaptive_candidates_small_n_does_not_collapse),
+    !| and the default is large.
     subroutine test_fixed_k_grid_neighborhood_size_modes_2000()
         character(len=*), parameter :: name = "test_fixed_k_grid_neighborhood_size_modes_2000: "
+        integer(int32), parameter :: UNKNOWN_MODE = 99_int32
+        integer(int32), parameter :: RETIRED_BOTH_MODE = 2_int32
+            !! The value of the retired `both` mode (the former M_MODE_NEIGHBORHOOD_SIZE_BOTH)
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
-        call assert_fixed_k_grid(name//"large: ", 2000_int32, reshape([300_int32, 26_int32], [2, 1]), &
+        call assert_fixed_k_grid(name//"large: ", 2000_int32, reshape([200_int32, 40_int32], [2, 1]), &
                                  MODE_NEIGHBORHOOD_SIZE_LARGE)
-        call assert_fixed_k_grid(name//"small: ", 2000_int32, reshape([300_int32, 13_int32], [2, 1]), &
+        call assert_fixed_k_grid(name//"small: ", 2000_int32, reshape([200_int32, 20_int32], [2, 1]), &
                                  MODE_NEIGHBORHOOD_SIZE_SMALL)
-        call assert_fixed_k_grid(name//"both: ", 2000_int32, reshape([300_int32, 26_int32, 300_int32, 13_int32], [2, 2]), &
-                                 MODE_NEIGHBORHOOD_SIZE_BOTH)
-        call assert_fixed_k_grid(name//"default: ", 2000_int32, reshape([300_int32, 26_int32], [2, 1]))
+        call assert_fixed_k_grid(name//"default: ", 2000_int32, reshape([200_int32, 40_int32], [2, 1]))
 
-        ! The wrapper rejects a value outside the mode table, naming the argument.
-        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, neighborhood_size_mode=99_int32, &
+        ! The wrapper rejects a value outside the mode table, naming the argument: the retired `both`
+        ! (2) and an arbitrary unknown value.
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, &
+                                              neighborhood_size_mode=RETIRED_BOTH_MODE, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"retired neighborhood_size_mode 2 rejected", arg_pos=4_int32)
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, neighborhood_size_mode=UNKNOWN_MODE, &
                                               ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, name//"unknown neighborhood_size_mode rejected", arg_pos=4_int32)
     end subroutine test_fixed_k_grid_neighborhood_size_modes_2000
 
     !> G = 26097 (Kidney-sized): `4*sqrt(26097) = 646.18`, so `n_points_high = 647`,
-    !| `n_points_low = max(300, ceiling(0.2*647) = ceiling(129.4) = 130) = 300`. The real
-    !| `n_points_high` decays 647, 517.6, 414.08, 331.264, then 265.01 < 300 stops: `n_points` =
-    !| nint = 647, 518, 414, 331. Large, `floor(4*26097/h) = floor(104388/h)`: 104388/647 = 161.34 ->
-    !| 161, /517.6 = 201.68 -> 201, /414.08 = 252.10 -> 252, /331.264 = 315.12 -> 315. Small,
-    !| `floor(52194/h)`: 80.67 -> 80, 100.84 -> 100, 126.05 -> 126, 157.56 -> 157. Large and small
-    !| grow smoothly; both interleaves them large/small per `n_points` (8 candidates, today's
-    !| order); the default is large.
+    !| `n_points_low = max(200, ceiling(0.2*647) = ceiling(129.4) = 130) = 200`. The real
+    !| `n_points_high` decays 647, 517.6, 414.08, 331.264, 265.0112, 212.00896, then 169.6 < 200
+    !| stops: `n_points` = nint = 647, 518, 414, 331, 265, 212; the coarsest (212) is not the floor,
+    !| so the floor 200 is added. Large, `floor(4*26097/h) = floor(104388/h)`: 104388/647 = 161.34 ->
+    !| 161, /517.6 = 201.68 -> 201, /414.08 = 252.10 -> 252, /331.264 = 315.12 -> 315,
+    !| /265.0112 = 393.90 -> 393, /212.00896 = 492.37 -> 492, floor /200 = 521.94 -> 521. Small,
+    !| `floor(52194/h)`: 80.67 -> 80, 100.84 -> 100, 126.05 -> 126, 157.56 -> 157, 196.95 -> 196,
+    !| 246.19 -> 246, floor /200 = 260.97 -> 260. Both grow smoothly; the default is large.
     subroutine test_fixed_k_grid_neighborhood_size_modes_26097()
         character(len=*), parameter :: name = "test_fixed_k_grid_neighborhood_size_modes_26097: "
-        integer(int32), parameter :: large(2, 4) = reshape([647, 161, 518, 201, 414, 252, 331, 315], [2, 4])
-        integer(int32), parameter :: small(2, 4) = reshape([647, 80, 518, 100, 414, 126, 331, 157], [2, 4])
-        integer(int32), parameter :: both(2, 8) = reshape([647, 161, 647, 80, 518, 201, 518, 100, &
-                                                           414, 252, 414, 126, 331, 315, 331, 157], [2, 8])
+        integer(int32), parameter :: large(2, 7) = reshape([647, 161, 518, 201, 414, 252, 331, 315, 265, 393, &
+                                                            212, 492, 200, 521], [2, 7])
+        integer(int32), parameter :: small(2, 7) = reshape([647, 80, 518, 100, 414, 126, 331, 157, 265, 196, &
+                                                            212, 246, 200, 260], [2, 7])
 
         call assert_fixed_k_grid(name//"large: ", 26097_int32, large, MODE_NEIGHBORHOOD_SIZE_LARGE)
         call assert_fixed_k_grid(name//"small: ", 26097_int32, small, MODE_NEIGHBORHOOD_SIZE_SMALL)
-        call assert_fixed_k_grid(name//"both: ", 26097_int32, both, MODE_NEIGHBORHOOD_SIZE_BOTH)
         call assert_fixed_k_grid(name//"default: ", 26097_int32, large)
     end subroutine test_fixed_k_grid_neighborhood_size_modes_26097
 
     !> run_js_comp_test_parameter_search uses the mode: on the constant fixture of
-    !| test_param_search_plateau_mode_default_is_effect_size (G = 10000: `n_points_high = 4*100 =
-    !| 400`, then 320, then 256 < 300 stops; large `floor(10000/(0.25*h))` = 100, 125; small
-    !| `floor(10000/(0.5*h))` = 50, floor(62.5) = 62), every candidate is admissible. Default mode
-    !| (default plateau too): the grid is (400, 100), (320, 125), `trace_n_neighbors` = [100, 125]
-    !| -- only large neighborhoods; one transition is not the two the effect size needs, so no
-    !| plateau, and the smallest-uncertainty fallback (every width 0, the first kept) returns
-    !| (400, 100). Explicit MODE_NEIGHBORHOOD_SIZE_LARGE gives identical outputs. Small mode:
-    !| `trace_n_neighbors` = [50, 62]. Both: [100, 50, 125] and the stop at (320, 125) after three
-    !| (the grid of test_param_search_effect_size_mode_plateau).
+    !| test_param_search_plateau_mode_default_is_effect_size (G = 10000, every candidate admissible
+    !| with JSD 0 and interval [0, 0], so the default effect-size plateau stops at candidate 3).
+    !| Default mode (default plateau too): the grid is (400, 100), (320, 125), (256, 156), ...,
+    !| `trace_n_neighbors` = [100, 125, 156] -- only large neighborhoods -- and the stop at
+    !| (256, 156). Explicit MODE_NEIGHBORHOOD_SIZE_LARGE gives identical outputs. Small mode,
+    !| `floor(10000/(0.5*h))` for h = 400, 320, 256: `trace_n_neighbors` = [50, floor(62.5) = 62,
+    !| floor(78.125) = 78] and the stop at (256, 78).
     subroutine test_param_search_neighborhood_size_mode()
         character(len=*), parameter :: name = "test_param_search_neighborhood_size_mode: "
-        type(fixed_k_search_outputs) :: omitted, large, small, both
-        integer(int32) :: ierr_omitted, ierr_large, ierr_small, ierr_both
+        type(fixed_k_search_outputs) :: omitted, large, small
+        integer(int32) :: ierr_omitted, ierr_large, ierr_small
 
         call run_fixed_k_constant_fixture(omitted, ierr_omitted)
         call run_fixed_k_constant_fixture(large, ierr_large, neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_LARGE)
         call run_fixed_k_constant_fixture(small, ierr_small, neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_SMALL)
-        call run_fixed_k_constant_fixture(both, ierr_both, neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH)
         call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
         call assert_err(ierr_large, ERR_OK, name//"large: ierr")
         call assert_err(ierr_small, ERR_OK, name//"small: ierr")
-        call assert_err(ierr_both, ERR_OK, name//"both: ierr")
 
-        call assert_equal_int(omitted%n_admissible, 2_int32, name//"default: two admissible candidates")
-        call assert_equal_array_int(omitted%trace_n_neighbors(1:2), [100_int32, 125_int32], 2_int32, &
+        call assert_equal_int(omitted%n_admissible, 3_int32, name//"default: three admissible candidates")
+        call assert_equal_array_int(omitted%trace_n_neighbors(1:3), [100_int32, 125_int32, 156_int32], 3_int32, &
                                     name//"default: only large neighborhoods traced")
-        call assert_equal_array_int(omitted%trace_n_points(1:2), [400_int32, 320_int32], 2_int32, &
+        call assert_equal_array_int(omitted%trace_n_points(1:3), [400_int32, 320_int32, 256_int32], 3_int32, &
                                     name//"default: trace_n_points")
-        call assert_false(omitted%plateau, name//"default: one transition is no effect-size plateau")
-        call assert_equal_array_int([omitted%n_points, omitted%n_neighbors], [400_int32, 100_int32], 2_int32, &
-                                    name//"default: smallest-uncertainty fallback to candidate 1")
+        call assert_true(omitted%plateau, name//"default: effect-size plateau")
+        call assert_equal_array_int([omitted%n_points, omitted%n_neighbors], [256_int32, 156_int32], 2_int32, &
+                                    name//"default: stops at candidate 3")
         call assert_fixed_k_searches_identical(name//"omitted vs large: ", large, omitted)
 
-        call assert_equal_int(small%n_admissible, 2_int32, name//"small: two admissible candidates")
-        call assert_equal_array_int(small%trace_n_neighbors(1:2), [50_int32, 62_int32], 2_int32, &
+        call assert_equal_int(small%n_admissible, 3_int32, name//"small: three admissible candidates")
+        call assert_equal_array_int(small%trace_n_neighbors(1:3), [50_int32, 62_int32, 78_int32], 3_int32, &
                                     name//"small: only small neighborhoods traced")
-
-        call assert_equal_int(both%n_admissible, 3_int32, name//"both: three admissible candidates")
-        call assert_equal_array_int(both%trace_n_neighbors(1:3), [100_int32, 50_int32, 125_int32], 3_int32, &
-                                    name//"both: interleaved")
-        call assert_true(both%plateau, name//"both: plateau")
-        call assert_equal_array_int([both%n_points, both%n_neighbors], [320_int32, 125_int32], 2_int32, &
-                                    name//"both: stops at candidate 3")
+        call assert_equal_array_int([small%n_points, small%n_neighbors], [256_int32, 78_int32], 2_int32, &
+                                    name//"small: stops at candidate 3")
     end subroutine test_param_search_neighborhood_size_mode
 
     ! ---------------------------------------------------------------------------------------------
@@ -13242,16 +12615,21 @@ contains
     end subroutine test_effect_size_abs_tolerance_boundary_and_large_jsd
 
     !> The fixed-k search passes `delta_abs_tolerance` through (Stone fixture via run_fixed_k_search:
-    !| grid (300, 4), (300, 2), both admissible, effect-size thresholds 1e-300 so that only a zero
-    !| delta qualifies, one qualifying transition enough). Tolerance 0 (explicit) equals omitted in
-    !| every output: the two candidates' JSDs differ, so delta > 0, no plateau, two admissible
-    !| candidates. Tolerance 1 (above any JSD change, the JSD lies in [0, 1]): delta 0 at the first
-    !| transition, so the search stops at the earliest possible candidate, candidate 2 = (300, 2).
+    !| grid (300, 4), (240, 5), both admissible, effect-size thresholds 1e-300 so that only a zero
+    !| delta qualifies, one qualifying transition enough). Omitted equals the documented default
+    !| 0.0001 passed explicitly, in every output. Tolerance 0 (explicit) also equals omitted here,
+    !| because every JSD change of this fixture is above 0.0001 (this fixture does not separate the
+    !| default from 0; test_effect_size_abs_tolerance_default_is_one_ten_thousandth does): the two
+    !| candidates' JSDs differ, so delta > 0, no plateau, two admissible candidates. Tolerance 1
+    !| (above any JSD change, the JSD lies in [0, 1]): delta 0 at the first transition, so the
+    !| search stops at the earliest possible candidate, candidate 2 = (240, 5).
     subroutine test_param_search_delta_abs_tolerance()
         character(len=*), parameter :: name = "test_param_search_delta_abs_tolerance: "
         real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
-        type(fixed_k_search_outputs) :: omitted, zero, huge_tolerance
-        integer(int32) :: ierr_omitted, ierr_zero, ierr_huge
+        real(real64), parameter :: DEFAULT_DELTA_ABS_TOLERANCE = 1.0e-4_real64
+            !! The documented default of `delta_abs_tolerance`
+        type(fixed_k_search_outputs) :: omitted, zero, huge_tolerance, explicit_default
+        integer(int32) :: ierr_omitted, ierr_zero, ierr_huge, ierr_default
 
         call build_adaptive_stone_fixture(gene_means, residuals)
         call run_fixed_k_search(gene_means, residuals, omitted, ierr_omitted, min_residuals_per_bin=3_int32, &
@@ -13260,6 +12638,10 @@ contains
                                 delta_min_consecutive_transitions=1_int32, delta_abs_tolerance=0.0_real64)
         call run_fixed_k_search(gene_means, residuals, huge_tolerance, ierr_huge, min_residuals_per_bin=3_int32, &
                                 delta_min_consecutive_transitions=1_int32, delta_abs_tolerance=1.0_real64)
+        call run_fixed_k_search(gene_means, residuals, explicit_default, ierr_default, min_residuals_per_bin=3_int32, &
+                                delta_min_consecutive_transitions=1_int32, delta_abs_tolerance=DEFAULT_DELTA_ABS_TOLERANCE)
+        call assert_err(ierr_default, ERR_OK, name//"explicit default: ierr")
+        call assert_fixed_k_searches_identical(name//"omitted vs explicit 0.0001: ", explicit_default, omitted)
         call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
         call assert_err(ierr_zero, ERR_OK, name//"tolerance 0: ierr")
         call assert_err(ierr_huge, ERR_OK, name//"tolerance 1: ierr")
@@ -13273,22 +12655,26 @@ contains
         call assert_equal_array_real(huge_tolerance%trace_delta(:, 2), [0.0_real64, 0.0_real64, 0.0_real64], 3_int32, &
                                      0.0_real64, name//"tolerance 1: every change counts as none")
         call assert_true(huge_tolerance%plateau, name//"tolerance 1: plateau")
-        call assert_equal_array_int([huge_tolerance%n_points, huge_tolerance%n_neighbors], [300_int32, 2_int32], 2_int32, &
+        call assert_equal_array_int([huge_tolerance%n_points, huge_tolerance%n_neighbors], [240_int32, 5_int32], 2_int32, &
                                     name//"tolerance 1: stops at candidate 2")
         call assert_equal_array_real(huge_tolerance%trace_jsd(:, 1:2), zero%trace_jsd(:, 1:2), 6_int32, 0.0_real64, &
                                      name//"the tolerance changes no observed JSD")
     end subroutine test_param_search_delta_abs_tolerance
 
     !> The adaptive search passes `delta_abs_tolerance` through (fixture B as in E4b: all four
-    !| candidates (20, 16, 12, 10) admissible, effect-size thresholds 1e-300, seed 39). Tolerance
-    !| 0 (explicit) equals omitted in every output: no plateau, four admissible candidates.
+    !| candidates (20, 16, 12, 10) admissible, effect-size thresholds 1e-300, seed 39). Omitted
+    !| equals the documented default 0.0001 passed explicitly, in every output. Tolerance 0
+    !| (explicit) also equals omitted here, because every JSD change of this fixture is above
+    !| 0.0001: no plateau, four admissible candidates.
     !| Tolerance 1: every delta 0, so the two consecutive transitions the default needs are
     !| complete at the earliest possible candidate, the third, `k_start` 12.
     subroutine test_adaptive_search_delta_abs_tolerance()
         character(len=*), parameter :: name = "test_adaptive_search_delta_abs_tolerance: "
         real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
-        type(adaptive_search_outputs) :: omitted, zero, huge_tolerance
-        integer(int32) :: ierr_omitted, ierr_zero, ierr_huge
+        real(real64), parameter :: DEFAULT_DELTA_ABS_TOLERANCE = 1.0e-4_real64
+            !! The documented default of `delta_abs_tolerance`
+        type(adaptive_search_outputs) :: omitted, zero, huge_tolerance, explicit_default
+        integer(int32) :: ierr_omitted, ierr_zero, ierr_huge, ierr_default
 
         call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
         call run_adaptive_search(gene_means, residuals, omitted, ierr_omitted, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
@@ -13300,6 +12686,11 @@ contains
         call run_adaptive_search(gene_means, residuals, huge_tolerance, ierr_huge, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
                                  delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
                                  random_seed=39_int32, delta_abs_tolerance=1.0_real64)
+        call run_adaptive_search(gene_means, residuals, explicit_default, ierr_default, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
+                                 random_seed=39_int32, delta_abs_tolerance=DEFAULT_DELTA_ABS_TOLERANCE)
+        call assert_err(ierr_default, ERR_OK, name//"explicit default: ierr")
+        call assert_adaptive_searches_identical(name//"omitted vs explicit 0.0001: ", explicit_default, omitted)
         call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
         call assert_err(ierr_zero, ERR_OK, name//"tolerance 0: ierr")
         call assert_err(ierr_huge, ERR_OK, name//"tolerance 1: ierr")
@@ -13317,74 +12708,80 @@ contains
                                      name//"the tolerance changes no observed JSD")
     end subroutine test_adaptive_search_delta_abs_tolerance
 
-    !> Per-study bootstrap, hand-computed: at both reference points study 1 has all its residuals
-    !| in bin 1 (`[4, 0]`, `[3, 0]`) and study 2 all in bin 2 (`[0, 6]`, `[0, 5]`). Drawing from a
-    !| study's own one-bin histogram always gives that histogram again, so every bootstrap
-    !| reproduces the observed data: pmfs `[1, 0]` and `[0, 1]`, consensus `[0.5, 0.5]`, and per
-    !| point and study the JSD of `[1, 0]` against `[0.5, 0.5]`. With the mixture `[0.75, 0.25]`:
+    !> Bootstrap, hand-computed: at both reference points study 1 has all its residuals in bin 1
+    !| (`[4, 0]`, `[3, 0]`) and study 2 all in bin 2 (`[0, 6]`, `[0, 5]`). Drawing from a study's
+    !| own one-bin histogram always gives that histogram again, so every bootstrap reproduces the
+    !| observed data: pmfs `[1, 0]` and `[0, 1]`, consensus `[0.5, 0.5]`.
+    !|
+    !| Symmetric divergence (passed explicitly, the derivation is for it): per point and study
+    !| the JSD of `[1, 0]` against `[0.5, 0.5]`; with the mixture `[0.75, 0.25]`:
     !| `(ln(4/3) + 0.5 ln(2/3) + 0.5 ln 2) / 2 / ln 2 = 0.3112781...`; the point weights add up to
-    !| 1, so this is also each study's global JSD. Seeding the interval with `[1, 0]` (every bootstrap
-    !| value displaces both seeds), the interval collapses to exactly that value. The default mode
-    !| is the per-study one (omitted = explicit). The pooled bootstrap draws from `[4, 6]` and
-    !| `[3, 5]` instead, mixes the bins, and its lower end lies clearly below the observed value.
+    !| 1, so this is also each study's global JSD.
+    !|
+    !| Pairwise divergence (the default: omitted equals `MODE_DIVERGENCE_PAIRWISE_K2` passed, exactly):
+    !| per point the JSD of `[1, 0]`
+    !| against `[0, 1]`, mixture `[0.5, 0.5]`: `(ln 2 + ln 2) / 2 / ln 2 = 1`, again the global value
+    !| of both studies.
+    !|
+    !| Seeding the interval with `[1, 0]` (every bootstrap value displaces the upper seed; the lower
+    !| seed 1 is only displaced by smaller values), the interval collapses to exactly that value.
     subroutine test_bootstrap_histogram_per_study_one_bin_studies_collapse()
         character(len=*), parameter :: name = "test_bootstrap_histogram_per_study_one_bin_studies_collapse: "
         integer(int32), parameter :: n_bins = 2, n_points = 2, n_studies = 2, n_bootstraps = 40
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
-        real(real64) :: ci_default(2, n_studies), ci_per_study(2, n_studies), ci_pooled(2, n_studies), expected_jsd
+        real(real64) :: ci_symmetric(2, n_studies), ci_pairwise(2, n_studies), ci_explicit(2, n_studies), expected_jsd
         integer(int32) :: ierr, i_study
 
         counts(1, :, 1) = [4_int32, 0_int32]
         counts(2, :, 1) = [3_int32, 0_int32]
         counts(1, :, 2) = [0_int32, 6_int32]
         counts(2, :, 2) = [0_int32, 5_int32]
-        mean_pmf_counts = sum(counts, dim=3)
         included_n_reps = sum(counts, dim=2)
         mean_pmf_included_n_reps = sum(included_n_reps, dim=2)
         expected_jsd = 0.5_real64*(log(4.0_real64/3.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) + &
                                    0.5_real64*log(2.0_real64))/log(2.0_real64)
 
-        ci_default(1, :) = 1.0_real64
-        ci_default(2, :) = 0.0_real64
-        ci_per_study = ci_default
-        ci_pooled = ci_default
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, ci_default, ierr=ierr, random_seed=5_int32)
-        call assert_err(ierr, ERR_OK, name//"default: ierr")
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, ci_per_study, ierr=ierr, random_seed=5_int32, &
-                                 bootstrap_mode=MODE_BOOTSTRAP_PER_STUDY)
-        call assert_err(ierr, ERR_OK, name//"per-study: ierr")
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, ci_pooled, ierr=ierr, random_seed=5_int32, &
-                                 bootstrap_mode=MODE_BOOTSTRAP_POOLED)
-        call assert_err(ierr, ERR_OK, name//"pooled: ierr")
+        ci_symmetric(1, :) = 1.0_real64
+        ci_symmetric(2, :) = 0.0_real64
+        ci_pairwise = ci_symmetric
+        ci_explicit = ci_symmetric
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_symmetric, random_seed=5_int32, &
+                                 divergence_mode=MODE_DIVERGENCE_SYMMETRIC, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"symmetric: ierr")
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_pairwise, random_seed=5_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"pairwise (default): ierr")
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_explicit, random_seed=5_int32, &
+                                 divergence_mode=MODE_DIVERGENCE_PAIRWISE_K2, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"pairwise (explicit): ierr")
+        call assert_equal_array_real(ci_pairwise, ci_explicit, 2_int32*n_studies, 0.0_real64, &
+                                     name//"the default is the pairwise divergence (omitted == explicit)")
 
-        call assert_equal_array_real(ci_per_study, [(expected_jsd, i_study=1, 2*n_studies)], 2_int32*n_studies, 1.0e-12_real64, &
-                                     name//"every draw is the observed data, so the interval collapses to the observed JSD")
-        call assert_equal_array_real(ci_default, ci_per_study, 2_int32*n_studies, 0.0_real64, &
-                                     name//"the default is the per-study bootstrap")
-        call assert_true(all(ci_pooled(1, :) < expected_jsd - 0.01_real64), &
-                         name//"the pooled draws mix the bins: its lower end lies below the observed JSD")
+        call assert_equal_array_real(ci_symmetric, [(expected_jsd, i_study=1, 2*n_studies)], 2_int32*n_studies, &
+                                     1.0e-12_real64, &
+                                     name//"symmetric: every draw is the observed data, so the interval collapses to its JSD")
+        call assert_equal_array_real(ci_pairwise, [(1.0_real64, i_study=1, 2*n_studies)], 2_int32*n_studies, &
+                                     1.0e-12_real64, &
+                                     name//"pairwise: every draw is the observed data, so the interval collapses to 1")
     end subroutine test_bootstrap_histogram_per_study_one_bin_studies_collapse
 
-    !> Per-study bootstrap on a stable synthetic case: three studies with clearly different,
-    !| fixed histograms (2000 residuals per study and point, the same at all three points), so the
-    !| observed JSD of each study is far above the sampling noise. The observed values are computed
-    !| here with the same consensus and weighting as the bootstrap. Seeded with `[1, 0]` (no
-    !| influence), 200 bootstraps, 5 values kept per end (2.5 %): the per-study interval contains
-    !| each study's observed JSD. The pooled bootstrap draws all studies from the same pool, so its
-    !| interval is a noise band near 0 and lies entirely below every observed value -- it describes
-    !| "no difference between the studies", not the robustness of the observed value.
+    !> Bootstrap on a stable synthetic case: three studies with clearly different, fixed histograms
+    !| (2000 residuals per study and point, the same at all three points), so the observed JSD of
+    !| each study is far above the sampling noise. The observed values are computed here with the
+    !| same consensus and weighting as the bootstrap (its default divergence mode, which for three
+    !| studies is the symmetric one). Seeded with `[1, 0]` (no influence), 200 bootstraps, 5 values
+    !| kept per end (2.5 %): the interval contains each study's observed JSD and has a width.
     subroutine test_bootstrap_histogram_per_study_contains_observed_jsd()
         character(len=*), parameter :: name = "test_bootstrap_histogram_per_study_contains_observed_jsd: "
         integer(int32), parameter :: n_bins = 5, n_points = 3, n_studies = 3, n_bootstraps = 200
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies), observed(n_studies)
-        real(real64) :: ci_per_study(2, n_studies), ci_pooled(2, n_studies)
+        real(real64) :: ci_per_study(2, n_studies)
         integer(int32) :: ierr, i_point, i_study
 
         do i_point = 1, n_points
@@ -13392,7 +12789,6 @@ contains
             counts(i_point, :, 2) = [200_int32, 300_int32, 400_int32, 500_int32, 600_int32]
             counts(i_point, :, 3) = [200_int32, 600_int32, 400_int32, 600_int32, 200_int32]
         end do
-        mean_pmf_counts = sum(counts, dim=3)
         included_n_reps = sum(counts, dim=2)
         mean_pmf_included_n_reps = sum(included_n_reps, dim=2)
         do i_study = 1, n_studies
@@ -13402,42 +12798,36 @@ contains
         end do
         mean_pmf = sum(pmfs, dim=3)/real(n_studies, real64)
         call compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included_n_reps, &
-                                           mean_pmf_included_n_reps, js_divergences, observed, weights)
+                                           mean_pmf_included_n_reps, MODE_DIVERGENCE_PAIRWISE_K2, js_divergences, observed, &
+                                           weights)
         call assert_true(all(observed > 0.01_real64), name//"the studies clearly differ")
 
         ci_per_study(1, :) = 1.0_real64
         ci_per_study(2, :) = 0.0_real64
-        ci_pooled = ci_per_study
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, ci_per_study, ierr=ierr, random_seed=11_int32)
-        call assert_err(ierr, ERR_OK, name//"per-study: ierr")
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, ci_pooled, ierr=ierr, random_seed=11_int32, &
-                                 bootstrap_mode=MODE_BOOTSTRAP_POOLED)
-        call assert_err(ierr, ERR_OK, name//"pooled: ierr")
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_per_study, random_seed=11_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"ierr")
 
         call assert_true(all(ci_per_study(1, :) <= observed .and. observed <= ci_per_study(2, :)), &
-                         name//"the per-study interval contains every observed JSD")
-        call assert_true(all(ci_per_study(1, :) < ci_per_study(2, :)), name//"the per-study interval has a width")
-        call assert_true(all(ci_pooled(2, :) < observed), &
-                         name//"the pooled interval (a noise band) lies below every observed JSD")
+                         name//"the interval contains every observed JSD")
+        call assert_true(all(ci_per_study(1, :) < ci_per_study(2, :)), name//"the interval has a width")
     end subroutine test_bootstrap_histogram_per_study_contains_observed_jsd
 
-    !> In the per-study mode each study's own counts are its pool, so at every point they must add
-    !| up to its `included_n_reps`. Here study 1's counts `[1, 0]` add up to 1, not 2: invalid input
-    !| before any draw, with no argument position (not one argument's fault), and the interval
-    !| comes back unchanged. The pooled mode does not read `counts` and accepts the same input. The
-    !| plain wrapper also rejects a negative count (`DM_MIN(0)`, `counts` is argument 6) and an
-    !| unknown `bootstrap_mode` (argument 12).
+    !> Each study's own counts are what it is drawn from, so at every point they must add up to its
+    !| `included_n_reps`. Here study 1's counts `[1, 0]` add up to 1, not 2 (the point totals
+    !| `2 + 2 = 4` are consistent): invalid input before any draw, with no argument position (not
+    !| one argument's fault), and the interval comes back unchanged. The plain wrapper also rejects
+    !| a negative count (`DM_MIN(0)`, `counts` is argument 5) and an unknown `divergence_mode`
+    !| (argument 11).
     subroutine test_bootstrap_histogram_per_study_counts_must_add_up()
         character(len=*), parameter :: name = "test_bootstrap_histogram_per_study_counts_must_add_up: "
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 10
-        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32), parameter :: UNKNOWN_DIVERGENCE_MODE = 99_int32
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [2_int32, 2_int32]
         counts(1, :, 1) = [1_int32, 0_int32]
@@ -13445,95 +12835,706 @@ contains
         confidence_interval = 0.5_real64
         expected = confidence_interval
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, name//"a study's counts not adding up are invalid input", arg_pos=0_int32)
         call assert_equal_array_real(confidence_interval, expected, 2_int32*n_studies, 0.0_real64, &
                                      name//"confidence_interval comes back unchanged, so no bootstrap ran")
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
-        call assert_err(ierr, ERR_OK, name//"the pooled mode does not read counts")
-
         counts(1, :, 1) = [3_int32, -1_int32]
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"a negative count is rejected on counts", arg_pos=6_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"a negative count is rejected on counts", arg_pos=5_int32)
 
         counts(1, :, 1) = [1_int32, 1_int32]
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
-                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
-                                 random_seed=7_int32, bootstrap_mode=99_int32)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"an unknown bootstrap_mode is rejected", arg_pos=12_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, divergence_mode=UNKNOWN_DIVERGENCE_MODE, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"an unknown divergence_mode is rejected", arg_pos=11_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, &
+                                 random_seed=7_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"the same input with consistent counts is accepted")
     end subroutine test_bootstrap_histogram_per_study_counts_must_add_up
 
-    !> The fixed-k search passes `bootstrap_mode` through (Stone fixture via run_fixed_k_search:
-    !| effect-size thresholds 1e-300, so no plateau). Omitted equals the explicit per-study mode in
-    !| every output. The pooled mode evaluates the same candidates and traces the same observed
-    !| JSDs, but other intervals: the bootstrap draws from other histograms. (Its selection may
-    !| differ: without a plateau the search falls back to the smallest median interval width.)
-    subroutine test_param_search_bootstrap_mode()
-        character(len=*), parameter :: name = "test_param_search_bootstrap_mode: "
-        real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
-        type(fixed_k_search_outputs) :: omitted, per_study, pooled
-        integer(int32) :: ierr_omitted, ierr_per_study, ierr_pooled, n_adm
 
-        call build_adaptive_stone_fixture(gene_means, residuals)
-        call run_fixed_k_search(gene_means, residuals, omitted, ierr_omitted, min_residuals_per_bin=3_int32)
-        call run_fixed_k_search(gene_means, residuals, per_study, ierr_per_study, min_residuals_per_bin=3_int32, &
-                                bootstrap_mode=MODE_BOOTSTRAP_PER_STUDY)
-        call run_fixed_k_search(gene_means, residuals, pooled, ierr_pooled, min_residuals_per_bin=3_int32, &
-                                bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+    ! ---------------------------------------------------------------------------------------------
+    ! Grid options of the fixed-k grid, the pairwise divergence for two studies, and the defaults
+    ! of the options added or changed with them.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> The fixed-k grid with non-default `grid_points_factor`/`grid_min_points`, by hand.
+    !| - G = 2000, factor 10, floor 150: `n_points_high = ceiling(10*sqrt(2000)) = ceiling(447.21) =
+    !|   448`, `n_points_low = max(150, ceiling(0.2*448) = 90) = 150`. GAMMA decay of the real value:
+    !|   448 -> (448, `floor(2000/(0.25*448)) = floor(17.86) = 17`); 358.4 -> (358, `floor(22.32) =
+    !|   22`); 286.72 -> (287, `floor(27.90) = 27`); 229.376 -> (229, `floor(34.88) = 34`);
+    !|   183.5008 -> (184, `floor(43.59) = 43`); 146.80 < 150 stops. The coarsest (184) is not the
+    !|   floor, so the floor clamp adds (150, `floor(2000/(0.25*150)) = floor(53.33) = 53`) as the
+    !|   last candidate. Bounds: 448 points and `fixed_k_n_neighbors_bound = 53` neighbors.
+    !| - G = 2000, factor 6.7, floor 240 (GRID_2000_*): `ceiling(299.63) = 300`, `n_points_low = 240`;
+    !|   (300, 26), then 240 -> (240, `floor(2000/60) = 33`), then 192 < 240 stops. The coarsest
+    !|   candidate already is the floor, so nothing is added. Bounds: 300 and 33. This case hits the
+    !|   floor only because `300*0.8` rounds to exactly 240.0 in double precision; were it
+    !|   239.99999999999997, the decay would stop and the floor clamp would add the same (240, 33),
+    !|   so it cannot tell whether the duplicate check works.
+    !| - G = 2000, factor 10.48, floor 240 (the duplicate check without a rounding coincidence):
+    !|   `ceiling(10.48*sqrt(2000)) = ceiling(468.68) = 469`, `n_points_low = max(240, ceiling(93.8)) =
+    !|   240`; 469 -> (469, `floor(2000/117.25) = floor(17.06) = 17`); 375.2 -> (375, `floor(21.32) =
+    !|   21`); 300.16 -> (300, `floor(26.65) = 26`); 240.128 -> (240, `floor(33.32) = 33`): clearly
+    !|   above the floor, yet it rounds to it; 192.10 < 240 stops. The coarsest candidate is then
+    !|   the floor, and the duplicate check keeps the floor clamp from adding (240, 33) a second
+    !|   time: four candidates, not five.
+    !| The wrapper of calc_js_comp_test_candidate_bounds rejects `grid_points_factor <= 0`
+    !| (position 4) and `grid_min_points` outside `[1, MAX_POINTS]` (position 5).
+    subroutine test_fixed_k_grid_options_by_hand()
+        character(len=*), parameter :: name = "test_fixed_k_grid_options_by_hand: "
+        real(real64), parameter :: WIDE_POINTS_FACTOR = 10.0_real64
+        integer(int32), parameter :: LOW_MIN_POINTS = 150_int32
+        integer(int32), parameter :: expected_wide(2, 6) = reshape([448, 17, 358, 22, 287, 27, 229, 34, 184, 43, 150, 53], &
+                                                                  [2, 6])
+        integer(int32), parameter :: expected_2000(2, 2) = reshape([300, 26, 240, 33], [2, 2])
+        real(real64), parameter :: ROUNDS_TO_FLOOR_FACTOR = 10.48_real64
+        integer(int32), parameter :: expected_rounds_to_floor(2, 4) = reshape([469, 17, 375, 21, 300, 26, 240, 33], [2, 4])
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, n_points_high, n_points_low
+        integer(int32) :: bound_points, bound_neighbors
+
+        call calc_fixed_k_n_points_range(2000_int32, WIDE_POINTS_FACTOR, LOW_MIN_POINTS, n_points_high, n_points_low)
+        call assert_equal_array_int([n_points_high, n_points_low], [448_int32, 150_int32], 2_int32, &
+                                    name//"factor 10, floor 150: range")
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_points_factor=WIDE_POINTS_FACTOR, &
+                                              grid_min_points=LOW_MIN_POINTS, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"factor 10, floor 150: ierr")
+        call assert_equal_int(n_candidates, 6_int32, name//"factor 10, floor 150: five decayed candidates and the floor")
+        if (n_candidates == 6_int32) &
+            call assert_equal_array_int(candidates(:, 1:6), expected_wide, 12_int32, &
+                                        name//"factor 10, floor 150: candidates, the floor added last", n_rows=2_int32)
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, WIDE_POINTS_FACTOR, &
+                                                LOW_MIN_POINTS, ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), bound_points, bound_neighbors], [ERR_OK, 448_int32, 53_int32], &
+                                    3_int32, name//"factor 10, floor 150: bounds")
+
+        call calc_fixed_k_n_points_range(2000_int32, GRID_2000_POINTS_FACTOR, GRID_2000_MIN_POINTS, n_points_high, &
+                                         n_points_low)
+        call assert_equal_array_int([n_points_high, n_points_low], [300_int32, 240_int32], 2_int32, &
+                                    name//"factor 6.7, floor 240: range")
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, &
+                                              grid_points_factor=GRID_2000_POINTS_FACTOR, &
+                                              grid_min_points=GRID_2000_MIN_POINTS, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"factor 6.7, floor 240: ierr")
+        call assert_equal_int(n_candidates, 2_int32, name//"factor 6.7, floor 240: the floor is not added twice")
+        if (n_candidates == 2_int32) &
+            call assert_equal_array_int(candidates(:, 1:2), expected_2000, 4_int32, &
+                                        name//"factor 6.7, floor 240: candidates", n_rows=2_int32)
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, GRID_2000_POINTS_FACTOR, &
+                                                GRID_2000_MIN_POINTS, ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), bound_points, bound_neighbors], [ERR_OK, 300_int32, 33_int32], &
+                                    3_int32, name//"factor 6.7, floor 240: bounds")
+
+        call calc_fixed_k_n_points_range(2000_int32, ROUNDS_TO_FLOOR_FACTOR, GRID_2000_MIN_POINTS, n_points_high, &
+                                         n_points_low)
+        call assert_equal_array_int([n_points_high, n_points_low], [469_int32, 240_int32], 2_int32, &
+                                    name//"factor 10.48, floor 240: range")
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, &
+                                              grid_points_factor=ROUNDS_TO_FLOOR_FACTOR, &
+                                              grid_min_points=GRID_2000_MIN_POINTS, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"factor 10.48, floor 240: ierr")
+        call assert_equal_int(n_candidates, 4_int32, &
+                              name//"factor 10.48, floor 240: 240.128 rounds to the floor, which is not added twice")
+        if (n_candidates == 4_int32) &
+            call assert_equal_array_int(candidates(:, 1:4), expected_rounds_to_floor, 8_int32, &
+                                        name//"factor 10.48, floor 240: candidates", n_rows=2_int32)
+
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, 0.0_real64, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"bounds: grid_points_factor 0 rejected", arg_pos=4_int32)
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, -2.0_real64, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"bounds: grid_points_factor -2 rejected", arg_pos=4_int32)
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, grid_min_points=0_int32, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"bounds: grid_min_points 0 rejected", arg_pos=5_int32)
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, &
+                                                grid_min_points=MAX_POINTS + 1_int32, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"bounds: grid_min_points MAX_POINTS+1 rejected", arg_pos=5_int32)
+    end subroutine test_fixed_k_grid_options_by_hand
+
+    !> The defaults of the grid options are 4 and 200: generate_js_comp_test_candidates at
+    !| G = 26097 without them returns exactly what it returns with `grid_points_factor = 4` and
+    !| `grid_min_points = 200` passed, and so does the fixed-k search on the constant fixture of
+    !| test_param_search_plateau_mode_default_is_effect_size (every output). The comparison can
+    !| fail: `grid_min_points = 300` gives that search another trace (its floor candidate is
+    !| (300, 133) instead of (200, 200), and 256 and 205 fall below it).
+    subroutine test_fixed_k_grid_options_defaults()
+        character(len=*), parameter :: name = "test_fixed_k_grid_options_defaults: "
+        real(real64), parameter :: DEFAULT_GRID_POINTS_FACTOR = 4.0_real64
+            !! The documented default of `grid_points_factor`
+        integer(int32), parameter :: DEFAULT_GRID_MIN_POINTS = 200_int32
+            !! The documented default of `grid_min_points`
+        integer(int32), parameter :: OTHER_MIN_POINTS = 300_int32
+        integer(int32) :: omitted_grid(2, MAX_CANDIDATE_PAIRS), explicit_grid(2, MAX_CANDIDATE_PAIRS)
+        integer(int32) :: n_omitted, n_explicit, ierr, ierr_omitted, ierr_explicit, ierr_other
+        type(fixed_k_search_outputs) :: omitted, explicit, other
+
+        call generate_js_comp_test_candidates(26097_int32, omitted_grid, n_omitted, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"omitted: ierr")
+        call generate_js_comp_test_candidates(26097_int32, explicit_grid, n_explicit, &
+                                              grid_points_factor=DEFAULT_GRID_POINTS_FACTOR, &
+                                              grid_min_points=DEFAULT_GRID_MIN_POINTS, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"explicit: ierr")
+        call assert_equal_int(n_explicit, n_omitted, name//"grid: same number of candidates")
+        if (n_explicit == n_omitted) &
+            call assert_equal_array_int(explicit_grid(:, 1:n_omitted), omitted_grid(:, 1:n_omitted), 2_int32*n_omitted, &
+                                        name//"grid: same candidates", n_rows=2_int32)
+
+        call run_fixed_k_constant_fixture(omitted, ierr_omitted)
+        call run_fixed_k_constant_fixture(explicit, ierr_explicit, grid_points_factor=DEFAULT_GRID_POINTS_FACTOR, &
+                                          grid_min_points=DEFAULT_GRID_MIN_POINTS)
+        call run_fixed_k_constant_fixture(other, ierr_other, grid_min_points=OTHER_MIN_POINTS)
+        call assert_err(ierr_omitted, ERR_OK, name//"search omitted: ierr")
+        call assert_err(ierr_explicit, ERR_OK, name//"search explicit: ierr")
+        call assert_err(ierr_other, ERR_OK, name//"search floor 300: ierr")
+        call assert_fixed_k_searches_identical(name//"search omitted vs explicit 4/200: ", explicit, omitted)
+        call assert_equal_array_int(other%trace_n_points(1:3), [400_int32, 320_int32, 300_int32], 3_int32, &
+                                    name//"search floor 300: another grid is traced")
+        call assert_true(omitted%trace_n_points(3) /= other%trace_n_points(3), &
+                         name//"search: the comparison sees the grid")
+    end subroutine test_fixed_k_grid_options_defaults
+
+    !> compute_consensus_divergences with `MODE_DIVERGENCE_PAIRWISE_K2` and two studies: `js(:, 1)`
+    !| is compute_divergence_per_reference_point_impl of the two studies' pmfs (bins `1:n_bins` of
+    !| arrays one bin wider, whose extra bin holds -1 and must not be read), the global value and
+    !| the weights are compute_weighted_global_divergence_impl of it with both studies' included
+    !| counts, and study 2's vector, weights and global value are bit for bit study 1's. The
+    !| consensus is not read (NaN and -1 sentinels). By hand: point 1 has disjoint supports
+    !| (`[0.5, 0.5, 0, 0]` against `[0, 0, 0.5, 0.5]`), JSD `(2*0.5*ln 2 + 2*0.5*ln 2)/2/ln 2 = 1`;
+    !| point 2 has equal pmfs, JSD 0; the weights are `(n_1 + n_2)/total` = 6/36, 12/36, 18/36.
+    subroutine test_consensus_divergences_pairwise_k2()
+        character(len=*), parameter :: name = "test_consensus_divergences_pairwise_k2: "
+        integer(int32), parameter :: n_points = 3, n_bins = 4, n_bins_extent = 5, n_studies = 2
+        real(real64) :: pmfs(n_points, n_bins_extent, n_studies), mean_pmf(n_points, n_bins_extent)
+        real(real64) :: js(n_points, n_studies), weights(n_points, n_studies), global_jsd(n_studies)
+        real(real64) :: expected_js(n_points), expected_weights(n_points), expected_global
+        integer(int32) :: included(n_points, n_studies), mean_included(n_points)
+
+        pmfs(1, 1:n_bins, 1) = [0.5_real64, 0.5_real64, 0.0_real64, 0.0_real64]
+        pmfs(1, 1:n_bins, 2) = [0.0_real64, 0.0_real64, 0.5_real64, 0.5_real64]
+        pmfs(2, 1:n_bins, 1) = 0.25_real64
+        pmfs(2, 1:n_bins, 2) = 0.25_real64
+        pmfs(3, 1:n_bins, 1) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
+        pmfs(3, 1:n_bins, 2) = [0.4_real64, 0.3_real64, 0.2_real64, 0.1_real64]
+        pmfs(:, n_bins_extent, :) = -1.0_real64
+        mean_pmf = ieee_value(1.0_real64, ieee_quiet_nan)
+        included(:, 1) = [4_int32, 6_int32, 8_int32]
+        included(:, 2) = [2_int32, 6_int32, 10_int32]
+        mean_included = -1_int32
+
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins_extent, n_studies, included, &
+                                           mean_included, MODE_DIVERGENCE_PAIRWISE_K2, js, global_jsd, weights)
+        call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, 1), pmfs(:, 1:n_bins, 2), n_points, n_bins, &
+                                                         expected_js)
+        call compute_weighted_global_divergence_impl(expected_js, n_points, included(:, 1), included(:, 2), &
+                                                     expected_global, expected_weights)
+
+        ! Bit for bit, not up to a tolerance: in pairwise mode compute_consensus_divergences calls the
+        ! same two routines with the same arguments (the same pmf sections and included counts) as
+        ! the expected values above, so both paths run the same Fortran code on the same inputs.
+        call assert_bits_equal(js(:, 1), expected_js, n_points, name//"study 1: the pairwise JSD per point")
+        call assert_bits_equal(weights(:, 1), expected_weights, n_points, name//"study 1: weights from both studies")
+        call assert_bits_equal(global_jsd(1:1), [expected_global], 1_int32, name//"study 1: global JSD")
+        call assert_bits_equal(js(:, 2), js(:, 1), n_points, name//"study 2: the same vector")
+        call assert_bits_equal(weights(:, 2), weights(:, 1), n_points, name//"study 2: the same weights")
+        call assert_bits_equal(global_jsd(2:2), global_jsd(1:1), 1_int32, name//"study 2: the same global JSD")
+        call assert_equal_array_real(js(1:2, 1), [1.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     name//"by hand: disjoint supports 1, equal pmfs 0")
+        call assert_equal_array_real(weights(:, 1), [6.0_real64, 12.0_real64, 18.0_real64]/36.0_real64, n_points, TOL, &
+                                     name//"by hand: weights (n_1 + n_2)/total")
+    end subroutine test_consensus_divergences_pairwise_k2
+
+    !> With three studies `MODE_DIVERGENCE_PAIRWISE_K2` is the symmetric divergence:
+    !| compute_consensus_divergences gives bit-identical outputs in both modes (each study against
+    !| the consensus).
+    subroutine test_consensus_divergences_three_studies_pairwise_is_symmetric()
+        character(len=*), parameter :: name = "test_consensus_divergences_three_studies_pairwise_is_symmetric: "
+        integer(int32), parameter :: n_points = 2, n_bins = 3, n_studies = 3
+        real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins)
+        real(real64) :: js_sym(n_points, n_studies), w_sym(n_points, n_studies), g_sym(n_studies)
+        real(real64) :: js_pair(n_points, n_studies), w_pair(n_points, n_studies), g_pair(n_studies)
+        integer(int32) :: included(n_points, n_studies), mean_included(n_points)
+
+        pmfs(1, :, 1) = [0.2_real64, 0.3_real64, 0.5_real64]
+        pmfs(2, :, 1) = [0.6_real64, 0.2_real64, 0.2_real64]
+        pmfs(1, :, 2) = [0.5_real64, 0.25_real64, 0.25_real64]
+        pmfs(2, :, 2) = [0.1_real64, 0.1_real64, 0.8_real64]
+        pmfs(1, :, 3) = [1.0_real64, 0.0_real64, 0.0_real64]
+        pmfs(2, :, 3) = [0.3_real64, 0.4_real64, 0.3_real64]
+        mean_pmf = sum(pmfs, dim=3)/real(n_studies, real64)
+        included = reshape([4_int32, 5_int32, 6_int32, 2_int32, 3_int32, 7_int32], [n_points, n_studies])
+        mean_included = sum(included, dim=2)
+
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included, mean_included, &
+                                           MODE_DIVERGENCE_SYMMETRIC, js_sym, g_sym, w_sym)
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included, mean_included, &
+                                           MODE_DIVERGENCE_PAIRWISE_K2, js_pair, g_pair, w_pair)
+        call assert_bits_equal(js_pair, js_sym, n_points*n_studies, name//"js_divergences")
+        call assert_bits_equal(w_pair, w_sym, n_points*n_studies, name//"weights")
+        call assert_bits_equal(g_pair, g_sym, n_studies, name//"global JSD")
+        call assert_true(g_sym(1) /= g_sym(2), name//"the studies' values differ (not the shared pairwise value)")
+    end subroutine test_consensus_divergences_three_studies_pairwise_is_symmetric
+
+    !> run_js_comp_test with two studies (studies 1 and 2 of the golden fixture, the golden
+    !| occupancy options): omitted `divergence_mode` equals `MODE_DIVERGENCE_PAIRWISE_K2` passed
+    !| explicitly (every output bit for bit), and its JSDs are, recomputed here from the run's own
+    !| pmfs and included counts, compute_divergence_per_reference_point_impl of study 1's pmfs
+    !| against study 2's (bins `1:max_n_bins_per_point`) and compute_weighted_global_divergence_impl
+    !| with both studies' counts, the same for both studies. `MODE_DIVERGENCE_SYMMETRIC` gives
+    !| other values.
+    !|
+    !| Independently of those helpers, the values are also derived by hand from the run's bin
+    !| counts and included counts: per point the pmfs `P = counts_1/n_1` and `Q = counts_2/n_2`,
+    !| the textbook JSD with log base 2 (textbook_jsd_base2: `JSD = KL(P||M)/2 + KL(Q||M)/2`,
+    !| `M = (P + Q)/2`; the library takes natural logs and divides by `ln 2`, the same value),
+    !| the weights `(n_1 + n_2) / sum over all points of (n_1 + n_2)` and the global value
+    !| `sum(weight * JSD)`; equal up to rounding (TOL). The oracle itself is checked on two pmfs
+    !| with a known JSD: `[1, 0]` against `[0.5, 0.5]`, `M = [0.75, 0.25]`,
+    !| `(log2(4/3) + 0.5*log2(2/3) + 0.5*log2(2))/2 = 0.31127812445913283`.
+    subroutine test_run_js_comp_test_pairwise_k2_by_hand()
+        character(len=*), parameter :: name = "test_run_js_comp_test_pairwise_k2_by_hand: "
+        real(real64), parameter :: KNOWN_JSD = 0.31127812445913283_real64
+        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
+        integer(int32) :: hand_perms(10, 3), ierr_omitted, ierr_pairwise, ierr_symmetric, n_pts, n_bins
+        integer(int32) :: i_point, n_total
+        real(real64) :: expected_js(3), expected_weights(3), expected_global
+        real(real64) :: hand_js(3), hand_weights(3), hand_global
+        type(fixed_k_run_outputs) :: omitted, pairwise, symmetric
+
+        call build_run_js_comp_test_golden_fixture(gene_means, hand_perms, residuals, x_star)
+        call run_fixed_k_final(gene_means(:, 1:2), residuals(:, :, 1:2), x_star, 4_int32, omitted, ierr_omitted, &
+                               m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32)
+        call run_fixed_k_final(gene_means(:, 1:2), residuals(:, :, 1:2), x_star, 4_int32, pairwise, ierr_pairwise, &
+                               m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32, &
+                               divergence_mode=MODE_DIVERGENCE_PAIRWISE_K2)
+        call run_fixed_k_final(gene_means(:, 1:2), residuals(:, :, 1:2), x_star, 4_int32, symmetric, ierr_symmetric, &
+                               m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32, &
+                               divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
         call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
-        call assert_err(ierr_per_study, ERR_OK, name//"per-study: ierr")
-        call assert_err(ierr_pooled, ERR_OK, name//"pooled: ierr")
+        call assert_err(ierr_pairwise, ERR_OK, name//"pairwise: ierr")
+        call assert_err(ierr_symmetric, ERR_OK, name//"symmetric: ierr")
+        call assert_fixed_k_runs_bit_identical(omitted, pairwise, name//"omitted vs explicit pairwise: ")
 
-        call assert_fixed_k_searches_identical(name//"omitted vs per-study: ", omitted, per_study)
-        n_adm = per_study%n_admissible
-        call assert_true(n_adm >= 1_int32, name//"some candidate is admissible")
-        call assert_equal_int(pooled%n_admissible, n_adm, name//"the same candidates evaluated")
-        call assert_false(per_study%plateau .or. pooled%plateau, name//"no plateau in either mode")
-        call assert_equal_array_real(pooled%trace_jsd(:, 1:n_adm), per_study%trace_jsd(:, 1:n_adm), 3_int32*n_adm, &
-                                     0.0_real64, name//"the same observed JSDs")
-        call assert_true(any(pooled%trace_ci_lower(:, 1:n_adm) /= per_study%trace_ci_lower(:, 1:n_adm)) .or. &
-                         any(pooled%trace_ci_upper(:, 1:n_adm) /= per_study%trace_ci_upper(:, 1:n_adm)), &
-                         name//"other intervals")
-    end subroutine test_param_search_bootstrap_mode
+        n_pts = size(x_star, kind=int32)
+        n_bins = pairwise%max_n_bins
+        call compute_divergence_per_reference_point_impl(pairwise%pmfs(:, 1:n_bins, 1), pairwise%pmfs(:, 1:n_bins, 2), &
+                                                         n_pts, n_bins, expected_js)
+        call compute_weighted_global_divergence_impl(expected_js, n_pts, pairwise%included(:, 1), pairwise%included(:, 2), &
+                                                     expected_global, expected_weights)
+        ! Bit for bit, not up to a tolerance: the run's pairwise divergence calls the same two routines
+        ! with the same arguments (its own pmfs and included counts, read back here) as the expected
+        ! values above, so both paths run the same Fortran code on the same inputs.
+        call assert_bits_equal(pairwise%js(:, 1), expected_js, n_pts, name//"study 1: the pairwise JSD per point")
+        call assert_bits_equal(pairwise%js(:, 2), expected_js, n_pts, name//"study 2: the same vector")
+        call assert_bits_equal(pairwise%weights(:, 1), expected_weights, n_pts, name//"study 1: weights")
+        call assert_bits_equal(pairwise%weights(:, 2), expected_weights, n_pts, name//"study 2: weights")
+        call assert_bits_equal(pairwise%global_jsd, [expected_global, expected_global], 2_int32, &
+                               name//"both studies: the global JSD")
+        call assert_true(symmetric%global_jsd(1) /= pairwise%global_jsd(1), name//"the symmetric mode gives another value")
 
-    !> The adaptive search passes `bootstrap_mode` through (fixture B as in E4b, effect-size
-    !| plateau, seed 39; no plateau is found). Omitted equals the explicit per-study mode in every
-    !| output; the pooled mode evaluates the same candidates and traces the same observed JSDs, but
-    !| other intervals (and so, through the smallest-width fallback, possibly another selection).
-    subroutine test_adaptive_search_bootstrap_mode()
-        character(len=*), parameter :: name = "test_adaptive_search_bootstrap_mode: "
+        ! By hand: the textbook formula on the run's counts, not the library's helpers.
+        call assert_equal_real(textbook_jsd_base2([1.0_real64, 0.0_real64], [0.5_real64, 0.5_real64]), KNOWN_JSD, TOL, &
+                               name//"oracle: JSD([1, 0], [0.5, 0.5])")
+        n_total = 0_int32
+        do i_point = 1, n_pts
+            call assert_true(pairwise%included(i_point, 1) > 0_int32 .and. pairwise%included(i_point, 2) > 0_int32, &
+                             name//"by hand: both studies have residuals at every point")
+            hand_js(i_point) = textbook_jsd_base2( &
+                               real(pairwise%counts(i_point, 1:n_bins, 1), real64)/real(pairwise%included(i_point, 1), real64), &
+                               real(pairwise%counts(i_point, 1:n_bins, 2), real64)/real(pairwise%included(i_point, 2), real64))
+            n_total = n_total + pairwise%included(i_point, 1) + pairwise%included(i_point, 2)
+        end do
+        hand_global = 0.0_real64
+        do i_point = 1, n_pts
+            hand_weights(i_point) = real(pairwise%included(i_point, 1) + pairwise%included(i_point, 2), real64)/ &
+                                    real(n_total, real64)
+            hand_global = hand_global + hand_weights(i_point)*hand_js(i_point)
+        end do
+        call assert_true(hand_global > 0.0_real64, name//"by hand: a non-trivial global JSD")
+        call assert_equal_array_real(pairwise%js(:, 1), hand_js, n_pts, TOL, name//"by hand: study 1 JSD per point")
+        call assert_equal_array_real(pairwise%js(:, 2), hand_js, n_pts, TOL, name//"by hand: study 2 JSD per point")
+        call assert_equal_array_real(pairwise%weights(:, 1), hand_weights, n_pts, TOL, name//"by hand: weights")
+        call assert_equal_array_real(pairwise%global_jsd, [hand_global, hand_global], 2_int32, TOL, &
+                                     name//"by hand: both studies' global JSD")
+    end subroutine test_run_js_comp_test_pairwise_k2_by_hand
+
+    !> Test helper: the Jensen-Shannon divergence of two pmfs by the textbook formula, log base 2:
+    !| `JSD(P, Q) = KL(P||M)/2 + KL(Q||M)/2` with `M = (P + Q)/2` and
+    !| `KL(P||M) = sum over bins with P > 0 of P*log2(P/M)` (a bin with `P = 0` adds nothing). In
+    !| `[0, 1]`. Written out here as an oracle independent of the library's
+    !| compute_divergence_per_reference_point_impl.
+    pure function textbook_jsd_base2(p, q) result(jsd)
+        real(real64), intent(in) :: p(:)
+            !! First pmf
+        real(real64), intent(in) :: q(:)
+            !! Second pmf, the same length
+        real(real64) :: jsd
+        real(real64) :: m, kl_p, kl_q
+        integer(int32) :: i_bin
+
+        kl_p = 0.0_real64
+        kl_q = 0.0_real64
+        do i_bin = 1, size(p, kind=int32)
+            m = 0.5_real64*(p(i_bin) + q(i_bin))
+            if (p(i_bin) > 0.0_real64) kl_p = kl_p + p(i_bin)*log(p(i_bin)/m)/log(2.0_real64)
+            if (q(i_bin) > 0.0_real64) kl_q = kl_q + q(i_bin)*log(q(i_bin)/m)/log(2.0_real64)
+        end do
+        jsd = 0.5_real64*kl_p + 0.5_real64*kl_q
+    end function textbook_jsd_base2
+
+    !> With three studies (the golden fixture and its occupancy options) run_js_comp_test gives
+    !| bit-identical outputs with `MODE_DIVERGENCE_PAIRWISE_K2` and `MODE_DIVERGENCE_SYMMETRIC`, and
+    !| its plain wrapper rejects an unknown `divergence_mode` (99) at its position, 38.
+    subroutine test_run_js_comp_test_three_studies_pairwise_is_symmetric()
+        character(len=*), parameter :: name = "test_run_js_comp_test_three_studies_pairwise_is_symmetric: "
+        integer(int32), parameter :: UNKNOWN_DIVERGENCE_MODE = 99_int32, DIVERGENCE_MODE_POSITION = 38_int32
+        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
+        integer(int32) :: hand_perms(10, 3), ierr_pairwise, ierr_symmetric, ierr
+        type(fixed_k_run_outputs) :: pairwise, symmetric, rejected
+
+        call build_run_js_comp_test_golden_fixture(gene_means, hand_perms, residuals, x_star)
+        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, pairwise, ierr_pairwise, m_min=2_int32, &
+                               m_max=12_int32, min_residuals_per_bin=3_int32, divergence_mode=MODE_DIVERGENCE_PAIRWISE_K2)
+        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, symmetric, ierr_symmetric, m_min=2_int32, &
+                               m_max=12_int32, min_residuals_per_bin=3_int32, divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
+        call assert_err(ierr_pairwise, ERR_OK, name//"pairwise: ierr")
+        call assert_err(ierr_symmetric, ERR_OK, name//"symmetric: ierr")
+        call assert_fixed_k_runs_bit_identical(pairwise, symmetric, name//"pairwise vs symmetric: ")
+
+        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, rejected, ierr, m_min=2_int32, m_max=12_int32, &
+                               min_residuals_per_bin=3_int32, divergence_mode=UNKNOWN_DIVERGENCE_MODE)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"an unknown divergence_mode is rejected", DIVERGENCE_MODE_POSITION)
+    end subroutine test_run_js_comp_test_three_studies_pairwise_is_symmetric
+
+    !> The fixed-k search's `divergence_mode` defaults to the pairwise divergence: on a two-study
+    !| fixture (300 genes, means `g + (s - 1)/2`, LCG residuals; run_fixed_k_search's grid (300, 4),
+    !| (240, 5)) omitted equals `MODE_DIVERGENCE_PAIRWISE_K2` passed explicitly in every output,
+    !| both studies share each traced JSD, and `MODE_DIVERGENCE_SYMMETRIC` traces other JSDs (so the
+    !| comparison can fail).
+    subroutine test_param_search_divergence_mode_default_is_pairwise()
+        character(len=*), parameter :: name = "test_param_search_divergence_mode_default_is_pairwise: "
+        real(real64) :: gene_means(300, 2), residuals(3, 300, 2)
+        type(fixed_k_search_outputs) :: omitted, pairwise, symmetric
+        integer(int32) :: ierr_omitted, ierr_pairwise, ierr_symmetric
+
+        call build_adaptive_search_fixture(300_int32, 2_int32, 3_int32, .true._c_bool, 300_int32, gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, omitted, ierr_omitted, min_residuals_per_bin=0_int32)
+        call run_fixed_k_search(gene_means, residuals, pairwise, ierr_pairwise, min_residuals_per_bin=0_int32, &
+                                divergence_mode=MODE_DIVERGENCE_PAIRWISE_K2)
+        call run_fixed_k_search(gene_means, residuals, symmetric, ierr_symmetric, min_residuals_per_bin=0_int32, &
+                                divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
+        call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
+        call assert_err(ierr_pairwise, ERR_OK, name//"pairwise: ierr")
+        call assert_err(ierr_symmetric, ERR_OK, name//"symmetric: ierr")
+        call assert_fixed_k_searches_identical(name//"omitted vs explicit pairwise: ", pairwise, omitted)
+        call assert_true(pairwise%n_admissible >= 1_int32, name//"some candidate traced")
+        call assert_bits_equal(pairwise%trace_jsd(1, 1:pairwise%n_admissible), pairwise%trace_jsd(2, 1:pairwise%n_admissible), &
+                               pairwise%n_admissible, name//"pairwise: both studies share the traced JSD")
+        call assert_true(symmetric%trace_jsd(1, 1) /= pairwise%trace_jsd(1, 1), name//"symmetric traces another JSD")
+    end subroutine test_param_search_divergence_mode_default_is_pairwise
+
+    !> run_js_comp_test_adaptive's `divergence_mode` defaults to the pairwise divergence: two
+    !| studies (12 genes, 5 replicates, means `g + 0.3*(s - 1) + 0.05*sin(g*s)`, deterministic sine
+    !| residuals), neighborhoods from construct_adaptive_neighborhoods (`k_start = 6`, `k_step = 3`,
+    !| `k_max = 12`). Omitted equals `MODE_DIVERGENCE_PAIRWISE_K2` passed explicitly in every output
+    !| (bit for bit), both studies share the JSD per point, the weights and the global value, and
+    !| `MODE_DIVERGENCE_SYMMETRIC` gives other values (so the comparison can fail).
+    subroutine test_run_adaptive_divergence_mode_default_is_pairwise()
+        character(len=*), parameter :: name = "test_run_adaptive_divergence_mode_default_is_pairwise: "
+        integer(int32), parameter :: n_studies = 2, n_genes = 12, n_reps = 5, pool = n_genes*n_studies
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies)
+        real(real64) :: x_star(pool), dispersion(pool), mads(pool)
+        integer(int32) :: ranges(2, pool), n_per_point(n_studies, pool), stops(pool)
+        integer(int32) :: n_points, max_nn, status, ierr_omitted, ierr_pairwise, ierr_symmetric, i_gene, i_study, i_rep
+        type(adaptive_run_outputs) :: omitted, pairwise, symmetric
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                gene_means(i_gene, i_study) = real(i_gene, real64) + 0.3_real64*real(i_study - 1, real64) + &
+                                              0.05_real64*sin(real(i_gene*i_study, real64))
+                do i_rep = 1, n_reps
+                    residuals(i_rep, i_gene, i_study) = (0.5_real64 + 0.1_real64*real(i_gene, real64))* &
+                                                        sin(1.7_real64*real(i_rep, real64) + 0.9_real64*real(i_gene, real64) &
+                                                            + 1.3_real64*real(i_study, real64))
+                end do
+            end do
+        end do
+        call run_adaptive_construction(gene_means, residuals, 6_int32, 3_int32, 12_int32, n_points, x_star, ranges, &
+                                       n_per_point, stops, dispersion, mads, max_nn, status)
+        call assert_equal_int(status, ERR_OK, name//"construction status")
+        call assert_true(n_points >= 2_int32, name//"several reference points")
+
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), omitted, ierr_omitted, m_min=2_int32, &
+                                m_max=10_int32, min_residuals_per_bin=2_int32)
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), pairwise, ierr_pairwise, m_min=2_int32, &
+                                m_max=10_int32, min_residuals_per_bin=2_int32, divergence_mode=MODE_DIVERGENCE_PAIRWISE_K2)
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), symmetric, ierr_symmetric, m_min=2_int32, &
+                                m_max=10_int32, min_residuals_per_bin=2_int32, divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
+        call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
+        call assert_err(ierr_pairwise, ERR_OK, name//"pairwise: ierr")
+        call assert_err(ierr_symmetric, ERR_OK, name//"symmetric: ierr")
+
+        call assert_equal_int(omitted%max_n_bins, pairwise%max_n_bins, name//"omitted vs pairwise: max_n_bins")
+        call assert_equal_array_int(omitted%n_bins, pairwise%n_bins, n_points, name//"omitted vs pairwise: n_bins")
+        call assert_equal_array_int(omitted%included, pairwise%included, n_points*n_studies, &
+                                    name//"omitted vs pairwise: included counts")
+        call assert_equal_array_int(omitted%counts, pairwise%counts, n_points*MAX_N_BINS*n_studies, &
+                                    name//"omitted vs pairwise: counts")
+        call assert_bits_equal(omitted%pmfs, pairwise%pmfs, n_points*MAX_N_BINS*n_studies, name//"omitted vs pairwise: pmfs")
+        call assert_bits_equal(omitted%js, pairwise%js, n_points*n_studies, name//"omitted vs pairwise: js")
+        call assert_bits_equal(omitted%weights, pairwise%weights, n_points*n_studies, name//"omitted vs pairwise: weights")
+        call assert_bits_equal(omitted%global_jsd, pairwise%global_jsd, n_studies, name//"omitted vs pairwise: global JSD")
+
+        call assert_bits_equal(pairwise%js(:, 2), pairwise%js(:, 1), n_points, name//"pairwise: both studies share js")
+        call assert_bits_equal(pairwise%weights(:, 2), pairwise%weights(:, 1), n_points, &
+                               name//"pairwise: both studies share the weights")
+        call assert_bits_equal(pairwise%global_jsd(2:2), pairwise%global_jsd(1:1), 1_int32, &
+                               name//"pairwise: both studies share the global JSD")
+        call assert_true(symmetric%global_jsd(1) /= symmetric%global_jsd(2), name//"symmetric: the studies differ")
+        call assert_true(symmetric%global_jsd(1) /= pairwise%global_jsd(1), name//"symmetric gives another value")
+    end subroutine test_run_adaptive_divergence_mode_default_is_pairwise
+
+    !> run_js_comp_test_adaptive_parameter_search's `divergence_mode` defaults to the pairwise
+    !| divergence: on fixture B with two studies (500 genes, 3 replicates, the fixture of
+    !| test_adaptive_search_ci_plateau_keeps_earlier_best) omitted equals
+    !| `MODE_DIVERGENCE_PAIRWISE_K2` passed explicitly in every output, both studies share each
+    !| traced JSD, and `MODE_DIVERGENCE_SYMMETRIC` traces other JSDs (so the comparison can fail).
+    subroutine test_adaptive_search_divergence_mode_default_is_pairwise()
+        character(len=*), parameter :: name = "test_adaptive_search_divergence_mode_default_is_pairwise: "
         real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
-        type(adaptive_search_outputs) :: omitted, per_study, pooled
-        integer(int32) :: ierr_omitted, ierr_per_study, ierr_pooled, n_adm
+        type(adaptive_search_outputs) :: omitted, pairwise, symmetric
+        integer(int32) :: ierr_omitted, ierr_pairwise, ierr_symmetric
 
         call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
-        call run_adaptive_search(gene_means, residuals, omitted, ierr_omitted, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                 random_seed=39_int32)
-        call run_adaptive_search(gene_means, residuals, per_study, ierr_per_study, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                 random_seed=39_int32, bootstrap_mode=MODE_BOOTSTRAP_PER_STUDY)
-        call run_adaptive_search(gene_means, residuals, pooled, ierr_pooled, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                 random_seed=39_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call run_adaptive_search(gene_means, residuals, omitted, ierr_omitted)
+        call run_adaptive_search(gene_means, residuals, pairwise, ierr_pairwise, divergence_mode=MODE_DIVERGENCE_PAIRWISE_K2)
+        call run_adaptive_search(gene_means, residuals, symmetric, ierr_symmetric, divergence_mode=MODE_DIVERGENCE_SYMMETRIC)
         call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
-        call assert_err(ierr_per_study, ERR_OK, name//"per-study: ierr")
-        call assert_err(ierr_pooled, ERR_OK, name//"pooled: ierr")
+        call assert_err(ierr_pairwise, ERR_OK, name//"pairwise: ierr")
+        call assert_err(ierr_symmetric, ERR_OK, name//"symmetric: ierr")
+        call assert_adaptive_searches_identical(name//"omitted vs explicit pairwise: ", pairwise, omitted)
+        call assert_true(pairwise%n_admissible >= 1_int32, name//"some candidate traced")
+        call assert_bits_equal(pairwise%trace_jsd(1, 1:pairwise%n_admissible), pairwise%trace_jsd(2, 1:pairwise%n_admissible), &
+                               pairwise%n_admissible, name//"pairwise: both studies share the traced JSD")
+        call assert_true(symmetric%n_admissible >= 1_int32, name//"symmetric: some candidate traced")
+        call assert_true(symmetric%trace_jsd(1, 1) /= pairwise%trace_jsd(1, 1), name//"symmetric traces another JSD")
+    end subroutine test_adaptive_search_divergence_mode_default_is_pairwise
 
-        call assert_adaptive_searches_identical(name//"omitted vs per-study: ", omitted, per_study)
-        n_adm = per_study%n_admissible
-        call assert_true(n_adm >= 1_int32, name//"some candidate is admissible")
-        call assert_equal_int(pooled%n_admissible, n_adm, name//"the same candidates evaluated")
-        call assert_false(per_study%plateau .or. pooled%plateau, name//"no plateau in either mode")
-        call assert_equal_array_real(pooled%trace_jsd(:, 1:n_adm), per_study%trace_jsd(:, 1:n_adm), 2_int32*n_adm, &
-                                     0.0_real64, name//"the same observed JSDs")
-        call assert_true(any(pooled%trace_ci_lower(:, 1:n_adm) /= per_study%trace_ci_lower(:, 1:n_adm)) .or. &
-                         any(pooled%trace_ci_upper(:, 1:n_adm) /= per_study%trace_ci_upper(:, 1:n_adm)), &
-                         name//"other intervals")
-    end subroutine test_adaptive_search_bootstrap_mode
+    !> check_effect_size_plateau_condition's `delta_abs_tolerance` defaults to 0.0001, pinned from
+    !| both sides. Previous JSDs `[0.5, 0.5, 0.5]`, current `[0.500099, 0.500101, 0.6]`: study 1
+    !| changes by 0.000099, study 2 by 0.000101, study 3 by 0.1. A change at most the tolerance
+    !| counts as none (delta 0), a larger one keeps its relative change `change/0.5`. So with the
+    !| default, study 1 gets 0 and study 2 keeps `0.000101/0.5 = 0.000202`; this outcome holds
+    !| exactly for a tolerance in `[0.000099, 0.000101)`, so any default outside that bracket fails:
+    !| - 0.00005 (below the bracket) keeps study 1 too: deltas `[0.000198, 0.000202, 0.2]`;
+    !| - 0.0002 (above it) zeroes study 2 too: deltas `[0, 0, 0.2]`.
+    !| Omitted equals 0.0001 passed explicitly exactly (delta, median, maximum), and differs from
+    !| both 0.00005 and 0.0002.
+    subroutine test_effect_size_abs_tolerance_default_is_one_ten_thousandth()
+        character(len=*), parameter :: name = "test_effect_size_abs_tolerance_default_is_one_ten_thousandth: "
+        integer(int32), parameter :: n_studies = 3_int32
+        real(real64), parameter :: DEFAULT_DELTA_ABS_TOLERANCE = 1.0e-4_real64
+            !! The documented default of `delta_abs_tolerance`
+        real(real64), parameter :: TOLERANCE_BELOW = 5.0e-5_real64, TOLERANCE_ABOVE = 2.0e-4_real64
+            !! Tolerances on either side of the bracket `[0.000099, 0.000101)`
+        real(real64), parameter :: previous(n_studies) = [0.5_real64, 0.5_real64, 0.5_real64]
+        real(real64), parameter :: current(n_studies) = [0.500099_real64, 0.500101_real64, 0.6_real64]
+        real(real64) :: delta_omitted(n_studies), delta_default(n_studies), delta_below(n_studies)
+        real(real64) :: delta_above(n_studies), med(4), mx(4)
+
+        call effect_size_deltas(delta_omitted, med(1), mx(1))
+        call effect_size_deltas(delta_default, med(2), mx(2), DEFAULT_DELTA_ABS_TOLERANCE)
+        call effect_size_deltas(delta_below, med(3), mx(3), TOLERANCE_BELOW)
+        call effect_size_deltas(delta_above, med(4), mx(4), TOLERANCE_ABOVE)
+
+        call assert_equal_array_real(delta_omitted, delta_default, n_studies, 0.0_real64, &
+                                     name//"omitted equals 0.0001: delta")
+        call assert_equal_array_real(med(1:1), med(2:2), 1_int32, 0.0_real64, name//"omitted equals 0.0001: median")
+        call assert_equal_array_real(mx(1:1), mx(2:2), 1_int32, 0.0_real64, name//"omitted equals 0.0001: maximum")
+        call assert_equal_array_real(delta_omitted, [0.0_real64, 2.02e-4_real64, 0.2_real64], n_studies, 1.0e-12_real64, &
+                                     name//"default: 0.000099 counts as none, 0.000101 is kept")
+        call assert_equal_real(delta_omitted(1), 0.0_real64, 0.0_real64, name//"default: study 1 exactly 0")
+        call assert_equal_array_real(delta_below, [1.98e-4_real64, 2.02e-4_real64, 0.2_real64], n_studies, &
+                                     1.0e-12_real64, name//"tolerance 0.00005: study 1 kept too")
+        call assert_equal_array_real(delta_above, [0.0_real64, 0.0_real64, 0.2_real64], n_studies, 1.0e-12_real64, &
+                                     name//"tolerance 0.0002: study 2 zeroed too")
+        call assert_true(delta_omitted(1) /= delta_below(1), name//"the default differs from 0.00005")
+        call assert_true(delta_omitted(2) /= delta_above(2), name//"the default differs from 0.0002")
+
+    contains
+
+        !> The deltas, median and maximum of one check on the transition above, `delta_abs_tolerance`
+        !| forwarded as given (absent: the default).
+        subroutine effect_size_deltas(delta, delta_median, delta_max, delta_abs_tolerance)
+            real(real64), intent(out) :: delta(n_studies)
+                !! Per-study relative change
+            real(real64), intent(out) :: delta_median
+                !! Median of `delta`
+            real(real64), intent(out) :: delta_max
+                !! Maximum of `delta`
+            real(real64), intent(in), optional :: delta_abs_tolerance
+                !! Forwarded to the check
+            integer(int32) :: n_consecutive_ok, ierr
+            logical(c_bool) :: plateau_found
+
+            n_consecutive_ok = 0_int32
+            call check_effect_size_plateau_condition(current, previous, n_studies, .true._c_bool, 0.05_real64, &
+                                                     0.10_real64, 1.0e-10_real64, 2_int32, n_consecutive_ok, delta, &
+                                                     delta_median, delta_max, plateau_found, &
+                                                     delta_abs_tolerance=delta_abs_tolerance, ierr=ierr)
+            call assert_err(ierr, ERR_OK, name//"ierr")
+        end subroutine effect_size_deltas
+    end subroutine test_effect_size_abs_tolerance_default_is_one_ten_thousandth
+
+
+    !> The grid caps every `n_neighbors` at the gene count G. `n_neighbors = floor(G/(f*n_points))`
+    !| exceeds G once `f*n_points < 1`, which a `grid_min_points` below 4 allows. Hand-derived:
+    !| - G = 2, `grid_min_points = 2`, default factor 4: `n_points_high = clamp(ceiling(4*sqrt(2)) =
+    !|   ceiling(5.66) = 6, 2, 1500) = 6`, `n_points_low = max(2, ceiling(0.2*6) = 2) = 2`. Decay 6,
+    !|   4.8, 3.84, 3.072, 2.4576, then 1.97 < 2 stops; 2.4576 rounds to the floor, so no floor
+    !|   candidate is added. Large (f = 0.25): `floor(2/1.5) = 1`, `floor(2/1.2) = 1`,
+    !|   `floor(2/0.96) = floor(2.08) = 2`, `floor(2/0.768) = floor(2.60) = 2`, and
+    !|   `floor(2/0.6144) = floor(3.26) = 3`, capped to 2. Without the cap the last candidate was
+    !|   (2, 3): three neighbors out of two genes. Small (f = 0.5): 1, 1, 1, 1 and `floor(1.63) = 1`,
+    !|   the cap does not bind. The bounds: `(6, min(2, floor(2/(0.25*2)) = 4) = 2)`.
+    !| - G = 1000, `grid_points_factor = 0.001`, `grid_min_points = 1` (the small factor's case):
+    !|   `ceiling(0.001*sqrt(1000)) = ceiling(0.032) = 1`, `n_points_low = max(1, ceiling(0.2)) = 1`,
+    !|   one candidate `n_points = 1` (0.8 < 1 stops, the floor is that candidate). Large:
+    !|   `floor(1000/0.25) = 4000`, small: `floor(1000/0.5) = 2000`, both capped to 1000. Bounds (1, 1000).
+    !| - G = huge(1_int32), the same options: the single candidate `(1, G)`; uncapped,
+    !|   `floor(4*G)` would overflow a 32-bit integer.
+    !| With `grid_min_points >= 4` the cap never binds; the default grids of the other tests are
+    !| unchanged by it.
+    subroutine test_fixed_k_grid_caps_n_neighbors_at_gene_count()
+        character(len=*), parameter :: name = "test_fixed_k_grid_caps_n_neighbors_at_gene_count: "
+        real(real64), parameter :: TINY_POINTS_FACTOR = 0.001_real64
+        integer(int32), parameter :: expected_two_large(2, 5) = reshape([6, 1, 5, 1, 4, 2, 3, 2, 2, 2], [2, 5])
+        integer(int32), parameter :: expected_two_small(2, 5) = reshape([6, 1, 5, 1, 4, 1, 3, 1, 2, 1], [2, 5])
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, bound_points, bound_neighbors
+        integer(int32) :: i_mode
+        integer(int32), parameter :: modes(2) = [MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL]
+
+        call generate_js_comp_test_candidates(2_int32, candidates, n_candidates, grid_min_points=2_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"G = 2 large: ierr")
+        call assert_equal_int(n_candidates, 5_int32, name//"G = 2 large: five candidates")
+        if (n_candidates == 5_int32) &
+            call assert_equal_array_int(candidates(:, 1:5), expected_two_large, 10_int32, &
+                                        name//"G = 2 large: candidates, the last one capped at 2", n_rows=2_int32)
+        call assert_true(maxval(candidates(2, 1:n_candidates)) <= 2_int32, name//"G = 2 large: every n_neighbors <= G")
+        call generate_js_comp_test_candidates(2_int32, candidates, n_candidates, &
+                                              neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_SMALL, &
+                                              grid_min_points=2_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"G = 2 small: ierr")
+        call assert_equal_int(n_candidates, 5_int32, name//"G = 2 small: five candidates")
+        if (n_candidates == 5_int32) &
+            call assert_equal_array_int(candidates(:, 1:5), expected_two_small, 10_int32, &
+                                        name//"G = 2 small: candidates", n_rows=2_int32)
+        call calc_js_comp_test_candidate_bounds(2_int32, bound_points, bound_neighbors, grid_min_points=2_int32, ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), bound_points, bound_neighbors], [ERR_OK, 6_int32, 2_int32], &
+                                    3_int32, name//"G = 2: bounds, neighbors capped at 2")
+        call assert_equal_int(fixed_k_n_neighbors_bound(2_int32, 2_int32), 2_int32, &
+                              name//"G = 2: fixed_k_n_neighbors_bound capped at 2")
+
+        do i_mode = 1, 2
+            call generate_js_comp_test_candidates(1000_int32, candidates, n_candidates, neighborhood_size_mode=modes(i_mode), &
+                                                  grid_points_factor=TINY_POINTS_FACTOR, grid_min_points=1_int32, ierr=ierr)
+            call assert_err(ierr, ERR_OK, name//"G = 1000: ierr")
+            call assert_equal_int(n_candidates, 1_int32, name//"G = 1000: one candidate")
+            call assert_equal_array_int(candidates(:, 1), [1_int32, 1000_int32], 2_int32, &
+                                        name//"G = 1000: (1, 1000), capped from 4000 (large) and 2000 (small)")
+        end do
+        call calc_js_comp_test_candidate_bounds(1000_int32, bound_points, bound_neighbors, TINY_POINTS_FACTOR, 1_int32, &
+                                                ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), bound_points, bound_neighbors], [ERR_OK, 1_int32, 1000_int32], &
+                                    3_int32, name//"G = 1000: bounds")
+
+        call generate_js_comp_test_candidates(huge(1_int32), candidates, n_candidates, grid_points_factor=1.0e-300_real64, &
+                                              grid_min_points=1_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"G = huge: ierr")
+        call assert_equal_int(n_candidates, 1_int32, name//"G = huge: one candidate")
+        call assert_equal_array_int(candidates(:, 1), [1_int32, huge(1_int32)], 2_int32, &
+                                    name//"G = huge: (1, G), no overflow")
+    end subroutine test_fixed_k_grid_caps_n_neighbors_at_gene_count
+
+    !> The capped grid of test_fixed_k_grid_caps_n_neighbors_at_gene_count runs through the fixed-k
+    !| search without reaching past the genes there are: G = 2 genes, 2 studies, 3 replicates,
+    !| `grid_min_points = 2` and the default factor, whose grid is (6, 1), (5, 1), (4, 2), (3, 2),
+    !| (2, 2). Every candidate's neighborhoods are built in Pass A, the last one with 2 neighbors (3
+    !| before the cap, gene index 3 out of 2). The search returns without error and every traced and
+    !| selected `n_neighbors` is at most 2; its candidate bounds are (6, 2). Out-of-bounds reads are
+    !| only caught by a build with runtime checks (`--diagnostics`, `-fcheck=all`).
+    subroutine test_param_search_two_genes_low_grid_floor()
+        character(len=*), parameter :: name = "test_param_search_two_genes_low_grid_floor: "
+        real(real64), parameter :: gene_means(2, 2) = reshape([1.0_real64, 3.0_real64, 1.2_real64, 3.1_real64], [2, 2])
+        real(real64), parameter :: residuals(3, 2, 2) = reshape([-0.5_real64, 0.1_real64, 0.4_real64, &
+                                                                 -0.3_real64, 0.2_real64, 0.1_real64, &
+                                                                 -0.6_real64, 0.25_real64, 0.35_real64, &
+                                                                 -0.2_real64, -0.1_real64, 0.3_real64], [3, 2, 2])
+        type(fixed_k_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call run_fixed_k_search(gene_means, residuals, out, ierr, grid_points_factor=4.0_real64, grid_min_points=2_int32)
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_int(size(out%n_bins, kind=int32), 6_int32, name//"sized by the bound 6 points")
+        call assert_true(out%n_neighbors >= 1_int32 .and. out%n_neighbors <= 2_int32, name//"selected n_neighbors <= G")
+        if (out%n_admissible >= 1_int32) &
+            call assert_true(maxval(out%trace_n_neighbors(1:out%n_admissible)) <= 2_int32, &
+                             name//"every traced n_neighbors <= G")
+    end subroutine test_param_search_two_genes_low_grid_floor
+
+    !> The longest fixed-k grid: 8 decayed values, the loop ending on its bound MAX_POINT_CANDIDATES
+    !| rather than on `n_points_high < n_points_low`, plus the floor, 9 candidates (of
+    !| MAX_CANDIDATE_PAIRS = 16). G = 200000, default options, by hand:
+    !| `ceiling(4*sqrt(200000)) = ceiling(1788.85) = 1789`, clamped to MAX_POINTS = 1500;
+    !| `n_points_low = max(200, ceiling(0.2*1500) = 300) = 300`. Decay (nint) and
+    !| `n_neighbors = floor(200000/(0.25*x))` on the unrounded x:
+    !| 1500 -> 533 (533.33); 1200 -> 666 (666.67); 960 -> 833 (833.33); 768 -> 1041 (1041.67);
+    !| 614.4 -> (614, 1302) (1302.08); 491.52 -> (492, 1627) (1627.60); 393.216 -> (393, 2034)
+    !| (2034.51); 314.5728 -> (315, 2543) (2543.13). Eight rounds done; the next value 251.66 is
+    !| below 300, and 315 is not the floor, so the floor (300, `floor(200000/75) = 2666`) is added.
+    !| The bounds are (1500, 2666).
+    subroutine test_fixed_k_grid_longest_grid_200000()
+        character(len=*), parameter :: name = "test_fixed_k_grid_longest_grid_200000: "
+        integer(int32), parameter :: expected(2, 9) = reshape([1500, 533, 1200, 666, 960, 833, 768, 1041, 614, 1302, &
+                                                               492, 1627, 393, 2034, 315, 2543, 300, 2666], [2, 9])
+        integer(int32) :: bound_points, bound_neighbors, ierr
+
+        call assert_fixed_k_grid(name, 200000_int32, expected)
+        call calc_js_comp_test_candidate_bounds(200000_int32, bound_points, bound_neighbors, ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), bound_points, bound_neighbors], &
+                                    [ERR_OK, 1500_int32, 2666_int32], 3_int32, name//"bounds")
+    end subroutine test_fixed_k_grid_longest_grid_200000
+
+    !> A huge `grid_points_factor` hits the cap before `ceiling` in calc_fixed_k_n_points_range:
+    !| G = 2000, factor 1e300: `1e300*sqrt(2000) = 4.5e301` is capped at MAX_POINTS = 1500 (without
+    !| the cap `ceiling` of it would overflow a 32-bit integer), so `n_points_high = 1500` and
+    !| `n_points_low = max(200, 300) = 300`. The grid is then the full nine-candidate one at G =
+    !| 2000: 1500, 1200, 960, 768, 614, 492, 393, 315 with `floor(2000/(0.25*x))` = 5, 6, 8, 10, 13,
+    !| 16, 20, 25, then the floor (300, `floor(2000/75) = 26`). The bounds are (1500, 26).
+    subroutine test_fixed_k_grid_huge_points_factor_capped()
+        character(len=*), parameter :: name = "test_fixed_k_grid_huge_points_factor_capped: "
+        real(real64), parameter :: HUGE_POINTS_FACTOR = 1.0e300_real64
+        integer(int32), parameter :: expected(2, 9) = reshape([1500, 5, 1200, 6, 960, 8, 768, 10, 614, 13, 492, 16, &
+                                                               393, 20, 315, 25, 300, 26], [2, 9])
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, n_points_high, n_points_low
+        integer(int32) :: bound_points, bound_neighbors
+
+        call calc_fixed_k_n_points_range(2000_int32, HUGE_POINTS_FACTOR, 200_int32, n_points_high, n_points_low)
+        call assert_equal_array_int([n_points_high, n_points_low], [1500_int32, 300_int32], 2_int32, name//"range")
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, grid_points_factor=HUGE_POINTS_FACTOR, &
+                                              ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_int(n_candidates, 9_int32, name//"nine candidates")
+        if (n_candidates == 9_int32) &
+            call assert_equal_array_int(candidates(:, 1:9), expected, 18_int32, name//"candidates", n_rows=2_int32)
+        call calc_js_comp_test_candidate_bounds(2000_int32, bound_points, bound_neighbors, HUGE_POINTS_FACTOR, ierr=ierr)
+        call assert_equal_array_int([get_err_code(ierr), bound_points, bound_neighbors], [ERR_OK, 1500_int32, 26_int32], &
+                                    3_int32, name//"bounds")
+    end subroutine test_fixed_k_grid_huge_points_factor_capped
 
 end module mod_test_data_integration_js_comp_test

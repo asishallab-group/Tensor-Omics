@@ -17,6 +17,11 @@
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
 !| builds the neighborhoods for the chosen knobs. `calc_adaptive_js_comp_test_bounds` sizes the
 !| work arrays for a caller that allocates its own.
+!|
+!| This adaptive search is the recommended way to choose the JS-Comp-Test's neighborhoods: they
+!| follow the local density of the gene means. The fixed-k search,
+!| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]],
+!| stays available.
 module tox_data_integration_js_comp_test_adaptive_search_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
@@ -36,7 +41,7 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
     public :: calc_adaptive_js_comp_test_bounds_impl, generate_adaptive_js_comp_test_candidates_impl, &
              run_js_comp_test_adaptive_parameter_search_impl, &
              ADAPTIVE_START_FRACTION, ADAPTIVE_GAMMA, ADAPTIVE_K_STEP_FRACTION, ADAPTIVE_K_MAX_FACTOR, &
-             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR
+             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR, adaptive_point_capacity
 
     ! Tuning constants of the adaptive candidate sequence (generate_adaptive_js_comp_test_candidates_impl)
     ! and its capacity (calc_adaptive_js_comp_test_bounds_impl), relative to the padded pool size
@@ -89,7 +94,7 @@ contains
             !! candidate's `k_max` does not fit a 32-bit integer (see above)
 
         integer(int32) :: k_starts(MAX_CANDIDATE_PAIRS), n_k_starts
-        integer(int64) :: n_pool, capacity
+        integer(int64) :: n_pool
 
         call set_ok(ierr)
         n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
@@ -103,11 +108,33 @@ contains
         if (is_err(ierr)) return
 
         call compute_adaptive_k_starts(max_n_genes_all_studies, n_studies, k_starts, n_k_starts)
-
-        capacity = ceiling(ADAPTIVE_POINT_CAPACITY_FACTOR*real(n_pool, real64)/ &
-                           real(k_starts(n_k_starts), real64), kind=int64) + 1_int64
-        max_n_points_candidate = int(min(n_pool, capacity), kind=int32)
+        max_n_points_candidate = adaptive_point_capacity(max_n_genes_all_studies, n_studies, k_starts(n_k_starts))
     end subroutine calc_adaptive_js_comp_test_bounds_impl
+
+    !> summary: The adaptive reference-point capacity `min(N, ceiling(F * N / k_start) + 1)` -- its one definition
+    !| AUTHOR_LASZLO_LANG
+    !| `N = max_n_genes_all_studies * n_studies` is the padded pool size and `F` is
+    !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_POINT_CAPACITY_FACTOR(variable)]].
+    !| Internal helper, not published; public because the adaptive search's capacity
+    !| (`calc_adaptive_js_comp_test_bounds_impl`, at the smallest candidate `k_start`) and the
+    !| adaptive study-label Permutation-Test's capacity (at the fixed-knob run's `k_start`) share it,
+    !| so the two cannot drift apart. The caller guarantees `N <= huge(1_int32)` (the bounds routine
+    !| rejects a larger pool), so the result fits a 32-bit integer.
+    pure integer(int32) function adaptive_point_capacity(max_n_genes_all_studies, n_studies, k_start) result(capacity)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies, at least 1
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies, at least 1
+        integer(int32), intent(in) :: k_start
+            !! The `k_start` the capacity is computed for, at least 1
+            !! (the smallest one gives the most reference points)
+
+        integer(int64) :: n_pool
+
+        n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
+        capacity = int(min(n_pool, ceiling(ADAPTIVE_POINT_CAPACITY_FACTOR*real(n_pool, real64)/real(k_start, real64), &
+                                           kind=int64) + 1_int64), kind=int32)
+    end function adaptive_point_capacity
 
     !> summary: Generate the ascending adaptive (k_start, k_step, k_max) candidate sequence
     !| AUTHOR_LASZLO_LANG
@@ -349,7 +376,7 @@ contains
                                                                 two_sided_bootstrapping_significance_level, random_seed, &
                                                                 tau, mad_distance_factor, max_pooled_residuals, &
                                                                 min_study_neighbors, bin_count_mode, delta_abs_tolerance, &
-                                                                bootstrap_mode, ierr)
+                                                                divergence_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -375,7 +402,7 @@ contains
             !! |--------|-------|
             !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]] |
             !! | Maximum overlap (any one study passes) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]] |
-            !! | Median overlap (a majority must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+            !! | Median overlap (at least half of the studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         integer(int32), intent(in) :: max_n_points_candidate
             !! Most reference points a candidate may emerge with; a candidate with more is rejected
             !! with the capacity status. The per-point outputs and traces below are sized by it, so
@@ -405,8 +432,8 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_confidence_interval
-            !! The bootstrapped JSD confidence interval of the finally chosen candidate (by default a
-            !! robustness interval of its observed JSD, see `bootstrap_mode`); `-1.0_real64`
+            !! The bootstrapped JSD confidence interval of the finally chosen candidate (a robustness
+            !! interval of its observed JSD); `-1.0_real64`
             !! throughout where no admissible candidate backs the result
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
@@ -430,12 +457,10 @@ contains
             !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_lower
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound, from
-            !! the bootstrap `bootstrap_mode` selects
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_upper
-            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound, from
-            !! the bootstrap `bootstrap_mode` selects
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width
@@ -640,12 +665,9 @@ contains
         integer(int32), intent(in), optional :: plateau_mode
             !! Which plateau criterion decides when the search stops. The default is the change of
             !! the observed JSD values from one admissible candidate to the next: it measures
-            !! directly how stable the observed value is. The CI-overlap criterion stays available.
-            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
-            !! the default) its interval describes the spread of the JSD expected if the studies did
-            !! not differ at all (a noise band), not how stable the observed value is from candidate
-            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
-            !! of each candidate's observed value
+            !! directly how stable the observed value is. The CI-overlap criterion stays available;
+            !! its interval is a robustness interval of each candidate's observed value (each
+            !! study's histograms drawn again from its own counts)
             !!
             !! | Mode | Value |
             !! |------|-------|
@@ -730,28 +752,24 @@ contains
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] |
-            !! | Stone's cross-validation: minimise the sum of every study's own score | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
-            !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+            !! DM_DEFAULT(M_MODE_BIN_COUNT_STONE_EQUAL)
         real(real64), intent(in), optional :: delta_abs_tolerance
             !! M_DELTA_ABS_TOLERANCE_DOC
             !! DM_MIN(0.0_real64)
             !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
-        integer(int32), intent(in), optional :: bootstrap_mode
-            !! What the bootstrap draws each study's histograms from, for every admissible
-            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
-            !! returned interval). By default each study's own counts: the interval shows how much
-            !! the observed JSD would move if each study's own residuals were drawn again (a
-            !! robustness interval). The pooled counts of all studies give the spread expected if the
-            !! studies did not differ (a noise band) instead, kept for comparison
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence is computed, for the observed JSDs and every
+            !! bootstrap draw
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
-            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
-            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+            !! | Each study's JSD against the consensus of all studies | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]] |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_PAIRWISE_K2)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -765,7 +783,7 @@ contains
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
         real(real64) :: actual_delta_abs_tolerance
-        integer(int32) :: actual_bootstrap_mode
+        integer(int32) :: actual_divergence_mode
         real(real64) :: best_uncertainty_value, actual_tau, actual_mad_distance_factor
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -780,7 +798,7 @@ contains
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
         M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
-        M_DEFAULT_VAL(bootstrap_mode, actual_bootstrap_mode, M_MODE_BOOTSTRAP_PER_STUDY)
+        M_DEFAULT_VAL(divergence_mode, actual_divergence_mode, M_MODE_DIVERGENCE_PAIRWISE_K2)
         M_DEFAULT_VAL(tau, actual_tau, M_ADAPTIVE_TAU_DEFAULT)
         M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
         M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
@@ -880,7 +898,7 @@ contains
             ! the construction's gene count but not this; it is logged as an empty-study candidate.
             call score_candidate_histograms(n_points, max_n_bins, n_studies, tmp_n_bins_per_point, &
                                             actual_min_residuals_per_bin, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
-                                            tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, &
+                                            actual_divergence_mode, tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, &
                                             tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                             tmp_confidence_interval, has_empty_study, all_bins_have_min_count)
             if (has_empty_study) then
@@ -902,11 +920,11 @@ contains
                                                join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
                                                actual_delta_median_threshold, actual_delta_max_threshold, &
                                                actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
-                                               actual_delta_abs_tolerance, actual_bootstrap_mode, tmp_n_bins_per_point, &
+                                               actual_delta_abs_tolerance, actual_divergence_mode, tmp_n_bins_per_point, &
                                                tmp_occupancy_failed, tmp_n_pooled_residuals, &
                                                tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
                                                tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &
-                                               tmp_shared_residual_range_high, tmp_included_n_reps, tmp_mean_pmf_counts, &
+                                               tmp_shared_residual_range_high, tmp_included_n_reps, &
                                                tmp_mean_pmf_included_n_reps, tmp_counts, tmp_pmfs, tmp_mean_pmf, &
                                                tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                                tmp_confidence_interval, trace_global_js_divergence, trace_ci_lower, &

@@ -3,13 +3,19 @@ r"""tox_data_integration_js_comp_test_run
 # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Final Run
 
 The JS-Comp-Test of K studies for neighborhood parameters already chosen: per-study
-histograms at each reference point's bin count, each study's JSD against the consensus pmf,
-their weighting into one global JSD per study, and the permutation test.
+histograms at each reference point's bin count, each study's JSD (by default, for two studies,
+their pairwise JSD; otherwise against the consensus pmf, see `divergence_mode`) and its weighting
+into one global JSD per study. Its significance test is the study-label Permutation-Test,
+:func:`tensor_omics.run_js_comp_test_permutation`
+and its adaptive counterpart, which rerun these routines on reassigned samples.
 :func:`tensor_omics.run_js_comp_test` runs it
 on fixed-k neighborhoods (`n_points` reference points of `n_neighbors` genes each),
 :func:`tensor_omics.run_js_comp_test_adaptive`
 on adaptive neighborhoods built by
 :func:`tensor_omics.construct_adaptive_neighborhoods`.
+The adaptive neighborhoods, chosen by
+:func:`tensor_omics.run_js_comp_test_adaptive_parameter_search`,
+are the recommended way; the fixed-k ones stay available.
 
 Python binding, generated from tox_data_integration_js_comp_test_run. Do not edit.
 """
@@ -57,10 +63,6 @@ _lib.run_js_comp_test_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -68,13 +70,14 @@ _lib.run_js_comp_test_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_double),
     _ctypes.POINTER(_ctypes.c_double),
     _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(ndim=1),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_expert_c.restype = None
 _lib.run_js_comp_test_expert_c.argtypes = (
@@ -109,12 +112,7 @@ _lib.run_js_comp_test_expert_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -122,14 +120,6 @@ _lib.run_js_comp_test_expert_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -137,13 +127,14 @@ _lib.run_js_comp_test_expert_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_double),
     _ctypes.POINTER(_ctypes.c_double),
     _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(ndim=1),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_EXPERT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "tmp_neighborhood_residuals_gathered", "tmp_permutation_mean_pmf", "tmp_permutation_point_pool", "tmp_permutation_point_draw", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "tmp_permutation_mean_pmf_counts", "tmp_permutation_counts", "tmp_permutation_pmfs", "tmp_permutation_js_divergences", "tmp_permutation_weights", "tmp_permutation_global_js_divergence", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_EXPERT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "tmp_neighborhood_residuals_gathered", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_EXPERT_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_EXPERT_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_c.restype = None
 _lib.run_js_comp_test_adaptive_c.argtypes = (
@@ -175,10 +166,6 @@ _lib.run_js_comp_test_adaptive_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -186,28 +173,28 @@ _lib.run_js_comp_test_adaptive_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_double),
     _ctypes.POINTER(_ctypes.c_double),
     _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(ndim=1),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def run_js_comp_test(
         n_neighbors,
         gene_means,
         residuals,
         x_star,
-        n_permutations=1000,
-        random_seed=42,
         min_residuals_per_bin=10,
         m_min=3,
         m_max=120,
         gamma_occupancy=1.25,
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
-        bin_count_mode='bin_count_occupancy',
+        bin_count_mode='bin_count_stone_equal',
+        divergence_mode='divergence_pairwise_k2',
 ):
     r"""Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
 
@@ -221,16 +208,19 @@ def run_js_comp_test(
     2. Per reference point, all studies' residuals are pooled and the bin-count search
     `bin_count_mode` names chooses the point's bin count and residual range (occupancy search
     :func:`tensor_omics.determine_bin_count_occupancy`
-    by default, or Stone's rule
-    :func:`tensor_omics.determine_bin_count_stone`).
+    or Stone's rule
+    :func:`tensor_omics.determine_bin_count_stone`,
+    by default with every study's score counted equally).
     3. Each study's histogram and pmf is built per point
     (:func:`tensor_omics.build_residual_histograms`).
     4. The consensus pmf
-    (:func:`tensor_omics.create_mean_pmf`), each
-    study's per-point JSD against it and its weighted global JSD, and the permutation test
-    (:func:`tensor_omics.gjct_permutation_test`) give
-    `p_values` (primary) and `p_values_observed_consensus` (comparison only). With
-    `n_permutations = 0` both p-values are NaN.
+    (:func:`tensor_omics.create_mean_pmf`), each study's
+    per-point JSD and its weighted global JSD: by default (`divergence_mode`), for exactly two
+    studies, the pairwise JSD of the two studies, the same for both; otherwise each study's JSD
+    against the consensus.
+
+    The p-values of the study-label Permutation-Test come from
+    :func:`tensor_omics.run_js_comp_test_permutation`.
 
     There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
     still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
@@ -245,10 +235,8 @@ def run_js_comp_test(
 
     Errors (`ierr`): `ERR_INVALID_INPUT` when some study has no non-NaN residual at some
     reference point (for example a study whose gene means are all missing), since the
-    equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
-    then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
-    generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    values from before the permutation test.
+    equal-weight consensus needs every study; the consensus, JSD and weight outputs are then not
+    filled.
 
     The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -271,13 +259,6 @@ def run_js_comp_test(
         NaN is permitted for this value.
     x_star : np.ndarray[np.float64] of shape (n_points,)
         Mean-expression reference points
-    n_permutations : int, optional, default 1000
-        Number of permutations of the permutation test; `0` skips it (p-values NaN)
-        The minimum valid value is `0`.
-        The default value is `1000`.
-    random_seed : int, optional, default 42
-        Seed for the GSL random number generator
-        The default value is `42`.
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a bin count to be
         admissible, in every `bin_count_mode`
@@ -308,13 +289,18 @@ def run_js_comp_test(
         The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
-    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
+    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_stone_equal'
         How each reference point's histogram bin count is chosen; the Stone modes test every
         bin count from `m_min` to `m_max`
         (:func:`tensor_omics.determine_bin_count_stone`),
         with `min_residuals_per_bin` as the floor
 
-        The default value is `'bin_count_occupancy'`.
+        The default value is `'bin_count_stone_equal'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2', optional, default 'divergence_pairwise_k2'
+        How each study's per-point divergence is computed
+
+        The default value is `'divergence_pairwise_k2'`.
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
@@ -383,20 +369,13 @@ def run_js_comp_test(
             Count of non-NaN replicates per reference point of the consensus pmf
             A result is a value; call `.copy()` to obtain a modifiable array.
         js_divergences : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
-            Per-reference-point JSD of each study against the consensus pmf
+            Per-reference-point JSD of each study, the one `divergence_mode` selects
             A result is a value; call `.copy()` to obtain a modifiable array.
         weights : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Per-reference-point weights for `global_js_divergence`
             A result is a value; call `.copy()` to obtain a modifiable array.
         global_js_divergence : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Weighted global JSD of each study against the consensus pmf
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            comparison only; NaN when `n_permutations` is 0
+            Weighted global JSD of each study, the one `divergence_mode` selects
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -412,7 +391,7 @@ def run_js_comp_test(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_run::run_js_comp_test`, whose argument names are
     the ones an error message reports.
 
-    This entry point computes `gene_means_perms`, `tmp_neighborhood_residuals_gathered`, `tmp_permutation_mean_pmf`, `tmp_permutation_point_pool`, `tmp_permutation_point_draw`, `tmp_pooled_residuals`, `tmp_pooled_residuals_perm`, `tmp_bin_counts_search`, `tmp_residual_to_study_perm`, `tmp_study_block_ends`, `tmp_study_block_sizes`, `tmp_point_n_neighbors`, `tmp_permutation_mean_pmf_counts`, `tmp_permutation_counts`, `tmp_permutation_pmfs`, `tmp_permutation_js_divergences`, `tmp_permutation_weights` and `tmp_permutation_global_js_divergence` for you and runs `prepare_gene_means_perms` first, which may answer the call outright.
+    This entry point computes `gene_means_perms`, `tmp_neighborhood_residuals_gathered`, `tmp_pooled_residuals`, `tmp_pooled_residuals_perm`, `tmp_bin_counts_search`, `tmp_residual_to_study_perm`, `tmp_study_block_ends`, `tmp_study_block_sizes` and `tmp_point_n_neighbors` for you and runs `prepare_gene_means_perms` first, which may answer the call outright.
     Call `run_js_comp_test_expert` to do that yourself.
     """
     # check every input by the input contract, converting only when C needs it
@@ -420,8 +399,6 @@ def run_js_comp_test(
     gene_means = _contract.reals(gene_means, "gene_means", ndim=2, order="F")
     residuals = _contract.reals(residuals, "residuals", ndim=3, order="F")
     x_star = _contract.reals(x_star, "x_star", ndim=1)
-    n_permutations = _contract.integer(n_permutations, "n_permutations")
-    random_seed = _contract.integer(random_seed, "random_seed")
     min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
     m_min = _contract.integer(m_min, "m_min")
     m_max = _contract.integer(m_max, "m_max")
@@ -429,6 +406,7 @@ def run_js_comp_test(
     lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
+    divergence_mode = _np.array([_contract.mode(divergence_mode, "divergence_mode", ("divergence_symmetric", "divergence_pairwise_k2",)).ljust(22)], dtype="S22")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -465,8 +443,6 @@ def run_js_comp_test(
     js_divergences = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
     weights = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
     global_js_divergence = _np.empty((n_studies,), dtype=_np.float64, order='C')
-    p_values = _np.empty((n_studies,), dtype=_np.float64, order='C')
-    p_values_observed_consensus = _np.empty((n_studies,), dtype=_np.float64, order='C')
     ierr = _ctypes.c_int(0)
 
     _lib.run_js_comp_test_c(
@@ -500,10 +476,6 @@ def run_js_comp_test(
         js_divergences,
         weights,
         global_js_divergence,
-        p_values,
-        p_values_observed_consensus,
-        _ctypes.byref(_ctypes.c_int(n_permutations)),
-        _ctypes.byref(_ctypes.c_int(random_seed)),
         _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
         _ctypes.byref(_ctypes.c_int(m_min)),
         _ctypes.byref(_ctypes.c_int(m_max)),
@@ -511,6 +483,7 @@ def run_js_comp_test(
         _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
         _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
         bin_count_mode,
+        divergence_mode,
         _ctypes.byref(ierr),
     )
 
@@ -538,8 +511,6 @@ def run_js_comp_test(
     js_divergences.flags.writeable = False
     weights.flags.writeable = False
     global_js_divergence.flags.writeable = False
-    p_values.flags.writeable = False
-    p_values_observed_consensus.flags.writeable = False
 
     return {
         "neighborhood_indices": neighborhood_indices,
@@ -564,8 +535,6 @@ def run_js_comp_test(
         "js_divergences": js_divergences,
         "weights": weights,
         "global_js_divergence": global_js_divergence,
-        "p_values": p_values,
-        "p_values_observed_consensus": p_values_observed_consensus,
     }
 
 def run_js_comp_test_expert(
@@ -574,15 +543,14 @@ def run_js_comp_test_expert(
         gene_means_perms,
         residuals,
         x_star,
-        n_permutations=1000,
-        random_seed=42,
         min_residuals_per_bin=10,
         m_min=3,
         m_max=120,
         gamma_occupancy=1.25,
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
-        bin_count_mode='bin_count_occupancy',
+        bin_count_mode='bin_count_stone_equal',
+        divergence_mode='divergence_pairwise_k2',
 ):
     r"""Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
 
@@ -596,16 +564,19 @@ def run_js_comp_test_expert(
     2. Per reference point, all studies' residuals are pooled and the bin-count search
     `bin_count_mode` names chooses the point's bin count and residual range (occupancy search
     :func:`tensor_omics.determine_bin_count_occupancy`
-    by default, or Stone's rule
-    :func:`tensor_omics.determine_bin_count_stone`).
+    or Stone's rule
+    :func:`tensor_omics.determine_bin_count_stone`,
+    by default with every study's score counted equally).
     3. Each study's histogram and pmf is built per point
     (:func:`tensor_omics.build_residual_histograms`).
     4. The consensus pmf
-    (:func:`tensor_omics.create_mean_pmf`), each
-    study's per-point JSD against it and its weighted global JSD, and the permutation test
-    (:func:`tensor_omics.gjct_permutation_test`) give
-    `p_values` (primary) and `p_values_observed_consensus` (comparison only). With
-    `n_permutations = 0` both p-values are NaN.
+    (:func:`tensor_omics.create_mean_pmf`), each study's
+    per-point JSD and its weighted global JSD: by default (`divergence_mode`), for exactly two
+    studies, the pairwise JSD of the two studies, the same for both; otherwise each study's JSD
+    against the consensus.
+
+    The p-values of the study-label Permutation-Test come from
+    :func:`tensor_omics.run_js_comp_test_permutation`.
 
     There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
     still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
@@ -620,10 +591,8 @@ def run_js_comp_test_expert(
 
     Errors (`ierr`): `ERR_INVALID_INPUT` when some study has no non-NaN residual at some
     reference point (for example a study whose gene means are all missing), since the
-    equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
-    then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
-    generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    values from before the permutation test.
+    equal-weight consensus needs every study; the consensus, JSD and weight outputs are then not
+    filled.
 
     The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -653,13 +622,6 @@ def run_js_comp_test_expert(
         NaN is permitted for this value.
     x_star : np.ndarray[np.float64] of shape (n_points,)
         Mean-expression reference points
-    n_permutations : int, optional, default 1000
-        Number of permutations of the permutation test; `0` skips it (p-values NaN)
-        The minimum valid value is `0`.
-        The default value is `1000`.
-    random_seed : int, optional, default 42
-        Seed for the GSL random number generator
-        The default value is `42`.
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a bin count to be
         admissible, in every `bin_count_mode`
@@ -690,13 +652,18 @@ def run_js_comp_test_expert(
         The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
-    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
+    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_stone_equal'
         How each reference point's histogram bin count is chosen; the Stone modes test every
         bin count from `m_min` to `m_max`
         (:func:`tensor_omics.determine_bin_count_stone`),
         with `min_residuals_per_bin` as the floor
 
-        The default value is `'bin_count_occupancy'`.
+        The default value is `'bin_count_stone_equal'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2', optional, default 'divergence_pairwise_k2'
+        How each study's per-point divergence is computed
+
+        The default value is `'divergence_pairwise_k2'`.
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
@@ -765,20 +732,13 @@ def run_js_comp_test_expert(
             Count of non-NaN replicates per reference point of the consensus pmf
             A result is a value; call `.copy()` to obtain a modifiable array.
         js_divergences : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
-            Per-reference-point JSD of each study against the consensus pmf
+            Per-reference-point JSD of each study, the one `divergence_mode` selects
             A result is a value; call `.copy()` to obtain a modifiable array.
         weights : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Per-reference-point weights for `global_js_divergence`
             A result is a value; call `.copy()` to obtain a modifiable array.
         global_js_divergence : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Weighted global JSD of each study against the consensus pmf
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            comparison only; NaN when `n_permutations` is 0
+            Weighted global JSD of each study, the one `divergence_mode` selects
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -794,8 +754,8 @@ def run_js_comp_test_expert(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_run::run_js_comp_test_expert`, whose argument names are
     the ones an error message reports.
 
-    The expert entry point: you supply `gene_means_perms`, `tmp_neighborhood_residuals_gathered`, `tmp_permutation_mean_pmf`, `tmp_permutation_point_pool`, `tmp_permutation_point_draw`, `tmp_pooled_residuals`, `tmp_pooled_residuals_perm`, `tmp_bin_counts_search`, `tmp_residual_to_study_perm`, `tmp_study_block_ends`, `tmp_study_block_sizes`, `tmp_point_n_neighbors`, `tmp_permutation_mean_pmf_counts`, `tmp_permutation_counts`, `tmp_permutation_pmfs`, `tmp_permutation_js_divergences`, `tmp_permutation_weights` and `tmp_permutation_global_js_divergence` yourself.
-    `run_js_comp_test` computes `gene_means_perms`, `tmp_neighborhood_residuals_gathered`, `tmp_permutation_mean_pmf`, `tmp_permutation_point_pool`, `tmp_permutation_point_draw`, `tmp_pooled_residuals`, `tmp_pooled_residuals_perm`, `tmp_bin_counts_search`, `tmp_residual_to_study_perm`, `tmp_study_block_ends`, `tmp_study_block_sizes`, `tmp_point_n_neighbors`, `tmp_permutation_mean_pmf_counts`, `tmp_permutation_counts`, `tmp_permutation_pmfs`, `tmp_permutation_js_divergences`, `tmp_permutation_weights` and `tmp_permutation_global_js_divergence` for you and runs `prepare_gene_means_perms` first, which may answer the call outright.
+    The expert entry point: you supply `gene_means_perms`, `tmp_neighborhood_residuals_gathered`, `tmp_pooled_residuals`, `tmp_pooled_residuals_perm`, `tmp_bin_counts_search`, `tmp_residual_to_study_perm`, `tmp_study_block_ends`, `tmp_study_block_sizes` and `tmp_point_n_neighbors` yourself.
+    `run_js_comp_test` computes `gene_means_perms`, `tmp_neighborhood_residuals_gathered`, `tmp_pooled_residuals`, `tmp_pooled_residuals_perm`, `tmp_bin_counts_search`, `tmp_residual_to_study_perm`, `tmp_study_block_ends`, `tmp_study_block_sizes` and `tmp_point_n_neighbors` for you and runs `prepare_gene_means_perms` first, which may answer the call outright.
     """
     # check every input by the input contract, converting only when C needs it
     n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
@@ -803,8 +763,6 @@ def run_js_comp_test_expert(
     gene_means_perms = _contract.integers(gene_means_perms, "gene_means_perms", ndim=2, order="F")
     residuals = _contract.reals(residuals, "residuals", ndim=3, order="F")
     x_star = _contract.reals(x_star, "x_star", ndim=1)
-    n_permutations = _contract.integer(n_permutations, "n_permutations")
-    random_seed = _contract.integer(random_seed, "random_seed")
     min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
     m_min = _contract.integer(m_min, "m_min")
     m_max = _contract.integer(m_max, "m_max")
@@ -812,6 +770,7 @@ def run_js_comp_test_expert(
     lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
+    divergence_mode = _np.array([_contract.mode(divergence_mode, "divergence_mode", ("divergence_symmetric", "divergence_pairwise_k2",)).ljust(22)], dtype="S22")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -852,12 +811,7 @@ def run_js_comp_test_expert(
     js_divergences = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
     weights = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
     global_js_divergence = _np.empty((n_studies,), dtype=_np.float64, order='C')
-    p_values = _np.empty((n_studies,), dtype=_np.float64, order='C')
-    p_values_observed_consensus = _np.empty((n_studies,), dtype=_np.float64, order='C')
     tmp_neighborhood_residuals_gathered = _np.empty((max_n_reps_all_studies, n_neighbors, n_points,), dtype=_np.float64, order='F')
-    tmp_permutation_mean_pmf = _np.empty((n_points, 256,), dtype=_np.float64, order='F')
-    tmp_permutation_point_pool = _np.empty((256,), dtype=_np.int32, order='C')
-    tmp_permutation_point_draw = _np.empty((256,), dtype=_np.int32, order='C')
     tmp_pooled_residuals = _np.empty((max_n_reps_all_studies * n_neighbors * n_studies,), dtype=_np.float64, order='C')
     tmp_pooled_residuals_perm = _np.empty((max_n_reps_all_studies * n_neighbors * n_studies,), dtype=_np.int32, order='C')
     tmp_bin_counts_search = _np.empty((256,), dtype=_np.int32, order='C')
@@ -865,12 +819,6 @@ def run_js_comp_test_expert(
     tmp_study_block_ends = _np.empty((n_studies,), dtype=_np.int32, order='C')
     tmp_study_block_sizes = _np.empty((n_studies,), dtype=_np.int32, order='C')
     tmp_point_n_neighbors = _np.empty((n_studies,), dtype=_np.int32, order='C')
-    tmp_permutation_mean_pmf_counts = _np.empty((n_points, 256,), dtype=_np.int32, order='F')
-    tmp_permutation_counts = _np.empty((n_points, 256,), dtype=_np.int32, order='F')
-    tmp_permutation_pmfs = _np.empty((n_points, 256, n_studies,), dtype=_np.float64, order='F')
-    tmp_permutation_js_divergences = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
-    tmp_permutation_weights = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
-    tmp_permutation_global_js_divergence = _np.empty((n_studies,), dtype=_np.float64, order='C')
     ierr = _ctypes.c_int(0)
 
     _lib.run_js_comp_test_expert_c(
@@ -905,12 +853,7 @@ def run_js_comp_test_expert(
         js_divergences,
         weights,
         global_js_divergence,
-        p_values,
-        p_values_observed_consensus,
         tmp_neighborhood_residuals_gathered,
-        tmp_permutation_mean_pmf,
-        tmp_permutation_point_pool,
-        tmp_permutation_point_draw,
         tmp_pooled_residuals,
         tmp_pooled_residuals_perm,
         tmp_bin_counts_search,
@@ -918,14 +861,6 @@ def run_js_comp_test_expert(
         tmp_study_block_ends,
         tmp_study_block_sizes,
         tmp_point_n_neighbors,
-        tmp_permutation_mean_pmf_counts,
-        tmp_permutation_counts,
-        tmp_permutation_pmfs,
-        tmp_permutation_js_divergences,
-        tmp_permutation_weights,
-        tmp_permutation_global_js_divergence,
-        _ctypes.byref(_ctypes.c_int(n_permutations)),
-        _ctypes.byref(_ctypes.c_int(random_seed)),
         _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
         _ctypes.byref(_ctypes.c_int(m_min)),
         _ctypes.byref(_ctypes.c_int(m_max)),
@@ -933,6 +868,7 @@ def run_js_comp_test_expert(
         _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
         _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
         bin_count_mode,
+        divergence_mode,
         _ctypes.byref(ierr),
     )
 
@@ -960,8 +896,6 @@ def run_js_comp_test_expert(
     js_divergences.flags.writeable = False
     weights.flags.writeable = False
     global_js_divergence.flags.writeable = False
-    p_values.flags.writeable = False
-    p_values_observed_consensus.flags.writeable = False
 
     return {
         "neighborhood_indices": neighborhood_indices,
@@ -986,23 +920,20 @@ def run_js_comp_test_expert(
         "js_divergences": js_divergences,
         "weights": weights,
         "global_js_divergence": global_js_divergence,
-        "p_values": p_values,
-        "p_values_observed_consensus": p_values_observed_consensus,
     }
 
 def run_js_comp_test_adaptive(
         gene_means,
         residuals,
         pooled_neighborhood_range,
-        n_permutations=1000,
-        random_seed=42,
         min_residuals_per_bin=10,
         m_min=3,
         m_max=120,
         gamma_occupancy=1.25,
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
-        bin_count_mode='bin_count_occupancy',
+        bin_count_mode='bin_count_stone_equal',
+        divergence_mode='divergence_pairwise_k2',
 ):
     r"""Run the JSD-Comp-Test pipeline on adaptive (Issue #217) neighborhoods
 
@@ -1019,7 +950,7 @@ def run_js_comp_test_adaptive(
     Errors (`ierr`): `ERR_INVALID_INPUT` before any histogram work for the first range that is
     reversed, reaches past the non-NaN pooled means, or leaves a study without a gene (every
     output then undefined); otherwise as in `run_js_comp_test_impl` (a study without a non-NaN
-    residual at some point, or `ERR_ALLOC_FAIL` from the permutation test).
+    residual at some point).
 
     The pooling work arrays hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies`
     values each, the size of `residuals`, since one study may contribute all its genes to one
@@ -1042,13 +973,6 @@ def run_js_comp_test_adaptive(
         construct_adaptive_neighborhoods
         The minimum valid value is `1`.
         The maximum valid value is `max_n_genes_all_studies*n_studies`.
-    n_permutations : int, optional, default 1000
-        Number of permutations of the permutation test; `0` skips it (p-values NaN)
-        The minimum valid value is `0`.
-        The default value is `1000`.
-    random_seed : int, optional, default 42
-        Seed for the GSL random number generator
-        The default value is `42`.
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a bin count to be
         admissible, in every `bin_count_mode`
@@ -1079,13 +1003,18 @@ def run_js_comp_test_adaptive(
         The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
-    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
+    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_stone_equal'
         How each reference point's histogram bin count is chosen; the Stone modes test every
         bin count from `m_min` to `m_max`
         (:func:`tensor_omics.determine_bin_count_stone`),
         with `min_residuals_per_bin` as the floor
 
-        The default value is `'bin_count_occupancy'`.
+        The default value is `'bin_count_stone_equal'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2', optional, default 'divergence_pairwise_k2'
+        How each study's per-point divergence is computed
+
+        The default value is `'divergence_pairwise_k2'`.
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
@@ -1151,20 +1080,13 @@ def run_js_comp_test_adaptive(
             Count of non-NaN residuals per reference point for the consensus pmf
             A result is a value; call `.copy()` to obtain a modifiable array.
         js_divergences : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
-            Per-reference-point JSD of each study against the consensus pmf
+            Per-reference-point JSD of each study, the one `divergence_mode` selects
             A result is a value; call `.copy()` to obtain a modifiable array.
         weights : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Per-reference-point weights for `global_js_divergence`
             A result is a value; call `.copy()` to obtain a modifiable array.
         global_js_divergence : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Weighted global JSD of each study against the consensus pmf
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            comparison only; NaN when `n_permutations` is 0
+            Weighted global JSD of each study, the one `divergence_mode` selects
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -1184,8 +1106,6 @@ def run_js_comp_test_adaptive(
     gene_means = _contract.reals(gene_means, "gene_means", ndim=2, order="F")
     residuals = _contract.reals(residuals, "residuals", ndim=3, order="F")
     pooled_neighborhood_range = _contract.integers(pooled_neighborhood_range, "pooled_neighborhood_range", ndim=2, order="F")
-    n_permutations = _contract.integer(n_permutations, "n_permutations")
-    random_seed = _contract.integer(random_seed, "random_seed")
     min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
     m_min = _contract.integer(m_min, "m_min")
     m_max = _contract.integer(m_max, "m_max")
@@ -1193,6 +1113,7 @@ def run_js_comp_test_adaptive(
     lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
+    divergence_mode = _np.array([_contract.mode(divergence_mode, "divergence_mode", ("divergence_symmetric", "divergence_pairwise_k2",)).ljust(22)], dtype="S22")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -1230,8 +1151,6 @@ def run_js_comp_test_adaptive(
     js_divergences = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
     weights = _np.empty((n_points, n_studies,), dtype=_np.float64, order='F')
     global_js_divergence = _np.empty((n_studies,), dtype=_np.float64, order='C')
-    p_values = _np.empty((n_studies,), dtype=_np.float64, order='C')
-    p_values_observed_consensus = _np.empty((n_studies,), dtype=_np.float64, order='C')
     ierr = _ctypes.c_int(0)
 
     _lib.run_js_comp_test_adaptive_c(
@@ -1263,10 +1182,6 @@ def run_js_comp_test_adaptive(
         js_divergences,
         weights,
         global_js_divergence,
-        p_values,
-        p_values_observed_consensus,
-        _ctypes.byref(_ctypes.c_int(n_permutations)),
-        _ctypes.byref(_ctypes.c_int(random_seed)),
         _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
         _ctypes.byref(_ctypes.c_int(m_min)),
         _ctypes.byref(_ctypes.c_int(m_max)),
@@ -1274,6 +1189,7 @@ def run_js_comp_test_adaptive(
         _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
         _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
         bin_count_mode,
+        divergence_mode,
         _ctypes.byref(ierr),
     )
 
@@ -1300,8 +1216,6 @@ def run_js_comp_test_adaptive(
     js_divergences.flags.writeable = False
     weights.flags.writeable = False
     global_js_divergence.flags.writeable = False
-    p_values.flags.writeable = False
-    p_values_observed_consensus.flags.writeable = False
 
     return {
         "n_neighbors_per_point": n_neighbors_per_point,
@@ -1325,6 +1239,4 @@ def run_js_comp_test_adaptive(
         "js_divergences": js_divergences,
         "weights": weights,
         "global_js_divergence": global_js_divergence,
-        "p_values": p_values,
-        "p_values_observed_consensus": p_values_observed_consensus,
     }

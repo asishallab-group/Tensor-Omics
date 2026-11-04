@@ -6,10 +6,10 @@
 // tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void calc_js_comp_test_permutation_bounds_c(const int*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
+void calc_js_comp_test_permutation_bounds_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, int*, int*);
 void calc_adaptive_js_comp_test_permutation_bounds_c(const int*, const int*, const int*, const int*, const double*, int*, int*, int*);
 
-SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEXP n_points, SEXP n_neighbors, SEXP n_bootstraps, SEXP two_sided_bootstrapping_significance_level) {
+SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEXP n_points, SEXP n_neighbors, SEXP n_bootstraps, SEXP two_sided_bootstrapping_significance_level, SEXP grid_points_factor, SEXP grid_min_points) {
     int _nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int _v_max_n_genes_all_studies = Rf_asInteger(max_n_genes_all_studies);
@@ -17,6 +17,8 @@ SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEX
     int _v_n_neighbors = Rf_asInteger(n_neighbors);
     int _v_n_bootstraps = Rf_asInteger(n_bootstraps);
     double _v_two_sided_bootstrapping_significance_level = Rf_asReal(two_sided_bootstrapping_significance_level);
+    double _v_grid_points_factor = Rf_asReal(grid_points_factor);
+    int _v_grid_min_points = Rf_asInteger(grid_min_points);
 
     // outputs and work space
     int max_n_points_candidate = 0;
@@ -30,6 +32,8 @@ SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEX
         &_v_n_neighbors,
         &_v_n_bootstraps,
         &_v_two_sided_bootstrapping_significance_level,
+        &_v_grid_points_factor,
+        &_v_grid_min_points,
         &max_n_points_candidate,
         &max_n_neighbors_candidate,
         &n_bootstrapping_top_k_jsds,

@@ -23,10 +23,8 @@ from tensor_omics import (
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # The filtered variant is gone: filtering is now the optional `neighbor_mask` argument of the
-# base routine. gjct_permutation_test itself was replaced by a K-study, consensus-based version
-# (see tox_data_integration_js_comp_test) -- the old 2-study test that lived in this file was
-# removed rather than adapted, since the signature is unrelated. Its own direct test coverage now
-# lives in mod_test_data_integration_stats.py.
+# base routine. The old 2-study permutation test that lived in this file is gone; the significance
+# test of the JS-Comp-Test is the study-label Permutation-Test (run_js_comp_test_permutation).
 build_residual_histograms_filtered = build_residual_histograms
 
 
@@ -623,7 +621,7 @@ def test_a_mask_smaller_than_its_neighbourhoods_is_refused():
     """An optional mask was compared with nothing, and a 1x1 one read past (#221 attack-shape F1).
 
     On this branch build_residual_histograms takes the range bounds and the per-point bin counts,
-    and the 2-study gjct_permutation_test is gone, so its two masks are checked through
+    and the 2-study permutation test is gone, so its two masks are checked through
     jct_compute_jsd_pipeline, which takes the same two optional masks."""
     E = np.zeros((1, 2, 4), dtype=np.float64, order="F")
     S1 = np.zeros((4, 1, 2), dtype=np.float64, order="F")

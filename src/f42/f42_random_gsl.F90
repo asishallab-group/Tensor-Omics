@@ -3,7 +3,7 @@
 !> Random number generation backed by the GNU Scientific Library (GSL).
 !| AUTHOR_LASZLO_LANG
 !|
-!| Wraps GSL's RNG (`gsl_rng`) and its hypergeometric/binomial samplers behind the opaque
+!| Wraps GSL's RNG (`gsl_rng`), its hypergeometric/binomial samplers and its shuffle behind the opaque
 !| [[f42_random_gsl(module):rng_t(type)]] handle. For selecting the RNG algorithm, use the
 !| environment variable `GSL_RNG_TYPE`, as described in
 !| [the GSL documentation](https://www.gnu.org/software/gsl/doc/html/rng.html#random-number-environment-variables).
@@ -15,8 +15,9 @@
 !| procedure therefore validates its own inputs by hand and reports failure through its own
 !| `ierr`, using [[tox_errors(module)]] exactly as a generated wrapper would -- except the two
 !| multivariate draws, [[f42_random_gsl(module):random_multinomial(subroutine)]] and
-!| [[f42_random_gsl(module):random_multiv_hypergeom(subroutine)]], which run in their callers'
-!| innermost loops and leave their documented preconditions to the caller.
+!| [[f42_random_gsl(module):random_multiv_hypergeom(subroutine)]], and the shuffle
+!| [[f42_random_gsl(module):random_shuffle(subroutine)]], which run in their callers' loops and
+!| leave their documented preconditions to the caller.
 !|
 !| Callers reach this only from other `_impl` modules (it sits on
 !| `Conventions.impl_import_whitelist`) or from Fortran test code; it is never called from C,
@@ -24,7 +25,7 @@
 module f42_random_gsl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_ptr, c_associated, c_double, c_int, c_long
+    use, intrinsic :: iso_c_binding, only: c_ptr, c_null_ptr, c_associated, c_double, c_int, c_long, c_size_t, c_loc, c_sizeof
     use tox_errors, only: set_ok, set_err_once, is_err
     use tox_errors, only: validate_in_range_int, validate_in_range_real
     use tox_errors, only: ERR_POINTER_NULL, ERR_ALLOC_FAIL
@@ -33,7 +34,10 @@ module f42_random_gsl
 
     public :: rng_t, create_rng, destroy_rng, reset_rng
     public :: random_uniform, random_hypergeom, random_binomial, rand_range
-    public :: random_multinomial, random_multiv_hypergeom
+    public :: random_multinomial, random_multiv_hypergeom, random_shuffle
+
+    integer(c_size_t), parameter :: INT32_BYTES = c_sizeof(0_int32)
+        !! Size of one `integer(int32)` in bytes, the element size `gsl_ran_shuffle` swaps by
 
     interface gsl_get_rng_type
         !> Returns algorithm for the RNG, set by the environment variable `GSL_RNG_TYPE`
@@ -117,10 +121,27 @@ module f42_random_gsl
         end function gsl_random_binomial
     end interface gsl_random_binomial
 
+    interface gsl_random_shuffle
+        !> Shuffles `n_members` objects of `member_size` bytes each, stored contiguously at `base`,
+        !| in place into a random order
+        subroutine gsl_random_shuffle(rng, base, n_members, member_size) bind(C, name="gsl_ran_shuffle")
+            import
+            type(c_ptr), intent(in), value :: rng
+                !! RNG object, originally created by [[f42_random_gsl(module):gsl_alloc_rng(interface)]]
+            type(c_ptr), intent(in), value :: base
+                !! Address of the first object
+            integer(c_size_t), intent(in), value :: n_members
+                !! Number of objects
+            integer(c_size_t), intent(in), value :: member_size
+                !! Size of one object in bytes
+        end subroutine gsl_random_shuffle
+    end interface gsl_random_shuffle
+
     !> Opaque handle onto a GSL random number generator. Created by
     !| [[f42_random_gsl(module):create_rng(function)]]; every other procedure in this module
-    !| takes one, and all but the two multivariate draws report `ERR_POINTER_NULL` (at argument
-    !| position 1) if it was never initialized that way, instead of dereferencing a null `c_ptr`.
+    !| takes one, and all but the two multivariate draws and the shuffle report `ERR_POINTER_NULL`
+    !| (at argument position 1) if it was never initialized that way, instead of dereferencing a
+    !| null `c_ptr`. Those three take no `ierr` and leave the check to their caller.
     type :: rng_t
         type(c_ptr), private :: rng = c_null_ptr
     end type rng_t
@@ -393,4 +414,30 @@ contains
         drawn(n_populations) = remaining_draws
         population_sizes(n_populations) = population_sizes(n_populations) - drawn(n_populations)
     end subroutine random_multiv_hypergeom
+
+    !> Shuffles `values` in place into a uniformly random order
+    !|
+    !| GSL's `gsl_ran_shuffle`, a Fisher-Yates shuffle: according to the GSL documentation it
+    !| "generates all possible n! permutations with equal probability, assuming a perfect source of
+    !| random numbers". The order depends only on the generator's state and on `n_values`, not on
+    !| the values, so a generator seeded alike gives the same rearrangement of the positions
+    !| every time. (`shuffle_vector_int` of `f42_random_impl` draws from the intrinsic `random_number` instead, so
+    !| it cannot use a given `rng_t`.)
+    !|
+    !| Validates nothing and reports nothing: the shuffle runs once per permutation in its callers'
+    !| loops, which establish its preconditions once beforehand. The caller guarantees that `rng`
+    !| was created by [[f42_random_gsl(module):create_rng(function)]] and that `n_values` is
+    !| non-negative. Fewer than two values are left as they are, without calling GSL (whose
+    !| unsigned loop bound has no meaning for zero values).
+    subroutine random_shuffle(rng, n_values, values)
+        type(rng_t), intent(in) :: rng
+            !! The rng, originally created by [[f42_random_gsl(module):create_rng(function)]]
+        integer(int32), intent(in) :: n_values
+            !! Number of values; non-negative
+        integer(int32), dimension(n_values), intent(inout), target :: values
+            !! The values, shuffled in place
+
+        if (n_values < 2_int32) return
+        call gsl_random_shuffle(rng%rng, c_loc(values), int(n_values, c_size_t), INT32_BYTES)
+    end subroutine random_shuffle
 end module f42_random_gsl

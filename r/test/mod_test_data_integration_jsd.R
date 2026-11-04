@@ -528,14 +528,12 @@ test_jct_compute_jsd_pipeline <- function() {
                "expected ERR_INVALID_INPUT for a negative shared_residual_range", ERR_INVALID_INPUT)
 }
 
-# test_gjct_permutation_test was removed here: gjct_permutation_test was replaced by a K-study,
-# consensus-based version (see tox_data_integration_js_comp_test) -- the old 2-study test that
-# lived in this file was removed rather than adapted, since the signature is unrelated. Its own
-# direct test coverage now lives in mod_test_data_integration_stats.R.
+# The old 2-study permutation test that lived in this file is gone; the significance test of the
+# JS-Comp-Test is the study-label Permutation-Test (run_js_comp_test_permutation).
 
 # an optional mask was compared with nothing, and a 1x1 one read past (#221 attack-shape F1);
 # adapted to this branch's signatures: build_residual_histograms takes the range bounds and the
-# per-point bin counts, and the 2-study gjct_permutation_test is gone, so its two masks are
+# per-point bin counts, and the 2-study permutation test is gone, so its two masks are
 # checked through jct_compute_jsd_pipeline, which takes the same two optional masks
 test_a_mask_smaller_than_its_neighbourhoods_is_refused <- function() {
   small <- matrix(TRUE, 1, 1)

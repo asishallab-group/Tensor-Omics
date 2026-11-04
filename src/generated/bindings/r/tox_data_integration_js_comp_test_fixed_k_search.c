@@ -6,14 +6,16 @@
 // tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void calc_js_comp_test_candidate_bounds_c(const int*, int*, int*, int*);
-void generate_js_comp_test_candidates_c(const int*, int*, int*, const char*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, const double*, const char*, int*);
+void calc_js_comp_test_candidate_bounds_c(const int*, int*, int*, const double*, const int*, int*);
+void generate_js_comp_test_candidates_c(const int*, int*, int*, const char*, const double*, const int*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, const double*, const char*, const double*, const int*, int*);
 
-SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies) {
+SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies, SEXP grid_points_factor, SEXP grid_min_points) {
     int _nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int _v_max_n_genes_all_studies = Rf_asInteger(max_n_genes_all_studies);
+    double _v_grid_points_factor = Rf_asReal(grid_points_factor);
+    int _v_grid_min_points = Rf_asInteger(grid_min_points);
 
     // outputs and work space
     int max_n_points_candidate = 0;
@@ -24,6 +26,8 @@ SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies) {
         &_v_max_n_genes_all_studies,
         &max_n_points_candidate,
         &max_n_neighbors_candidate,
+        &_v_grid_points_factor,
+        &_v_grid_min_points,
         &ierr
     );
 
@@ -40,10 +44,12 @@ SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies) {
     return _out;
 }
 
-SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP neighborhood_size_mode) {
+SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP neighborhood_size_mode, SEXP grid_points_factor, SEXP grid_min_points) {
     int _nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int _v_max_n_genes_all_studies = Rf_asInteger(max_n_genes_all_studies);
+    double _v_grid_points_factor = Rf_asReal(grid_points_factor);
+    int _v_grid_min_points = Rf_asInteger(grid_min_points);
 
     // convert what Fortran cannot take from R directly
     char* _c_neighborhood_size_mode = tox_char_in(neighborhood_size_mode, 23, "neighborhood_size_mode");
@@ -59,6 +65,8 @@ SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP ne
         INTEGER(candidates_n_points_n_neighbors),
         &n_candidates,
         _c_neighborhood_size_mode,
+        &_v_grid_points_factor,
+        &_v_grid_min_points,
         &ierr
     );
 
@@ -75,7 +83,7 @@ SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP ne
     return _out;
 }
 
-SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP max_n_neighbors_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode) {
+SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP max_n_neighbors_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode, SEXP delta_abs_tolerance, SEXP divergence_mode, SEXP grid_points_factor, SEXP grid_min_points) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -101,13 +109,15 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     double _v_two_sided_bootstrapping_significance_level = Rf_asReal(two_sided_bootstrapping_significance_level);
     int _v_random_seed = Rf_asInteger(random_seed);
     double _v_delta_abs_tolerance = Rf_asReal(delta_abs_tolerance);
+    double _v_grid_points_factor = Rf_asReal(grid_points_factor);
+    int _v_grid_min_points = Rf_asInteger(grid_min_points);
 
     // convert what Fortran cannot take from R directly
     char* _c_join_method = tox_char_in(join_method, 11, "join_method");
     char* _c_plateau_mode = tox_char_in(plateau_mode, 19, "plateau_mode");
     char* _c_bin_count_mode = tox_char_in(bin_count_mode, 29, "bin_count_mode");
     char* _c_neighborhood_size_mode = tox_char_in(neighborhood_size_mode, 23, "neighborhood_size_mode");
-    char* _c_bootstrap_mode = tox_char_in(bootstrap_mode, 19, "bootstrap_mode");
+    char* _c_divergence_mode = tox_char_in(divergence_mode, 22, "divergence_mode");
 
     // outputs and work space
     int n_points = 0;
@@ -215,7 +225,9 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         _c_bin_count_mode,
         _c_neighborhood_size_mode,
         &_v_delta_abs_tolerance,
-        _c_bootstrap_mode,
+        _c_divergence_mode,
+        &_v_grid_points_factor,
+        &_v_grid_min_points,
         &ierr
     );
 

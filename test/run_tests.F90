@@ -38,7 +38,10 @@ program main
     use mod_test_tail_probability, only: get_all_tests_tail_probability
     use mod_test_random_gsl, only: get_all_tests_random_gsl
     use mod_test_data_integration_js_comp_test, only: get_all_tests_data_integration_js_comp_test
-    use mod_test_data_integration_js_comp_test_permutation, only: get_all_tests_data_integration_js_comp_test_permutation
+    use mod_test_data_integration_js_comp_test_permutation_common, only: get_all_tests_js_comp_test_permutation_common
+    use mod_test_data_integration_js_comp_test_permutation_fixed_k, only: get_all_tests_js_comp_test_permutation_fixed_k
+    use mod_test_data_integration_js_comp_test_permutation_adaptive, only: &
+        get_all_tests_js_comp_test_permutation_adaptive
     implicit none
 
     integer :: nargs
@@ -82,7 +85,9 @@ program main
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
     call add_suite("random_gsl", get_all_tests_random_gsl)
     call add_suite("data_integration_js_comp_test", get_all_tests_data_integration_js_comp_test)
-    call add_suite("data_integration_js_comp_test_permutation", get_all_tests_data_integration_js_comp_test_permutation)
+    call add_suite("data_integration_js_comp_test_permutation_common", get_all_tests_js_comp_test_permutation_common)
+    call add_suite("data_integration_js_comp_test_permutation_fixed_k", get_all_tests_js_comp_test_permutation_fixed_k)
+    call add_suite("data_integration_js_comp_test_permutation_adaptive", get_all_tests_js_comp_test_permutation_adaptive)
 
     nargs = command_argument_count()
 

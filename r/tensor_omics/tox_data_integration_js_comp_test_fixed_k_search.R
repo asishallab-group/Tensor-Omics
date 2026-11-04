@@ -3,24 +3,35 @@
 #' Recommend upper bounds for the js-comp-test candidate-grid work arrays
 #'
 #' For the candidate grid of
-#' \code{\link{generate_js_comp_test_candidates}}:
-#' `max_n_points_candidate` is exactly its largest `n_points` candidate, and
-#' `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`,
-#' in every `neighborhood_size_mode` (the bound uses the large-neighborhood factor `KX_FACTORS(1)`).
+#' \code{\link{generate_js_comp_test_candidates}}
+#' with the same `grid_points_factor` and `grid_min_points`: `max_n_points_candidate` is exactly
+#' its largest `n_points` candidate, and `max_n_neighbors_candidate` a safe (not necessarily
+#' tight) bound on its largest `n_neighbors`, in every `neighborhood_size_mode` (the bound uses
+#' the large-neighborhood factor at the grid's floor). Pass the same two options as the
+#' parameter search that is sized with the result.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_fixed_k_search::calc_js_comp_test_candidate_bounds}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
 #'   The minimum valid value is `1`.
+#' @param grid_points_factor a numeric scalar. The grid's `grid_points_factor`, as passed to the parameter search
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. The grid's `grid_min_points`, as passed to the parameter search
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
 #' @return a named list with elements:
 #'   \item{max_n_points_candidate}{a integer scalar. Exact upper bound on the `n_points` candidate the grid ever produces}
 #'   \item{max_n_neighbors_candidate}{a integer scalar. Safe upper bound on the `n_neighbors` candidate the grid ever produces}
 #' @export
-calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
+calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies, grid_points_factor = 4.0, grid_min_points = 200L) {
     max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
-    .result <- .Call("calc_js_comp_test_candidate_bounds_call", max_n_genes_all_studies)
-    .arguments <- c("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate", "ierr")
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
+    .result <- .Call("calc_js_comp_test_candidate_bounds_call", max_n_genes_all_studies, grid_points_factor, grid_min_points)
+    .arguments <- c("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate", "grid_points_factor", "grid_min_points", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(
@@ -31,34 +42,50 @@ calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
 
 #' Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
 #'
-#' Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
+#' Starting from `n_points_high = clamp(ceiling(grid_points_factor*sqrt(G)), grid_min_points, MAX_POINTS)`
 #' (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
-#' `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
-#' `n_points` with the distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))` of the
-#' factors `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default only `f = 0.25`
-#' (the large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next.
-#' Small neighborhoods are left out by default: a higher JSCompTest value from small
-#' neighborhoods only shows that they are too small. Duplicate values from
-#' clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
-#' are not part of a candidate; they are chosen per reference point later.
+#' `n_points_low = max(grid_min_points, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each
+#' distinct `n_points` with `n_neighbors = min(G, max(1, floor(G/(f*n_points_high))))` for the
+#' factor `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default `f = 0.25` (the
+#' large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next. The cap
+#' at `G` only binds for a `grid_min_points` below 4 (below 2 for the small neighborhoods), where
+#' `G/(f*n_points_high)` can exceed the number of genes. Small
+#' neighborhoods are not the default: a higher JSCompTest value from small neighborhoods only
+#' shows that they are too small.
+#'
+#' When the next decayed value would fall below `n_points_low`, the floor itself is added as the
+#' last, coarsest candidate (with `n_neighbors` from `n_points_low`), unless the coarsest
+#' candidate already is the floor or the grid already holds MAX_CANDIDATE_PAIRS candidates.
+#' Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
+#' candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_fixed_k_search::generate_js_comp_test_candidates}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
 #'   The minimum valid value is `1`.
-#' @param neighborhood_size_mode a string, one of "neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both". Which neighborhood sizes the grid pairs with each `n_points`
+#' @param neighborhood_size_mode a string, one of "neighborhood_size_large", "neighborhood_size_small". Which neighborhood size the grid pairs with each `n_points`
 #'
 #'   The default value is `"neighborhood_size_large"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#' @param grid_points_factor a numeric scalar. Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(G))`
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. The grid's floor: the lower clamp of its first `n_points`, the least `n_points` it
+#'   keeps, and its last, coarsest candidate
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
 #' @return a integer matrix. Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
 #'   The first `n_candidates` elements will hold the results.
 #' @export
-generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborhood_size_mode = "neighborhood_size_large") {
+generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborhood_size_mode = "neighborhood_size_large", grid_points_factor = 4.0, grid_min_points = 200L) {
     max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
-    neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"))
-    .result <- .Call("generate_js_comp_test_candidates_call", max_n_genes_all_studies, neighborhood_size_mode)
-    .arguments <- c("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "ierr")
+    neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small"))
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
+    .result <- .Call("generate_js_comp_test_candidates_call", max_n_genes_all_studies, neighborhood_size_mode, grid_points_factor, grid_min_points)
+    .arguments <- c("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "grid_points_factor", "grid_min_points", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     .result$candidates_n_points_n_neighbors[, seq_len(.result$n_candidates), drop = FALSE]
@@ -68,8 +95,9 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'
 #' Walks the candidates of
 #' \code{\link{generate_js_comp_test_candidates}}
-#' from finest to coarsest resolution, by default only the large neighborhoods
-#' (`neighborhood_size_mode`). For each candidate:
+#' from finest to coarsest resolution, by default the large neighborhoods
+#' (`neighborhood_size_mode`; `grid_points_factor` and `grid_min_points` shape the grid). For
+#' each candidate:
 #'
 #' 1. Reference points from the pooled gene means
 #' (\code{\link{pool_means}}) and every
@@ -102,8 +130,12 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #' ranges `0.0`, and `plateau_established = FALSE`.
 #'
 #' Per-point outputs and `trace_*` arrays are sized by the candidate bounds; see each argument
-#' for its meaningful part. A failure to create the bootstrap's random number generator is
-#' returned in `ierr` and stops the search; the outputs are then undefined.
+#' for its meaningful part. Errors (`ierr`): `ERR_INVALID_INPUT` before any work when
+#' `max_n_points_candidate` or `max_n_neighbors_candidate` is below what
+#' `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+#' `grid_min_points` (`n_admissible_evaluated` is then 0, every other output undefined); a
+#' failure to create the bootstrap's random number generator stops the search, the outputs are
+#' then undefined.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_fixed_k_search::run_js_comp_test_parameter_search}, whose argument names
 #' are the ones an error message reports.
@@ -117,13 +149,17 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #' @param join_method a string, one of "join_min", "join_max", "join_median". How the studies' confidence-interval overlaps are joined into the plateau condition
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param max_n_points_candidate a integer scalar. Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-#'   at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+#'   at least what `calc_js_comp_test_candidate_bounds` returns for the same
+#'   `grid_points_factor` and `grid_min_points`, else invalid input (checked by the search,
+#'   since the bound depends on those two optional arguments)
 #'   It is recommended to compute this argument from the `max_n_points_candidate` output produced by \code{\link{calc_js_comp_test_candidate_bounds}}.
-#'   The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+#'   The minimum valid value is `1`.
 #' @param max_n_neighbors_candidate a integer scalar. Upper bound on the grid's `n_neighbors` candidates; at least what
-#'   `calc_js_comp_test_candidate_bounds` returns, else invalid input
+#'   `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+#'   `grid_min_points`, else invalid input (checked by the search, like
+#'   `max_n_points_candidate`)
 #'   It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by \code{\link{calc_js_comp_test_candidate_bounds}}.
-#'   The minimum valid value is `max(1, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+#'   The minimum valid value is `1`.
 #' @param min_residuals_per_bin a integer scalar. Minimum count of every consensus bin (gate 2) and the floor of the bin-count search,
 #'   one threshold for both, so a point the search marks as failed also fails the gate
 #'   The minimum valid value is `0`.
@@ -140,12 +176,9 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'   The default value is `0.9`.
 #' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops. The default is the change of
 #'   the observed JSD values from one admissible candidate to the next: it measures
-#'   directly how stable the observed value is. The CI-overlap criterion stays available.
-#'   With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
-#'   the default) its interval describes the spread of the JSD expected if the studies did
-#'   not differ at all (a noise band), not how stable the observed value is from candidate
-#'   to candidate; with the per-study bootstrap (the default) it is a robustness interval
-#'   of each candidate's observed value
+#'   directly how stable the observed value is. The CI-overlap criterion stays available;
+#'   its interval is a robustness interval of each candidate's observed value (each
+#'   study's histograms drawn again from its own counts)
 #'
 #'   The default value is `"plateau_effect_size"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
@@ -192,26 +225,31 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'   (\code{\link{determine_bin_count_stone}}),
 #'   with `min_residuals_per_bin` as the floor
 #'
-#'   The default value is `"bin_count_occupancy"`.
+#'   The default value is `"bin_count_stone_equal"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param neighborhood_size_mode a string, one of "neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both". Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
-#'   neighborhoods are left out by default: if they already give higher JSCompTest values,
-#'   that only shows they are too small
+#' @param neighborhood_size_mode a string, one of "neighborhood_size_large", "neighborhood_size_small". Which neighborhood size the candidate grid pairs with each `n_points`. Small
+#'   neighborhoods are not the default: if they give higher JSCompTest values, that only
+#'   shows they are too small
 #'
 #'   The default value is `"neighborhood_size_large"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param delta_abs_tolerance a numeric scalar. Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
 #'   The minimum valid value is `0.0`.
-#'   The default value is `0.0`.
-#' @param bootstrap_mode a string, one of "bootstrap_per_study", "bootstrap_pooled". What the bootstrap draws each study's histograms from, for every admissible
-#'   candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
-#'   returned interval). By default each study's own counts: the interval shows how much
-#'   the observed JSD would move if each study's own residuals were drawn again (a
-#'   robustness interval). The pooled counts of all studies give the spread expected if the
-#'   studies did not differ (a noise band) instead, kept for comparison
+#'   The default value is `0.0001`.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2". How each study's per-point divergence is computed, for the observed JSDs and every
+#'   bootstrap draw
 #'
-#'   The default value is `"bootstrap_per_study"`.
+#'   The default value is `"divergence_pairwise_k2"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#' @param grid_points_factor a numeric scalar. Factor in the candidate grid's first reference-point count
+#'   `ceiling(grid_points_factor * sqrt(max_n_genes_all_studies))`
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. The candidate grid's floor: the lower clamp of its first `n_points`, the least
+#'   `n_points` it keeps, and its last, coarsest candidate
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
 #' @return a named list with elements:
 #'   \item{n_points}{a integer scalar. The finally chosen candidate's `n_points`}
 #'   \item{n_neighbors}{a integer scalar. The finally chosen candidate's `n_neighbors`}
@@ -221,9 +259,8 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'     first `n_points` entries are meaningful, `0.0` when no candidate was admissible; the
 #'     rest are `0.0`}
 #'   \item{shared_residual_range_high}{a numeric vector. The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`}
-#'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
-#'     interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
-#'     admissible}
+#'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The chosen candidate's bootstrapped JSD confidence interval (a robustness interval of
+#'     its observed JSD); `-1.0` when no candidate was admissible}
 #'   \item{plateau_established}{a logical scalar. `TRUE` when a plateau was found (by the criterion `plateau_mode` selects) or the
 #'     only candidate was admissible; `FALSE` otherwise, also when the smallest-uncertainty
 #'     fallback returns a real candidate and interval}
@@ -234,10 +271,10 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'   \item{trace_global_js_divergence}{a numeric matrix. Per-admissible-candidate, per-study observed global JSD (`J_{i,t}`)
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_ci_lower}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-#'     (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
+#'     (`L_{i,t}`)
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_ci_upper}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-#'     (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
+#'     (`U_{i,t}`)
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_ci_width}{a numeric matrix. Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
 #'     L_{i,t}`)
@@ -290,7 +327,7 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'     Jagged like trace_selected_n_bins
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_stone_equal", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0001, divergence_mode = "divergence_pairwise_k2", grid_points_factor = 4.0, grid_min_points = 200L) {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
@@ -313,17 +350,19 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
-    neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"))
+    neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
-    bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2"))
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
-    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, divergence_mode, grid_points_factor, grid_min_points)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "divergence_mode", "grid_points_factor", "grid_min_points", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

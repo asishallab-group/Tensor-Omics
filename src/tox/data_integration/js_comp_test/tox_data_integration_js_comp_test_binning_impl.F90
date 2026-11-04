@@ -6,10 +6,10 @@
 !| How many histogram bins each reference point of the JS-Comp-Test gets, chosen from the pooled
 !| residuals of all studies in its neighborhood. The occupancy search
 !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]
-!| (the default) takes the largest bin count whose every bin holds at least a minimum number of
-!| residuals; Stone's cross-validation
+!| takes the largest bin count whose every bin holds at least a minimum number of
+!| residuals; Stone's cross-validation, the default,
 !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]
-!| takes the bin count with the smallest estimated risk instead (`bin_count_mode`).
+!| takes the bin count with the smallest estimated risk (`bin_count_mode`).
 !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
 !| is the brute-force reference of the occupancy search, and
 !| [[tox_data_integration_js_comp_test_binning_impl(module):estimate_bin_count_impl(interface)]]
@@ -34,13 +34,14 @@ module tox_data_integration_js_comp_test_binning_impl
              MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED
 
     ! M_MAX_N_BINS and the M_MODE_BIN_COUNT_* values are defined in src/tox/data_integration/macros.h:
-    ! the search and final-run modules need M_MAX_N_BINS and M_MODE_BIN_COUNT_OCCUPANCY as dummy
+    ! the search and final-run modules need M_MAX_N_BINS and M_MODE_BIN_COUNT_STONE_EQUAL as dummy
     ! extents and DM_DEFAULTs, and the other modes are kept with their family.
     integer(int32), parameter :: MAX_N_BINS = M_MAX_N_BINS
         !! Fixed ceiling on any histogram bin count; histogram work arrays are sized by it
 
-    ! `bin_count_mode`'s values: how a reference point's histogram bin count is chosen. Occupancy
-    ! is the default of all four pipeline entry points; determine_bin_count_stone_impl rejects it.
+    ! `bin_count_mode`'s values: how a reference point's histogram bin count is chosen. Stone equal
+    ! is the default of every routine that takes the mode; determine_bin_count_stone_impl rejects
+    ! occupancy.
     integer(int32), parameter :: MODE_BIN_COUNT_OCCUPANCY = M_MODE_BIN_COUNT_OCCUPANCY
         !! Bin-count mode: the largest bin count whose pooled histogram has every bin at or above
         !! the occupancy floor
@@ -456,8 +457,8 @@ contains
         mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
     end subroutine determine_bin_count_occupancy_exhaustive_impl
 
-    !> Stone's leave-one-out cross-validation score (Duke STA 293.3 lecture notes, ch. 6,
-    !| Theorem 2) of one histogram of `n_inside` values over `trial_m` equal bins on a range of
+    !> Rudemo's unbiased risk estimate (Rudemo 1982, eq. 2.8; Stone 1984, section 2), the score of
+    !| Stone's cross-validation rule, of one histogram of `n_inside` values over `trial_m` equal bins on a range of
     !| width `range_width`:
     !| `J = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2`, with `h = range_width/trial_m` and
     !| `p_j = bin_counts(j)/n`, evaluated as `J = trial_m*(2n^2 - (n+1)*Q) / (range_width*(n-1)*n^2)`
@@ -829,7 +830,8 @@ contains
     !> summary: Choose one neighborhood's histogram bin count by Stone's cross-validation rule
     !| AUTHOR_LASZLO_LANG
     !| Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
-    !| Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2): for
+    !| Stone's cross-validation rule with Rudemo's unbiased risk estimate (Rudemo 1982, eq. 2.8;
+    !| Stone 1984, section 2): for
     !| `n` values over `m` bins of width `h`, the bin count minimising
     !| `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2` (`p_j` the share of values in bin `j`) is
     !| chosen. An alternative to
@@ -1189,12 +1191,12 @@ contains
             !! Forwarded to the bin-count search
         integer(int32), intent(in), optional :: bin_count_mode
             !! Which bin-count search runs, one of the four `MODE_BIN_COUNT_*` values; default
-            !! M_MODE_BIN_COUNT_OCCUPANCY
+            !! M_MODE_BIN_COUNT_STONE_EQUAL
 
         integer(int32) :: i_study, n_study_neighbors, pool_offset, diagnostic_n_neighbors
         integer(int32) :: actual_bin_count_mode
 
-        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_OCCUPANCY)
+        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_STONE_EQUAL)
 
         ! Sequential: each study's block starts where the previous one ended. The index column is
         ! passed by its first element, so nothing is copied.
@@ -1307,7 +1309,7 @@ contains
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Forwarded to the bin-count search
         integer(int32), intent(in), optional :: bin_count_mode
-            !! Forwarded to the bin-count search; default M_MODE_BIN_COUNT_OCCUPANCY
+            !! Forwarded to the bin-count search; default M_MODE_BIN_COUNT_STONE_EQUAL
 
         integer(int32) :: i_point
 
@@ -1415,7 +1417,7 @@ contains
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Forwarded to the bin-count search
         integer(int32), intent(in), optional :: bin_count_mode
-            !! Forwarded to the bin-count search; default M_MODE_BIN_COUNT_OCCUPANCY
+            !! Forwarded to the bin-count search; default M_MODE_BIN_COUNT_STONE_EQUAL
 
         integer(int32) :: i_point
 

@@ -193,12 +193,9 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'   The default value is `0.9`.
 #' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops. The default is the change of
 #'   the observed JSD values from one admissible candidate to the next: it measures
-#'   directly how stable the observed value is. The CI-overlap criterion stays available.
-#'   With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
-#'   the default) its interval describes the spread of the JSD expected if the studies did
-#'   not differ at all (a noise band), not how stable the observed value is from candidate
-#'   to candidate; with the per-study bootstrap (the default) it is a robustness interval
-#'   of each candidate's observed value
+#'   directly how stable the observed value is. The CI-overlap criterion stays available;
+#'   its interval is a robustness interval of each candidate's observed value (each
+#'   study's histograms drawn again from its own counts)
 #'
 #'   The default value is `"plateau_effect_size"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
@@ -258,19 +255,15 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'   (\code{\link{determine_bin_count_stone}}),
 #'   with `min_residuals_per_bin` as the floor
 #'
-#'   The default value is `"bin_count_occupancy"`.
+#'   The default value is `"bin_count_stone_equal"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param delta_abs_tolerance a numeric scalar. Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
 #'   The minimum valid value is `0.0`.
-#'   The default value is `0.0`.
-#' @param bootstrap_mode a string, one of "bootstrap_per_study", "bootstrap_pooled". What the bootstrap draws each study's histograms from, for every admissible
-#'   candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
-#'   returned interval). By default each study's own counts: the interval shows how much
-#'   the observed JSD would move if each study's own residuals were drawn again (a
-#'   robustness interval). The pooled counts of all studies give the spread expected if the
-#'   studies did not differ (a noise band) instead, kept for comparison
+#'   The default value is `0.0001`.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2". How each study's per-point divergence is computed, for the observed JSDs and every
+#'   bootstrap draw
 #'
-#'   The default value is `"bootstrap_per_study"`.
+#'   The default value is `"divergence_pairwise_k2"`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{k_start}{a integer scalar. The finally chosen candidate's `k_start`}
@@ -284,8 +277,8 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'     first `n_points` entries are meaningful, `0.0` without an admissible candidate; the
 #'     rest are `0.0`}
 #'   \item{shared_residual_range_high}{a numeric vector. The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`}
-#'   \item{best_candidate_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval of the finally chosen candidate (by default a
-#'     robustness interval of its observed JSD, see `bootstrap_mode`); `-1.0`
+#'   \item{best_candidate_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval of the finally chosen candidate (a robustness
+#'     interval of its observed JSD); `-1.0`
 #'     throughout where no admissible candidate backs the result}
 #'   \item{plateau_established}{a logical scalar. `TRUE` when a plateau was found (by the criterion `plateau_mode` selects) or the
 #'     only candidate was admissible; `FALSE` otherwise}
@@ -299,11 +292,9 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_global_js_divergence}{a numeric matrix. Per-admissible-candidate, per-study observed global JSD (`J_{i,t}`)
 #'     The first `n_admissible_evaluated` elements will hold the results.}
-#'   \item{trace_ci_lower}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound, from
-#'     the bootstrap `bootstrap_mode` selects
+#'   \item{trace_ci_lower}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
 #'     The first `n_admissible_evaluated` elements will hold the results.}
-#'   \item{trace_ci_upper}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound, from
-#'     the bootstrap `bootstrap_mode` selects
+#'   \item{trace_ci_upper}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_ci_width}{a numeric matrix. Per-admissible-candidate, per-study confidence-interval width
 #'     The first `n_admissible_evaluated` elements will hold the results.}
@@ -369,7 +360,7 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'     \code{STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED} consensus-pmf count gate failed
 #'     The first `n_candidates_tried` elements will hold the results.}
 #' @export
-run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_stone_equal", delta_abs_tolerance = 0.0001, divergence_mode = "divergence_pairwise_k2") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
@@ -396,14 +387,14 @@ run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_
     min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
-    bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2"))
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
-    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
+    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, divergence_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "divergence_mode", "ierr")
     .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 

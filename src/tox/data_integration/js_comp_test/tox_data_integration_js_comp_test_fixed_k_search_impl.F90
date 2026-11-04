@@ -12,19 +12,23 @@
 !| have reached a plateau, by the criteria of
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]] and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]].
-!| By default the grid holds only the large neighborhoods
+!| By default the grid holds the large neighborhoods
 !| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]]);
-!| `neighborhood_size_mode` selects the small ones
-!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]])
-!| or both
-!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]).
+!| `neighborhood_size_mode` selects the small ones instead
+!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]]).
+!| `grid_points_factor` and `grid_min_points` set the grid's first `n_points` and its floor.
 !| `calc_js_comp_test_candidate_bounds` sizes the work arrays for a caller that allocates its own.
+!|
+!| The recommended way to choose the neighborhoods is the adaptive search,
+!| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]],
+!| whose neighborhoods follow the local density of the gene means; this fixed-k search stays
+!| available.
 module tox_data_integration_js_comp_test_fixed_k_search_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp
-    use tox_errors, only: set_ok, is_err
+    use tox_errors, only: set_ok, set_err_once, is_err, ERR_INVALID_INPUT
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, pool_means_impl, &
                                                        sort_gene_means_per_study, sort_pooled_gene_means
     use tox_data_integration_js_comp_test_binning_impl, only: determine_fixed_k_point_bin_counts
@@ -35,52 +39,58 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
     M_IMPLICIT_NONE
     private
     public :: calc_js_comp_test_candidate_bounds_impl, generate_js_comp_test_candidates_impl, &
-             run_js_comp_test_parameter_search_impl, calc_fixed_k_n_points_range, KX_FACTORS, MAX_POINTS, MIN_POINTS, &
-             GAMMA, N_POINTS_HIGH_FACTOR, N_POINTS_LOW_FRACTION, MAX_POINT_CANDIDATES, &
-             MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL, MODE_NEIGHBORHOOD_SIZE_BOTH
+             run_js_comp_test_parameter_search_impl, calc_fixed_k_n_points_range, fixed_k_n_neighbors_bound, &
+             KX_FACTORS, KX_FACTOR_INDEX_LARGE, KX_FACTOR_INDEX_SMALL, MAX_POINTS, GAMMA, N_POINTS_LOW_FRACTION, &
+             MAX_POINT_CANDIDATES, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
 
     ! Tuning constants of the fixed-k candidate grid (generate_js_comp_test_candidates_impl,
-    ! calc_fixed_k_n_points_range).
+    ! calc_fixed_k_n_points_range). The factor of the grid's first n_points and its floor are the
+    ! options `grid_points_factor` and `grid_min_points` (defaults in src/tox/data_integration/macros.h).
     real(real64), parameter :: KX_FACTORS(2) = [0.25_real64, 0.5_real64]
         !! Neighbor-count factors, ascending: the first gives the larger `n_neighbors` candidate;
         !! `neighborhood_size_mode` selects which of them the grid uses
+    integer(int32), parameter :: KX_FACTOR_INDEX_LARGE = 1_int32
+        !! Index in `KX_FACTORS` of the large-neighborhood factor (0.25, the larger `n_neighbors`)
+    integer(int32), parameter :: KX_FACTOR_INDEX_SMALL = 2_int32
+        !! Index in `KX_FACTORS` of the small-neighborhood factor (0.5, the smaller `n_neighbors`)
     integer(int32), parameter :: MAX_POINTS = 1500_int32
-    integer(int32), parameter :: MIN_POINTS = 300_int32
+        !! Upper clamp of the grid's first `n_points`, and the largest `grid_min_points`
     real(real64), parameter :: GAMMA = 0.8_real64
-    real(real64), parameter :: N_POINTS_HIGH_FACTOR = 4.0_real64
-        !! Factor of `sqrt(G)` in the grid's first `n_points` candidate, `n_points_high`, before
-        !! the clamp to `[MIN_POINTS, MAX_POINTS]`
+        !! Decay factor from one `n_points` candidate to the next
     real(real64), parameter :: N_POINTS_LOW_FRACTION = 0.2_real64
         !! Fraction of `n_points_high` below which the grid stops, `n_points_low` (at least
-        !! MIN_POINTS)
-    integer(int32), parameter :: MAX_POINT_CANDIDATES = MAX_CANDIDATE_PAIRS/size(KX_FACTORS, kind=int32)
-        !! How often n_points_high may be multiplied by GAMMA before the grid gives up; derived so
-        !! that the grid never exceeds MAX_CANDIDATE_PAIRS candidates
+        !! `grid_min_points`)
+    integer(int32), parameter :: MAX_POINT_CANDIDATES = ceiling(log(N_POINTS_LOW_FRACTION)/log(GAMMA), kind=int32)
+        !! Most decayed `n_points` values the grid can hold, `ceiling(log(N_POINTS_LOW_FRACTION) /
+        !! log(GAMMA)) = ceiling(7.21) = 8`: the decay stops once a value drops below
+        !! `n_points_low >= N_POINTS_LOW_FRACTION * n_points_high`, and `GAMMA**8 = 0.168 < 0.2 <=
+        !! GAMMA**7 = 0.210`, so the eighth value can still be kept and a ninth never is. The loop
+        !! bound therefore never cuts the grid short; with the floor candidate the grid holds at
+        !! most 9 of the MAX_CANDIDATE_PAIRS slots
 
     ! `neighborhood_size_mode`'s mode table, from the M_MODE_NEIGHBORHOOD_SIZE_* of
     ! src/tox/data_integration/macros.h: M_MODE_NEIGHBORHOOD_SIZE_LARGE is also the DM_DEFAULT of
     ! the grid and the search, which cannot name a Fortran parameter, and the family is kept together.
     integer(int32), parameter :: MODE_NEIGHBORHOOD_SIZE_LARGE = M_MODE_NEIGHBORHOOD_SIZE_LARGE
-        !! Neighborhood size mode: only the large neighborhoods, `n_neighbors` from `KX_FACTORS(1)`
+        !! Neighborhood size mode: the large neighborhoods, `n_neighbors` from `KX_FACTORS(1)`
         !! (0.25, about `4*G/n_points` genes); the default
     integer(int32), parameter :: MODE_NEIGHBORHOOD_SIZE_SMALL = M_MODE_NEIGHBORHOOD_SIZE_SMALL
-        !! Neighborhood size mode: only the small neighborhoods, `n_neighbors` from `KX_FACTORS(2)`
+        !! Neighborhood size mode: the small neighborhoods, `n_neighbors` from `KX_FACTORS(2)`
         !! (0.5, about `2*G/n_points` genes)
-    integer(int32), parameter :: MODE_NEIGHBORHOOD_SIZE_BOTH = M_MODE_NEIGHBORHOOD_SIZE_BOTH
-        !! Neighborhood size mode: both, each `n_points` paired first with its large and then with
-        !! its small `n_neighbors` (the grid before this mode existed)
 
 contains
 
     !> summary: Recommend upper bounds for the js-comp-test candidate-grid work arrays
     !| AUTHOR_LASZLO_LANG
     !| For the candidate grid of
-    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]:
-    !| `max_n_points_candidate` is exactly its largest `n_points` candidate, and
-    !| `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`,
-    !| in every `neighborhood_size_mode` (the bound uses the large-neighborhood factor `KX_FACTORS(1)`).
+    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+    !| with the same `grid_points_factor` and `grid_min_points`: `max_n_points_candidate` is exactly
+    !| its largest `n_points` candidate, and `max_n_neighbors_candidate` a safe (not necessarily
+    !| tight) bound on its largest `n_neighbors`, in every `neighborhood_size_mode` (the bound uses
+    !| the large-neighborhood factor at the grid's floor). Pass the same two options as the
+    !| parameter search that is sized with the result.
     pure subroutine calc_js_comp_test_candidate_bounds_impl(max_n_genes_all_studies, max_n_points_candidate, &
-                                                             max_n_neighbors_candidate)
+                                                             max_n_neighbors_candidate, grid_points_factor, grid_min_points)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! DM_MIN(1_int32)
@@ -88,50 +98,118 @@ contains
             !! Exact upper bound on the `n_points` candidate the grid ever produces
         integer(int32), intent(out) :: max_n_neighbors_candidate
             !! Safe upper bound on the `n_neighbors` candidate the grid ever produces
+        real(real64), intent(in), optional :: grid_points_factor
+            !! The grid's `grid_points_factor`, as passed to the parameter search
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(M_GRID_POINTS_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: grid_min_points
+            !! The grid's `grid_min_points`, as passed to the parameter search
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_POINTS)
+            !! DM_DEFAULT(M_GRID_MIN_POINTS_DEFAULT)
 
-        integer(int32) :: n_points_low
+        integer(int32) :: n_points_low, actual_grid_min_points
+        real(real64) :: actual_grid_points_factor
 
-        call calc_fixed_k_n_points_range(max_n_genes_all_studies, max_n_points_candidate, n_points_low)
-        max_n_neighbors_candidate = max(1_int32, floor(real(max_n_genes_all_studies, real64)/ &
-                                                        (KX_FACTORS(1)*real(n_points_low, real64)), kind=int32))
+        M_DEFAULT_VAL(grid_points_factor, actual_grid_points_factor, M_GRID_POINTS_FACTOR_DEFAULT)
+        M_DEFAULT_VAL(grid_min_points, actual_grid_min_points, M_GRID_MIN_POINTS_DEFAULT)
+        call calc_fixed_k_n_points_range(max_n_genes_all_studies, actual_grid_points_factor, actual_grid_min_points, &
+                                         max_n_points_candidate, n_points_low)
+        max_n_neighbors_candidate = fixed_k_n_neighbors_bound(max_n_genes_all_studies, n_points_low)
     end subroutine calc_js_comp_test_candidate_bounds_impl
+
+    !> summary: The safe bound on the fixed-k grid's largest `n_neighbors` candidate
+    !| AUTHOR_LASZLO_LANG
+    !| `fixed_k_n_neighbors` for the large-neighborhood factor at the grid's floor,
+    !| `min(G, max(1, floor(G / (KX_FACTORS(KX_FACTOR_INDEX_LARGE) * n_points_low))))`, which bounds
+    !| every candidate's `n_neighbors` (the floor candidate's exactly). Internal helper, not
+    !| published; public because the candidate bounds and the parameter search's capacity check share it,
+    !| so they cannot drift apart.
+    pure integer(int32) function fixed_k_n_neighbors_bound(max_n_genes_all_studies, n_points_low) result(bound)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies (`G`), at least 1
+        integer(int32), intent(in) :: n_points_low
+            !! The grid's floor, from calc_fixed_k_n_points_range
+
+        bound = fixed_k_n_neighbors(max_n_genes_all_studies, KX_FACTORS(KX_FACTOR_INDEX_LARGE), &
+                                    real(n_points_low, real64))
+    end function fixed_k_n_neighbors_bound
+
+    !> summary: The `n_neighbors` the fixed-k grid pairs with one `n_points` value
+    !| AUTHOR_LASZLO_LANG
+    !| `min(G, max(1, floor(G / (neighbor_factor * n_points))))` (`G` = `max_n_genes_all_studies`),
+    !| the one place the code computes it: every grid candidate and the bound on them. The cap at
+    !| `G` keeps a neighborhood within the genes there are. It only binds when
+    !| `neighbor_factor * n_points < 1`, i.e. for the large-neighborhood factor 0.25 below 4 points
+    !| and for the small one 0.5 below 2 points; the grid's `n_points` values (the decayed reals and
+    !| the floor) never drop below `grid_min_points`, so with `grid_min_points >= 4` (the default is
+    !| 200) the cap changes no candidate. The minimum is taken before `floor`, so a large quotient
+    !| cannot overflow. Private helper.
+    pure integer(int32) function fixed_k_n_neighbors(max_n_genes_all_studies, neighbor_factor, n_points) &
+        result(n_neighbors)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies (`G`), at least 1
+        real(real64), intent(in) :: neighbor_factor
+            !! One of `KX_FACTORS`
+        real(real64), intent(in) :: n_points
+            !! The candidate's (decayed, unrounded) number of reference points, positive
+
+        n_neighbors = max(1_int32, floor(min(real(max_n_genes_all_studies, real64), &
+                                             real(max_n_genes_all_studies, real64)/(neighbor_factor*n_points)), &
+                                         kind=int32))
+    end function fixed_k_n_neighbors
 
     !> summary: The first `n_points` candidate of the fixed-k grid and the floor it stops at
     !| AUTHOR_LASZLO_LANG
-    !| `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =
-    !| `max_n_genes_all_studies`) and `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`,
-    !| the one place the code computes them (the lower bounds of the parameter search's
-    !| `max_n_points_candidate` and `max_n_neighbors_candidate` write the same formula with the same
-    !| constants, as a range expression cannot call a procedure; a test keeps the two in step). Internal helper, not published; public because the tests call it
-    !| directly. `generate_js_comp_test_candidates_impl` starts its GAMMA decay from these
-    !| values and `calc_js_comp_test_candidate_bounds_impl` sizes its bounds from them.
-    pure subroutine calc_fixed_k_n_points_range(max_n_genes_all_studies, n_points_high, n_points_low)
+    !| `n_points_high = clamp(ceiling(grid_points_factor*sqrt(G)), grid_min_points, MAX_POINTS)` (`G` =
+    !| `max_n_genes_all_studies`) and
+    !| `n_points_low = max(grid_min_points, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, the one
+    !| place the code computes them. The product is capped at MAX_POINTS before `ceiling`, so it
+    !| cannot overflow; below the cap that changes nothing. Internal helper, not published; public
+    !| because the tests call it directly. `generate_js_comp_test_candidates_impl` starts its GAMMA
+    !| decay from these values, `calc_js_comp_test_candidate_bounds_impl` sizes its bounds from them,
+    !| and the parameter search and the study-label Permutation-Test check their capacities against
+    !| them.
+    pure subroutine calc_fixed_k_n_points_range(max_n_genes_all_studies, grid_points_factor, grid_min_points, &
+                                                n_points_high, n_points_low)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies (`G`), at least 1
+        real(real64), intent(in) :: grid_points_factor
+            !! Factor in front of `sqrt(G)`, positive
+        integer(int32), intent(in) :: grid_min_points
+            !! The grid's floor, in `[1, MAX_POINTS]`
         integer(int32), intent(out) :: n_points_high
             !! The grid's first (largest) `n_points` candidate
         integer(int32), intent(out) :: n_points_low
             !! The floor the grid's `n_points` candidates stay at or above
 
-        n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), &
-                              min_val=MIN_POINTS, max_val=MAX_POINTS)
-        n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(n_points_high, real64), kind=int32))
+        n_points_high = clamp(ceiling(min(grid_points_factor*sqrt(real(max_n_genes_all_studies, real64)), &
+                                          real(MAX_POINTS, real64)), kind=int32), &
+                              min_val=grid_min_points, max_val=MAX_POINTS)
+        n_points_low = max(grid_min_points, ceiling(N_POINTS_LOW_FRACTION*real(n_points_high, real64), kind=int32))
     end subroutine calc_fixed_k_n_points_range
 
     !> summary: Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
     !| AUTHOR_LASZLO_LANG
-    !| Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
+    !| Starting from `n_points_high = clamp(ceiling(grid_points_factor*sqrt(G)), grid_min_points, MAX_POINTS)`
     !| (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
-    !| `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
-    !| `n_points` with the distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))` of the
-    !| factors `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default only `f = 0.25`
-    !| (the large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next.
-    !| Small neighborhoods are left out by default: a higher JSCompTest value from small
-    !| neighborhoods only shows that they are too small. Duplicate values from
-    !| clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
-    !| are not part of a candidate; they are chosen per reference point later.
+    !| `n_points_low = max(grid_min_points, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each
+    !| distinct `n_points` with `n_neighbors = min(G, max(1, floor(G/(f*n_points_high))))` for the
+    !| factor `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default `f = 0.25` (the
+    !| large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next. The cap
+    !| at `G` only binds for a `grid_min_points` below 4 (below 2 for the small neighborhoods), where
+    !| `G/(f*n_points_high)` can exceed the number of genes. Small
+    !| neighborhoods are not the default: a higher JSCompTest value from small neighborhoods only
+    !| shows that they are too small.
+    !|
+    !| When the next decayed value would fall below `n_points_low`, the floor itself is added as the
+    !| last, coarsest candidate (with `n_neighbors` from `n_points_low`), unless the coarsest
+    !| candidate already is the floor or the grid already holds MAX_CANDIDATE_PAIRS candidates.
+    !| Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
+    !| candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
     pure subroutine generate_js_comp_test_candidates_impl(max_n_genes_all_studies, candidates_n_points_n_neighbors, &
-                                                          n_candidates, neighborhood_size_mode)
+                                                          n_candidates, neighborhood_size_mode, grid_points_factor, &
+                                                          grid_min_points)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! DM_MIN(1_int32)
@@ -141,35 +219,39 @@ contains
         integer(int32), intent(out) :: n_candidates
             !! Number of candidate pairs actually filled (at most M_MAX_CANDIDATE_PAIRS)
         integer(int32), intent(in), optional :: neighborhood_size_mode
-            !! Which neighborhood sizes the grid pairs with each `n_points`
+            !! Which neighborhood size the grid pairs with each `n_points`
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
-            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
-            !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
+            !! | Large neighborhoods, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(G))`
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(M_GRID_POINTS_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: grid_min_points
+            !! The grid's floor: the lower clamp of its first `n_points`, the least `n_points` it
+            !! keeps, and its last, coarsest candidate
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_POINTS)
+            !! DM_DEFAULT(M_GRID_MIN_POINTS_DEFAULT)
 
-        real(real64) :: n_points_high, n_points_low
-        integer(int32) :: first_n_points, n_points_floor, actual_neighborhood_size_mode, first_factor, last_factor
-        integer(int32) :: i_point_candidate, point_candidate, prev_point_candidate
-        integer(int32) :: i_neighbor_candidate, neighbor_candidate, prev_neighbor_candidate
+        real(real64) :: n_points_high, n_points_low, actual_grid_points_factor
+        integer(int32) :: first_n_points, n_points_floor, actual_neighborhood_size_mode, factor_index
+        integer(int32) :: i_point_candidate, point_candidate, prev_point_candidate, actual_grid_min_points
 
         M_DEFAULT_VAL(neighborhood_size_mode, actual_neighborhood_size_mode, M_MODE_NEIGHBORHOOD_SIZE_LARGE)
-        ! The factors the mode selects: a contiguous run of KX_FACTORS.
-        select case (actual_neighborhood_size_mode)
-        case (MODE_NEIGHBORHOOD_SIZE_LARGE)
-            first_factor = 1_int32
-            last_factor = 1_int32
-        case (MODE_NEIGHBORHOOD_SIZE_SMALL)
-            first_factor = 2_int32
-            last_factor = 2_int32
-        case default ! MODE_NEIGHBORHOOD_SIZE_BOTH
-            first_factor = 1_int32
-            last_factor = size(KX_FACTORS, kind=int32)
-        end select
+        M_DEFAULT_VAL(grid_points_factor, actual_grid_points_factor, M_GRID_POINTS_FACTOR_DEFAULT)
+        M_DEFAULT_VAL(grid_min_points, actual_grid_min_points, M_GRID_MIN_POINTS_DEFAULT)
+        if (actual_neighborhood_size_mode == MODE_NEIGHBORHOOD_SIZE_SMALL) then
+            factor_index = KX_FACTOR_INDEX_SMALL
+        else ! MODE_NEIGHBORHOOD_SIZE_LARGE
+            factor_index = KX_FACTOR_INDEX_LARGE
+        end if
 
-        call calc_fixed_k_n_points_range(max_n_genes_all_studies, first_n_points, n_points_floor)
+        call calc_fixed_k_n_points_range(max_n_genes_all_studies, actual_grid_points_factor, actual_grid_min_points, &
+                                         first_n_points, n_points_floor)
         n_points_high = real(first_n_points, kind=real64)
         n_points_low = real(n_points_floor, kind=real64)
 
@@ -183,23 +265,26 @@ contains
             point_candidate = nint(n_points_high, kind=int32)
             if (point_candidate /= prev_point_candidate) then
                 prev_point_candidate = point_candidate
-                prev_neighbor_candidate = -1_int32
-
-                do i_neighbor_candidate = first_factor, last_factor
-                    neighbor_candidate = max(1_int32, floor(real(max_n_genes_all_studies, real64)/ &
-                                                            (KX_FACTORS(i_neighbor_candidate)*n_points_high), kind=int32))
-
-                    if (neighbor_candidate /= prev_neighbor_candidate) then
-                        prev_neighbor_candidate = neighbor_candidate
-
-                        n_candidates = n_candidates + 1_int32
-                        candidates_n_points_n_neighbors(1, n_candidates) = point_candidate
-                        candidates_n_points_n_neighbors(2, n_candidates) = neighbor_candidate
-                    end if
-                end do
+                n_candidates = n_candidates + 1_int32
+                candidates_n_points_n_neighbors(1, n_candidates) = point_candidate
+                candidates_n_points_n_neighbors(2, n_candidates) = &
+                    fixed_k_n_neighbors(max_n_genes_all_studies, KX_FACTORS(factor_index), n_points_high)
             end if
             n_points_high = n_points_high*GAMMA
         end do
+
+        ! Floor clamp: the decay has stopped because its next value is below n_points_low (after
+        ! MAX_POINT_CANDIDATES rounds it always is, as n_points_low >= N_POINTS_LOW_FRACTION*n_points_high
+        ! > GAMMA**MAX_POINT_CANDIDATES*n_points_high). The floor becomes the last candidate unless
+        ! the coarsest one already sits there. The capacity condition cannot fail with the present
+        ! constants (at most MAX_POINT_CANDIDATES = 8 decayed values, so at most 9 candidates of
+        ! MAX_CANDIDATE_PAIRS); it keeps the write inside the candidate array should they change.
+        if (prev_point_candidate /= n_points_floor .and. n_candidates < MAX_CANDIDATE_PAIRS) then
+            n_candidates = n_candidates + 1_int32
+            candidates_n_points_n_neighbors(1, n_candidates) = n_points_floor
+            candidates_n_points_n_neighbors(2, n_candidates) = &
+                fixed_k_n_neighbors(max_n_genes_all_studies, KX_FACTORS(factor_index), n_points_low)
+        end if
     end subroutine generate_js_comp_test_candidates_impl
 
     !> summary: Build one fixed-k candidate's neighborhoods for every study and check the first admissibility gate
@@ -255,8 +340,9 @@ contains
     !| AUTHOR_LASZLO_LANG
     !| Walks the candidates of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
-    !| from finest to coarsest resolution, by default only the large neighborhoods
-    !| (`neighborhood_size_mode`). For each candidate:
+    !| from finest to coarsest resolution, by default the large neighborhoods
+    !| (`neighborhood_size_mode`; `grid_points_factor` and `grid_min_points` shape the grid). For
+    !| each candidate:
     !|
     !| 1. Reference points from the pooled gene means
     !|    ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
@@ -289,8 +375,12 @@ contains
     !|    ranges `0.0`, and `plateau_established = .false.`.
     !|
     !| Per-point outputs and `trace_*` arrays are sized by the candidate bounds; see each argument
-    !| for its meaningful part. A failure to create the bootstrap's random number generator is
-    !| returned in `ierr` and stops the search; the outputs are then undefined.
+    !| for its meaningful part. Errors (`ierr`): `ERR_INVALID_INPUT` before any work when
+    !| `max_n_points_candidate` or `max_n_neighbors_candidate` is below what
+    !| `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+    !| `grid_min_points` (`n_admissible_evaluated` is then 0, every other output undefined); a
+    !| failure to create the bootstrap's random number generator stops the search, the outputs are
+    !| then undefined.
     subroutine run_js_comp_test_parameter_search_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
                                                        gene_means, residuals, n_bootstraps, &
                                                        join_method, max_n_points_candidate, max_n_neighbors_candidate, &
@@ -336,7 +426,7 @@ contains
                                                        lower_residual_range_quantile, upper_residual_range_quantile, &
                                                        two_sided_bootstrapping_significance_level, random_seed, &
                                                        bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, &
-                                                       bootstrap_mode, ierr)
+                                                       divergence_mode, grid_points_factor, grid_min_points, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -362,17 +452,21 @@ contains
             !! |--------|-------|
             !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]] |
             !! | Maximum overlap (any one study passes) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]] |
-            !! | Median overlap (a majority must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+            !! | Median overlap (at least half of the studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         integer(int32), intent(in) :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-            !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! at least what `calc_js_comp_test_candidate_bounds` returns for the same
+            !! `grid_points_factor` and `grid_min_points`, else invalid input (checked by the search,
+            !! since the bound depends on those two optional arguments)
             !! DM_OUTPUT_FROM(max_n_points_candidate, calc_js_comp_test_candidate_bounds, tox_data_integration_js_comp_test_fixed_k_search, JUST_INFO)
-            !! DM_MIN(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
+            !! DM_MIN(1_int32)
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
-            !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+            !! `grid_min_points`, else invalid input (checked by the search, like
+            !! `max_n_points_candidate`)
             !! DM_OUTPUT_FROM(max_n_neighbors_candidate, calc_js_comp_test_candidate_bounds, tox_data_integration_js_comp_test_fixed_k_search, JUST_INFO)
-            !! DM_MIN(max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
+            !! DM_MIN(1_int32)
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)
             !! DM_OUTPUT_FROM(n_top_k, calc_js_comp_test_n_top_k_jsds, tox_data_integration_stats_impl, AUTO)
@@ -391,9 +485,8 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
-            !! The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
-            !! interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
-            !! admissible
+            !! The chosen candidate's bootstrapped JSD confidence interval (a robustness interval of
+            !! its observed JSD); `-1.0` when no candidate was admissible
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise, also when the smallest-uncertainty
@@ -412,11 +505,11 @@ contains
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-            !! (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
+            !! (`L_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-            !! (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
+            !! (`U_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
@@ -599,12 +692,9 @@ contains
         integer(int32), intent(in), optional :: plateau_mode
             !! Which plateau criterion decides when the search stops. The default is the change of
             !! the observed JSD values from one admissible candidate to the next: it measures
-            !! directly how stable the observed value is. The CI-overlap criterion stays available.
-            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
-            !! the default) its interval describes the spread of the JSD expected if the studies did
-            !! not differ at all (a noise band), not how stable the observed value is from candidate
-            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
-            !! of each candidate's observed value
+            !! directly how stable the observed value is. The CI-overlap criterion stays available;
+            !! its interval is a robustness interval of each candidate's observed value (each
+            !! study's histograms drawn again from its own counts)
             !!
             !! | Mode | Value |
             !! |------|-------|
@@ -672,41 +762,48 @@ contains
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] |
-            !! | Stone's cross-validation: minimise the sum of every study's own score | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
-            !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+            !! DM_DEFAULT(M_MODE_BIN_COUNT_STONE_EQUAL)
         integer(int32), intent(in), optional :: neighborhood_size_mode
-            !! Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
-            !! neighborhoods are left out by default: if they already give higher JSCompTest values,
-            !! that only shows they are too small
+            !! Which neighborhood size the candidate grid pairs with each `n_points`. Small
+            !! neighborhoods are not the default: if they give higher JSCompTest values, that only
+            !! shows they are too small
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
-            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
-            !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
+            !! | Large neighborhoods, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
         real(real64), intent(in), optional :: delta_abs_tolerance
             !! M_DELTA_ABS_TOLERANCE_DOC
             !! DM_MIN(0.0_real64)
             !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
-        integer(int32), intent(in), optional :: bootstrap_mode
-            !! What the bootstrap draws each study's histograms from, for every admissible
-            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
-            !! returned interval). By default each study's own counts: the interval shows how much
-            !! the observed JSD would move if each study's own residuals were drawn again (a
-            !! robustness interval). The pooled counts of all studies give the spread expected if the
-            !! studies did not differ (a noise band) instead, kept for comparison
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence is computed, for the observed JSDs and every
+            !! bootstrap draw
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
-            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
-            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+            !! | Each study's JSD against the consensus of all studies | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]] |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_PAIRWISE_K2)
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Factor in the candidate grid's first reference-point count
+            !! `ceiling(grid_points_factor * sqrt(max_n_genes_all_studies))`
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(M_GRID_POINTS_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: grid_min_points
+            !! The candidate grid's floor: the lower clamp of its first `n_points`, the least
+            !! `n_points` it keeps, and its last, coarsest candidate
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_POINTS)
+            !! DM_DEFAULT(M_GRID_MIN_POINTS_DEFAULT)
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
+            !! Error code; ERR_INVALID_INPUT for an undersized capacity, ERR_ALLOC_FAIL if the
+            !! bootstrap's random number generator could not be created (see above)
 
         integer(int32) :: candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_candidate, n_pool, max_n_bins
@@ -716,8 +813,8 @@ contains
         integer(int32) :: best_uncertainty_candidate_index, actual_m_min, actual_neighborhood_size_mode
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
-        real(real64) :: actual_delta_abs_tolerance
-        integer(int32) :: actual_bootstrap_mode
+        real(real64) :: actual_delta_abs_tolerance, actual_grid_points_factor
+        integer(int32) :: actual_divergence_mode, actual_grid_min_points, bound_n_points_high, bound_n_points_low
         real(real64) :: best_uncertainty_value
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -732,13 +829,30 @@ contains
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
         M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
-        M_DEFAULT_VAL(bootstrap_mode, actual_bootstrap_mode, M_MODE_BOOTSTRAP_PER_STUDY)
+        M_DEFAULT_VAL(divergence_mode, actual_divergence_mode, M_MODE_DIVERGENCE_PAIRWISE_K2)
         M_DEFAULT_VAL(neighborhood_size_mode, actual_neighborhood_size_mode, M_MODE_NEIGHBORHOOD_SIZE_LARGE)
+        M_DEFAULT_VAL(grid_points_factor, actual_grid_points_factor, M_GRID_POINTS_FACTOR_DEFAULT)
+        M_DEFAULT_VAL(grid_min_points, actual_grid_min_points, M_GRID_MIN_POINTS_DEFAULT)
+
+        ! Joint runtime check of the two capacities against the grid's bounds: the bounds depend on
+        ! the optional grid_points_factor and grid_min_points, and a DM_ range expression cannot read
+        ! an optional argument (absent, it is undefined in the wrapper), so the wrappers only check
+        ! DM_MIN(1). Positions are this routine's own (cleared by the wrappers, Sec 5.14).
+        call calc_fixed_k_n_points_range(max_n_genes_all_studies, actual_grid_points_factor, actual_grid_min_points, &
+                                         bound_n_points_high, bound_n_points_low)
+        if (max_n_points_candidate < bound_n_points_high) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
+        if (max_n_neighbors_candidate < fixed_k_n_neighbors_bound(max_n_genes_all_studies, bound_n_points_low)) &
+            call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
+        if (is_err(ierr)) then
+            n_admissible_evaluated = 0_int32
+            return
+        end if
 
         pool_size = max_n_genes_all_studies*n_studies
 
         call generate_js_comp_test_candidates_impl(max_n_genes_all_studies, candidates_n_points_n_neighbors, n_candidates, &
-                                                   actual_neighborhood_size_mode)
+                                                   actual_neighborhood_size_mode, actual_grid_points_factor, &
+                                                   actual_grid_min_points)
 
         ! Sort each study's own gene means (for construct_neighborhoods_ranged_impl) and the
         ! flattened, all-studies-pooled gene means (for pool_means_impl's x_star).
@@ -813,7 +927,7 @@ contains
             ! makes the candidate inadmissible here.
             call score_candidate_histograms(n_points, max_n_bins, n_studies, tmp_n_bins_per_point, &
                                             actual_min_residuals_per_bin, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
-                                            tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, &
+                                            actual_divergence_mode, tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, &
                                             tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                             tmp_confidence_interval, has_empty_study, all_bins_have_min_count)
             if (has_empty_study .or. .not. all_bins_have_min_count) cycle
@@ -826,11 +940,11 @@ contains
                                                join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
                                                actual_delta_median_threshold, actual_delta_max_threshold, &
                                                actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
-                                               actual_delta_abs_tolerance, actual_bootstrap_mode, tmp_n_bins_per_point, &
+                                               actual_delta_abs_tolerance, actual_divergence_mode, tmp_n_bins_per_point, &
                                                tmp_occupancy_failed, tmp_n_pooled_residuals, &
                                                tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
                                                tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &
-                                               tmp_shared_residual_range_high, tmp_included_n_reps, tmp_mean_pmf_counts, &
+                                               tmp_shared_residual_range_high, tmp_included_n_reps, &
                                                tmp_mean_pmf_included_n_reps, tmp_counts, tmp_pmfs, tmp_mean_pmf, &
                                                tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                                tmp_confidence_interval, trace_global_js_divergence, trace_ci_lower, &

@@ -4,6 +4,7 @@
 module mod_test_random_gsl
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use f42_random_gsl
     use tox_errors
@@ -15,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_random_gsl() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(16))
+        allocate (all_tests(19))
 
         all_tests(1) = test_case("test_create_rng_ok_and_reproducible", test_create_rng_ok_and_reproducible)
         all_tests(2) = test_case("test_reset_rng_restores_stream", test_reset_rng_restores_stream)
@@ -38,6 +39,12 @@ contains
                                   test_multinomial_more_draws_than_population)
         all_tests(16) = test_case("test_draw_nothing_from_empty_population_succeeds", &
                                   test_draw_nothing_from_empty_population_succeeds)
+        all_tests(17) = test_case("test_random_shuffle_permutation_and_reproducible", &
+                                  test_random_shuffle_permutation_and_reproducible)
+        all_tests(18) = test_case("test_random_shuffle_fewer_than_two_values_unchanged", &
+                                  test_random_shuffle_fewer_than_two_values_unchanged)
+        all_tests(19) = test_case("test_random_shuffle_orders_of_three_equally_frequent", &
+                                  test_random_shuffle_orders_of_three_equally_frequent)
     end function get_all_tests_random_gsl
 
     !> A generator created with an explicit seed reproduces the exact same first draw as one
@@ -413,8 +420,8 @@ contains
     end subroutine test_multiv_hypergeom_reduces_every_population
 
     !> Drawing repeatedly from one pool until it is used up -- passing the pool's current
-    !| `sum(population_sizes)` as `total_population` each time, exactly as
-    !| `gjct_permutation_test_impl` does for its studies -- must partition the pool exactly: the
+    !| `sum(population_sizes)` as `total_population` each time, as a sampler without replacement
+    !| that splits one pool among several draws would do -- must partition the pool exactly: the
     !| draws summed per population equal the original pool, the pool ends all zero, and no pool
     !| entry ever goes negative along the way. The last population is deliberately the largest,
     !| so a pool that fails to shrink there shows up in every later draw.
@@ -480,5 +487,100 @@ contains
         call random_multiv_hypergeom(rng, n_pop, pop, 0_int32, 0_int32, drawn)
         call assert_equal_array_int(drawn, [0_int32, 0_int32], n_pop, name//"random_multiv_hypergeom: drawn is all zero")
     end subroutine test_draw_nothing_from_empty_population_succeeds
+
+    !> random_shuffle rearranges the values it is given (here `100 + 1..n`, so not just indices)
+    !| into a permutation of them; a generator seeded alike gives the identical order, another seed
+    !| another order, and successive shuffles from one generator differ.
+    subroutine test_random_shuffle_permutation_and_reproducible()
+        integer(int32), parameter :: n = 10_int32, offset = 100_int32
+        integer(int32) :: values(n), again(n), other_seed(n), next_draw(n), i, ierr
+        type(rng_t) :: rng1, rng2, rng3
+        character(len=*), parameter :: name = "test_random_shuffle_permutation_and_reproducible: "
+
+        rng1 = create_rng(seed=13_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"create_rng")
+        rng2 = create_rng(seed=13_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"create_rng 2")
+        rng3 = create_rng(seed=14_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"create_rng 3")
+        do i = 1, n
+            values(i) = offset + i
+        end do
+        again = values
+        other_seed = values
+        call random_shuffle(rng1, n, values)
+        call assert_permutation(values - offset, n, name//"a permutation of the values given")
+        call random_shuffle(rng2, n, again)
+        call assert_equal_array_int(again, values, n, name//"same seed, same order")
+        call random_shuffle(rng3, n, other_seed)
+        call assert_permutation(other_seed - offset, n, name//"other seed: a permutation")
+        call assert_true(any(other_seed /= values), name//"other seed, other order")
+        next_draw = values
+        call random_shuffle(rng1, n, next_draw)
+        call assert_permutation(next_draw - offset, n, name//"next draw: a permutation")
+        call assert_true(any(next_draw /= values), name//"the next draw from the same generator differs")
+        call destroy_rng(rng1)
+        call destroy_rng(rng2)
+        call destroy_rng(rng3)
+    end subroutine test_random_shuffle_permutation_and_reproducible
+
+    !> Zero values and one value are left as they are (GSL is not called for them).
+    subroutine test_random_shuffle_fewer_than_two_values_unchanged()
+        integer(int32) :: none(0), one(1), ierr
+        type(rng_t) :: rng
+        character(len=*), parameter :: name = "test_random_shuffle_fewer_than_two_values_unchanged: "
+
+        rng = create_rng(seed=15_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"create_rng")
+        call random_shuffle(rng, 0_int32, none)
+        call assert_equal_int(size(none, kind=int32), 0_int32, name//"zero values")
+        one = 7_int32
+        call random_shuffle(rng, 1_int32, one)
+        call assert_equal_int(one(1), 7_int32, name//"one value unchanged")
+        call destroy_rng(rng)
+    end subroutine test_random_shuffle_fewer_than_two_values_unchanged
+
+    !> Over many shuffles of `[1, 2, 3]` from one seeded generator, each of the 3! = 6 orders occurs
+    !| about equally often. With 60000 shuffles each order is expected 10000 times, with a binomial
+    !| standard deviation of `sqrt(60000 * 1/6 * 5/6)`, about 91. The tolerance of 500 (about 5.5
+    !| standard deviations) leaves a fair shuffle essentially no chance to fail, while the two
+    !| classic mistakes fail clearly: swapping with any position of the whole array gives the
+    !| frequencies 4/27 and 5/27 (about 8889 and 11111), and never swapping an element with itself
+    !| (Sattolo's cycles) gives only 2 of the 6 orders.
+    subroutine test_random_shuffle_orders_of_three_equally_frequent()
+        integer(int32), parameter :: n_shuffles = 60000_int32, tolerance = 500_int32, n_orders = 6_int32
+        integer(int32), parameter :: orders(3, n_orders) = reshape([1, 2, 3, 1, 3, 2, 2, 1, 3, 2, 3, 1, 3, 1, 2, 3, 2, 1], &
+                                                                   [3, n_orders])
+        integer(int32) :: values(3), order_count(n_orders), i_shuffle, i_order, ierr, expected
+        logical(c_bool) :: matched
+        type(rng_t) :: rng
+        character(len=*), parameter :: name = "test_random_shuffle_orders_of_three_equally_frequent: "
+
+        rng = create_rng(seed=16_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"create_rng")
+        order_count = 0_int32
+        do i_shuffle = 1, n_shuffles
+            values = [1_int32, 2_int32, 3_int32]
+            call random_shuffle(rng, 3_int32, values)
+            matched = .false.
+            do i_order = 1, n_orders
+                if (values(1) == orders(1, i_order) .and. values(2) == orders(2, i_order) .and. &
+                    values(3) == orders(3, i_order)) then
+                    order_count(i_order) = order_count(i_order) + 1_int32
+                    matched = .true.
+                    exit
+                end if
+            end do
+            call assert_true(matched, name//"every result is one of the 6 orders")
+        end do
+        call destroy_rng(rng)
+
+        expected = n_shuffles/n_orders
+        do i_order = 1, n_orders
+            call assert_in_range_int(order_count(i_order), expected - tolerance, expected + tolerance, &
+                                     name//"order "//i_order//" occurs about n_shuffles/6 times (got "// &
+                                     order_count(i_order)//")")
+        end do
+    end subroutine test_random_shuffle_orders_of_three_equally_frequent
 
 end module mod_test_random_gsl

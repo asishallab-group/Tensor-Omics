@@ -460,7 +460,8 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #' Choose one neighborhood's histogram bin count by Stone's cross-validation rule
 #'
 #' Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
-#' Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2): for
+#' Stone's cross-validation rule with Rudemo's unbiased risk estimate (Rudemo 1982, eq. 2.8;
+#' Stone 1984, section 2): for
 #' `n` values over `m` bins of width `h`, the bin count minimising
 #' `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2` (`p_j` the share of values in bin `j`) is
 #' chosen. An alternative to
@@ -590,7 +591,8 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #' Choose one neighborhood's histogram bin count by Stone's cross-validation rule
 #'
 #' Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
-#' Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2): for
+#' Stone's cross-validation rule with Rudemo's unbiased risk estimate (Rudemo 1982, eq. 2.8;
+#' Stone 1984, section 2): for
 #' `n` values over `m` bins of width `h`, the bin count minimising
 #' `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2` (`p_j` the share of values in bin `j`) is
 #' chosen. An alternative to

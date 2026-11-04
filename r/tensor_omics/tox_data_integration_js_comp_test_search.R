@@ -181,7 +181,7 @@ check_plateau_condition <- function(confidence_interval, best_candidate_pair_con
 #'   The minimum valid value is `0`.
 #' @param delta_abs_tolerance a numeric scalar. Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
 #'   The minimum valid value is `0.0`.
-#'   The default value is `0.0`.
+#'   The default value is `0.0001`.
 #' @return a named list with elements:
 #'   \item{n_consecutive_ok}{a integer scalar. Running count of consecutive qualifying transitions; reset to zero when this one does
 #'     not qualify or `has_previous` is `FALSE`
@@ -193,7 +193,7 @@ check_plateau_condition <- function(confidence_interval, best_candidate_pair_con
 #'   \item{delta_max}{a numeric scalar. Maximum of `delta` across studies; `-1.0` iff `.not. has_previous`}
 #'   \item{plateau_found}{a logical scalar. `TRUE` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`}
 #' @export
-check_effect_size_plateau_condition <- function(global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok, delta_abs_tolerance = 0.0) {
+check_effect_size_plateau_condition <- function(global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok, delta_abs_tolerance = 0.0001) {
     global_js_divergence <- .tox_as_double_vector(global_js_divergence, "global_js_divergence")
     prev_global_js_divergence <- .tox_as_double_vector(prev_global_js_divergence, "prev_global_js_divergence")
     has_previous <- .tox_as_logical_scalar(has_previous, "has_previous")

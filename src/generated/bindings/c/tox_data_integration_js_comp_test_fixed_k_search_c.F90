@@ -13,13 +13,17 @@
 !| have reached a plateau, by the criteria of
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]] and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]].
-!| By default the grid holds only the large neighborhoods
+!| By default the grid holds the large neighborhoods
 !| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]]);
-!| `neighborhood_size_mode` selects the small ones
-!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]])
-!| or both
-!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]).
+!| `neighborhood_size_mode` selects the small ones instead
+!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]]).
+!| `grid_points_factor` and `grid_min_points` set the grid's first `n_points` and its floor.
 !| `calc_js_comp_test_candidate_bounds` sizes the work arrays for a caller that allocates its own.
+!|
+!| The recommended way to choose the neighborhoods is the adaptive search,
+!| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]],
+!| whose neighborhoods follow the local density of the gene means; this fixed-k search stays
+!| available.
 module tox_data_integration_js_comp_test_fixed_k_search_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
@@ -37,14 +41,18 @@ contains
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds(subroutine)]]
     !| For the candidate grid of
-    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]:
-    !| `max_n_points_candidate` is exactly its largest `n_points` candidate, and
-    !| `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`,
-    !| in every `neighborhood_size_mode` (the bound uses the large-neighborhood factor `KX_FACTORS(1)`).
+    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+    !| with the same `grid_points_factor` and `grid_min_points`: `max_n_points_candidate` is exactly
+    !| its largest `n_points` candidate, and `max_n_neighbors_candidate` a safe (not necessarily
+    !| tight) bound on its largest `n_neighbors`, in every `neighborhood_size_mode` (the bound uses
+    !| the large-neighborhood factor at the grid's floor). Pass the same two options as the
+    !| parameter search that is sized with the result.
     subroutine calc_js_comp_test_candidate_bounds_c(&
             max_n_genes_all_studies,&
             max_n_points_candidate,&
             max_n_neighbors_candidate,&
+            grid_points_factor,&
+            grid_min_points,&
             ierr&
         ) bind(C, name="calc_js_comp_test_candidate_bounds_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: calc_js_comp_test_candidate_bounds
@@ -56,6 +64,15 @@ contains
             !! Exact upper bound on the `n_points` candidate the grid ever produces
         integer(c_int), intent(out), target :: max_n_neighbors_candidate
             !! Safe upper bound on the `n_neighbors` candidate the grid ever produces
+        real(c_double), intent(in), target :: grid_points_factor
+            !! The grid's `grid_points_factor`, as passed to the parameter search
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The grid's `grid_min_points`, as passed to the parameter search
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -64,35 +81,47 @@ contains
         M_CHECK_NON_NULL(max_n_genes_all_studies)
         M_CHECK_NON_NULL(max_n_points_candidate)
         M_CHECK_NON_NULL(max_n_neighbors_candidate)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
 
         call calc_js_comp_test_candidate_bounds(&
             max_n_genes_all_studies = max_n_genes_all_studies,&
             max_n_points_candidate = max_n_points_candidate,&
             max_n_neighbors_candidate = max_n_neighbors_candidate,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
             ierr = ierr&
         )
     end subroutine calc_js_comp_test_candidate_bounds_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_fixed_k_search(module):generate_js_comp_test_candidates(subroutine)]]
-    !| Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
+    !| Starting from `n_points_high = clamp(ceiling(grid_points_factor*sqrt(G)), grid_min_points, MAX_POINTS)`
     !| (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
-    !| `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
-    !| `n_points` with the distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))` of the
-    !| factors `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default only `f = 0.25`
-    !| (the large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next.
-    !| Small neighborhoods are left out by default: a higher JSCompTest value from small
-    !| neighborhoods only shows that they are too small. Duplicate values from
-    !| clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
-    !| are not part of a candidate; they are chosen per reference point later.
+    !| `n_points_low = max(grid_min_points, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each
+    !| distinct `n_points` with `n_neighbors = min(G, max(1, floor(G/(f*n_points_high))))` for the
+    !| factor `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default `f = 0.25` (the
+    !| large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next. The cap
+    !| at `G` only binds for a `grid_min_points` below 4 (below 2 for the small neighborhoods), where
+    !| `G/(f*n_points_high)` can exceed the number of genes. Small
+    !| neighborhoods are not the default: a higher JSCompTest value from small neighborhoods only
+    !| shows that they are too small.
+    !|
+    !| When the next decayed value would fall below `n_points_low`, the floor itself is added as the
+    !| last, coarsest candidate (with `n_neighbors` from `n_points_low`), unless the coarsest
+    !| candidate already is the floor or the grid already holds MAX_CANDIDATE_PAIRS candidates.
+    !| Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
+    !| candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
     subroutine generate_js_comp_test_candidates_c(&
             max_n_genes_all_studies,&
             candidates_n_points_n_neighbors,&
             n_candidates,&
             neighborhood_size_mode,&
+            grid_points_factor,&
+            grid_min_points,&
             ierr&
         ) bind(C, name="generate_js_comp_test_candidates_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: generate_js_comp_test_candidates
-        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
 
         integer(c_int), intent(in), target :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
@@ -103,14 +132,23 @@ contains
         integer(c_int), intent(out), target :: n_candidates
             !! Number of candidate pairs actually filled (at most 16)
         character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
-            !! Which neighborhood sizes the grid pairs with each `n_points`
+            !! Which neighborhood size the grid pairs with each `n_points`
             !!
-            !! | Mode                                                       | Value                                                                                                    |
-            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
-            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
-            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! | Mode                                                  | Value                                                                                                    |
+            !! |-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(G))`
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The grid's floor: the lower clamp of its first `n_points`, the least `n_points` it
+            !! keeps, and its last, coarsest candidate
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32) :: neighborhood_size_mode_mode_f
@@ -119,6 +157,8 @@ contains
         call set_ok(ierr)
         M_CHECK_NON_NULL(max_n_genes_all_studies)
         M_CHECK_NON_NULL(n_candidates)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
         M_CHECK_ARRAY_NON_NULL(candidates_n_points_n_neighbors, 2 * 16)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
 
@@ -131,8 +171,6 @@ contains
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
                 case ("neighborhood_size_small")
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
-                case ("neighborhood_size_both")
-                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -144,6 +182,8 @@ contains
             candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
             n_candidates = n_candidates,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
             ierr = ierr&
         )
     end subroutine generate_js_comp_test_candidates_c
@@ -151,8 +191,9 @@ contains
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_fixed_k_search(module):run_js_comp_test_parameter_search(subroutine)]]
     !| Walks the candidates of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
-    !| from finest to coarsest resolution, by default only the large neighborhoods
-    !| (`neighborhood_size_mode`). For each candidate:
+    !| from finest to coarsest resolution, by default the large neighborhoods
+    !| (`neighborhood_size_mode`; `grid_points_factor` and `grid_min_points` shape the grid). For
+    !| each candidate:
     !|
     !| 1. Reference points from the pooled gene means
     !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
@@ -185,8 +226,12 @@ contains
     !| ranges `0.0`, and `plateau_established = .false.`.
     !|
     !| Per-point outputs and `trace_*` arrays are sized by the candidate bounds; see each argument
-    !| for its meaningful part. A failure to create the bootstrap's random number generator is
-    !| returned in `ierr` and stops the search; the outputs are then undefined.
+    !| for its meaningful part. Errors (`ierr`): `ERR_INVALID_INPUT` before any work when
+    !| `max_n_points_candidate` or `max_n_neighbors_candidate` is below what
+    !| `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+    !| `grid_min_points` (`n_admissible_evaluated` is then 0, every other output undefined); a
+    !| failure to create the bootstrap's random number generator stops the search, the outputs are
+    !| then undefined.
     subroutine run_js_comp_test_parameter_search_c(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -244,14 +289,16 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
-            bootstrap_mode,&
+            divergence_mode,&
+            grid_points_factor,&
+            grid_min_points,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
-        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
-        use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
+        use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC
 
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
@@ -264,9 +311,11 @@ contains
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-            !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! at least what `calc_js_comp_test_candidate_bounds` returns for the same
+            !! `grid_points_factor` and `grid_min_points`, else invalid input (checked by the search,
+            !! since the bound depends on those two optional arguments)
             !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -279,16 +328,18 @@ contains
         character(len=1, kind=c_char), dimension(11), intent(in), target :: join_method
             !! How the studies' confidence-interval overlaps are joined into the plateau condition
             !!
-            !! | Method                                  | Value                                                                                  |
-            !! |-----------------------------------------|----------------------------------------------------------------------------------------|
-            !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]]    |
-            !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]]    |
-            !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+            !! | Method                                                  | Value                                                                                  |
+            !! |---------------------------------------------------------|----------------------------------------------------------------------------------------|
+            !! | Minimum overlap (all studies must pass)                 | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]]    |
+            !! | Maximum overlap (any one study passes)                  | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]]    |
+            !! | Median overlap (at least half of the studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         integer(c_int), intent(in), target :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
-            !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+            !! `grid_min_points`, else invalid input (checked by the search, like
+            !! `max_n_points_candidate`)
             !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: n_points
             !! The finally chosen candidate's `n_points`
         integer(c_int), intent(out), target :: n_neighbors
@@ -303,9 +354,8 @@ contains
         real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
-            !! The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
-            !! interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
-            !! admissible
+            !! The chosen candidate's bootstrapped JSD confidence interval (a robustness interval of
+            !! its observed JSD); `-1.0` when no candidate was admissible
         logical(c_bool), intent(out), target :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise, also when the smallest-uncertainty
@@ -324,11 +374,11 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-            !! (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
+            !! (`L_{i,t}`)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-            !! (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
+            !! (`U_{i,t}`)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
@@ -416,12 +466,9 @@ contains
         character(len=1, kind=c_char), dimension(19), intent(in), target :: plateau_mode
             !! Which plateau criterion decides when the search stops. The default is the change of
             !! the observed JSD values from one admissible candidate to the next: it measures
-            !! directly how stable the observed value is. The CI-overlap criterion stays available.
-            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
-            !! the default) its interval describes the spread of the JSD expected if the studies did
-            !! not differ at all (a noise band), not how stable the observed value is from candidate
-            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
-            !! of each candidate's observed value
+            !! directly how stable the observed value is. The CI-overlap criterion stays available;
+            !! its interval is a robustness interval of each candidate's observed value (each
+            !! study's histograms drawn again from its own counts)
             !!
             !! | Mode                                                                                 | Value                                                                                        |
             !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -484,48 +531,55 @@ contains
             !! ([[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]),
             !! with `min_residuals_per_bin` as the floor
             !!
-            !! | Mode                                                                                                                       | Value                                                                                                   |
-            !! |----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
-            !! | Stone's cross-validation: minimise the sum of every study's own score                                                      | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
-            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
-            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
-            !! The default value is `'bin_count_occupancy'`.
+            !! | Mode                                                                                                                | Value                                                                                                   |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin`    | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default)                                     | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                       | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
+            !! The default value is `'bin_count_stone_equal'`.
         character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
-            !! Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
-            !! neighborhoods are left out by default: if they already give higher JSCompTest values,
-            !! that only shows they are too small
+            !! Which neighborhood size the candidate grid pairs with each `n_points`. Small
+            !! neighborhoods are not the default: if they give higher JSCompTest values, that only
+            !! shows they are too small
             !!
-            !! | Mode                                                       | Value                                                                                                    |
-            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
-            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
-            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! | Mode                                                  | Value                                                                                                    |
+            !! |-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! The default value is `'neighborhood_size_large'`.
         real(c_double), intent(in), target :: delta_abs_tolerance
             !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.0_real64`.
-        character(len=1, kind=c_char), dimension(19), intent(in), target :: bootstrap_mode
-            !! What the bootstrap draws each study's histograms from, for every admissible
-            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
-            !! returned interval). By default each study's own counts: the interval shows how much
-            !! the observed JSD would move if each study's own residuals were drawn again (a
-            !! robustness interval). The pooled counts of all studies give the spread expected if the
-            !! studies did not differ (a noise band) instead, kept for comparison
+            !! The default value is `0.0001_real64`.
+        character(len=1, kind=c_char), dimension(22), intent(in), target :: divergence_mode
+            !! How each study's per-point divergence is computed, for the observed JSDs and every
+            !! bootstrap draw
             !!
-            !! | Mode                                                                                             | Value                                                                          |
-            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
-            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
-            !! The default value is `'bootstrap_per_study'`.
+            !! | Mode                                                                                                             | Value                                                                           |
+            !! |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | Each study's JSD against the consensus of all studies                                                            | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! The default value is `'divergence_pairwise_k2'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Factor in the candidate grid's first reference-point count
+            !! `ceiling(grid_points_factor * sqrt(max_n_genes_all_studies))`
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The candidate grid's floor: the lower clamp of its first `n_points`, the least
+            !! `n_points` it keeps, and its last, coarsest candidate
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
+            !! Error code; ERR_INVALID_INPUT for an undersized capacity, ERR_ALLOC_FAIL if the
+            !! bootstrap's random number generator could not be created (see above)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: neighborhood_size_mode_mode_f
-        integer(int32) :: bootstrap_mode_mode_f
+        integer(int32) :: divergence_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -554,6 +608,8 @@ contains
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_NON_NULL(delta_abs_tolerance)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
@@ -585,7 +641,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
-        M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+        M_CHECK_ARRAY_NON_NULL(divergence_mode, 22)
 
         block
             character(len=:), pointer :: join_method_f
@@ -646,22 +702,20 @@ contains
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
                 case ("neighborhood_size_small")
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
-                case ("neighborhood_size_both")
-                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
             end select
         end block
         block
-            character(len=:), pointer :: bootstrap_mode_f
-            bootstrap_mode_f => c_char_as_view(bootstrap_mode)
+            character(len=:), pointer :: divergence_mode_f
+            divergence_mode_f => c_char_as_view(divergence_mode)
 
-            select case (bootstrap_mode_f)
-                case ("bootstrap_per_study")
-                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
-                case ("bootstrap_pooled")
-                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+            select case (divergence_mode_f)
+                case ("divergence_symmetric")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_SYMMETRIC
+                case ("divergence_pairwise_k2")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_PAIRWISE_K2
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -725,7 +779,9 @@ contains
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
-            bootstrap_mode = bootstrap_mode_mode_f,&
+            divergence_mode = divergence_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_c
@@ -733,8 +789,9 @@ contains
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_fixed_k_search(module):run_js_comp_test_parameter_search_expert(subroutine)]]
     !| Walks the candidates of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
-    !| from finest to coarsest resolution, by default only the large neighborhoods
-    !| (`neighborhood_size_mode`). For each candidate:
+    !| from finest to coarsest resolution, by default the large neighborhoods
+    !| (`neighborhood_size_mode`; `grid_points_factor` and `grid_min_points` shape the grid). For
+    !| each candidate:
     !|
     !| 1. Reference points from the pooled gene means
     !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
@@ -767,8 +824,12 @@ contains
     !| ranges `0.0`, and `plateau_established = .false.`.
     !|
     !| Per-point outputs and `trace_*` arrays are sized by the candidate bounds; see each argument
-    !| for its meaningful part. A failure to create the bootstrap's random number generator is
-    !| returned in `ierr` and stops the search; the outputs are then undefined.
+    !| for its meaningful part. Errors (`ierr`): `ERR_INVALID_INPUT` before any work when
+    !| `max_n_points_candidate` or `max_n_neighbors_candidate` is below what
+    !| `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+    !| `grid_min_points` (`n_admissible_evaluated` is then 0, every other output undefined); a
+    !| failure to create the bootstrap's random number generator stops the search, the outputs are
+    !| then undefined.
     subroutine run_js_comp_test_parameter_search_expert_c(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -871,14 +932,16 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
-            bootstrap_mode,&
+            divergence_mode,&
+            grid_points_factor,&
+            grid_min_points,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_expert_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search_expert
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
-        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
-        use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
+        use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC
 
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
@@ -891,14 +954,18 @@ contains
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-            !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! at least what `calc_js_comp_test_candidate_bounds` returns for the same
+            !! `grid_points_factor` and `grid_min_points`, else invalid input (checked by the search,
+            !! since the bound depends on those two optional arguments)
             !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
-            !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! `calc_js_comp_test_candidate_bounds` returns for the same `grid_points_factor` and
+            !! `grid_min_points`, else invalid input (checked by the search, like
+            !! `max_n_points_candidate`)
             !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)
             !! It is *VERY IMPORTANT* to compute this argument from the `n_top_k` output produced by [[tox_data_integration_stats_impl(module):calc_js_comp_test_n_top_k_jsds]].
@@ -915,11 +982,11 @@ contains
         character(len=1, kind=c_char), dimension(11), intent(in), target :: join_method
             !! How the studies' confidence-interval overlaps are joined into the plateau condition
             !!
-            !! | Method                                  | Value                                                                                  |
-            !! |-----------------------------------------|----------------------------------------------------------------------------------------|
-            !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]]    |
-            !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]]    |
-            !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+            !! | Method                                                  | Value                                                                                  |
+            !! |---------------------------------------------------------|----------------------------------------------------------------------------------------|
+            !! | Minimum overlap (all studies must pass)                 | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]]    |
+            !! | Maximum overlap (any one study passes)                  | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]]    |
+            !! | Median overlap (at least half of the studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         integer(c_int), intent(out), target :: n_points
             !! The finally chosen candidate's `n_points`
         integer(c_int), intent(out), target :: n_neighbors
@@ -934,9 +1001,8 @@ contains
         real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
-            !! The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
-            !! interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
-            !! admissible
+            !! The chosen candidate's bootstrapped JSD confidence interval (a robustness interval of
+            !! its observed JSD); `-1.0` when no candidate was admissible
         logical(c_bool), intent(out), target :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise, also when the smallest-uncertainty
@@ -955,11 +1021,11 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-            !! (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
+            !! (`L_{i,t}`)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-            !! (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
+            !! (`U_{i,t}`)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
@@ -1137,12 +1203,9 @@ contains
         character(len=1, kind=c_char), dimension(19), intent(in), target :: plateau_mode
             !! Which plateau criterion decides when the search stops. The default is the change of
             !! the observed JSD values from one admissible candidate to the next: it measures
-            !! directly how stable the observed value is. The CI-overlap criterion stays available.
-            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
-            !! the default) its interval describes the spread of the JSD expected if the studies did
-            !! not differ at all (a noise band), not how stable the observed value is from candidate
-            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
-            !! of each candidate's observed value
+            !! directly how stable the observed value is. The CI-overlap criterion stays available;
+            !! its interval is a robustness interval of each candidate's observed value (each
+            !! study's histograms drawn again from its own counts)
             !!
             !! | Mode                                                                                 | Value                                                                                        |
             !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -1205,48 +1268,55 @@ contains
             !! ([[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]),
             !! with `min_residuals_per_bin` as the floor
             !!
-            !! | Mode                                                                                                                       | Value                                                                                                   |
-            !! |----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
-            !! | Stone's cross-validation: minimise the sum of every study's own score                                                      | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
-            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
-            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
-            !! The default value is `'bin_count_occupancy'`.
+            !! | Mode                                                                                                                | Value                                                                                                   |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin`    | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default)                                     | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                       | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
+            !! The default value is `'bin_count_stone_equal'`.
         character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
-            !! Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
-            !! neighborhoods are left out by default: if they already give higher JSCompTest values,
-            !! that only shows they are too small
+            !! Which neighborhood size the candidate grid pairs with each `n_points`. Small
+            !! neighborhoods are not the default: if they give higher JSCompTest values, that only
+            !! shows they are too small
             !!
-            !! | Mode                                                       | Value                                                                                                    |
-            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
-            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
-            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! | Mode                                                  | Value                                                                                                    |
+            !! |-------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! The default value is `'neighborhood_size_large'`.
         real(c_double), intent(in), target :: delta_abs_tolerance
             !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.0_real64`.
-        character(len=1, kind=c_char), dimension(19), intent(in), target :: bootstrap_mode
-            !! What the bootstrap draws each study's histograms from, for every admissible
-            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
-            !! returned interval). By default each study's own counts: the interval shows how much
-            !! the observed JSD would move if each study's own residuals were drawn again (a
-            !! robustness interval). The pooled counts of all studies give the spread expected if the
-            !! studies did not differ (a noise band) instead, kept for comparison
+            !! The default value is `0.0001_real64`.
+        character(len=1, kind=c_char), dimension(22), intent(in), target :: divergence_mode
+            !! How each study's per-point divergence is computed, for the observed JSDs and every
+            !! bootstrap draw
             !!
-            !! | Mode                                                                                             | Value                                                                          |
-            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
-            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
-            !! The default value is `'bootstrap_per_study'`.
+            !! | Mode                                                                                                             | Value                                                                           |
+            !! |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | Each study's JSD against the consensus of all studies                                                            | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! The default value is `'divergence_pairwise_k2'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Factor in the candidate grid's first reference-point count
+            !! `ceiling(grid_points_factor * sqrt(max_n_genes_all_studies))`
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The candidate grid's floor: the lower clamp of its first `n_points`, the least
+            !! `n_points` it keeps, and its last, coarsest candidate
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
+            !! Error code; ERR_INVALID_INPUT for an undersized capacity, ERR_ALLOC_FAIL if the
+            !! bootstrap's random number generator could not be created (see above)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: neighborhood_size_mode_mode_f
-        integer(int32) :: bootstrap_mode_mode_f
+        integer(int32) :: divergence_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -1276,6 +1346,8 @@ contains
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_NON_NULL(delta_abs_tolerance)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
@@ -1351,7 +1423,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
-        M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+        M_CHECK_ARRAY_NON_NULL(divergence_mode, 22)
 
         block
             character(len=:), pointer :: join_method_f
@@ -1412,22 +1484,20 @@ contains
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
                 case ("neighborhood_size_small")
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
-                case ("neighborhood_size_both")
-                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
             end select
         end block
         block
-            character(len=:), pointer :: bootstrap_mode_f
-            bootstrap_mode_f => c_char_as_view(bootstrap_mode)
+            character(len=:), pointer :: divergence_mode_f
+            divergence_mode_f => c_char_as_view(divergence_mode)
 
-            select case (bootstrap_mode_f)
-                case ("bootstrap_per_study")
-                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
-                case ("bootstrap_pooled")
-                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+            select case (divergence_mode_f)
+                case ("divergence_symmetric")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_SYMMETRIC
+                case ("divergence_pairwise_k2")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_PAIRWISE_K2
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -1536,7 +1606,9 @@ contains
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
-            bootstrap_mode = bootstrap_mode_mode_f,&
+            divergence_mode = divergence_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_expert_c

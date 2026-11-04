@@ -6,11 +6,11 @@
 // tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
-void run_js_comp_test_expert_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, double*, double*, int*, int*, double*, int*, int*, int*, int*, int*, int*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
-void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
+void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, const char*, int*);
+void run_js_comp_test_expert_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, int*, int*, int*, int*, int*, int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, const char*, int*);
+void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, const char*, int*);
 
-SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SEXP x_star, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode) {
+SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SEXP x_star, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode, SEXP divergence_mode) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -20,8 +20,6 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_neighbors = Rf_asInteger(n_neighbors);
-    int _v_n_permutations = Rf_asInteger(n_permutations);
-    int _v_random_seed = Rf_asInteger(random_seed);
     int _v_min_residuals_per_bin = Rf_asInteger(min_residuals_per_bin);
     int _v_m_min = Rf_asInteger(m_min);
     int _v_m_max = Rf_asInteger(m_max);
@@ -31,6 +29,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
 
     // convert what Fortran cannot take from R directly
     char* _c_bin_count_mode = tox_char_in(bin_count_mode, 29, "bin_count_mode");
+    char* _c_divergence_mode = tox_char_in(divergence_mode, 22, "divergence_mode");
 
     // outputs and work space
     SEXP neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, _v_n_neighbors * n_points * n_studies)); _nprot++;
@@ -64,8 +63,6 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
     SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); _nprot++;
     { SEXP _dim_weights = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_weights)[0] = n_points; INTEGER(_dim_weights)[1] = n_studies; Rf_setAttrib(weights, R_DimSymbol, _dim_weights); UNPROTECT(1); }
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
-    SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
-    SEXP p_values_observed_consensus = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
     int ierr = 0;
 
     run_js_comp_test_c(
@@ -99,10 +96,6 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
         REAL(js_divergences),
         REAL(weights),
         REAL(global_js_divergence),
-        REAL(p_values),
-        REAL(p_values_observed_consensus),
-        &_v_n_permutations,
-        &_v_random_seed,
         &_v_min_residuals_per_bin,
         &_v_m_min,
         &_v_m_max,
@@ -110,13 +103,14 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
         &_v_lower_residual_range_quantile,
         &_v_upper_residual_range_quantile,
         _c_bin_count_mode,
+        _c_divergence_mode,
         &ierr
     );
 
     // convert the outputs back
     SEXP occupancy_failed = PROTECT(tox_bool_out(_c_occupancy_failed, n_points)); _nprot++;
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 25)); _nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 23)); _nprot++;
     SET_VECTOR_ELT(_out, 0, neighborhood_indices);
     SET_VECTOR_ELT(_out, 1, neighborhood_range);
     SET_VECTOR_ELT(_out, 2, n_bins_per_point);
@@ -139,10 +133,8 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
     SET_VECTOR_ELT(_out, 19, js_divergences);
     SET_VECTOR_ELT(_out, 20, weights);
     SET_VECTOR_ELT(_out, 21, global_js_divergence);
-    SET_VECTOR_ELT(_out, 22, p_values);
-    SET_VECTOR_ELT(_out, 23, p_values_observed_consensus);
-    SET_VECTOR_ELT(_out, 24, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 25)); _nprot++;
+    SET_VECTOR_ELT(_out, 22, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 23)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("neighborhood_indices"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("neighborhood_range"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins_per_point"));
@@ -165,15 +157,13 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
     SET_STRING_ELT(_nms, 19, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 20, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 21, Rf_mkChar("global_js_divergence"));
-    SET_STRING_ELT(_nms, 22, Rf_mkChar("p_values"));
-    SET_STRING_ELT(_nms, 23, Rf_mkChar("p_values_observed_consensus"));
-    SET_STRING_ELT(_nms, 24, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 22, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;
 }
 
-SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_perms, SEXP residuals, SEXP x_star, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode) {
+SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_perms, SEXP residuals, SEXP x_star, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode, SEXP divergence_mode) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -183,8 +173,6 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_neighbors = Rf_asInteger(n_neighbors);
-    int _v_n_permutations = Rf_asInteger(n_permutations);
-    int _v_random_seed = Rf_asInteger(random_seed);
     int _v_min_residuals_per_bin = Rf_asInteger(min_residuals_per_bin);
     int _v_m_min = Rf_asInteger(m_min);
     int _v_m_max = Rf_asInteger(m_max);
@@ -195,6 +183,7 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
     // convert what Fortran cannot take from R directly
     const int* _c_gene_means_perms = tox_int_in(gene_means_perms, "gene_means_perms");
     char* _c_bin_count_mode = tox_char_in(bin_count_mode, 29, "bin_count_mode");
+    char* _c_divergence_mode = tox_char_in(divergence_mode, 22, "divergence_mode");
 
     // outputs and work space
     SEXP neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, _v_n_neighbors * n_points * n_studies)); _nprot++;
@@ -228,12 +217,7 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
     SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); _nprot++;
     { SEXP _dim_weights = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_weights)[0] = n_points; INTEGER(_dim_weights)[1] = n_studies; Rf_setAttrib(weights, R_DimSymbol, _dim_weights); UNPROTECT(1); }
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
-    SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
-    SEXP p_values_observed_consensus = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
     double* tmp_neighborhood_residuals_gathered = (double*) R_alloc(max_n_reps_all_studies * _v_n_neighbors * n_points, sizeof(double));
-    double* tmp_permutation_mean_pmf = (double*) R_alloc(n_points * 256, sizeof(double));
-    int* tmp_permutation_point_pool = (int*) R_alloc(256, sizeof(int));
-    int* tmp_permutation_point_draw = (int*) R_alloc(256, sizeof(int));
     double* tmp_pooled_residuals = (double*) R_alloc((max_n_reps_all_studies * _v_n_neighbors * n_studies), sizeof(double));
     int* tmp_pooled_residuals_perm = (int*) R_alloc((max_n_reps_all_studies * _v_n_neighbors * n_studies), sizeof(int));
     int* tmp_bin_counts_search = (int*) R_alloc(256, sizeof(int));
@@ -241,12 +225,6 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
     int* tmp_study_block_ends = (int*) R_alloc(n_studies, sizeof(int));
     int* tmp_study_block_sizes = (int*) R_alloc(n_studies, sizeof(int));
     int* tmp_point_n_neighbors = (int*) R_alloc(n_studies, sizeof(int));
-    int* tmp_permutation_mean_pmf_counts = (int*) R_alloc(n_points * 256, sizeof(int));
-    int* tmp_permutation_counts = (int*) R_alloc(n_points * 256, sizeof(int));
-    double* tmp_permutation_pmfs = (double*) R_alloc(n_points * 256 * n_studies, sizeof(double));
-    double* tmp_permutation_js_divergences = (double*) R_alloc(n_points * n_studies, sizeof(double));
-    double* tmp_permutation_weights = (double*) R_alloc(n_points * n_studies, sizeof(double));
-    double* tmp_permutation_global_js_divergence = (double*) R_alloc(n_studies, sizeof(double));
     int ierr = 0;
 
     run_js_comp_test_expert_c(
@@ -281,12 +259,7 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
         REAL(js_divergences),
         REAL(weights),
         REAL(global_js_divergence),
-        REAL(p_values),
-        REAL(p_values_observed_consensus),
         tmp_neighborhood_residuals_gathered,
-        tmp_permutation_mean_pmf,
-        tmp_permutation_point_pool,
-        tmp_permutation_point_draw,
         tmp_pooled_residuals,
         tmp_pooled_residuals_perm,
         tmp_bin_counts_search,
@@ -294,14 +267,6 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
         tmp_study_block_ends,
         tmp_study_block_sizes,
         tmp_point_n_neighbors,
-        tmp_permutation_mean_pmf_counts,
-        tmp_permutation_counts,
-        tmp_permutation_pmfs,
-        tmp_permutation_js_divergences,
-        tmp_permutation_weights,
-        tmp_permutation_global_js_divergence,
-        &_v_n_permutations,
-        &_v_random_seed,
         &_v_min_residuals_per_bin,
         &_v_m_min,
         &_v_m_max,
@@ -309,13 +274,14 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
         &_v_lower_residual_range_quantile,
         &_v_upper_residual_range_quantile,
         _c_bin_count_mode,
+        _c_divergence_mode,
         &ierr
     );
 
     // convert the outputs back
     SEXP occupancy_failed = PROTECT(tox_bool_out(_c_occupancy_failed, n_points)); _nprot++;
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 25)); _nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 23)); _nprot++;
     SET_VECTOR_ELT(_out, 0, neighborhood_indices);
     SET_VECTOR_ELT(_out, 1, neighborhood_range);
     SET_VECTOR_ELT(_out, 2, n_bins_per_point);
@@ -338,10 +304,8 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
     SET_VECTOR_ELT(_out, 19, js_divergences);
     SET_VECTOR_ELT(_out, 20, weights);
     SET_VECTOR_ELT(_out, 21, global_js_divergence);
-    SET_VECTOR_ELT(_out, 22, p_values);
-    SET_VECTOR_ELT(_out, 23, p_values_observed_consensus);
-    SET_VECTOR_ELT(_out, 24, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 25)); _nprot++;
+    SET_VECTOR_ELT(_out, 22, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 23)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("neighborhood_indices"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("neighborhood_range"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins_per_point"));
@@ -364,15 +328,13 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
     SET_STRING_ELT(_nms, 19, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 20, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 21, Rf_mkChar("global_js_divergence"));
-    SET_STRING_ELT(_nms, 22, Rf_mkChar("p_values"));
-    SET_STRING_ELT(_nms, 23, Rf_mkChar("p_values_observed_consensus"));
-    SET_STRING_ELT(_nms, 24, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 22, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;
 }
 
-SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled_neighborhood_range, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode) {
+SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled_neighborhood_range, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode, SEXP divergence_mode) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -381,8 +343,6 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     int n_points = INTEGER(Rf_getAttrib(pooled_neighborhood_range, R_DimSymbol))[1];
 
     // scalar inputs, pulled from their length-1 vectors
-    int _v_n_permutations = Rf_asInteger(n_permutations);
-    int _v_random_seed = Rf_asInteger(random_seed);
     int _v_min_residuals_per_bin = Rf_asInteger(min_residuals_per_bin);
     int _v_m_min = Rf_asInteger(m_min);
     int _v_m_max = Rf_asInteger(m_max);
@@ -393,6 +353,7 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     // convert what Fortran cannot take from R directly
     const int* _c_pooled_neighborhood_range = tox_int_in(pooled_neighborhood_range, "pooled_neighborhood_range");
     char* _c_bin_count_mode = tox_char_in(bin_count_mode, 29, "bin_count_mode");
+    char* _c_divergence_mode = tox_char_in(divergence_mode, 22, "divergence_mode");
 
     // outputs and work space
     SEXP n_neighbors_per_point = PROTECT(Rf_allocVector(INTSXP, n_studies * n_points)); _nprot++;
@@ -424,8 +385,6 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); _nprot++;
     { SEXP _dim_weights = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_weights)[0] = n_points; INTEGER(_dim_weights)[1] = n_studies; Rf_setAttrib(weights, R_DimSymbol, _dim_weights); UNPROTECT(1); }
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
-    SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
-    SEXP p_values_observed_consensus = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
     int ierr = 0;
 
     run_js_comp_test_adaptive_c(
@@ -457,10 +416,6 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
         REAL(js_divergences),
         REAL(weights),
         REAL(global_js_divergence),
-        REAL(p_values),
-        REAL(p_values_observed_consensus),
-        &_v_n_permutations,
-        &_v_random_seed,
         &_v_min_residuals_per_bin,
         &_v_m_min,
         &_v_m_max,
@@ -468,13 +423,14 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
         &_v_lower_residual_range_quantile,
         &_v_upper_residual_range_quantile,
         _c_bin_count_mode,
+        _c_divergence_mode,
         &ierr
     );
 
     // convert the outputs back
     SEXP occupancy_failed = PROTECT(tox_bool_out(_c_occupancy_failed, n_points)); _nprot++;
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 24)); _nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 22)); _nprot++;
     SET_VECTOR_ELT(_out, 0, n_neighbors_per_point);
     SET_VECTOR_ELT(_out, 1, n_bins_per_point);
     SET_VECTOR_ELT(_out, 2, shared_residual_range_low);
@@ -496,10 +452,8 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     SET_VECTOR_ELT(_out, 18, js_divergences);
     SET_VECTOR_ELT(_out, 19, weights);
     SET_VECTOR_ELT(_out, 20, global_js_divergence);
-    SET_VECTOR_ELT(_out, 21, p_values);
-    SET_VECTOR_ELT(_out, 22, p_values_observed_consensus);
-    SET_VECTOR_ELT(_out, 23, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 24)); _nprot++;
+    SET_VECTOR_ELT(_out, 21, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 22)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_neighbors_per_point"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_bins_per_point"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("shared_residual_range_low"));
@@ -521,9 +475,7 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     SET_STRING_ELT(_nms, 18, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 19, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 20, Rf_mkChar("global_js_divergence"));
-    SET_STRING_ELT(_nms, 21, Rf_mkChar("p_values"));
-    SET_STRING_ELT(_nms, 22, Rf_mkChar("p_values_observed_consensus"));
-    SET_STRING_ELT(_nms, 23, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 21, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;

@@ -18,7 +18,7 @@
 !| conditioned on mean expression levels to account for heteroscedasticity, which is a well-known property of omics data.
 !|
 !| The test is split over five modules -- preprocessing, JSD calculation, per-family JSD
-!| calculation, the permutation test and bootstrap, and the JS-Comp-Test pipeline
+!| calculation, the bootstrap, and the JS-Comp-Test pipeline
 !| (`tox_data_integration_js_comp_test`, itself split over several modules) -- which this one
 !| gathers, so a caller reaches the whole pipeline through it and the split stays out of the way.
 module tox_data_integration_impl

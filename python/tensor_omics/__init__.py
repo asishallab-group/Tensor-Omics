@@ -143,15 +143,17 @@ from .tox_data_integration_js_comp_test_fixed_k_search import (
     generate_js_comp_test_candidates,
     run_js_comp_test_parameter_search,
 )
-from .tox_data_integration_js_comp_test_permutation import (
-    run_js_comp_test_on_sample_assignment,
+from .tox_data_integration_js_comp_test_permutation_adaptive import (
     run_js_comp_test_adaptive_on_sample_assignment,
-    run_js_comp_test_label_permutation_test,
-    run_js_comp_test_adaptive_label_permutation_test,
+    run_js_comp_test_adaptive_permutation,
 )
-from .tox_data_integration_js_comp_test_permutation_impl import (
+from .tox_data_integration_js_comp_test_permutation_bounds import (
     calc_js_comp_test_permutation_bounds,
     calc_adaptive_js_comp_test_permutation_bounds,
+)
+from .tox_data_integration_js_comp_test_permutation_fixed_k import (
+    run_js_comp_test_on_sample_assignment,
+    run_js_comp_test_permutation,
 )
 from .tox_data_integration_js_comp_test_run import (
     run_js_comp_test,
@@ -197,7 +199,6 @@ from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,
 )
 from .tox_data_integration_stats import (
-    gjct_permutation_test,
     bootstrap_histogram,
 )
 from .tox_data_integration_stats_impl import (
@@ -440,7 +441,6 @@ __all__ = [
     "get_array_metadata",
     "get_tox_data_dims",
     "get_unassigned_mask",
-    "gjct_permutation_test",
     "group_centroid_all",
     "group_centroid_orthologs",
     "identify_outliers",
@@ -476,13 +476,13 @@ __all__ = [
     "root_mean_sq_normalization",
     "run_js_comp_test",
     "run_js_comp_test_adaptive",
-    "run_js_comp_test_adaptive_label_permutation_test",
     "run_js_comp_test_adaptive_on_sample_assignment",
     "run_js_comp_test_adaptive_parameter_search",
+    "run_js_comp_test_adaptive_permutation",
     "run_js_comp_test_expert",
-    "run_js_comp_test_label_permutation_test",
     "run_js_comp_test_on_sample_assignment",
     "run_js_comp_test_parameter_search",
+    "run_js_comp_test_permutation",
     "save_tox_data",
     "serialize_char_helper",
     "serialize_complex_helper",

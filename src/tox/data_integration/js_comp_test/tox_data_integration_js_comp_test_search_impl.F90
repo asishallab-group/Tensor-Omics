@@ -50,17 +50,16 @@ module tox_data_integration_js_comp_test_search_impl
         !! Join method: succeeds once any one study's confidence-interval overlap exceeds the
         !! threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
     integer(int32), parameter :: METHOD_JOIN_MEDIAN = M_METHOD_JOIN_MEDIAN
-        !! Join method: succeeds once a majority of studies' confidence-interval overlaps exceed
-        !! the threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
+        !! Join method: succeeds once at least half of the studies' confidence-interval overlaps
+        !! exceed the threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
 
     ! M_MAX_CANDIDATE_PAIRS is defined in src/tox/data_integration/macros.h: both searches need the
     ! number itself as the extent of their candidate and trace arrays.
     integer(int32), parameter :: MAX_CANDIDATE_PAIRS = M_MAX_CANDIDATE_PAIRS
-        !! Most candidates either search evaluates. The fixed-k search derives its
+        !! Most candidates either search evaluates. The fixed-k grid holds at most
         !! [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MAX_POINT_CANDIDATES(variable)]]
-        !! from it as `MAX_CANDIDATE_PAIRS / size(KX_FACTORS)` (16 / 2 = 8,
-        !! [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):KX_FACTORS(variable)]]);
-        !! the adaptive search caps its candidate count at the same value
+        !! (8) decayed candidates plus its floor, well within it; the adaptive search caps its
+        !! candidate count at this value
 
     ! `plateau_mode`'s mode table, from the M_MODE_PLATEAU_* of src/tox/data_integration/macros.h:
     ! M_MODE_PLATEAU_EFFECT_SIZE is also both searches' DM_DEFAULT, which cannot name a Fortran
@@ -256,7 +255,7 @@ contains
             !! |--------|-------|
             !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MIN(variable)]] |
             !! | Maximum overlap (any one study passes) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MAX(variable)]] |
-            !! | Median overlap (a majority must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+            !! | Median overlap (at least half of the studies must pass) | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         real(real64), intent(in) :: succeeding_ci_overlap
             !! Minimum fractional overlap with the best candidate's interval for a study to pass
             !! DM_MIN(0.0_real64)
@@ -425,9 +424,9 @@ contains
     !| public because both parameter searches call it. Every array dummy is a search buffer viewed
     !| packed at the candidate's sizes.
     pure subroutine score_candidate_histograms(n_points, max_n_bins, n_studies, n_bins_per_point, min_count, pmfs, counts, &
-                                               included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                               js_divergences, weights, global_js_divergence, confidence_interval, &
-                                               has_empty_study, all_bins_have_min_count)
+                                               included_n_reps, divergence_mode, mean_pmf, mean_pmf_counts, &
+                                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                                               confidence_interval, has_empty_study, all_bins_have_min_count)
         integer(int32), intent(in) :: n_points
             !! The candidate's number of reference points
         integer(int32), intent(in) :: max_n_bins
@@ -444,6 +443,8 @@ contains
             !! Every study's histogram counts
         integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
             !! Every study's included-replicate counts
+        integer(int32), intent(in) :: divergence_mode
+            !! Forwarded to compute_consensus_divergences, one of the `MODE_DIVERGENCE_*` values
         real(real64), intent(out) :: mean_pmf(n_points, max_n_bins)
             !! The consensus pmf
         integer(int32), intent(out) :: mean_pmf_counts(n_points, max_n_bins)
@@ -451,7 +452,7 @@ contains
         integer(int32), intent(out) :: mean_pmf_included_n_reps(n_points)
             !! The consensus included-replicate counts
         real(real64), intent(out) :: js_divergences(n_points, n_studies)
-            !! Each study's per-point JSD against the consensus
+            !! Each study's per-point JSD, the one `divergence_mode` selects
         real(real64), intent(out) :: weights(n_points, n_studies)
             !! Each study's per-point weights
         real(real64), intent(out) :: global_js_divergence(n_studies)
@@ -476,7 +477,8 @@ contains
         if (.not. all_bins_have_min_count) return
 
         call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins, max_n_bins, n_studies, included_n_reps, &
-                                           mean_pmf_included_n_reps, js_divergences, global_js_divergence, weights)
+                                           mean_pmf_included_n_reps, divergence_mode, js_divergences, &
+                                           global_js_divergence, weights)
         do i_study = 1, n_studies
             confidence_interval(1, i_study) = global_js_divergence(i_study)
             confidence_interval(2, i_study) = global_js_divergence(i_study)
@@ -508,11 +510,11 @@ contains
                                              n_admissible_evaluated, n_bootstraps, n_bootstrapping_top_k_jsds, &
                                              join_method, plateau_mode, succeeding_ci_overlap, delta_median_threshold, &
                                              delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, &
-                                             delta_abs_tolerance, bootstrap_mode, n_bins_per_point, occupancy_failed, &
+                                             delta_abs_tolerance, divergence_mode, n_bins_per_point, occupancy_failed, &
                                              n_pooled_residuals, min_bin_occupancy, &
                                              mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
                                              shared_residual_range_low, shared_residual_range_high, included_n_reps, &
-                                             mean_pmf_counts, mean_pmf_included_n_reps, counts, pmfs, mean_pmf, &
+                                             mean_pmf_included_n_reps, counts, pmfs, mean_pmf, &
                                              js_divergences, weights, global_js_divergence, confidence_interval, &
                                              trace_global_js_divergence, trace_ci_lower, trace_ci_upper, trace_ci_width, &
                                              trace_ci_width_relative, trace_ci_overlap, trace_delta, trace_delta_median, &
@@ -562,8 +564,8 @@ contains
             !! Forwarded to check_effect_size_plateau_condition_impl
         real(real64), intent(in) :: delta_abs_tolerance
             !! Forwarded to check_effect_size_plateau_condition_impl
-        integer(int32), intent(in) :: bootstrap_mode
-            !! Forwarded to the bootstrap, one of the `MODE_BOOTSTRAP_*` values
+        integer(int32), intent(in) :: divergence_mode
+            !! Forwarded to the bootstrap, one of the `MODE_DIVERGENCE_*` values
         integer(int32), intent(in) :: n_bins_per_point(n_points)
             !! The candidate's bin count per reference point
         logical(c_bool), intent(in) :: occupancy_failed(n_points)
@@ -586,12 +588,10 @@ contains
             !! The candidate's R_high per reference point
         integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
             !! Every study's included-replicate counts
-        integer(int32), intent(in) :: mean_pmf_counts(n_points, max_n_bins)
-            !! The consensus histogram counts, the pooled bootstrap's pool
         integer(int32), intent(in) :: mean_pmf_included_n_reps(n_points)
             !! The consensus included-replicate counts
         integer(int32), intent(in) :: counts(n_points, max_n_bins, n_studies)
-            !! Every study's histogram counts, the per-study bootstrap's pools
+            !! Every study's histogram counts, the bootstrap's pools
         real(real64), intent(out) :: pmfs(n_points, max_n_bins, n_studies)
             !! Every study's pmfs; bootstrap scratch here
         real(real64), intent(out) :: mean_pmf(n_points, max_n_bins)
@@ -732,14 +732,14 @@ contains
 
         ! Same n_bootstraps/random_seed for every candidate, for comparability. The observed-value
         ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed; the
-        ! counts are passed whole the same way, as the per-study bootstrap's input.
-        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+        ! counts are passed whole the same way, as the bootstrap's input.
+        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, counts, &
                                       mean_pmf_included_n_reps, included_n_reps, &
                                       n_bootstrapping_top_k_jsds, confidence_interval, &
                                       tmp_bootstrapping_top_k_jsds, pmfs, mean_pmf, &
                                       js_divergences, weights, global_js_divergence, tmp_point_pool, &
                                       tmp_point_draw, two_sided_bootstrapping_significance_level, random_seed, &
-                                      bootstrap_mode, bootstrap_ierr)
+                                      divergence_mode, bootstrap_ierr)
         ! Defensive: the counts add up by construction, so only a failed rng allocation can
         ! land here (untested). Without the return the interval would stay at its zero-width
         ! [J, J] seed and could win the smallest-uncertainty ranking.

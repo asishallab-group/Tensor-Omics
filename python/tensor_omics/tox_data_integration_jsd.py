@@ -10,6 +10,14 @@ of all of them, built by
 :func:`tensor_omics.create_mean_pmf` (with its pooled
 counts) or :func:`tensor_omics.create_mean_pmf_only`.
 
+`divergence_mode` (an option of every JS-Comp-Test entry point) chooses how each study's
+per-point divergence is computed: by default, for exactly two studies, the pairwise JSD of the
+two studies
+(``'divergence_pairwise_k2'``), and for any
+other number of studies the JSD of each study against the consensus
+(``'divergence_symmetric'``, which can also
+be chosen for two studies).
+
 Python binding, generated from tox_data_integration_jsd. Do not edit.
 """
 
@@ -1043,7 +1051,7 @@ def create_mean_pmf_only(
     r"""Build only the consensus pmf from all studies' pmfs, without its histogram counts
 
     As :func:`tensor_omics.create_mean_pmf`, for
-    callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
+    callers that need no counts (the bootstrap). Same known limitation: the consensus includes
     the study compared against it.
 
     Parameters

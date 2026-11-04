@@ -5,10 +5,10 @@ r"""tox_data_integration_js_comp_test_binning
 How many histogram bins each reference point of the JS-Comp-Test gets, chosen from the pooled
 residuals of all studies in its neighborhood. The occupancy search
 :func:`tensor_omics.determine_bin_count_occupancy`
-(the default) takes the largest bin count whose every bin holds at least a minimum number of
-residuals; Stone's cross-validation
+takes the largest bin count whose every bin holds at least a minimum number of
+residuals; Stone's cross-validation, the default,
 :func:`tensor_omics.determine_bin_count_stone`
-takes the bin count with the smallest estimated risk instead (`bin_count_mode`).
+takes the bin count with the smallest estimated risk (`bin_count_mode`).
 :func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
 is the brute-force reference of the occupancy search, and
 :func:`tensor_omics.estimate_bin_count`
@@ -1120,7 +1120,8 @@ def determine_bin_count_stone(
     r"""Choose one neighborhood's histogram bin count by Stone's cross-validation rule
 
     Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
-    Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2): for
+    Stone's cross-validation rule with Rudemo's unbiased risk estimate (Rudemo 1982, eq. 2.8;
+    Stone 1984, section 2): for
     `n` values over `m` bins of width `h`, the bin count minimising
     `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2` (`p_j` the share of values in bin `j`) is
     chosen. An alternative to
@@ -1342,7 +1343,8 @@ def determine_bin_count_stone_expert(
     r"""Choose one neighborhood's histogram bin count by Stone's cross-validation rule
 
     Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
-    Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2): for
+    Stone's cross-validation rule with Rudemo's unbiased risk estimate (Rudemo 1982, eq. 2.8;
+    Stone 1984, section 2): for
     `n` values over `m` bins of width `h`, the bin count minimising
     `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2` (`p_j` the share of values in bin `j`) is
     chosen. An alternative to

@@ -11,6 +11,14 @@
 !| of all of them, built by
 !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
 !| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
+!|
+!| `divergence_mode` (an option of every JS-Comp-Test entry point) chooses how each study's
+!| per-point divergence is computed: by default, for exactly two studies, the pairwise JSD of the
+!| two studies
+!| ([[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]]), and for any
+!| other number of studies the JSD of each study against the consensus
+!| ([[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]], which can also
+!| be chosen for two studies).
 module tox_data_integration_jsd_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -830,7 +838,7 @@ contains
 
     !> summary: C-wrapper for [[tox_data_integration_jsd(module):create_mean_pmf_only(subroutine)]]
     !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
-    !| callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
+    !| callers that need no counts (the bootstrap). Same known limitation: the consensus includes
     !| the study compared against it.
     subroutine create_mean_pmf_only_c(&
             pmfs,&

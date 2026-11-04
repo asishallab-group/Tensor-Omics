@@ -3,13 +3,19 @@
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Final Run
 !|
 !| The JS-Comp-Test of K studies for neighborhood parameters already chosen: per-study
-!| histograms at each reference point's bin count, each study's JSD against the consensus pmf,
-!| their weighting into one global JSD per study, and the permutation test.
+!| histograms at each reference point's bin count, each study's JSD (by default, for two studies,
+!| their pairwise JSD; otherwise against the consensus pmf, see `divergence_mode`) and its weighting
+!| into one global JSD per study. Its significance test is the study-label Permutation-Test,
+!| [[tox_data_integration_js_comp_test_permutation_fixed_k_impl(module):run_js_comp_test_permutation_impl(interface)]]
+!| and its adaptive counterpart, which rerun these routines on reassigned samples.
 !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_impl(interface)]] runs it
 !| on fixed-k neighborhoods (`n_points` reference points of `n_neighbors` genes each),
 !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_adaptive_impl(interface)]]
 !| on adaptive neighborhoods built by
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]].
+!| The adaptive neighborhoods, chosen by
+!| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]],
+!| are the recommended way; the fixed-k ones stay available.
 !|
 !| Generated from [[tox_data_integration_js_comp_test_run_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test_run
@@ -20,6 +26,7 @@ module tox_data_integration_js_comp_test_run
     use f42_math_impl, only: above
     use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS, MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED
     use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+    use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, validate_in_range_real
@@ -44,16 +51,19 @@ contains
     !| 2. Per reference point, all studies' residuals are pooled and the bin-count search
     !| `bin_count_mode` names chooses the point's bin count and residual range (occupancy search
     !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]
-    !| by default, or Stone's rule
-    !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]).
+    !| or Stone's rule
+    !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]],
+    !| by default with every study's score counted equally).
     !| 3. Each study's histogram and pmf is built per point
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !| 4. The consensus pmf
-    !| ([[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]]), each
-    !| study's per-point JSD against it and its weighted global JSD, and the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) give
-    !| `p_values` (primary) and `p_values_observed_consensus` (comparison only). With
-    !| `n_permutations = 0` both p-values are NaN.
+    !| ([[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]]), each study's
+    !| per-point JSD and its weighted global JSD: by default (`divergence_mode`), for exactly two
+    !| studies, the pairwise JSD of the two studies, the same for both; otherwise each study's JSD
+    !| against the consensus.
+    !|
+    !| The p-values of the study-label Permutation-Test come from
+    !| [[tox_data_integration_js_comp_test_permutation_fixed_k_impl(module):run_js_comp_test_permutation_impl(interface)]].
     !|
     !| There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
     !| still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
@@ -68,10 +78,8 @@ contains
     !|
     !| Errors (`ierr`): `ERR_INVALID_INPUT` when some study has no non-NaN residual at some
     !| reference point (for example a study whose gene means are all missing), since the
-    !| equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
-    !| then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
-    !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    !| values from before the permutation test.
+    !| equal-weight consensus needs every study; the consensus, JSD and weight outputs are then not
+    !| filled.
     !|
     !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -79,7 +87,7 @@ contains
     !| genes is the caller's choice); it is checked neither to be a permutation of
     !| `1..max_n_genes_all_studies` per column nor to be sorted.
     !| The allocating wrapper runs [[tox_data_integration_js_comp_test_run_impl(module):prepare_gene_means_perms]] first, which may handle the call and skip this one.
-    subroutine run_js_comp_test(&
+    pure subroutine run_js_comp_test(&
             n_studies,&
             max_n_genes_all_studies,&
             max_n_reps_all_studies,&
@@ -110,10 +118,6 @@ contains
             js_divergences,&
             weights,&
             global_js_divergence,&
-            p_values,&
-            p_values_observed_consensus,&
-            n_permutations,&
-            random_seed,&
             min_residuals_per_bin,&
             m_min,&
             m_max,&
@@ -121,6 +125,7 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -190,23 +195,11 @@ contains
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates per reference point of the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
-            !! Per-reference-point JSD of each study against the consensus pmf
+            !! Per-reference-point JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(n_points, n_studies), intent(out) :: weights
             !! Per-reference-point weights for `global_js_divergence`
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
-            !! Weighted global JSD of each study against the consensus pmf
-        real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
-            !! Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            !! comparison only; NaN when `n_permutations` is 0
-        integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations of the permutation test; `0` skips it (p-values NaN)
-            !! The minimum valid value is `0_int32`.
-            !! The default value is `1000_int32`.
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator
-            !! The default value is `42_int32`.
+            !! Weighted global JSD of each study, the one `divergence_mode` selects
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a bin count to be
             !! admissible, in every `bin_count_mode`
@@ -243,20 +236,25 @@ contains
             !! ([[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]),
             !! with `min_residuals_per_bin` as the floor
             !!
-            !! | Mode                                                                                                                       | Value                                                                                                   |
-            !! |----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
-            !! | Stone's cross-validation: minimise the sum of every study's own score                                                      | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
-            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
-            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                                                | Value                                                                                                   |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin`    | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default)                                     | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                       | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
+            !! The default value is `1_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence is computed
+            !!
+            !! | Mode                                                                                                             | Value                                                                           |
+            !! |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | Each study's JSD against the consensus of all studies                                                            | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! The default value is `1_int32`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
+            !! Error code; ERR_INVALID_INPUT (see above)
         integer(int32), dimension(:, :), allocatable :: gene_means_perms
         real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
-        real(real64), dimension(:, :), allocatable :: tmp_permutation_mean_pmf
-        integer(int32), dimension(:), allocatable :: tmp_permutation_point_pool
-        integer(int32), dimension(:), allocatable :: tmp_permutation_point_draw
         real(real64), dimension(:), allocatable :: tmp_pooled_residuals
         integer(int32), dimension(:), allocatable :: tmp_pooled_residuals_perm
         integer(int32), dimension(:), allocatable :: tmp_bin_counts_search
@@ -264,12 +262,6 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_study_block_ends
         integer(int32), dimension(:), allocatable :: tmp_study_block_sizes
         integer(int32), dimension(:), allocatable :: tmp_point_n_neighbors
-        integer(int32), dimension(:, :), allocatable :: tmp_permutation_mean_pmf_counts
-        integer(int32), dimension(:, :), allocatable :: tmp_permutation_counts
-        real(real64), dimension(:, :, :), allocatable :: tmp_permutation_pmfs
-        real(real64), dimension(:, :), allocatable :: tmp_permutation_js_divergences
-        real(real64), dimension(:, :), allocatable :: tmp_permutation_weights
-        real(real64), dimension(:), allocatable :: tmp_permutation_global_js_divergence
         logical :: handled
 
         call set_ok(ierr)
@@ -279,25 +271,22 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32, max=max_n_genes_all_studies)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=33_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=35_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=36_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=38_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=40_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=31_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=32_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=33_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=34_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=35_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=36_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=8_int32)
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=41_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=37_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=38_int32); end if
         if (is_err(ierr)) return
 #endif
 
         M_ALLOCATE(gene_means_perms(max_n_genes_all_studies, n_studies))
         M_ALLOCATE(tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points))
-        M_ALLOCATE(tmp_permutation_mean_pmf(n_points, 256))
-        M_ALLOCATE(tmp_permutation_point_pool(256))
-        M_ALLOCATE(tmp_permutation_point_draw(256))
         M_ALLOCATE(tmp_pooled_residuals(max_n_reps_all_studies*n_neighbors*n_studies))
         M_ALLOCATE(tmp_pooled_residuals_perm(max_n_reps_all_studies*n_neighbors*n_studies))
         M_ALLOCATE(tmp_bin_counts_search(256))
@@ -305,12 +294,6 @@ contains
         M_ALLOCATE(tmp_study_block_ends(n_studies))
         M_ALLOCATE(tmp_study_block_sizes(n_studies))
         M_ALLOCATE(tmp_point_n_neighbors(n_studies))
-        M_ALLOCATE(tmp_permutation_mean_pmf_counts(n_points, 256))
-        M_ALLOCATE(tmp_permutation_counts(n_points, 256))
-        M_ALLOCATE(tmp_permutation_pmfs(n_points, 256, n_studies))
-        M_ALLOCATE(tmp_permutation_js_divergences(n_points, n_studies))
-        M_ALLOCATE(tmp_permutation_weights(n_points, n_studies))
-        M_ALLOCATE(tmp_permutation_global_js_divergence(n_studies))
 
         call prepare_gene_means_perms(&
             gene_means = gene_means,&
@@ -356,12 +339,7 @@ contains
             js_divergences = js_divergences,&
             weights = weights,&
             global_js_divergence = global_js_divergence,&
-            p_values = p_values,&
-            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
-            tmp_permutation_mean_pmf = tmp_permutation_mean_pmf,&
-            tmp_permutation_point_pool = tmp_permutation_point_pool,&
-            tmp_permutation_point_draw = tmp_permutation_point_draw,&
             tmp_pooled_residuals = tmp_pooled_residuals,&
             tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
             tmp_bin_counts_search = tmp_bin_counts_search,&
@@ -369,14 +347,6 @@ contains
             tmp_study_block_ends = tmp_study_block_ends,&
             tmp_study_block_sizes = tmp_study_block_sizes,&
             tmp_point_n_neighbors = tmp_point_n_neighbors,&
-            tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
-            tmp_permutation_counts = tmp_permutation_counts,&
-            tmp_permutation_pmfs = tmp_permutation_pmfs,&
-            tmp_permutation_js_divergences = tmp_permutation_js_divergences,&
-            tmp_permutation_weights = tmp_permutation_weights,&
-            tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
-            n_permutations = n_permutations,&
-            random_seed = random_seed,&
             min_residuals_per_bin = min_residuals_per_bin,&
             m_min = m_min,&
             m_max = m_max,&
@@ -384,6 +354,7 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -400,16 +371,19 @@ contains
     !| 2. Per reference point, all studies' residuals are pooled and the bin-count search
     !| `bin_count_mode` names chooses the point's bin count and residual range (occupancy search
     !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]
-    !| by default, or Stone's rule
-    !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]).
+    !| or Stone's rule
+    !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]],
+    !| by default with every study's score counted equally).
     !| 3. Each study's histogram and pmf is built per point
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !| 4. The consensus pmf
-    !| ([[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]]), each
-    !| study's per-point JSD against it and its weighted global JSD, and the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) give
-    !| `p_values` (primary) and `p_values_observed_consensus` (comparison only). With
-    !| `n_permutations = 0` both p-values are NaN.
+    !| ([[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]]), each study's
+    !| per-point JSD and its weighted global JSD: by default (`divergence_mode`), for exactly two
+    !| studies, the pairwise JSD of the two studies, the same for both; otherwise each study's JSD
+    !| against the consensus.
+    !|
+    !| The p-values of the study-label Permutation-Test come from
+    !| [[tox_data_integration_js_comp_test_permutation_fixed_k_impl(module):run_js_comp_test_permutation_impl(interface)]].
     !|
     !| There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
     !| still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
@@ -424,10 +398,8 @@ contains
     !|
     !| Errors (`ierr`): `ERR_INVALID_INPUT` when some study has no non-NaN residual at some
     !| reference point (for example a study whose gene means are all missing), since the
-    !| equal-weight consensus needs every study; the consensus, JSD, weight and p-value outputs are
-    !| then not filled. `ERR_ALLOC_FAIL` when the permutation test cannot create its random number
-    !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
-    !| values from before the permutation test.
+    !| equal-weight consensus needs every study; the consensus, JSD and weight outputs are then not
+    !| filled.
     !|
     !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
@@ -435,7 +407,7 @@ contains
     !| genes is the caller's choice); it is checked neither to be a permutation of
     !| `1..max_n_genes_all_studies` per column nor to be sorted.
     !| The allocating wrapper runs [[tox_data_integration_js_comp_test_run_impl(module):prepare_gene_means_perms]] first, which may handle the call and skip this one.
-    subroutine run_js_comp_test_expert(&
+    pure subroutine run_js_comp_test_expert(&
             n_studies,&
             max_n_genes_all_studies,&
             max_n_reps_all_studies,&
@@ -467,12 +439,7 @@ contains
             js_divergences,&
             weights,&
             global_js_divergence,&
-            p_values,&
-            p_values_observed_consensus,&
             tmp_neighborhood_residuals_gathered,&
-            tmp_permutation_mean_pmf,&
-            tmp_permutation_point_pool,&
-            tmp_permutation_point_draw,&
             tmp_pooled_residuals,&
             tmp_pooled_residuals_perm,&
             tmp_bin_counts_search,&
@@ -480,14 +447,6 @@ contains
             tmp_study_block_ends,&
             tmp_study_block_sizes,&
             tmp_point_n_neighbors,&
-            tmp_permutation_mean_pmf_counts,&
-            tmp_permutation_counts,&
-            tmp_permutation_pmfs,&
-            tmp_permutation_js_divergences,&
-            tmp_permutation_weights,&
-            tmp_permutation_global_js_divergence,&
-            n_permutations,&
-            random_seed,&
             min_residuals_per_bin,&
             m_min,&
             m_max,&
@@ -495,6 +454,7 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -571,24 +531,13 @@ contains
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates per reference point of the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
-            !! Per-reference-point JSD of each study against the consensus pmf
+            !! Per-reference-point JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(n_points, n_studies), intent(out) :: weights
             !! Per-reference-point weights for `global_js_divergence`
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
-            !! Weighted global JSD of each study against the consensus pmf
-        real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
-            !! Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            !! comparison only; NaN when `n_permutations` is 0
+            !! Weighted global JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out) :: tmp_neighborhood_residuals_gathered
             !! Working array: one study's gathered neighborhood residuals, reused per study
-        real(real64), dimension(n_points, 256), intent(out) :: tmp_permutation_mean_pmf
-            !! Working array of the permutation test: consensus pmf of the permuted studies
-        integer(int32), dimension(256), intent(out) :: tmp_permutation_point_pool
-            !! Working array of the permutation test: one point's pool
-        integer(int32), dimension(256), intent(out) :: tmp_permutation_point_draw
-            !! Working array of the permutation test: one study's draw at one point
         real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals, reused per point
         integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_pooled_residuals_perm
@@ -604,25 +553,6 @@ contains
             !! Working array (Stone modes): each study's block size in tmp_pooled_residuals
         integer(int32), dimension(n_studies), intent(out) :: tmp_point_n_neighbors
             !! Working array: every study's neighbor count at a reference point (all `n_neighbors`)
-        integer(int32), dimension(n_points, 256), intent(out) :: tmp_permutation_mean_pmf_counts
-            !! Working array of the permutation test: the remaining pool
-        integer(int32), dimension(n_points, 256), intent(out) :: tmp_permutation_counts
-            !! Working array of the permutation test: one study's resampled counts
-        real(real64), dimension(n_points, 256, n_studies), intent(out) :: tmp_permutation_pmfs
-            !! Working array of the permutation test: resampled pmfs
-        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
-            !! Working array of the permutation test: per-point JSD values
-        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
-            !! Working array of the permutation test: per-point weights
-        real(real64), dimension(n_studies), intent(out) :: tmp_permutation_global_js_divergence
-            !! Working array of the permutation test: global JSD values
-        integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations of the permutation test; `0` skips it (p-values NaN)
-            !! The minimum valid value is `0_int32`.
-            !! The default value is `1000_int32`.
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator
-            !! The default value is `42_int32`.
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a bin count to be
             !! admissible, in every `bin_count_mode`
@@ -659,15 +589,23 @@ contains
             !! ([[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]),
             !! with `min_residuals_per_bin` as the floor
             !!
-            !! | Mode                                                                                                                       | Value                                                                                                   |
-            !! |----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
-            !! | Stone's cross-validation: minimise the sum of every study's own score                                                      | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
-            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
-            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                                                | Value                                                                                                   |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin`    | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default)                                     | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                       | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
+            !! The default value is `1_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence is computed
+            !!
+            !! | Mode                                                                                                             | Value                                                                           |
+            !! |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | Each study's JSD against the consensus of all studies                                                            | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! The default value is `1_int32`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
+            !! Error code; ERR_INVALID_INPUT (see above)
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -676,18 +614,18 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32, max=max_n_genes_all_studies)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=51_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=53_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=54_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=55_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=56_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=57_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=58_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=40_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=41_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=42_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=43_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=44_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=45_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32)
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=59_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=46_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=47_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -723,12 +661,7 @@ contains
             js_divergences = js_divergences,&
             weights = weights,&
             global_js_divergence = global_js_divergence,&
-            p_values = p_values,&
-            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
-            tmp_permutation_mean_pmf = tmp_permutation_mean_pmf,&
-            tmp_permutation_point_pool = tmp_permutation_point_pool,&
-            tmp_permutation_point_draw = tmp_permutation_point_draw,&
             tmp_pooled_residuals = tmp_pooled_residuals,&
             tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
             tmp_bin_counts_search = tmp_bin_counts_search,&
@@ -736,14 +669,6 @@ contains
             tmp_study_block_ends = tmp_study_block_ends,&
             tmp_study_block_sizes = tmp_study_block_sizes,&
             tmp_point_n_neighbors = tmp_point_n_neighbors,&
-            tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
-            tmp_permutation_counts = tmp_permutation_counts,&
-            tmp_permutation_pmfs = tmp_permutation_pmfs,&
-            tmp_permutation_js_divergences = tmp_permutation_js_divergences,&
-            tmp_permutation_weights = tmp_permutation_weights,&
-            tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
-            n_permutations = n_permutations,&
-            random_seed = random_seed,&
             min_residuals_per_bin = min_residuals_per_bin,&
             m_min = m_min,&
             m_max = m_max,&
@@ -751,6 +676,7 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -770,7 +696,7 @@ contains
     !| Errors (`ierr`): `ERR_INVALID_INPUT` before any histogram work for the first range that is
     !| reversed, reaches past the non-NaN pooled means, or leaves a study without a gene (every
     !| output then undefined); otherwise as in `run_js_comp_test_impl` (a study without a non-NaN
-    !| residual at some point, or `ERR_ALLOC_FAIL` from the permutation test).
+    !| residual at some point).
     !|
     !| The pooling work arrays hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies`
     !| values each, the size of `residuals`, since one study may contribute all its genes to one
@@ -778,7 +704,7 @@ contains
     !| [[tox_data_integration_js_comp_test_binning_impl(module):MAX_N_BINS(variable)]]; only their first
     !| `max_n_bins_per_point` bins are meaningful (Python `[:, :max_n_bins_per_point, ...]`, R
     !| `[, seq_len(max_n_bins_per_point), ]`).
-    subroutine run_js_comp_test_adaptive(&
+    pure subroutine run_js_comp_test_adaptive(&
             n_studies,&
             max_n_genes_all_studies,&
             max_n_reps_all_studies,&
@@ -807,10 +733,6 @@ contains
             js_divergences,&
             weights,&
             global_js_divergence,&
-            p_values,&
-            p_values_observed_consensus,&
-            n_permutations,&
-            random_seed,&
             min_residuals_per_bin,&
             m_min,&
             m_max,&
@@ -818,6 +740,7 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -885,23 +808,11 @@ contains
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
-            !! Per-reference-point JSD of each study against the consensus pmf
+            !! Per-reference-point JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(n_points, n_studies), intent(out) :: weights
             !! Per-reference-point weights for `global_js_divergence`
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
-            !! Weighted global JSD of each study against the consensus pmf
-        real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
-            !! Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            !! comparison only; NaN when `n_permutations` is 0
-        integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations of the permutation test; `0` skips it (p-values NaN)
-            !! The minimum valid value is `0_int32`.
-            !! The default value is `1000_int32`.
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator
-            !! The default value is `42_int32`.
+            !! Weighted global JSD of each study, the one `divergence_mode` selects
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a bin count to be
             !! admissible, in every `bin_count_mode`
@@ -938,33 +849,32 @@ contains
             !! ([[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]),
             !! with `min_residuals_per_bin` as the floor
             !!
-            !! | Mode                                                                                                                       | Value                                                                                                   |
-            !! |----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
-            !! | Stone's cross-validation: minimise the sum of every study's own score                                                      | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
-            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
-            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                                                | Value                                                                                                   |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin`    | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default)                                     | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                       | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
+            !! The default value is `1_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence is computed
+            !!
+            !! | Mode                                                                                                             | Value                                                                           |
+            !! |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | Each study's JSD against the consensus of all studies                                                            | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! The default value is `1_int32`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
+            !! Error code; ERR_INVALID_INPUT (see above)
         integer(int32), dimension(:), allocatable :: tmp_gene_means_perm_all
         integer(int32), dimension(:, :), allocatable :: tmp_point_neighborhood_indices
         real(real64), dimension(:, :), allocatable :: tmp_neighbor_residuals
-        real(real64), dimension(:, :), allocatable :: tmp_permutation_mean_pmf
-        integer(int32), dimension(:), allocatable :: tmp_permutation_point_pool
-        integer(int32), dimension(:), allocatable :: tmp_permutation_point_draw
         real(real64), dimension(:), allocatable :: tmp_pooled_residuals
         integer(int32), dimension(:), allocatable :: tmp_pooled_residuals_perm
         integer(int32), dimension(:), allocatable :: tmp_bin_counts_search
         integer(int32), dimension(:), allocatable :: tmp_residual_to_study_perm
         integer(int32), dimension(:), allocatable :: tmp_study_block_ends
         integer(int32), dimension(:), allocatable :: tmp_study_block_sizes
-        integer(int32), dimension(:, :), allocatable :: tmp_permutation_mean_pmf_counts
-        integer(int32), dimension(:, :), allocatable :: tmp_permutation_counts
-        real(real64), dimension(:, :, :), allocatable :: tmp_permutation_pmfs
-        real(real64), dimension(:, :), allocatable :: tmp_permutation_js_divergences
-        real(real64), dimension(:, :), allocatable :: tmp_permutation_weights
-        real(real64), dimension(:), allocatable :: tmp_permutation_global_js_divergence
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -972,38 +882,29 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=31_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=33_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=34_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=35_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=36_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=38_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=29_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=30_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=31_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=32_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=33_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=34_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=39_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=35_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=36_int32); end if
         if (is_err(ierr)) return
 #endif
 
         M_ALLOCATE(tmp_gene_means_perm_all(max_n_genes_all_studies*n_studies))
         M_ALLOCATE(tmp_point_neighborhood_indices(max_n_genes_all_studies, n_studies))
         M_ALLOCATE(tmp_neighbor_residuals(max_n_reps_all_studies, max_n_genes_all_studies))
-        M_ALLOCATE(tmp_permutation_mean_pmf(n_points, 256))
-        M_ALLOCATE(tmp_permutation_point_pool(256))
-        M_ALLOCATE(tmp_permutation_point_draw(256))
         M_ALLOCATE(tmp_pooled_residuals(max_n_reps_all_studies*max_n_genes_all_studies*n_studies))
         M_ALLOCATE(tmp_pooled_residuals_perm(max_n_reps_all_studies*max_n_genes_all_studies*n_studies))
         M_ALLOCATE(tmp_bin_counts_search(256))
         M_ALLOCATE(tmp_residual_to_study_perm(max_n_reps_all_studies*max_n_genes_all_studies*n_studies))
         M_ALLOCATE(tmp_study_block_ends(n_studies))
         M_ALLOCATE(tmp_study_block_sizes(n_studies))
-        M_ALLOCATE(tmp_permutation_mean_pmf_counts(n_points, 256))
-        M_ALLOCATE(tmp_permutation_counts(n_points, 256))
-        M_ALLOCATE(tmp_permutation_pmfs(n_points, 256, n_studies))
-        M_ALLOCATE(tmp_permutation_js_divergences(n_points, n_studies))
-        M_ALLOCATE(tmp_permutation_weights(n_points, n_studies))
-        M_ALLOCATE(tmp_permutation_global_js_divergence(n_studies))
 
         call run_js_comp_test_adaptive_impl(&
             n_studies = n_studies,&
@@ -1034,28 +935,15 @@ contains
             js_divergences = js_divergences,&
             weights = weights,&
             global_js_divergence = global_js_divergence,&
-            p_values = p_values,&
-            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_point_neighborhood_indices = tmp_point_neighborhood_indices,&
             tmp_neighbor_residuals = tmp_neighbor_residuals,&
-            tmp_permutation_mean_pmf = tmp_permutation_mean_pmf,&
-            tmp_permutation_point_pool = tmp_permutation_point_pool,&
-            tmp_permutation_point_draw = tmp_permutation_point_draw,&
             tmp_pooled_residuals = tmp_pooled_residuals,&
             tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
             tmp_bin_counts_search = tmp_bin_counts_search,&
             tmp_residual_to_study_perm = tmp_residual_to_study_perm,&
             tmp_study_block_ends = tmp_study_block_ends,&
             tmp_study_block_sizes = tmp_study_block_sizes,&
-            tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
-            tmp_permutation_counts = tmp_permutation_counts,&
-            tmp_permutation_pmfs = tmp_permutation_pmfs,&
-            tmp_permutation_js_divergences = tmp_permutation_js_divergences,&
-            tmp_permutation_weights = tmp_permutation_weights,&
-            tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
-            n_permutations = n_permutations,&
-            random_seed = random_seed,&
             min_residuals_per_bin = min_residuals_per_bin,&
             m_min = m_min,&
             m_max = m_max,&
@@ -1063,6 +951,7 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -1082,7 +971,7 @@ contains
     !| Errors (`ierr`): `ERR_INVALID_INPUT` before any histogram work for the first range that is
     !| reversed, reaches past the non-NaN pooled means, or leaves a study without a gene (every
     !| output then undefined); otherwise as in `run_js_comp_test_impl` (a study without a non-NaN
-    !| residual at some point, or `ERR_ALLOC_FAIL` from the permutation test).
+    !| residual at some point).
     !|
     !| The pooling work arrays hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies`
     !| values each, the size of `residuals`, since one study may contribute all its genes to one
@@ -1090,7 +979,7 @@ contains
     !| [[tox_data_integration_js_comp_test_binning_impl(module):MAX_N_BINS(variable)]]; only their first
     !| `max_n_bins_per_point` bins are meaningful (Python `[:, :max_n_bins_per_point, ...]`, R
     !| `[, seq_len(max_n_bins_per_point), ]`).
-    subroutine run_js_comp_test_adaptive_expert(&
+    pure subroutine run_js_comp_test_adaptive_expert(&
             n_studies,&
             max_n_genes_all_studies,&
             max_n_reps_all_studies,&
@@ -1119,28 +1008,15 @@ contains
             js_divergences,&
             weights,&
             global_js_divergence,&
-            p_values,&
-            p_values_observed_consensus,&
             tmp_gene_means_perm_all,&
             tmp_point_neighborhood_indices,&
             tmp_neighbor_residuals,&
-            tmp_permutation_mean_pmf,&
-            tmp_permutation_point_pool,&
-            tmp_permutation_point_draw,&
             tmp_pooled_residuals,&
             tmp_pooled_residuals_perm,&
             tmp_bin_counts_search,&
             tmp_residual_to_study_perm,&
             tmp_study_block_ends,&
             tmp_study_block_sizes,&
-            tmp_permutation_mean_pmf_counts,&
-            tmp_permutation_counts,&
-            tmp_permutation_pmfs,&
-            tmp_permutation_js_divergences,&
-            tmp_permutation_weights,&
-            tmp_permutation_global_js_divergence,&
-            n_permutations,&
-            random_seed,&
             min_residuals_per_bin,&
             m_min,&
             m_max,&
@@ -1148,6 +1024,7 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1215,28 +1092,17 @@ contains
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
-            !! Per-reference-point JSD of each study against the consensus pmf
+            !! Per-reference-point JSD of each study, the one `divergence_mode` selects
         real(real64), dimension(n_points, n_studies), intent(out) :: weights
             !! Per-reference-point weights for `global_js_divergence`
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
-            !! Weighted global JSD of each study against the consensus pmf
-        real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study, the primary result; NaN when `n_permutations` is 0
-        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
-            !! Empirical p-value per study against the fixed observed consensus `mean_pmf`, kept for
-            !! comparison only; NaN when `n_permutations` is 0
+            !! Weighted global JSD of each study, the one `divergence_mode` selects
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, as in the construction
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(out) :: tmp_point_neighborhood_indices
             !! Working array: one reference point's gene indices per study, reused per point
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies), intent(out) :: tmp_neighbor_residuals
             !! Working array: one (reference point, study) pair's gathered residuals, reused per pair
-        real(real64), dimension(n_points, 256), intent(out) :: tmp_permutation_mean_pmf
-            !! Working array forwarded to the permutation test
-        integer(int32), dimension(256), intent(out) :: tmp_permutation_point_pool
-            !! Working array forwarded to the permutation test
-        integer(int32), dimension(256), intent(out) :: tmp_permutation_point_draw
-            !! Working array forwarded to the permutation test
         real(real64), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_pooled_residuals_perm
@@ -1250,25 +1116,6 @@ contains
             !! Working array: the last index of each study's block in `tmp_pooled_residuals`
         integer(int32), dimension(n_studies), intent(out) :: tmp_study_block_sizes
             !! Working array (Stone modes): each study's block size in `tmp_pooled_residuals`
-        integer(int32), dimension(n_points, 256), intent(out) :: tmp_permutation_mean_pmf_counts
-            !! Working array forwarded to the permutation test
-        integer(int32), dimension(n_points, 256), intent(out) :: tmp_permutation_counts
-            !! Working array forwarded to the permutation test
-        real(real64), dimension(n_points, 256, n_studies), intent(out) :: tmp_permutation_pmfs
-            !! Working array forwarded to the permutation test
-        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
-            !! Working array forwarded to the permutation test
-        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
-            !! Working array forwarded to the permutation test
-        real(real64), dimension(n_studies), intent(out) :: tmp_permutation_global_js_divergence
-            !! Working array forwarded to the permutation test
-        integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations of the permutation test; `0` skips it (p-values NaN)
-            !! The minimum valid value is `0_int32`.
-            !! The default value is `1000_int32`.
-        integer(int32), intent(in), optional :: random_seed
-            !! Seed for the GSL random number generator
-            !! The default value is `42_int32`.
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a bin count to be
             !! admissible, in every `bin_count_mode`
@@ -1305,15 +1152,23 @@ contains
             !! ([[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]),
             !! with `min_residuals_per_bin` as the floor
             !!
-            !! | Mode                                                                                                                       | Value                                                                                                   |
-            !! |----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
-            !! | Stone's cross-validation: minimise the sum of every study's own score                                                      | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
-            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
-            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                                                | Value                                                                                                   |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+            !! | Occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin`    | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]]           |
+            !! | Stone's cross-validation: minimise the sum of every study's own score (default)                                     | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]]         |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                       | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
+            !! The default value is `1_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! How each study's per-point divergence is computed
+            !!
+            !! | Mode                                                                                                             | Value                                                                           |
+            !! |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | Each study's JSD against the consensus of all studies                                                            | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | Two studies: their pairwise JSD, the same for both; any other number of studies: as the symmetric mode (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! The default value is `1_int32`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
+            !! Error code; ERR_INVALID_INPUT (see above)
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -1321,17 +1176,17 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=49_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=51_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=52_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=53_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=54_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=55_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=56_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=38_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=39_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=40_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=41_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=42_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=43_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=57_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=44_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=45_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1364,28 +1219,15 @@ contains
             js_divergences = js_divergences,&
             weights = weights,&
             global_js_divergence = global_js_divergence,&
-            p_values = p_values,&
-            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_point_neighborhood_indices = tmp_point_neighborhood_indices,&
             tmp_neighbor_residuals = tmp_neighbor_residuals,&
-            tmp_permutation_mean_pmf = tmp_permutation_mean_pmf,&
-            tmp_permutation_point_pool = tmp_permutation_point_pool,&
-            tmp_permutation_point_draw = tmp_permutation_point_draw,&
             tmp_pooled_residuals = tmp_pooled_residuals,&
             tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
             tmp_bin_counts_search = tmp_bin_counts_search,&
             tmp_residual_to_study_perm = tmp_residual_to_study_perm,&
             tmp_study_block_ends = tmp_study_block_ends,&
             tmp_study_block_sizes = tmp_study_block_sizes,&
-            tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
-            tmp_permutation_counts = tmp_permutation_counts,&
-            tmp_permutation_pmfs = tmp_permutation_pmfs,&
-            tmp_permutation_js_divergences = tmp_permutation_js_divergences,&
-            tmp_permutation_weights = tmp_permutation_weights,&
-            tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
-            n_permutations = n_permutations,&
-            random_seed = random_seed,&
             min_residuals_per_bin = min_residuals_per_bin,&
             m_min = m_min,&
             m_max = m_max,&
@@ -1393,6 +1235,7 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
