@@ -43,30 +43,31 @@ a family of \(m\) members in \(n\) axes (no axis term for signed angles) -- abou
 Python binding, generated from tox_get_outliers_by_angle. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.compute_family_direction_c.restype = None
 _lib.compute_family_direction_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -76,14 +77,14 @@ _COMPUTE_FAMILY_DIRECTION_ARGUMENT_SOURCES = ("expression_vectors", "expression_
 
 _lib.compute_angular_deviations_c.restype = None
 _lib.compute_angular_deviations_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -93,17 +94,17 @@ _COMPUTE_ANGULAR_DEVIATIONS_ARGUMENT_SOURCES = ("expression_vectors", "expressio
 
 _lib.compute_family_direction_rap_c.restype = None
 _lib.compute_family_direction_rap_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -113,13 +114,13 @@ _COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENT_SOURCES = ("signed_angles", "family_mean_
 
 _lib.compute_angular_deviations_rap_c.restype = None
 _lib.compute_angular_deviations_rap_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -129,13 +130,13 @@ _COMPUTE_ANGULAR_DEVIATIONS_RAP_ARGUMENT_SOURCES = ("signed_angles", "family_mea
 
 _lib.compute_relative_angular_deviations_c.restype = None
 _lib.compute_relative_angular_deviations_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -145,11 +146,11 @@ _COMPUTE_RELATIVE_ANGULAR_DEVIATIONS_ARGUMENT_SOURCES = ("angular_deviations", "
 
 _lib.compute_angle_outlier_threshold_c.restype = None
 _lib.compute_angle_outlier_threshold_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -159,11 +160,11 @@ _COMPUTE_ANGLE_OUTLIER_THRESHOLD_ARGUMENT_SOURCES = ("relative_angular_deviation
 
 _lib.flag_angle_outliers_c.restype = None
 _lib.flag_angle_outliers_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -173,23 +174,23 @@ _FLAG_ANGLE_OUTLIERS_ARGUMENT_SOURCES = ("relative_angular_deviations", None, No
 
 _lib.detect_angle_outliers_c.restype = None
 _lib.detect_angle_outliers_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -199,22 +200,22 @@ _DETECT_ANGLE_OUTLIERS_ARGUMENT_SOURCES = ("expression_vectors", "expression_vec
 
 _lib.detect_angle_outliers_rap_c.restype = None
 _lib.detect_angle_outliers_rap_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -294,6 +295,9 @@ def compute_family_direction(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -302,53 +306,44 @@ def compute_family_direction(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::compute_family_direction`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
-    if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
+    max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    family_directions = np.empty((n_axes, n_families,), dtype=np.float64, order='F')
-    angular_dispersions = np.empty((n_families,), dtype=np.float64, order='C')
-    member_counts = np.empty((n_families,), dtype=np.int32, order='C')
-    status = np.empty((n_families,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    family_directions = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')
+    angular_dispersions = _np.empty((n_families,), dtype=_np.float64, order='C')
+    member_counts = _np.empty((n_families,), dtype=_np.int32, order='C')
+    status = _np.empty((n_families,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_family_direction_c(
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         expression_vectors,
         gene_to_fam,
         family_directions,
         angular_dispersions,
         member_counts,
         status,
-        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
-        ctypes.byref(ctypes.c_double(max_angular_dispersion)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(min_angular_dispersion)),
+        _ctypes.byref(_ctypes.c_double(max_angular_dispersion)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_FAMILY_DIRECTION_ARGUMENTS, _COMPUTE_FAMILY_DIRECTION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_FAMILY_DIRECTION_ARGUMENTS, _COMPUTE_FAMILY_DIRECTION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     family_directions.flags.writeable = False
@@ -398,6 +393,9 @@ def compute_angular_deviations(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -406,57 +404,38 @@ def compute_angular_deviations(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::compute_angular_deviations`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
-    if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
-    try:
-        family_directions = np.asfortranarray(family_directions, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_directions' must be an array of np.float64: {error}") from None
-    if family_directions.ndim != 2:
-        raise ValueError(f"'family_directions' must have 2 dimensions, but has {family_directions.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    family_directions = _contract.reals(family_directions, "family_directions", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
     n_families = family_directions.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if family_directions.shape[0] != n_axes:
-        raise ValueError(f"'family_directions' has {family_directions.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'family_directions' has {family_directions.shape[0]} along axis 0, but 'expression_vectors' implies n_axes == {n_axes}; 'family_directions' is declared with shape (n_axes, n_families)", argument="family_directions")
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    angular_deviations = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    angular_deviations = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_angular_deviations_c(
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         expression_vectors,
         family_directions,
         gene_to_fam,
         angular_deviations,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ANGULAR_DEVIATIONS_ARGUMENTS, _COMPUTE_ANGULAR_DEVIATIONS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_ANGULAR_DEVIATIONS_ARGUMENTS, _COMPUTE_ANGULAR_DEVIATIONS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     angular_deviations.flags.writeable = False
@@ -531,6 +510,9 @@ def compute_family_direction_rap(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -539,51 +521,42 @@ def compute_family_direction_rap(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::compute_family_direction_rap`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        signed_angles = np.ascontiguousarray(signed_angles, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'signed_angles' must be an array of np.float64: {error}") from None
-    if signed_angles.ndim != 1:
-        raise ValueError(f"'signed_angles' must have 1 dimension, but has {signed_angles.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    signed_angles = _contract.reals(signed_angles, "signed_angles", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
+    max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
 
     # what the inputs already say, rather than asking for it again
     n_genes = signed_angles.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'signed_angles' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'signed_angles' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    family_mean_angles = np.empty((n_families,), dtype=np.float64, order='C')
-    angular_dispersions = np.empty((n_families,), dtype=np.float64, order='C')
-    member_counts = np.empty((n_families,), dtype=np.int32, order='C')
-    status = np.empty((n_families,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    family_mean_angles = _np.empty((n_families,), dtype=_np.float64, order='C')
+    angular_dispersions = _np.empty((n_families,), dtype=_np.float64, order='C')
+    member_counts = _np.empty((n_families,), dtype=_np.int32, order='C')
+    status = _np.empty((n_families,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_family_direction_rap_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         signed_angles,
         gene_to_fam,
         family_mean_angles,
         angular_dispersions,
         member_counts,
         status,
-        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
-        ctypes.byref(ctypes.c_double(max_angular_dispersion)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(min_angular_dispersion)),
+        _ctypes.byref(_ctypes.c_double(max_angular_dispersion)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENTS, _COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENTS, _COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     family_mean_angles.flags.writeable = False
@@ -640,6 +613,9 @@ def compute_angular_deviations_rap(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -648,51 +624,34 @@ def compute_angular_deviations_rap(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::compute_angular_deviations_rap`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        signed_angles = np.ascontiguousarray(signed_angles, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'signed_angles' must be an array of np.float64: {error}") from None
-    if signed_angles.ndim != 1:
-        raise ValueError(f"'signed_angles' must have 1 dimension, but has {signed_angles.ndim}")
-    try:
-        family_mean_angles = np.ascontiguousarray(family_mean_angles, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_mean_angles' must be an array of np.float64: {error}") from None
-    if family_mean_angles.ndim != 1:
-        raise ValueError(f"'family_mean_angles' must have 1 dimension, but has {family_mean_angles.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    signed_angles = _contract.reals(signed_angles, "signed_angles", ndim=1)
+    family_mean_angles = _contract.reals(family_mean_angles, "family_mean_angles", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = signed_angles.shape[0]
     n_families = family_mean_angles.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'signed_angles' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'signed_angles' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    angular_deviations = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    angular_deviations = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_angular_deviations_rap_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         signed_angles,
         family_mean_angles,
         gene_to_fam,
         angular_deviations,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ANGULAR_DEVIATIONS_RAP_ARGUMENTS, _COMPUTE_ANGULAR_DEVIATIONS_RAP_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_ANGULAR_DEVIATIONS_RAP_ARGUMENTS, _COMPUTE_ANGULAR_DEVIATIONS_RAP_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     angular_deviations.flags.writeable = False
@@ -743,6 +702,9 @@ def compute_relative_angular_deviations(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -751,51 +713,34 @@ def compute_relative_angular_deviations(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::compute_relative_angular_deviations`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        angular_deviations = np.ascontiguousarray(angular_deviations, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'angular_deviations' must be an array of np.float64: {error}") from None
-    if angular_deviations.ndim != 1:
-        raise ValueError(f"'angular_deviations' must have 1 dimension, but has {angular_deviations.ndim}")
-    try:
-        angular_dispersions = np.ascontiguousarray(angular_dispersions, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'angular_dispersions' must be an array of np.float64: {error}") from None
-    if angular_dispersions.ndim != 1:
-        raise ValueError(f"'angular_dispersions' must have 1 dimension, but has {angular_dispersions.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    angular_deviations = _contract.reals(angular_deviations, "angular_deviations", ndim=1)
+    angular_dispersions = _contract.reals(angular_dispersions, "angular_dispersions", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = angular_deviations.shape[0]
     n_families = angular_dispersions.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'angular_deviations' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'angular_deviations' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    relative_angular_deviations = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    relative_angular_deviations = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_relative_angular_deviations_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         angular_deviations,
         angular_dispersions,
         gene_to_fam,
         relative_angular_deviations,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RELATIVE_ANGULAR_DEVIATIONS_ARGUMENTS, _COMPUTE_RELATIVE_ANGULAR_DEVIATIONS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_RELATIVE_ANGULAR_DEVIATIONS_ARGUMENTS, _COMPUTE_RELATIVE_ANGULAR_DEVIATIONS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     relative_angular_deviations.flags.writeable = False
@@ -841,6 +786,9 @@ def compute_angle_outlier_threshold(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -849,30 +797,26 @@ def compute_angle_outlier_threshold(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::compute_angle_outlier_threshold`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        relative_angular_deviations = np.ascontiguousarray(relative_angular_deviations, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'relative_angular_deviations' must be an array of np.float64: {error}") from None
-    if relative_angular_deviations.ndim != 1:
-        raise ValueError(f"'relative_angular_deviations' must have 1 dimension, but has {relative_angular_deviations.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    relative_angular_deviations = _contract.reals(relative_angular_deviations, "relative_angular_deviations", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_genes = relative_angular_deviations.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    threshold = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    threshold = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_angle_outlier_threshold_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         relative_angular_deviations,
-        ctypes.byref(threshold),
-        ctypes.byref(ctypes.c_double(quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(threshold),
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ANGLE_OUTLIER_THRESHOLD_ARGUMENTS, _COMPUTE_ANGLE_OUTLIER_THRESHOLD_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_ANGLE_OUTLIER_THRESHOLD_ARGUMENTS, _COMPUTE_ANGLE_OUTLIER_THRESHOLD_ARGUMENT_SOURCES)
 
     return threshold.value
 
@@ -906,6 +850,9 @@ def flag_angle_outliers(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -914,30 +861,26 @@ def flag_angle_outliers(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::flag_angle_outliers`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        relative_angular_deviations = np.ascontiguousarray(relative_angular_deviations, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'relative_angular_deviations' must be an array of np.float64: {error}") from None
-    if relative_angular_deviations.ndim != 1:
-        raise ValueError(f"'relative_angular_deviations' must have 1 dimension, but has {relative_angular_deviations.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    relative_angular_deviations = _contract.reals(relative_angular_deviations, "relative_angular_deviations", ndim=1)
+    threshold = _contract.real(threshold, "threshold")
 
     # what the inputs already say, rather than asking for it again
     n_genes = relative_angular_deviations.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    ierr = ctypes.c_int(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.flag_angle_outliers_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         relative_angular_deviations,
-        ctypes.byref(ctypes.c_double(threshold)),
+        _ctypes.byref(_ctypes.c_double(threshold)),
         is_outlier,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _FLAG_ANGLE_OUTLIERS_ARGUMENTS, _FLAG_ANGLE_OUTLIERS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _FLAG_ANGLE_OUTLIERS_ARGUMENTS, _FLAG_ANGLE_OUTLIERS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     is_outlier.flags.writeable = False
@@ -1034,6 +977,9 @@ def detect_angle_outliers(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1042,45 +988,37 @@ def detect_angle_outliers(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::detect_angle_outliers`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
-    if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
+    min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
+    max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    family_directions = np.empty((n_axes, n_families,), dtype=np.float64, order='F')
-    angular_dispersions = np.empty((n_families,), dtype=np.float64, order='C')
-    member_counts = np.empty((n_families,), dtype=np.int32, order='C')
-    status = np.empty((n_families,), dtype=np.int32, order='C')
-    relative_angular_deviations = np.empty((n_genes,), dtype=np.float64, order='C')
-    threshold = ctypes.c_double(0)
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    gene_status = np.empty((n_genes,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    family_directions = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')
+    angular_dispersions = _np.empty((n_families,), dtype=_np.float64, order='C')
+    member_counts = _np.empty((n_families,), dtype=_np.int32, order='C')
+    status = _np.empty((n_families,), dtype=_np.int32, order='C')
+    relative_angular_deviations = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    threshold = _ctypes.c_double(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    gene_status = _np.empty((n_genes,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_angle_outliers_c(
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         expression_vectors,
         gene_to_fam,
         family_directions,
@@ -1088,16 +1026,16 @@ def detect_angle_outliers(
         member_counts,
         status,
         relative_angular_deviations,
-        ctypes.byref(threshold),
+        _ctypes.byref(threshold),
         is_outlier,
         gene_status,
-        ctypes.byref(ctypes.c_double(quantile_level)),
-        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
-        ctypes.byref(ctypes.c_double(max_angular_dispersion)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(_ctypes.c_double(min_angular_dispersion)),
+        _ctypes.byref(_ctypes.c_double(max_angular_dispersion)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_ANGLE_OUTLIERS_ARGUMENTS, _DETECT_ANGLE_OUTLIERS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_ANGLE_OUTLIERS_ARGUMENTS, _DETECT_ANGLE_OUTLIERS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     family_directions.flags.writeable = False
@@ -1213,6 +1151,9 @@ def detect_angle_outliers_rap(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1221,43 +1162,35 @@ def detect_angle_outliers_rap(
     Generated from the Fortran procedure `tox_get_outliers_by_angle::detect_angle_outliers_rap`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        signed_angles = np.ascontiguousarray(signed_angles, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'signed_angles' must be an array of np.float64: {error}") from None
-    if signed_angles.ndim != 1:
-        raise ValueError(f"'signed_angles' must have 1 dimension, but has {signed_angles.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    signed_angles = _contract.reals(signed_angles, "signed_angles", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
+    min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
+    max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
 
     # what the inputs already say, rather than asking for it again
     n_genes = signed_angles.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'signed_angles' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'signed_angles' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    family_mean_angles = np.empty((n_families,), dtype=np.float64, order='C')
-    angular_dispersions = np.empty((n_families,), dtype=np.float64, order='C')
-    member_counts = np.empty((n_families,), dtype=np.int32, order='C')
-    status = np.empty((n_families,), dtype=np.int32, order='C')
-    relative_angular_deviations = np.empty((n_genes,), dtype=np.float64, order='C')
-    threshold = ctypes.c_double(0)
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    gene_status = np.empty((n_genes,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    family_mean_angles = _np.empty((n_families,), dtype=_np.float64, order='C')
+    angular_dispersions = _np.empty((n_families,), dtype=_np.float64, order='C')
+    member_counts = _np.empty((n_families,), dtype=_np.int32, order='C')
+    status = _np.empty((n_families,), dtype=_np.int32, order='C')
+    relative_angular_deviations = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    threshold = _ctypes.c_double(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    gene_status = _np.empty((n_genes,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_angle_outliers_rap_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         signed_angles,
         gene_to_fam,
         family_mean_angles,
@@ -1265,16 +1198,16 @@ def detect_angle_outliers_rap(
         member_counts,
         status,
         relative_angular_deviations,
-        ctypes.byref(threshold),
+        _ctypes.byref(threshold),
         is_outlier,
         gene_status,
-        ctypes.byref(ctypes.c_double(quantile_level)),
-        ctypes.byref(ctypes.c_double(min_angular_dispersion)),
-        ctypes.byref(ctypes.c_double(max_angular_dispersion)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(_ctypes.c_double(min_angular_dispersion)),
+        _ctypes.byref(_ctypes.c_double(max_angular_dispersion)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_ANGLE_OUTLIERS_RAP_ARGUMENTS, _DETECT_ANGLE_OUTLIERS_RAP_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_ANGLE_OUTLIERS_RAP_ARGUMENTS, _DETECT_ANGLE_OUTLIERS_RAP_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     family_mean_angles.flags.writeable = False

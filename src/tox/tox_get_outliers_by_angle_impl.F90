@@ -48,7 +48,7 @@ module tox_get_outliers_by_angle_impl
     use f42_math_impl, only: wrap_angle, angular_distance, one_minus_cosine, log_one_minus
     use f42_vector_impl, only: scaled_length, has_direction, angle_to_direction
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_stats_impl, only: calc_percentile_impl
+    use f42_stats_impl, only: calc_quantile_impl
     M_IMPLICIT_NONE
 
     private
@@ -538,8 +538,8 @@ contains
         end if
 
         call sort_array_heapsort(relative_angular_deviations, tmp_relative_angular_deviations_perm(1:n_valid))
-        call calc_percentile_impl(relative_angular_deviations, n_genes, tmp_relative_angular_deviations_perm, &
-                                  actual_quantile_level, threshold, n_considered=n_valid)
+        call calc_quantile_impl(relative_angular_deviations, n_genes, tmp_relative_angular_deviations_perm, &
+                                actual_quantile_level, threshold, n_considered=n_valid)
     end subroutine compute_angle_outlier_threshold_impl
 
     !> summary: Flag the genes whose relative angular deviation lies above the threshold

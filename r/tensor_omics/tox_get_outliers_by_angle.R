@@ -53,7 +53,7 @@ compute_family_direction <- function(n_families, expression_vectors, gene_to_fam
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
     .result <- .Call("compute_family_direction_call", n_families, expression_vectors, gene_to_fam, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_axes", "n_genes", "n_families", "expression_vectors", "gene_to_fam", "family_directions", "angular_dispersions", "member_counts", "status", "min_angular_dispersion", "max_angular_dispersion", "ierr")
@@ -94,9 +94,9 @@ compute_angular_deviations <- function(expression_vectors, family_directions, ge
     family_directions <- .tox_as_double_matrix(family_directions, "family_directions")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     if (dim(family_directions)[1] != dim(expression_vectors)[1])
-        .tox_shape_error("family_directions", dim(family_directions)[1], "expression_vectors", dim(expression_vectors)[1])
+        .tox_shape_error("family_directions", 1L, dim(family_directions)[1], "'expression_vectors' implies n_axes == ", dim(expression_vectors)[1], "n_axes, n_families")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
     .result <- .Call("compute_angular_deviations_call", expression_vectors, family_directions, gene_to_fam)
     .arguments <- c("n_axes", "n_genes", "n_families", "expression_vectors", "family_directions", "gene_to_fam", "angular_deviations", "ierr")
@@ -155,7 +155,7 @@ compute_family_direction_rap <- function(n_families, signed_angles, gene_to_fam,
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
     if (length(gene_to_fam) != length(signed_angles))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "signed_angles", length(signed_angles))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'signed_angles' implies n_genes == ", length(signed_angles), "n_genes")
 
     .result <- .Call("compute_family_direction_rap_call", n_families, signed_angles, gene_to_fam, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_genes", "n_families", "signed_angles", "gene_to_fam", "family_mean_angles", "angular_dispersions", "member_counts", "status", "min_angular_dispersion", "max_angular_dispersion", "ierr")
@@ -203,7 +203,7 @@ compute_angular_deviations_rap <- function(signed_angles, family_mean_angles, ge
     family_mean_angles <- .tox_as_double_vector(family_mean_angles, "family_mean_angles")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     if (length(gene_to_fam) != length(signed_angles))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "signed_angles", length(signed_angles))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'signed_angles' implies n_genes == ", length(signed_angles), "n_genes")
 
     .result <- .Call("compute_angular_deviations_rap_call", signed_angles, family_mean_angles, gene_to_fam)
     .arguments <- c("n_genes", "n_families", "signed_angles", "family_mean_angles", "gene_to_fam", "angular_deviations", "ierr")
@@ -248,7 +248,7 @@ compute_relative_angular_deviations <- function(angular_deviations, angular_disp
     angular_dispersions <- .tox_as_double_vector(angular_dispersions, "angular_dispersions")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     if (length(gene_to_fam) != length(angular_deviations))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "angular_deviations", length(angular_deviations))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'angular_deviations' implies n_genes == ", length(angular_deviations), "n_genes")
 
     .result <- .Call("compute_relative_angular_deviations_call", angular_deviations, angular_dispersions, gene_to_fam)
     .arguments <- c("n_genes", "n_families", "angular_deviations", "angular_dispersions", "gene_to_fam", "relative_angular_deviations", "ierr")
@@ -389,7 +389,7 @@ detect_angle_outliers <- function(n_families, expression_vectors, gene_to_fam, q
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
     .result <- .Call("detect_angle_outliers_call", n_families, expression_vectors, gene_to_fam, quantile_level, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_axes", "n_genes", "n_families", "expression_vectors", "gene_to_fam", "family_directions", "angular_dispersions", "member_counts", "status", "relative_angular_deviations", "threshold", "is_outlier", "gene_status", "quantile_level", "min_angular_dispersion", "max_angular_dispersion", "ierr")
@@ -475,7 +475,7 @@ detect_angle_outliers_rap <- function(n_families, signed_angles, gene_to_fam, qu
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
     if (length(gene_to_fam) != length(signed_angles))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "signed_angles", length(signed_angles))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'signed_angles' implies n_genes == ", length(signed_angles), "n_genes")
 
     .result <- .Call("detect_angle_outliers_rap_call", n_families, signed_angles, gene_to_fam, quantile_level, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_genes", "n_families", "signed_angles", "gene_to_fam", "family_mean_angles", "angular_dispersions", "member_counts", "status", "relative_angular_deviations", "threshold", "is_outlier", "gene_status", "quantile_level", "min_angular_dispersion", "max_angular_dispersion", "ierr")

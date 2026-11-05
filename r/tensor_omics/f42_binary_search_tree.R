@@ -72,7 +72,7 @@ bst_range_query_expert <- function(values, values_perm, lower_bound, upper_bound
     lower_bound <- .tox_as_double_scalar(lower_bound, "lower_bound")
     upper_bound <- .tox_as_double_scalar(upper_bound, "upper_bound")
     if (length(values_perm) != length(values))
-        .tox_shape_error("values_perm", length(values_perm), "values", length(values))
+        .tox_shape_error("values_perm", 1L, length(values_perm), "'values' implies n_values == ", length(values), "n_values")
 
     .result <- .Call("bst_range_query_expert_call", values, values_perm, lower_bound, upper_bound)
     .arguments <- c("values", "values_perm", "n_values", "lower_bound", "upper_bound", "output_indices", "n_matches", "ierr")

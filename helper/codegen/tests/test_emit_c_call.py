@@ -33,7 +33,7 @@ class TestOptionalScalarThatNeedsConverting:
     """A logical is four bytes to R and one to Fortran, so it is converted, not pointed at.
 
     An optional one has to be both: converted into a local, and passed as a pointer that is
-    null when the caller omits it. Getting only the pointer half emits `<name>_p` at the call
+    null when the caller omits it. Getting only the pointer half emits `_p_<name>` at the call
     with nothing declaring it, which no Python or Fortran test can see -- it is a C compile
     error in the generated shim.
     """
@@ -52,20 +52,20 @@ class TestOptionalScalarThatNeedsConverting:
         )
 
     def test_it_declares_the_local_it_converts_into(self, bag):
-        assert "unsigned char refine_v = 0;" in self.wrapper(bag)
+        assert "unsigned char _v_refine = 0;" in self.wrapper(bag)
 
     def test_it_declares_the_pointer_it_passes(self, bag):
-        assert "const unsigned char* refine_p = NULL;" in self.wrapper(bag)
+        assert "const unsigned char* _p_refine = NULL;" in self.wrapper(bag)
 
     def test_it_converts_and_points_only_when_the_argument_is_present(self, bag):
         text = self.wrapper(bag)
-        assert "refine_v = (Rf_asLogical(refine) == TRUE) ? 1 : 0;" in text
-        assert "refine_p = &refine_v;" in text
+        assert "_v_refine = (Rf_asLogical(refine) == TRUE) ? 1 : 0;" in text
+        assert "_p_refine = &_v_refine;" in text
         # the conversion sits inside the presence test, not before it
-        assert text.index("if (refine != R_NilValue)") < text.index("refine_p = &refine_v;")
+        assert text.index("if (refine != R_NilValue)") < text.index("_p_refine = &_v_refine;")
 
     def test_the_call_passes_the_pointer(self, bag):
-        assert "refine_p," in self.wrapper(bag)
+        assert "_p_refine," in self.wrapper(bag)
 
 
 class TestScalarThatNeedsConvertingButIsMandatory:
@@ -80,8 +80,8 @@ class TestScalarThatNeedsConvertingButIsMandatory:
             bag,
         )
 
-        assert "unsigned char refine_v = (Rf_asLogical(refine) == TRUE) ? 1 : 0;" in text
-        assert "&refine_v," in text
+        assert "unsigned char _v_refine = (Rf_asLogical(refine) == TRUE) ? 1 : 0;" in text
+        assert "&_v_refine," in text
 
 
 class TestDefaultedOptionalIsNotNullable:
@@ -103,8 +103,8 @@ class TestDefaultedOptionalIsNotNullable:
             bag,
         )
 
-        assert "refine_p" not in text
-        assert "&refine_v," in text
+        assert "_p_refine" not in text
+        assert "&_v_refine," in text
 
 
 class TestMarshalHeaderProtection:
@@ -204,3 +204,40 @@ class TestHeaderStamp:
         assert includers, "no shim includes the header -- the premise is gone"
         stale = [c.name for c in includers if digest not in c.read_text()]
         assert not stale, f"stamp does not match tox_marshal.h: {stale}"
+
+
+class TestConstantSizes:
+    """A module constant sizing an argument is its value in the shim (#221 WP1, review M2).
+
+    The shim allocated `Rf_allocVector(REALSXP, N_AXES)` and passed `tox_char_in(name,
+    MAX_LEN)`: C has no such names, and with the shims bundled into the library a single
+    one stopped the whole build.
+    """
+
+    def module_text(self, bag):
+        from codegen.abi.c_abi import build_module
+
+        module = b.module(
+            "m",
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="points"),
+                b.real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+                b.character("name", Intent.IN, length="MAX_LEN", doc="a name"),
+                b.real("sums", Intent.OUT, "(N_AXES)", doc="per axis"),
+                b.ierr(),
+            ),
+            parameters=(b.parameter("N_AXES", "2"), b.parameter("MAX_LEN", "8")),
+        )
+        b.project(module)
+        analyse(module.procedure("p"), bag)
+        return CCallEmitter().module(build_module(module, bag))
+
+    def test_an_output_is_allocated_with_the_value(self, bag):
+        text = self.module_text(bag)
+
+        assert "Rf_allocVector(REALSXP, 2)" in text
+        assert "N_AXES" not in text
+
+    def test_a_length_is_the_value(self, bag):
+        assert "MAX_LEN" not in self.module_text(bag)

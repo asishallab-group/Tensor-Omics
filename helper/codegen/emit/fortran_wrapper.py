@@ -27,6 +27,7 @@ from ..config import CONVENTIONS, Conventions
 from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
+from ..names import DEFAULT_VALUE, local_name
 from ..render import Writer
 from ..synthesize import (
     ModeFix,
@@ -234,8 +235,14 @@ class FortranWrapperEmitter:
         (`count(.not. ieee_is_nan(x))`, for a bound that is "how many of these are usable"),
         or name a module constant like `PI`. Identifiers that are the wrapper's own
         arguments, Fortran intrinsics, or literals need nothing.
+
+        A module constant may also size an argument -- `x(N_FIXED, n)`, `len=MAX_LEN` -- and
+        the wrapper redeclares every argument, so those are imported too. Before they were,
+        such a wrapper compiled only where a range directive happened to name the same
+        constant.
         """
         identifiers: set[str] = set()
+        sizes: set[str] = set()
         for procedure in module:
             for argument in procedure.arguments:
                 directives = argument.directives
@@ -244,7 +251,8 @@ class FortranWrapperEmitter:
                         identifiers.update(
                             i.lower() for i in _EXTENT_IDENTIFIER_RE.findall(directive.expression)
                         )
-        if not identifiers:
+                sizes.update(i.lower() for i in _size_identifiers(argument))
+        if not identifiers and not sizes:
             return {}
 
         result: dict[str, set[str]] = {}
@@ -258,7 +266,7 @@ class FortranWrapperEmitter:
         dummies = {a.name.lower() for p in module for a in p.arguments}
         if self.project is not None:
             parameters = {p.name.lower(): p for p in self.project.parameters}
-            for identifier in identifiers - dummies:
+            for identifier in (identifiers | sizes) - dummies:
                 parameter = parameters.get(identifier)
                 if parameter is not None and parameter.parent is not None:
                     result.setdefault(parameter.parent.name, set()).add(parameter.name)
@@ -426,11 +434,7 @@ class FortranWrapperEmitter:
         None when there is none, or when the project is unavailable (a unit test), so the
         ordinary path is unaffected.
         """
-        if self.project is None:
-            return None
-        impl = self.project.procedure(
-            self._impl_module(module), self._impl_name(foo, module)
-        )
+        impl = self._impl(foo, module)
         if impl is None:
             return None
         directive = impl.directives.prologue
@@ -490,9 +494,7 @@ class FortranWrapperEmitter:
         """
         if self.project is None:
             return False
-        called = [
-            self.project.procedure(self._impl_module(module), self._impl_name(procedure, module))
-        ]
+        called = [self._impl(procedure, module)]
         foo = self._sibling(module, procedure) or procedure
         called.append(self._prologue_for(foo, module))
         for argument in foo.arguments:
@@ -581,13 +583,16 @@ class FortranWrapperEmitter:
         implementation itself when the project is available; without it (a unit test) the
         implementation has no ierr, since synthesis only appends one to the wrapper.
         """
-        if self.project is not None:
-            impl = self.project.procedure(
-                self._impl_module(module), self._impl_name(foo, module)
-            )
-            if impl is not None:
-                return list(impl.arguments)
+        impl = self._impl(foo, module)
+        if impl is not None:
+            return list(impl.arguments)
         return self._impl_arguments(foo)
+
+    def _impl(self, wrapper: Procedure, module: Module) -> Procedure | None:
+        """The implementation `wrapper` calls, or None without a project (a unit test)."""
+        if self.project is None:
+            return None
+        return self.project.procedure(self._impl_module(module), self._impl_name(wrapper, module))
 
     # -- declarations -----------------------------------------------------------
 
@@ -836,7 +841,11 @@ class FortranWrapperEmitter:
             return f"call validate_dimension_size({argument.name}, {error}, {arg_pos})"
 
         if argument.is_array:
-            count = _product(argument.dimension.extents)
+            # an assumed-shape axis has no extent to name, so its size is asked of the array
+            count = _product(
+                f"size({argument.name}, {axis})" if extent == ":" else extent
+                for axis, extent in enumerate(argument.dimension.extents, start=1)
+            )
             head = f"{argument.name}, {count}, {error}"
         else:
             head = f"{argument.name}, {error}"
@@ -894,7 +903,7 @@ class FortranWrapperEmitter:
 
     @staticmethod
     def _materialized_name(name: str) -> str:
-        return f"{name}_value"
+        return local_name(name, DEFAULT_VALUE)
 
     def _materialized_locals(self, writer: Writer, materialized: dict[str, Argument]) -> None:
         for name, argument in materialized.items():
@@ -1004,7 +1013,12 @@ class FortranWrapperEmitter:
                 actuals.append((argument.name, mode_fix.parameter))
             elif lowered in present:
                 actuals.append((argument.name, argument.name))
-        self._call(writer, impl, actuals)
+        # A function is called for its value, which goes to the argument its result is
+        # published as (`synthesize.published_result`): of the same name, on both tiers.
+        implementation = self._impl(foo, module)
+        result = implementation.result if implementation is not None else None
+        published = result is not None and foo.argument(result.name) is not None
+        self._call(writer, impl, actuals, result=result.name if published else None)
         if self._impl_declares_error(foo, module):
             self._clear_arg_pos(writer)
 
@@ -1021,13 +1035,23 @@ class FortranWrapperEmitter:
         """
         writer.line(f"call clear_err_arg_pos({self.conventions.error_arg})")
 
-    def _call(self, writer: Writer, name: str, actuals) -> None:
-        writer.line(f"call {name}(&")
+    def _call(self, writer: Writer, name: str, actuals, result: str | None = None) -> None:
+        """`call name(dummy = value, ...)`, or `result = name(...)` for a function."""
+        writer.line(f"call {name}(&" if result is None else f"{result} = {name}(&")
         with writer.indent():
             for index, (dummy, value) in enumerate(actuals):
                 separator = "&" if index == len(actuals) - 1 else ",&"
                 writer.line(f"{dummy} = {value}{separator}")
         writer.line(")")
+
+
+def _size_identifiers(argument: Argument) -> list[str]:
+    """The identifiers an argument's declaration is sized by: its extents and its length."""
+    texts = list(argument.dimension.extents)
+    length = argument.type.length
+    if length is not None and length.expr is not None:
+        texts.append(length.expr)
+    return [identifier for text in texts for identifier in _EXTENT_IDENTIFIER_RE.findall(text)]
 
 
 #: The kind `tox_errors` declares its logical dummies with, which is what the emitter's own
