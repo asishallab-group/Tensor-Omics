@@ -164,6 +164,22 @@ class TestResultsAreRight:
         out = run_r(built, 'cat(fx_count_positive(c(-1, 2, 3)))')
         assert int(out) == 2
 
+    def test_an_array_of_no_strings_goes_in_and_comes_back(self, built):
+        # #221 B3: the C wrapper refused it as ERR_EMPTY_INPUT before the procedure ran
+        out = run_r(built, """
+            cat(fx_count_matching(character(0), "a"), fx_optional_strings(extras = character(0)),
+                length(fx_labels(numeric(0))$labels), class(fx_labels(numeric(0))$labels))
+        """)
+        assert out.split() == ["0", "0", "0", "character"]
+
+    def test_a_function_with_its_own_ierr_returns_its_result_and_raises_its_error(self, built):
+        # #221 B1: its C wrapper takes the result before `ierr`, which the shim passes on
+        out = run_r(built, """
+            cat(fx_first_share(c(1, 3)),
+                tryCatch(fx_first_share(c(0, 0)), tox_error = function(e) e$code))
+        """)
+        assert out.split() == ["0.25", "210"]
+
     def test_an_inout_scalar_is_capped_and_returned(self, built):
         # the modified scalar comes back from its <name>_v local, not the SEXP argument
         out = run_r(built, 'cat(fx_cap_value(15L), fx_cap_value(3L))')
@@ -173,6 +189,28 @@ class TestResultsAreRight:
         # fx_optionals has span/max_iter/use_quantile with DM_DEFAULT
         out = run_r(built, 'cat(is.null(fx_optionals(c(1, 2, 3))))')
         assert out.strip() == "TRUE"
+
+    def test_a_matrix_result_is_column_truncated_not_row_truncated(self, built):
+        # fx_masked_matrix mirrors candidates_n_points_n_neighbors: a fixed 2-row,
+        # N-column output where only the first n_results columns are real.
+        # utils::head() would (wrongly) take the first n_results *rows*; this must take
+        # the first n_results *columns*, and must not return anything from the columns
+        # past n_results (which the fixture leaves unfilled).
+        out = run_r(built, """
+            r <- fx_masked_matrix(c(TRUE, FALSE, TRUE, TRUE))
+            cat(dim(r)[1], dim(r)[2], all(r == matrix(c(1, 10, 2, 20, 3, 30), nrow = 2)))
+        """)
+        assert out.split() == ["2", "3", "TRUE"]
+
+    def test_a_matrix_result_with_one_real_column_stays_a_matrix(self, built):
+        # the n=1 collapse case the original bug lost entirely: without drop = FALSE,
+        # slicing down to a single remaining column silently collapses the result to a
+        # bare vector, dropping the second row instead of the extra columns
+        out = run_r(built, """
+            r <- fx_masked_matrix(c(FALSE, TRUE, FALSE))
+            cat(is.matrix(r), dim(r)[1], dim(r)[2], r[1, 1], r[2, 1])
+        """)
+        assert out.split() == ["TRUE", "2", "1", "1", "10"]
 
 
 class TestModes:
@@ -262,6 +300,18 @@ class TestClassedConditions:
         """)
         assert "'vector'" in out
 
+    def test_a_binding_refusal_is_an_input_error_without_a_code(self, built):
+        # the R wrapper's own refusals carry no tox code, like Python's (#221), and are input
+        # errors all the same, so one handler catches them beside the Fortran's
+        out = run_r(built, """
+            for (call in list(quote(fx_sum_matrix(matrix(c(1,2,3,4), 2), c(1,2,3))),
+                              quote(fx_normalize("hello")))) {
+              e <- tryCatch(eval(call), tox_input_error = function(e) e)
+              cat(class(e)[1], is.na(e$code), e$argument, "\\n")
+            }
+        """)
+        assert out.split("\n")[:2] == ["tox_shape_error TRUE weights ", "tox_type_error TRUE vector "]
+
     def test_a_fortran_error_is_a_classed_condition(self, built):
         out = run_r(built, """
             cat(tryCatch(fx_normalize(numeric(3)),
@@ -342,3 +392,30 @@ class TestPythonCanLoadTheBundledLibrary:
         import ctypes
         lib = ctypes.CDLL(str(built / "libfixtures.so"))   # default mode == eager
         assert hasattr(lib, "fx_normalize_c")   # a Fortran C-ABI symbol is callable
+
+
+class TestDeclarationForms:
+    """Declarations Fortran reads one way and a binding could read another (issue #221)."""
+
+    def test_an_entity_s_own_extent_overrides_the_dimension_attribute(self, built):
+        # `dimension(n) :: a, b(m)`: `b` has m elements, and R asked the caller for `m`
+        out = run_r(built, """
+            cat(paste(names(formals(fx_two_lengths)), collapse = ","),
+                fx_two_lengths(c(1, 1), c(1, 1, 1)))
+        """)
+        assert out.split() == ["a,b", "302"]
+
+    def test_an_extent_in_another_case_than_its_declaration_works(self, built):
+        # `N_Values` sizes `values(n_values)`; the shim named two variables and declared one
+        out = run_r(built, """
+            cat(paste(names(formals(fx_case_mix)), collapse = ","), fx_case_mix(c(1, 2.5)))
+        """)
+        assert out.split() == ["values", "2", "5"]
+
+
+class TestKindedDefaults:
+    """A default written with its kind, as the guide asks (issue #221, G-R7)."""
+
+    def test_a_kinded_logical_default_is_passed(self, built):
+        out = run_r(built, 'cat(fx_kinded_default(2), fx_kinded_default(2, negate = FALSE))')
+        assert out.split() == ["-2", "2"]

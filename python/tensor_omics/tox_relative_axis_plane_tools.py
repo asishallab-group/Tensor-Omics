@@ -17,27 +17,28 @@ level, falls on each selected axis.
 Python binding, generated from tox_relative_axis_plane_tools. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.omics_vector_RAP_projection_c.restype = None
 _lib.omics_vector_RAP_projection_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -47,15 +48,15 @@ _OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "vecs", "vecs", None, "pr
 
 _lib.omics_field_RAP_projection_c.restype = None
 _lib.omics_field_RAP_projection_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -65,12 +66,12 @@ _OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "fields", "fields", None, 
 
 _lib.clock_hand_angle_between_vectors_c.restype = None
 _lib.clock_hand_angle_between_vectors_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -80,14 +81,14 @@ _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENT_SOURCES = (None, None, "v1", None, No
 
 _lib.clock_hand_angles_for_shift_vectors_c.restype = None
 _lib.clock_hand_angles_for_shift_vectors_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -97,10 +98,10 @@ _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES = (None, "fields", "fields
 
 _lib.compute_relative_axis_contributions_c.restype = None
 _lib.compute_relative_axis_contributions_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -110,10 +111,10 @@ _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, "vec", None, None
 
 _lib.relative_axes_changes_from_shift_vector_c.restype = None
 _lib.relative_axes_changes_from_shift_vector_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -123,10 +124,10 @@ _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENT_SOURCES = (None, "vec", None, 
 
 _lib.relative_axes_expression_from_expression_vector_c.restype = None
 _lib.relative_axes_expression_from_expression_vector_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -158,6 +159,9 @@ def omics_vector_RAP_projection(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -166,25 +170,10 @@ def omics_vector_RAP_projection(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_vector_RAP_projection`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vecs = np.asfortranarray(vecs, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vecs' must be an array of np.float64: {error}") from None
-    if vecs.ndim != 2:
-        raise ValueError(f"'vecs' must have 2 dimensions, but has {vecs.ndim}")
-    try:
-        vecs_selection_mask = np.ascontiguousarray(vecs_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vecs_selection_mask' must be an array of np.bool_: {error}") from None
-    if vecs_selection_mask.ndim != 1:
-        raise ValueError(f"'vecs_selection_mask' must have 1 dimension, but has {vecs_selection_mask.ndim}")
-    try:
-        axes_selection_mask = np.ascontiguousarray(axes_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {error}") from None
-    if axes_selection_mask.ndim != 1:
-        raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    vecs = _contract.reals(vecs, "vecs", ndim=2, order="F")
+    vecs_selection_mask = _contract.logicals(vecs_selection_mask, "vecs_selection_mask", ndim=1)
+    axes_selection_mask = _contract.logicals(axes_selection_mask, "axes_selection_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vecs.shape[0]
@@ -192,33 +181,29 @@ def omics_vector_RAP_projection(
     n_selected_vecs = int(vecs_selection_mask.sum())
     n_selected_axes = int(axes_selection_mask.sum())
 
-    # Fortran cannot check that shared extents agree; this can
-    if axes_selection_mask.shape[0] != n_axes:
-        raise ValueError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but "
-            f"'vecs' implies n_axes == {n_axes}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if vecs_selection_mask.shape[0] != n_vecs:
-        raise ValueError(f"'vecs_selection_mask' has {vecs_selection_mask.shape[0]} along axis 0, but "
-            f"'vecs' implies n_vecs == {n_vecs}"
-        )
+        raise _ToxArgumentError(f"'vecs_selection_mask' has {vecs_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_vecs == {n_vecs}; 'vecs_selection_mask' is declared with shape (n_vecs)", argument="vecs_selection_mask")
+    if axes_selection_mask.shape[0] != n_axes:
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_axes == {n_axes}; 'axes_selection_mask' is declared with shape (n_axes)", argument="axes_selection_mask")
 
     # outputs and work arrays, which the caller never sees
-    projections = np.empty((n_selected_axes, n_selected_vecs,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    projections = _np.empty((n_selected_axes, n_selected_vecs,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.omics_vector_RAP_projection_c(
         vecs,
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_vecs)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_vecs)),
         vecs_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_vecs)),
+        _ctypes.byref(_ctypes.c_int(n_selected_vecs)),
         axes_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_axes)),
+        _ctypes.byref(_ctypes.c_int(n_selected_axes)),
         projections,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     projections.flags.writeable = False
@@ -249,6 +234,9 @@ def omics_field_RAP_projection(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -257,25 +245,10 @@ def omics_field_RAP_projection(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_field_RAP_projection`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        fields = np.asfortranarray(fields, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'fields' must be an array of np.float64: {error}") from None
-    if fields.ndim != 3:
-        raise ValueError(f"'fields' must have 3 dimensions, but has {fields.ndim}")
-    try:
-        fields_selection_mask = np.ascontiguousarray(fields_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'fields_selection_mask' must be an array of np.bool_: {error}") from None
-    if fields_selection_mask.ndim != 1:
-        raise ValueError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}")
-    try:
-        axes_selection_mask = np.ascontiguousarray(axes_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {error}") from None
-    if axes_selection_mask.ndim != 1:
-        raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    fields = _contract.reals(fields, "fields", ndim=3, order="F")
+    fields_selection_mask = _contract.logicals(fields_selection_mask, "fields_selection_mask", ndim=1)
+    axes_selection_mask = _contract.logicals(axes_selection_mask, "axes_selection_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = fields.shape[0]
@@ -283,33 +256,31 @@ def omics_field_RAP_projection(
     n_selected_fields = int(fields_selection_mask.sum())
     n_selected_axes = int(axes_selection_mask.sum())
 
-    # Fortran cannot check that shared extents agree; this can
-    if axes_selection_mask.shape[0] != n_axes:
-        raise ValueError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but "
-            f"'fields' implies n_axes == {n_axes}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if fields.shape[1] != 2:
+        raise _ToxArgumentError(f"'fields' has {fields.shape[1]} along axis 1, but its declared shape fixes it at {2}; 'fields' is declared with shape (n_axes, 2, n_fields)", argument="fields")
     if fields_selection_mask.shape[0] != n_fields:
-        raise ValueError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but "
-            f"'fields' implies n_fields == {n_fields}"
-        )
+        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}; 'fields_selection_mask' is declared with shape (n_fields)", argument="fields_selection_mask")
+    if axes_selection_mask.shape[0] != n_axes:
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'fields' implies n_axes == {n_axes}; 'axes_selection_mask' is declared with shape (n_axes)", argument="axes_selection_mask")
 
     # outputs and work arrays, which the caller never sees
-    projections = np.empty((n_selected_axes, n_selected_fields,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    projections = _np.empty((n_selected_axes, n_selected_fields,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.omics_field_RAP_projection_c(
         fields,
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_fields)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_fields)),
         fields_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_fields)),
+        _ctypes.byref(_ctypes.c_int(n_selected_fields)),
         axes_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_axes)),
+        _ctypes.byref(_ctypes.c_int(n_selected_axes)),
         projections,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS, _OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS, _OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     projections.flags.writeable = False
@@ -347,6 +318,9 @@ def clock_hand_angle_between_vectors(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -355,53 +329,34 @@ def clock_hand_angle_between_vectors(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angle_between_vectors`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        v1 = np.ascontiguousarray(v1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'v1' must be an array of np.float64: {error}") from None
-    if v1.ndim != 1:
-        raise ValueError(f"'v1' must have 1 dimension, but has {v1.ndim}")
-    try:
-        v2 = np.ascontiguousarray(v2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'v2' must be an array of np.float64: {error}") from None
-    if v2.ndim != 1:
-        raise ValueError(f"'v2' must have 1 dimension, but has {v2.ndim}")
-    try:
-        orientation_reference = np.ascontiguousarray(orientation_reference, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'orientation_reference' must be an array of np.float64: {error}") from None
-    if orientation_reference.ndim != 1:
-        raise ValueError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    v1 = _contract.reals(v1, "v1", ndim=1)
+    v2 = _contract.reals(v2, "v2", ndim=1)
+    orientation_reference = _contract.reals(orientation_reference, "orientation_reference", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dims = v1.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if v2.shape[0] != n_dims:
-        raise ValueError(f"'v2' has {v2.shape[0]} along axis 0, but "
-            f"'v1' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'v2' has {v2.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}; 'v2' is declared with shape (n_dims)", argument="v2")
     if orientation_reference.shape[0] != n_dims:
-        raise ValueError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but "
-            f"'v1' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}; 'orientation_reference' is declared with shape (n_dims)", argument="orientation_reference")
 
     # outputs and work arrays, which the caller never sees
-    signed_angle = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    signed_angle = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.clock_hand_angle_between_vectors_c(
         v1,
         v2,
-        ctypes.byref(ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
         orientation_reference,
-        ctypes.byref(signed_angle),
-        ctypes.byref(ierr),
+        _ctypes.byref(signed_angle),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENT_SOURCES)
 
     return signed_angle.value
 
@@ -438,6 +393,9 @@ def clock_hand_angles_for_shift_vectors(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -446,57 +404,40 @@ def clock_hand_angles_for_shift_vectors(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        fields = np.asfortranarray(fields, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'fields' must be an array of np.float64: {error}") from None
-    if fields.ndim != 3:
-        raise ValueError(f"'fields' must have 3 dimensions, but has {fields.ndim}")
-    try:
-        fields_selection_mask = np.ascontiguousarray(fields_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'fields_selection_mask' must be an array of np.bool_: {error}") from None
-    if fields_selection_mask.ndim != 1:
-        raise ValueError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}")
-    try:
-        orientation_reference = np.ascontiguousarray(orientation_reference, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'orientation_reference' must be an array of np.float64: {error}") from None
-    if orientation_reference.ndim != 1:
-        raise ValueError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    fields = _contract.reals(fields, "fields", ndim=3, order="F")
+    fields_selection_mask = _contract.logicals(fields_selection_mask, "fields_selection_mask", ndim=1)
+    orientation_reference = _contract.reals(orientation_reference, "orientation_reference", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dims = fields.shape[0]
     n_fields = fields.shape[2]
     n_selected_fields = int(fields_selection_mask.sum())
 
-    # Fortran cannot check that shared extents agree; this can
-    if orientation_reference.shape[0] != n_dims:
-        raise ValueError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but "
-            f"'fields' implies n_dims == {n_dims}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if fields.shape[1] != 2:
+        raise _ToxArgumentError(f"'fields' has {fields.shape[1]} along axis 1, but its declared shape fixes it at {2}; 'fields' is declared with shape (n_dims, 2, n_fields)", argument="fields")
     if fields_selection_mask.shape[0] != n_fields:
-        raise ValueError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but "
-            f"'fields' implies n_fields == {n_fields}"
-        )
+        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}; 'fields_selection_mask' is declared with shape (n_fields)", argument="fields_selection_mask")
+    if orientation_reference.shape[0] != n_dims:
+        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'fields' implies n_dims == {n_dims}; 'orientation_reference' is declared with shape (n_dims)", argument="orientation_reference")
 
     # outputs and work arrays, which the caller never sees
-    signed_angles = np.empty((n_selected_fields,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    signed_angles = _np.empty((n_selected_fields,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.clock_hand_angles_for_shift_vectors_c(
         fields,
-        ctypes.byref(ctypes.c_int(n_dims)),
-        ctypes.byref(ctypes.c_int(n_fields)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_fields)),
         fields_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_fields)),
+        _ctypes.byref(_ctypes.c_int(n_selected_fields)),
         orientation_reference,
         signed_angles,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     signed_angles.flags.writeable = False
@@ -523,6 +464,9 @@ def compute_relative_axis_contributions(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -531,29 +475,24 @@ def compute_relative_axis_contributions(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::compute_relative_axis_contributions`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec = np.ascontiguousarray(vec, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec' must be an array of np.float64: {error}") from None
-    if vec.ndim != 1:
-        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    vec = _contract.reals(vec, "vec", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    contributions = np.empty((n_axes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    contributions = _np.empty((n_axes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_relative_axis_contributions_c(
         vec,
-        ctypes.byref(ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
         contributions,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     contributions.flags.writeable = False
@@ -580,6 +519,9 @@ def relative_axes_changes_from_shift_vector(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -588,29 +530,24 @@ def relative_axes_changes_from_shift_vector(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec = np.ascontiguousarray(vec, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec' must be an array of np.float64: {error}") from None
-    if vec.ndim != 1:
-        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    vec = _contract.reals(vec, "vec", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    contributions = np.empty((n_axes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    contributions = _np.empty((n_axes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.relative_axes_changes_from_shift_vector_c(
         vec,
-        ctypes.byref(ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
         contributions,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENTS, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENTS, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     contributions.flags.writeable = False
@@ -637,6 +574,9 @@ def relative_axes_expression_from_expression_vector(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -645,29 +585,24 @@ def relative_axes_expression_from_expression_vector(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec = np.ascontiguousarray(vec, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec' must be an array of np.float64: {error}") from None
-    if vec.ndim != 1:
-        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    vec = _contract.reals(vec, "vec", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    contributions = np.empty((n_axes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    contributions = _np.empty((n_axes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.relative_axes_expression_from_expression_vector_c(
         vec,
-        ctypes.byref(ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
         contributions,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENTS, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENTS, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     contributions.flags.writeable = False

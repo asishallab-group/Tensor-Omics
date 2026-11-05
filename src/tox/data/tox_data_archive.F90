@@ -696,10 +696,10 @@ contains
     !> M_EXPORT_C
     !| summary: Save standard tox data
     !| AUTHOR_AARON_SCHROEDER
-    subroutine save_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, &
+    subroutine save_tox_data(zip_filename, gene_ids, gene_ids_file, expression, &
                              expression_file, gene_to_family, gene_to_family_file, &
                              family_ids, family_ids_file, family_centroids, &
-                             family_centroids_file, shift_vectors, shift_vectors_file)
+                             family_centroids_file, shift_vectors, shift_vectors_file, ierr)
         M_IMPLICIT_NONE
 
         character(len=*), intent(in) :: zip_filename
@@ -746,12 +746,12 @@ contains
         ! `.and.` below silently drops it from the archive, and the caller gets a well-formed
         ! archive that is missing the data it was asked to store. Reject that here, naming the
         ! half that is missing, before any member is written.
-        call require_paired_helper(present(gene_ids), present(gene_ids_file), 3_int32, 4_int32, ierr)
-        call require_paired_helper(present(expression), present(expression_file), 5_int32, 6_int32, ierr)
-        call require_paired_helper(present(gene_to_family), present(gene_to_family_file), 7_int32, 8_int32, ierr)
-        call require_paired_helper(present(family_ids), present(family_ids_file), 9_int32, 10_int32, ierr)
-        call require_paired_helper(present(family_centroids), present(family_centroids_file), 11_int32, 12_int32, ierr)
-        call require_paired_helper(present(shift_vectors), present(shift_vectors_file), 13_int32, 14_int32, ierr)
+        call require_paired_helper(present(gene_ids), present(gene_ids_file), 2_int32, 3_int32, ierr)
+        call require_paired_helper(present(expression), present(expression_file), 4_int32, 5_int32, ierr)
+        call require_paired_helper(present(gene_to_family), present(gene_to_family_file), 6_int32, 7_int32, ierr)
+        call require_paired_helper(present(family_ids), present(family_ids_file), 8_int32, 9_int32, ierr)
+        call require_paired_helper(present(family_centroids), present(family_centroids_file), 10_int32, 11_int32, ierr)
+        call require_paired_helper(present(shift_vectors), present(shift_vectors_file), 12_int32, 13_int32, ierr)
         if (is_err(ierr)) return
 
         ! Determine which arrays are present
@@ -925,9 +925,9 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Read standard tox from a zip archive
-    subroutine read_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, expression_file, &
+    subroutine read_tox_data(zip_filename, gene_ids, gene_ids_file, expression, expression_file, &
                              gene_to_family, gene_to_family_file, family_ids, family_ids_file, &
-                             family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)
+                             family_centroids, family_centroids_file, shift_vectors, shift_vectors_file, ierr)
         use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
         use tox_data_read_write
         use iso_fortran_env, only: real64, int32
@@ -935,8 +935,6 @@ contains
 
         character(len=*), intent(in) :: zip_filename
         !! Name of the zipfile
-        integer(int32), intent(out) :: ierr
-        !! Error code
         character(len=:), allocatable, optional, intent(out) :: gene_ids(:)
         !! Gene IDs array, will be populated if provided
         character(len=:), allocatable, optional, intent(out) :: family_ids(:)
@@ -961,6 +959,8 @@ contains
         !! Name of the family centroids file in the zip archive
         character(len=:), allocatable, optional, intent(out) :: shift_vectors_file
         !! Name of the shift vectors file in the zip archive
+        integer(int32), intent(out) :: ierr
+        !! Error code
 
         character(len=:), allocatable :: keys(:), filenames(:)
         integer(int32) :: i_key, type_code

@@ -52,7 +52,12 @@ function get_c_flags() {
   # a clean build. A C-only flag does: the library sits in the Fortran-keyed directory, so
   # switching one back reuses the objects without relinking -- check_build_state hashes these.
   # That is also why the R fallback adds NO_R_BINDING to $DIRECTIVES, not to the C flags alone.
-  C_ONLY_FLAGS="-fPIC"
+  #
+  # -O2 in every profile: the shims are marshalling glue with no arithmetic a level could change,
+  # and since #221 they check every element of an integer, logical and string array while
+  # converting it. Without a level gcc compiles them at -O0 (fpm hands --flag to Fortran only),
+  # which made that pass cost more than the R-level as.integer() it replaced.
+  C_ONLY_FLAGS="-fPIC -O2"
   if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
     :
   elif [[ -z $(command -v R) ]]; then

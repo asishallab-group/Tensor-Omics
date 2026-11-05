@@ -13,7 +13,7 @@ module tox_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_as_view
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
     M_IMPLICIT_NONE
     private
 
@@ -37,6 +37,7 @@ contains
             n_samples,&
             n_timepoints,&
             centroids,&
+            n_centroids_elements_dim_1,&
             labels,&
             label_counts,&
             max_iterations,&
@@ -54,9 +55,11 @@ contains
             !! number of samples
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
+        integer(c_int), intent(in), target :: n_centroids_elements_dim_1
+            !! 1. dimension of `centroids`, which must be `n_factors*n_timepoints`
         real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
             !! matrix with the trajectories to cluster
-        real(c_double), dimension(n_factors*n_timepoints, n_clusters), intent(inout), target :: centroids
+        real(c_double), dimension(n_centroids_elements_dim_1, n_clusters), intent(inout), target :: centroids
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
@@ -80,11 +83,16 @@ contains
         M_CHECK_NON_NULL(n_factors)
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
+        M_CHECK_NON_NULL(n_centroids_elements_dim_1)
         M_CHECK_NON_NULL(max_iterations)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(centroids, (n_factors*n_timepoints) * n_clusters)
+        M_CHECK_ARRAY_NON_NULL(centroids, n_centroids_elements_dim_1 * n_clusters)
         M_CHECK_ARRAY_NON_NULL(labels, n_samples)
         M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
+        if (n_centroids_elements_dim_1 /= n_factors*n_timepoints) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 6_int32)
+            return
+        end if
 
         call cluster_factor_trajectories_k_means(&
             n_clusters = n_clusters,&
@@ -113,6 +121,7 @@ contains
             n_samples,&
             n_timepoints,&
             centroids,&
+            n_centroids_elements_dim_1,&
             labels,&
             label_counts,&
             tmp_flattened_trajectories,&
@@ -131,9 +140,11 @@ contains
             !! number of samples
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
+        integer(c_int), intent(in), target :: n_centroids_elements_dim_1
+            !! 1. dimension of `centroids`, which must be `n_factors*n_timepoints`
         real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
             !! matrix with the trajectories to cluster
-        real(c_double), dimension(n_factors*n_timepoints, n_clusters), intent(inout), target :: centroids
+        real(c_double), dimension(n_centroids_elements_dim_1, n_clusters), intent(inout), target :: centroids
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
@@ -159,12 +170,17 @@ contains
         M_CHECK_NON_NULL(n_factors)
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
+        M_CHECK_NON_NULL(n_centroids_elements_dim_1)
         M_CHECK_NON_NULL(max_iterations)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(centroids, (n_factors*n_timepoints) * n_clusters)
+        M_CHECK_ARRAY_NON_NULL(centroids, n_centroids_elements_dim_1 * n_clusters)
         M_CHECK_ARRAY_NON_NULL(labels, n_samples)
         M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
         M_CHECK_ARRAY_NON_NULL(tmp_flattened_trajectories, (n_factors*n_timepoints) * n_samples)
+        if (n_centroids_elements_dim_1 /= n_factors*n_timepoints) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 6_int32)
+            return
+        end if
 
         call cluster_factor_trajectories_k_means_expert(&
             n_clusters = n_clusters,&
