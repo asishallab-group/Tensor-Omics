@@ -81,11 +81,22 @@
 #'   The value `0` is additionally accepted.
 #' @param is_outlier a logical vector. Whether each gene is an outlier
 #' @param axis_labels a character vector. Name of each coordinate axis (e.g. tissues); unique and non-empty
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param family_ids a character vector. Id of each family; unique and non-empty
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_ids a character vector. Id of each gene; unique and non-empty
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_species a character vector. Species of each gene
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_types a character vector. Type of each gene, e.g. ortholog or paralog
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param filename a string. Path of the JSON file to create; it must not exist yet
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return invisibly `NULL`; called for its effect.
 #' @export
 save_flyer_json <- function(expression_vectors, family_centroids, gene_to_fam, is_outlier, axis_labels, family_ids, gene_ids, gene_species, gene_types, filename) {
@@ -98,23 +109,23 @@ save_flyer_json <- function(expression_vectors, family_centroids, gene_to_fam, i
     gene_ids <- .tox_as_character(gene_ids, "gene_ids")
     gene_species <- .tox_as_character(gene_species, "gene_species")
     gene_types <- .tox_as_character(gene_types, "gene_types")
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     if (dim(family_centroids)[1] != dim(expression_vectors)[1])
-        .tox_shape_error("family_centroids", dim(family_centroids)[1], "expression_vectors", dim(expression_vectors)[1])
-    if (length(axis_labels) != dim(expression_vectors)[1])
-        .tox_shape_error("axis_labels", length(axis_labels), "expression_vectors", dim(expression_vectors)[1])
+        .tox_shape_error("family_centroids", 1L, dim(family_centroids)[1], "'expression_vectors' implies n_axes == ", dim(expression_vectors)[1], "n_axes, n_families")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
     if (length(is_outlier) != dim(expression_vectors)[2])
-        .tox_shape_error("is_outlier", length(is_outlier), "expression_vectors", dim(expression_vectors)[2])
-    if (length(gene_ids) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_ids", length(gene_ids), "expression_vectors", dim(expression_vectors)[2])
-    if (length(gene_species) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_species", length(gene_species), "expression_vectors", dim(expression_vectors)[2])
-    if (length(gene_types) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_types", length(gene_types), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("is_outlier", 1L, length(is_outlier), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
+    if (length(axis_labels) != dim(expression_vectors)[1])
+        .tox_shape_error("axis_labels", 1L, length(axis_labels), "'expression_vectors' implies n_axes == ", dim(expression_vectors)[1], "n_axes")
     if (length(family_ids) != dim(family_centroids)[2])
-        .tox_shape_error("family_ids", length(family_ids), "family_centroids", dim(family_centroids)[2])
+        .tox_shape_error("family_ids", 1L, length(family_ids), "'family_centroids' implies n_families == ", dim(family_centroids)[2], "n_families")
+    if (length(gene_ids) != dim(expression_vectors)[2])
+        .tox_shape_error("gene_ids", 1L, length(gene_ids), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
+    if (length(gene_species) != dim(expression_vectors)[2])
+        .tox_shape_error("gene_species", 1L, length(gene_species), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
+    if (length(gene_types) != dim(expression_vectors)[2])
+        .tox_shape_error("gene_types", 1L, length(gene_types), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
     .result <- .Call("save_flyer_json_call", expression_vectors, family_centroids, gene_to_fam, is_outlier, axis_labels, family_ids, gene_ids, gene_species, gene_types, filename)
     .arguments <- c("n_axes", "n_genes", "n_families", "expression_vectors", "family_centroids", "gene_to_fam", "is_outlier", "axis_labels", "family_ids", "gene_ids", "gene_species", "gene_types", "filename", "ierr")

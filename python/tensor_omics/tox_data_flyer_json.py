@@ -9,38 +9,39 @@ documentation is the specification of the file format.
 Python binding, generated from tox_data_flyer_json. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.save_flyer_json_c.restype = None
 _lib.save_flyer_json_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -145,16 +146,22 @@ def save_flyer_json(
         Whether each gene is an outlier
     axis_labels : sequence of str, of length n_axes
         Name of each coordinate axis (e.g. tissues); unique and non-empty
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_ids : sequence of str, of length n_families
         Id of each family; unique and non-empty
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids : sequence of str, of length n_genes
         Id of each gene; unique and non-empty
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_species : sequence of str, of length n_genes
         Species of each gene
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_types : sequence of str, of length n_genes
         Type of each gene, e.g. ortholog or paralog
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     filename : str
         Path of the JSON file to create; it must not exist yet
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -162,6 +169,9 @@ def save_flyer_json(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -170,72 +180,27 @@ def save_flyer_json(
     Generated from the Fortran procedure `tox_data_flyer_json::save_flyer_json`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
-    if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
-    try:
-        family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {error}") from None
-    if family_centroids.ndim != 2:
-        raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
-    try:
-        is_outlier = np.ascontiguousarray(is_outlier, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'is_outlier' must be an array of np.bool_: {error}") from None
-    if is_outlier.ndim != 1:
-        raise ValueError(f"'is_outlier' must have 1 dimension, but has {is_outlier.ndim}")
-    try:
-        _axis_labels_bytes = [str(_s).encode() for _s in axis_labels]
-        _axis_labels_width = max(map(len, _axis_labels_bytes), default=0) or 1
-        axis_labels = np.asarray([_b.ljust(_axis_labels_width) for _b in _axis_labels_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'axis_labels' must be a sequence of strings: {error}") from None
-    if axis_labels.ndim != 1:
-        raise ValueError(f"'axis_labels' must have 1 dimension, but has {axis_labels.ndim}")
-    try:
-        _family_ids_bytes = [str(_s).encode() for _s in family_ids]
-        _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
-        family_ids = np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'family_ids' must be a sequence of strings: {error}") from None
-    if family_ids.ndim != 1:
-        raise ValueError(f"'family_ids' must have 1 dimension, but has {family_ids.ndim}")
-    try:
-        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
-        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
-    if gene_ids.ndim != 1:
-        raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
-    try:
-        _gene_species_bytes = [str(_s).encode() for _s in gene_species]
-        _gene_species_width = max(map(len, _gene_species_bytes), default=0) or 1
-        gene_species = np.asarray([_b.ljust(_gene_species_width) for _b in _gene_species_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_species' must be a sequence of strings: {error}") from None
-    if gene_species.ndim != 1:
-        raise ValueError(f"'gene_species' must have 1 dimension, but has {gene_species.ndim}")
-    try:
-        _gene_types_bytes = [str(_s).encode() for _s in gene_types]
-        _gene_types_width = max(map(len, _gene_types_bytes), default=0) or 1
-        gene_types = np.asarray([_b.ljust(_gene_types_width) for _b in _gene_types_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_types' must be a sequence of strings: {error}") from None
-    if gene_types.ndim != 1:
-        raise ValueError(f"'gene_types' must have 1 dimension, but has {gene_types.ndim}")
-    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    family_centroids = _contract.reals(family_centroids, "family_centroids", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    is_outlier = _contract.logicals(is_outlier, "is_outlier", ndim=1)
+    _axis_labels_bytes = _contract.strings(axis_labels, "axis_labels")
+    _axis_labels_width = max(map(len, _axis_labels_bytes), default=0) or 1
+    axis_labels = _np.asarray([_b.ljust(_axis_labels_width) for _b in _axis_labels_bytes], dtype="S")
+    _family_ids_bytes = _contract.strings(family_ids, "family_ids")
+    _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
+    family_ids = _np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
+    _gene_ids_bytes = _contract.strings(gene_ids, "gene_ids")
+    _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+    gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+    _gene_species_bytes = _contract.strings(gene_species, "gene_species")
+    _gene_species_width = max(map(len, _gene_species_bytes), default=0) or 1
+    gene_species = _np.asarray([_b.ljust(_gene_species_width) for _b in _gene_species_bytes], dtype="S")
+    _gene_types_bytes = _contract.strings(gene_types, "gene_types")
+    _gene_types_width = max(map(len, _gene_types_bytes), default=0) or 1
+    gene_types = _np.asarray([_b.ljust(_gene_types_width) for _b in _gene_types_bytes], dtype="S")
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -248,66 +213,50 @@ def save_flyer_json(
     gene_types_strlen = gene_types.itemsize
     filename_strlen = filename.itemsize
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if family_centroids.shape[0] != n_axes:
-        raise ValueError(f"'family_centroids' has {family_centroids.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_axes == {n_axes}"
-        )
-    if axis_labels.shape[0] != n_axes:
-        raise ValueError(f"'axis_labels' has {axis_labels.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'family_centroids' has {family_centroids.shape[0]} along axis 0, but 'expression_vectors' implies n_axes == {n_axes}; 'family_centroids' is declared with shape (n_axes, n_families)", argument="family_centroids")
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
     if is_outlier.shape[0] != n_genes:
-        raise ValueError(f"'is_outlier' has {is_outlier.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
-    if gene_ids.shape[0] != n_genes:
-        raise ValueError(f"'gene_ids' has {gene_ids.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
-    if gene_species.shape[0] != n_genes:
-        raise ValueError(f"'gene_species' has {gene_species.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
-    if gene_types.shape[0] != n_genes:
-        raise ValueError(f"'gene_types' has {gene_types.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'is_outlier' has {is_outlier.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'is_outlier' is declared with shape (n_genes)", argument="is_outlier")
+    if axis_labels.shape[0] != n_axes:
+        raise _ToxArgumentError(f"'axis_labels' has {axis_labels.shape[0]} along axis 0, but 'expression_vectors' implies n_axes == {n_axes}; 'axis_labels' is declared with shape (n_axes)", argument="axis_labels")
     if family_ids.shape[0] != n_families:
-        raise ValueError(f"'family_ids' has {family_ids.shape[0]} along axis 0, but "
-            f"'family_centroids' implies n_families == {n_families}"
-        )
+        raise _ToxArgumentError(f"'family_ids' has {family_ids.shape[0]} along axis 0, but 'family_centroids' implies n_families == {n_families}; 'family_ids' is declared with shape (n_families)", argument="family_ids")
+    if gene_ids.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'gene_ids' has {gene_ids.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_ids' is declared with shape (n_genes)", argument="gene_ids")
+    if gene_species.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'gene_species' has {gene_species.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_species' is declared with shape (n_genes)", argument="gene_species")
+    if gene_types.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'gene_types' has {gene_types.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_types' is declared with shape (n_genes)", argument="gene_types")
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.save_flyer_json_c(
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         expression_vectors,
         family_centroids,
         gene_to_fam,
         is_outlier,
         axis_labels,
-        ctypes.byref(ctypes.c_int(axis_labels_strlen)),
+        _ctypes.byref(_ctypes.c_int(axis_labels_strlen)),
         family_ids,
-        ctypes.byref(ctypes.c_int(family_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(family_ids_strlen)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
         gene_species,
-        ctypes.byref(ctypes.c_int(gene_species_strlen)),
+        _ctypes.byref(_ctypes.c_int(gene_species_strlen)),
         gene_types,
-        ctypes.byref(ctypes.c_int(gene_types_strlen)),
+        _ctypes.byref(_ctypes.c_int(gene_types_strlen)),
         filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(filename_strlen)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _SAVE_FLYER_JSON_ARGUMENTS, _SAVE_FLYER_JSON_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _SAVE_FLYER_JSON_ARGUMENTS, _SAVE_FLYER_JSON_ARGUMENT_SOURCES)
 
     return None

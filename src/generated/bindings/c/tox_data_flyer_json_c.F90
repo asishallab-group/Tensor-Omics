@@ -10,10 +10,12 @@
 module tox_data_flyer_json_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
-    use, intrinsic :: iso_c_binding, only: c_loc
+    use, intrinsic :: iso_c_binding, only: c_loc, c_ptr
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
+
+    character(kind=c_char, len=1), target :: empty_view_anchor
 
     public :: save_flyer_json_c
 
@@ -155,10 +157,15 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         character(len=axis_labels_strlen), pointer, dimension(:) :: axis_labels_f
+        type(c_ptr) :: axis_labels_address
         character(len=family_ids_strlen), pointer, dimension(:) :: family_ids_f
+        type(c_ptr) :: family_ids_address
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        type(c_ptr) :: gene_ids_address
         character(len=gene_species_strlen), pointer, dimension(:) :: gene_species_f
+        type(c_ptr) :: gene_species_address
         character(len=gene_types_strlen), pointer, dimension(:) :: gene_types_f
+        type(c_ptr) :: gene_types_address
         character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
@@ -183,16 +190,26 @@ contains
         M_CHECK_ARRAY_NON_NULL(gene_types, gene_types_strlen * n_genes)
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
 
-        M_CHECK_CHARACTER_VIEW(axis_labels, axis_labels_strlen * n_axes)
-        call c_f_pointer(c_loc(axis_labels), axis_labels_f, [n_axes])
-        M_CHECK_CHARACTER_VIEW(family_ids, family_ids_strlen * n_families)
-        call c_f_pointer(c_loc(family_ids), family_ids_f, [n_families])
-        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_genes)
-        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_genes])
-        M_CHECK_CHARACTER_VIEW(gene_species, gene_species_strlen * n_genes)
-        call c_f_pointer(c_loc(gene_species), gene_species_f, [n_genes])
-        M_CHECK_CHARACTER_VIEW(gene_types, gene_types_strlen * n_genes)
-        call c_f_pointer(c_loc(gene_types), gene_types_f, [n_genes])
+        M_CHECK_CHARACTER_ARRAY_VIEW(axis_labels, axis_labels_strlen, n_axes)
+        axis_labels_address = c_loc(empty_view_anchor)
+        if (n_axes > 0) axis_labels_address = c_loc(axis_labels)
+        call c_f_pointer(axis_labels_address, axis_labels_f, [n_axes])
+        M_CHECK_CHARACTER_ARRAY_VIEW(family_ids, family_ids_strlen, n_families)
+        family_ids_address = c_loc(empty_view_anchor)
+        if (n_families > 0) family_ids_address = c_loc(family_ids)
+        call c_f_pointer(family_ids_address, family_ids_f, [n_families])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_ids, gene_ids_strlen, n_genes)
+        gene_ids_address = c_loc(empty_view_anchor)
+        if (n_genes > 0) gene_ids_address = c_loc(gene_ids)
+        call c_f_pointer(gene_ids_address, gene_ids_f, [n_genes])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_species, gene_species_strlen, n_genes)
+        gene_species_address = c_loc(empty_view_anchor)
+        if (n_genes > 0) gene_species_address = c_loc(gene_species)
+        call c_f_pointer(gene_species_address, gene_species_f, [n_genes])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_types, gene_types_strlen, n_genes)
+        gene_types_address = c_loc(empty_view_anchor)
+        if (n_genes > 0) gene_types_address = c_loc(gene_types)
+        call c_f_pointer(gene_types_address, gene_types_f, [n_genes])
         M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
 

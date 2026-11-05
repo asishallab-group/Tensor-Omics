@@ -5,32 +5,35 @@ Module for serializing character arrays into files
 Python binding, generated from f42_serde_arrays_serialize_char. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.serialize_char_helper_c.restype = None
 _lib.serialize_char_helper_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
 _SERIALIZE_CHAR_HELPER_ARGUMENTS = ("arr", "n_strings", "arr_shape", "filename", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _SERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES = (None, "arr", "arr", None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_SERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES = ("n_strings", None, None, None, None,)
 
 def serialize_char_helper(
         arr,
@@ -42,8 +45,10 @@ def serialize_char_helper(
     ----------
     arr : sequence of str, of length *
         Array to be serialized
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     filename : str
         Name of the file to write to
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -51,6 +56,9 @@ def serialize_char_helper(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -59,15 +67,12 @@ def serialize_char_helper(
     Generated from the Fortran procedure `f42_serde_arrays_serialize_char::serialize_char_helper`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    arr_shape = np.ascontiguousarray(np.shape(arr), dtype=np.int32)
-    try:
-        _arr_bytes = [str(_s).encode() for _s in np.asarray(arr).ravel(order='F')]
-        _arr_width = max(map(len, _arr_bytes), default=0) or 1
-        arr = np.asarray([_b.ljust(_arr_width) for _b in _arr_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'arr' must be a sequence of strings: {error}") from None
-    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    arr_shape = _np.ascontiguousarray(_np.shape(arr), dtype=_np.int32)
+    _arr_bytes = _contract.strings(arr, "arr", any_rank=True)
+    _arr_width = max(map(len, _arr_bytes), default=0) or 1
+    arr = _np.asarray([_b.ljust(_arr_width) for _b in _arr_bytes], dtype="S")
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     arr_strlen = arr.itemsize
@@ -76,19 +81,19 @@ def serialize_char_helper(
     filename_strlen = filename.itemsize
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.serialize_char_helper_c(
         arr,
-        ctypes.byref(ctypes.c_int(arr_strlen)),
-        ctypes.byref(ctypes.c_int(n_strings)),
+        _ctypes.byref(_ctypes.c_int(arr_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_strings)),
         arr_shape,
-        ctypes.byref(ctypes.c_int(n_arr_shape_elements)),
+        _ctypes.byref(_ctypes.c_int(n_arr_shape_elements)),
         filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(filename_strlen)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _SERIALIZE_CHAR_HELPER_ARGUMENTS, _SERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _SERIALIZE_CHAR_HELPER_ARGUMENTS, _SERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES, shapes=_SERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES)
 
     return None

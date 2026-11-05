@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.0% of total for modules and submodules.">181 statements</a>
+                 title=" 0.9% of total for modules and submodules.">181 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -173,9 +173,9 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -214,7 +214,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v~2"></span>
+              <span class="anchor" id="variable-v"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -229,7 +229,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v_norm~2"></span>
+              <span class="anchor" id="variable-v_norm"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -244,7 +244,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~18"></span>
+              <span class="anchor" id="variable-n_points~25"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -259,7 +259,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~4"></span>
+              <span class="anchor" id="variable-status"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -274,7 +274,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~64"></span>
+              <span class="anchor" id="variable-ierr~46"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -314,7 +314,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory~2"></span>
+              <span class="anchor" id="variable-trajectory"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -329,7 +329,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory_norm~2"></span>
+              <span class="anchor" id="variable-trajectory_norm"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -344,7 +344,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~4"></span>
+              <span class="anchor" id="variable-n_factors~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -359,7 +359,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~4"></span>
+              <span class="anchor" id="variable-n_timepoints~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -374,7 +374,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~5"></span>
+              <span class="anchor" id="variable-status~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -389,7 +389,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~65"></span>
+              <span class="anchor" id="variable-ierr~47"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -415,6 +415,136 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <div class="card-body">
           
   <p>C-wrapper for <a href="../proc/normalize_all_trajectories.html">normalize_all_trajectories</a></p><a href="../proc/normalize_all_trajectories_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~2"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints), target
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>Original trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories_norm"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints), target
+            </td>
+            <td>::</td>
+            <td><strong>trajectories_norm</strong></td>
+            <td>
+<p>Normalized trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>Number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>Number of samples/entities</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>Number of time points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-status~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples), target
+            </td>
+            <td>::</td>
+            <td><strong>status</strong></td>
+            <td>
+<p>Status code for specific warnings, one per factor per sample</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~48"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_expert_c"></span> <h3>public  subroutine <a href='../proc/normalize_all_trajectories_expert_c.html'>normalize_all_trajectories_expert_c</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, tmp_series, tmp_series_norm, status, ierr) bind(C, name="normalize_all_trajectories_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/normalize_all_trajectories_expert.html">normalize_all_trajectories_expert</a></p><a href="../proc/normalize_all_trajectories_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -459,7 +589,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~5"></span>
+              <span class="anchor" id="variable-n_factors~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -489,7 +619,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~5"></span>
+              <span class="anchor" id="variable-n_timepoints~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -504,137 +634,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_factors, n_samples), target
-            </td>
-            <td>::</td>
-            <td><strong>status</strong></td>
-            <td>
-<p>Status code for specific warnings, one per factor per sample</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~66"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_expert_c"></span> <h3>public  subroutine <a href='../proc/normalize_all_trajectories_expert_c.html'>normalize_all_trajectories_expert_c</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, tmp_series, tmp_series_norm, status, ierr) bind(C, name="normalize_all_trajectories_expert_c")  
-</h3></div>
-    <div class="card-body">
-          
-  <p>C-wrapper for <a href="../proc/normalize_all_trajectories_expert.html">normalize_all_trajectories_expert</a></p><a href="../proc/normalize_all_trajectories_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-trajectories~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_factors, n_samples, n_timepoints), target
-            </td>
-            <td>::</td>
-            <td><strong>trajectories</strong></td>
-            <td>
-<p>Original trajectories</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-trajectories_norm~3"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_factors, n_samples, n_timepoints), target
-            </td>
-            <td>::</td>
-            <td><strong>trajectories_norm</strong></td>
-            <td>
-<p>Normalized trajectories</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_factors~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_factors</strong></td>
-            <td>
-<p>Number of factors</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_samples~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_samples</strong></td>
-            <td>
-<p>Number of samples/entities</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_timepoints~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_timepoints</strong></td>
-            <td>
-<p>Number of time points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_series~2"></span>
+              <span class="anchor" id="variable-tmp_series"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -649,7 +649,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_series_norm~2"></span>
+              <span class="anchor" id="variable-tmp_series_norm"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -664,7 +664,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~7"></span>
+              <span class="anchor" id="variable-status~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -679,7 +679,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~67"></span>
+              <span class="anchor" id="variable-ierr~49"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -722,7 +722,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-30 09:20 +0000             </p>
           </div>
         </div>
         <br>

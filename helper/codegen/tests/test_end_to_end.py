@@ -19,6 +19,8 @@ from codegen.abi.c_abi import build_project
 from codegen.config import Paths
 from codegen.diagnostics import DiagnosticBag
 from codegen.emit.errors_python import PythonErrorEmitter
+from codegen.emit.python_contract import contract_module
+from codegen.names import PYTHON_CONTRACT
 from codegen.emit.fortran_c import FortranCEmitter
 from codegen.emit.python_ctypes import PythonEmitter
 from codegen.frontend.ford_frontend import FordFrontend
@@ -47,14 +49,6 @@ def _generate(out: Path) -> None:
     for module in binding:
         (out / f"{module.name}.F90").write_text(FortranCEmitter().module(module))
 
-    emitter = PythonEmitter(library="build/libfixtures.so")
-    package = out / "tensor_omics"
-    package.mkdir(exist_ok=True)
-    (package / "library.py").write_text(emitter.library_module())
-    (package / "__init__.py").write_text(emitter.package_init(list(binding)))
-    for module in binding:
-        (package / f"{module.stripped_name}.py").write_text(emitter.module(module))
-
     errors = DiagnosticBag()
     real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), errors).parse()
     catalogue = ErrorCatalogue.from_module(
@@ -63,7 +57,16 @@ def _generate(out: Path) -> None:
         real.project.constant_values(),
         arg_pos_factor=real.arg_pos_factor,
     )
+
+    emitter = PythonEmitter(library="build/libfixtures.so")
+    package = out / "tensor_omics"
+    package.mkdir(exist_ok=True)
+    (package / "library.py").write_text(emitter.library_module())
+    (package / "__init__.py").write_text(emitter.package_init(list(binding), catalogue))
+    for module in binding:
+        (package / f"{module.stripped_name}.py").write_text(emitter.module(module))
     (package / "error_handling.py").write_text(PythonErrorEmitter(catalogue).module())
+    (package / f"{PYTHON_CONTRACT}.py").write_text(contract_module())
 
 
 def _build(out: Path) -> Path:
@@ -133,6 +136,26 @@ class TestItRuns:
         # fx_cluster (the expert twin) gets n_work via DM_OUTPUT_FROM(AUTO): it calls
         # fx_work_size itself, so the caller never supplies the work size
         assert "fx_cluster_expert" in tox.__all__
+
+
+class TestTheErrorModuleAtTheTopLevel:
+    """#221 C: what `error_handling` defines is importable from the package itself."""
+
+    def test_the_codes_classes_factor_and_decoder_are_the_error_module_s(self, tox):
+        errors = tox.error_handling
+        for name in ("ERR_OK", "ERR_DIVISION_BY_ZERO", "ARG_POS_FACTOR", "ToxError",
+                     "ToxInputError", "ToxArgumentError", "check_err_code"):
+            assert getattr(tox, name) is getattr(errors, name)
+            assert name in tox.__all__
+
+    def test_a_failed_call_is_caught_by_the_top_level_class_and_code(self, tox):
+        with pytest.raises(tox.ToxInputError) as raised:
+            tox.fx_first_share([0.0, 0.0])
+        assert raised.value.code == tox.ERR_DIVISION_BY_ZERO
+
+    def test_a_binding_side_refusal_is_the_top_level_argument_error(self, tox):
+        with pytest.raises(tox.ToxArgumentError):
+            tox.fx_count_positive(["a"])
 
 
 class TestAutoOutputFrom:
@@ -267,6 +290,44 @@ class TestResultsAreRight:
     def test_a_function_result_comes_back_as_the_return_value(self, tox, np):
         assert tox.fx_count_positive(np.array([-1.0, 2.0, 3.0])) == 2
 
+    def test_a_function_with_its_own_ierr_returns_its_result_and_raises_its_error(self, tox):
+        assert tox.fx_first_share([1.0, 3.0]) == 0.25
+        with pytest.raises(tox.error_handling.ToxError) as raised:
+            tox.fx_first_share([0.0, 0.0])
+        assert raised.value.code == 210  # ERR_DIVISION_BY_ZERO
+
+    def test_c_takes_a_function_s_result_before_its_own_ierr(self, tox):
+        # #221 B1: the result was appended after it, `fx_first_share_c(values, n, ierr, share)`
+        import ctypes
+
+        library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+        values = (ctypes.c_double * 2)(1.0, 3.0)
+        n_values, share, ierr = ctypes.c_int(2), ctypes.c_double(-1.0), ctypes.c_int(-1)
+        library.fx_first_share_c(values, ctypes.byref(n_values), ctypes.byref(share),
+                                 ctypes.byref(ierr))
+
+        assert (share.value, ierr.value) == (0.25, 0)
+
+    def test_a_masked_matrix_result_is_column_truncated(self, tox, np):
+        # fx_masked_matrix mirrors candidates_n_points_n_neighbors: a fixed 2-row,
+        # N-column output where only the first n_results columns are real. Python's
+        # `[..., :n]` already truncates the right (last/outermost) axis regardless of
+        # rank -- this is the "never actually run" gap the R bug's fix closes for R too.
+        mask = np.array([True, False, True, True])
+
+        results = tox.fx_masked_matrix(mask)
+
+        assert results.shape == (2, 3)
+        assert np.array_equal(results, [[1, 2, 3], [10, 20, 30]])
+
+    def test_a_masked_matrix_result_with_one_real_column_stays_2d(self, tox, np):
+        mask = np.array([False, True, False])
+
+        results = tox.fx_masked_matrix(mask)
+
+        assert results.shape == (2, 1)
+        assert np.array_equal(results, [[1], [10]])
+
 
 class TestModes:
     def test_a_mode_travels_as_a_string_and_selects_the_branch(self, tox, np):
@@ -278,6 +339,43 @@ class TestModes:
     def test_an_unknown_mode_is_rejected_by_the_wrapper(self, tox, np):
         with pytest.raises(tox.ToxError):
             tox.fx_modes(np.array([1.0]), "nonsense", "ward")
+
+
+class TestAnArrayOfNoStrings:
+    """#221 B3: an array of strings may hold none. The C wrapper refused it as
+    ERR_EMPTY_INPUT before the procedure ran, so a data set with zero families could be
+    written from Fortran but not from Python or R."""
+
+    def test_an_input_reaches_the_procedure(self, tox):
+        assert tox.fx_count_matching([], "alpha") == 0
+        assert tox.fx_optional_strings(extras=[]) == 0
+
+    def test_an_output_comes_back_empty(self, tox, np):
+        assert tox.fx_labels(np.array([]))["labels"] == []
+
+    def test_c_still_refuses_a_zero_width_with_strings_to_view(self, tox):
+        # Python and R never send one -- they pad an empty string to one blank -- so only a C
+        # caller can, and it gets ERR_EMPTY_INPUT (202); zero strings of zero width are fine
+        import ctypes
+
+        library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+        buffer = (ctypes.c_char * 1)()
+
+        def call(width, count, tag=None, tag_width=0):
+            n_given, ierr = ctypes.c_int(-1), ctypes.c_int(-1)
+            library.fx_optional_strings_c(
+                tag, ctypes.byref(ctypes.c_int(tag_width)),
+                buffer, ctypes.byref(ctypes.c_int(width)), ctypes.byref(ctypes.c_int(count)),
+                ctypes.byref(n_given), ctypes.byref(ierr),
+            )
+            return ierr.value, n_given.value
+
+        assert call(0, 2) == (202, -1)
+        assert call(-1, 0) == (0, 0)
+        assert call(0, 0) == (0, 0)
+        assert call(1, -1) == (202, -1)
+        # a single string of zero width is refused as before
+        assert call(0, 0, tag=buffer, tag_width=0) == (202, -1)
 
 
 class TestCharacters:
@@ -328,8 +426,7 @@ class TestCharacters:
         assert tox.fx_optional_strings(tag="") == 0
 
     def test_a_non_iterable_for_a_string_vector_names_the_argument(self, tox):
-        # str() of anything succeeds, so the failure is a non-iterable, not a bad element
-        with pytest.raises(TypeError, match="'names' must be a sequence of strings"):
+        with pytest.raises(TypeError, match="'names' must be a sequence of str, not int"):
             tox.fx_count_matching(42, "x")
 
 
@@ -347,17 +444,32 @@ class TestShapeChecking:
         with pytest.raises(ValueError, match="'weights'.*'matrix'"):
             tox.fx_sum_matrix(matrix, np.array([1.0, 2.0, 3.0]))
 
+    def test_the_refusal_is_an_input_error_without_a_code(self, tox, np):
+        # the binding's own refusal: a ToxArgumentError, which is a ToxInputError carrying no
+        # tox code, and still the ValueError it used to be (#221)
+        errors = tox.error_handling
+        matrix = np.asfortranarray([[1.0, 2.0], [3.0, 4.0]])
+
+        with pytest.raises(errors.ToxInputError) as caught:
+            tox.fx_sum_matrix(matrix, np.array([1.0, 2.0, 3.0]))
+
+        assert type(caught.value) is errors.ToxArgumentError
+        assert (caught.value.code, caught.value.argument) == (None, "weights")
+        assert isinstance(caught.value, ValueError) and isinstance(caught.value, TypeError)
+
 
 class TestBadInputsAreNamed:
     def test_a_value_that_cannot_be_an_array_names_the_argument(self, tox):
-        # numpy raises "could not convert string to float", which does not say which
-        # argument was wrong -- it cannot know
-        with pytest.raises(TypeError, match="'values' must be an array of np.float64"):
+        # numpy would raise "could not convert string to float", which does not say which
+        # argument was wrong -- it cannot know -- or parse '1.5' as a number (#221)
+        with pytest.raises(TypeError, match="'values' must be an array of numbers"):
             tox.fx_count_positive("hello")
 
-    def test_the_underlying_reason_is_kept(self, tox):
-        with pytest.raises(TypeError, match="could not convert"):
+    def test_the_refusal_says_what_was_passed(self, tox):
+        with pytest.raises(TypeError, match="not 'hello' \\(str\\)"):
             tox.fx_count_positive("hello")
+        with pytest.raises(TypeError, match="not an array of dtype <U3"):
+            tox.fx_count_positive(["1.5", "2"])
 
     def test_a_wrong_type_in_a_second_argument_names_that_one(self, tox, np):
         matrix = np.asfortranarray([[1.0, 2.0], [3.0, 4.0]])
@@ -389,3 +501,28 @@ class TestErrors:
 
     def test_a_successful_call_returns_no_error_code(self, tox, np):
         assert tox.fx_normalize(np.array([3.0, 4.0])) is None
+
+
+class TestDeclarationForms:
+    """Declarations Fortran reads one way and a binding could read another (issue #221)."""
+
+    def test_an_entity_s_own_extent_overrides_the_dimension_attribute(self, tox, np):
+        # `dimension(n) :: a, b(m)`: `b` has m elements; it was sized by n, so this valid
+        # call was refused and a two-element `b` was read past its end
+        assert list(inspect.signature(tox.fx_two_lengths).parameters) == ["a", "b"]
+        assert tox.fx_two_lengths(np.ones(2), np.ones(3)) == pytest.approx(302.0)
+
+    def test_an_extent_in_another_case_than_its_declaration_works(self, tox, np):
+        # `N_Values` sizes `values(n_values)`; Python saw two names, one never defined
+        assert list(inspect.signature(tox.fx_case_mix).parameters) == ["values"]
+        assert np.allclose(tox.fx_case_mix(np.array([1.0, 2.5])), [2.0, 5.0])
+
+
+class TestKindedDefaults:
+    """A default written with its kind, as the guide asks (issue #221, G-R7)."""
+
+    def test_a_kinded_logical_default_is_passed(self, tox):
+        # DM_DEFAULT(.true._c_bool) could not be evaluated at all
+        assert inspect.signature(tox.fx_kinded_default).parameters["negate"].default is True
+        assert tox.fx_kinded_default(2.0) == pytest.approx(-2.0)
+        assert tox.fx_kinded_default(2.0, negate=False) == pytest.approx(2.0)

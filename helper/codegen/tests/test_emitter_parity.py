@@ -24,11 +24,16 @@ from codegen.emit.python_ctypes import PythonEmitter
 from codegen.emit.c_call import CCallEmitter
 from codegen.emit.r_wrapper import RWrapperEmitter
 from codegen.frontend.ford_frontend import FordFrontend
+from codegen.ir.directives import Directives, ResultSizeIs
 from codegen.ir.doc import DocTable
+from codegen.ir.entities import Project
 from codegen.ir.roles import analyse_project
+from codegen.ir.types import Intent
 from codegen.ir.validate import validate_project
 from codegen.synthesize import synthesize_wrappers
 from conftest import REPO_ROOT
+
+import builders as b
 
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
@@ -343,3 +348,93 @@ class TestTheTargetsDocumentTheSame:
         # and it lands where numpydoc puts an extended summary: after the summary line,
         # before Parameters
         assert text.index("0 means uniform expression") < text.index("Parameters")
+
+
+class TestConstantSizesInBothBindings:
+    """Neither binding can name a Fortran module constant, so both use its value (#221 M2)."""
+
+    def module(self):
+        import builders as b
+        from codegen.abi.c_abi import build_module
+        from codegen.ir.roles import analyse
+        from codegen.ir.types import Intent
+
+        module = b.module(
+            "m",
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="points"),
+                b.real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+                b.character("name", Intent.IN, length="MAX_LEN", doc="a name"),
+                b.real("sums", Intent.OUT, "(N_AXES)", doc="per axis"),
+                b.ierr(),
+            ),
+            parameters=(b.parameter("N_AXES", "2"), b.parameter("MAX_LEN", "8")),
+        )
+        b.project(module)
+        bag = DiagnosticBag()
+        analyse(module.procedure("p"), bag)
+        return build_module(module, bag)
+
+    def test_python_allocates_and_pads_with_the_values(self):
+        import ast
+
+        text = PythonEmitter().module(self.module())
+
+        assert "np.empty((2,)" in text
+        assert ".ljust(8)" in text
+        # the code reads no such name; only what a reader is shown keeps it
+        read = {node.id for node in ast.walk(ast.parse(text)) if isinstance(node, ast.Name)}
+        assert not read & {"N_AXES", "MAX_LEN"}
+
+    def test_python_checks_the_constant_axis_against_its_value(self):
+        text = PythonEmitter().module(self.module())
+
+        assert "if points.shape[0] != 2:" in text
+
+    def test_the_documentation_shows_the_constant_by_name(self):
+        # what the author wrote, not the value it stands for (#221 WP1 review N5)
+        text = PythonEmitter().module(self.module())
+
+        assert "points : np.ndarray[np.float64] of shape (N_AXES, n,)" in text
+
+    def test_the_r_wrapper_names_no_constant(self):
+        import re
+
+        text = RWrapperEmitter().module(self.module())
+        code = re.sub(r'"[^"]*"', '""', "\n".join(
+            line for line in text.splitlines() if not line.lstrip().startswith("#")))
+
+        assert "N_AXES" not in code and "MAX_LEN" not in code
+        assert "if (dim(points)[1] != 2L)" in code
+
+
+class TestTheTargetsTrimTheSameAxis:
+    """#221 B8: `DM_RESULT_SIZE_IS` counts along the LAST axis, at any rank, in both languages.
+
+    R took `utils::head(x, n)`, which on a matrix keeps the first n rows -- the padding
+    columns included -- while Python's `[..., :n]` kept the first n columns.
+    """
+
+    @pytest.mark.parametrize("rank", [1, 2, 3])
+    def test_the_count_trims_the_last_axis(self, rank):
+        extents = ", ".join(["2"] * (rank - 1) + ["n"])
+        found = b.real("found", Intent.OUT, f"({extents})",
+                       directives=Directives(result_size_is=ResultSizeIs("n_found")))
+        procedure = b.procedure("p", b.integer("n"), found, b.integer("n_found", Intent.OUT),
+                                b.ierr())
+        project = Project([b.module("m", procedure)])
+        bag = DiagnosticBag()
+        analyse_project(project, bag)
+        (wrapper,) = _wrappers(build_project(project, bag))
+        result = next(a for a in wrapper if a.name == "found")
+
+        python = PythonEmitter()._result_expression(result, wrapper)
+        r = RWrapperEmitter()._result_expression(result, wrapper)
+
+        assert python == "found[..., :n_found.value]"
+        if rank == 1:
+            assert r == "utils::head(.result$found, .result$n_found)"
+        else:
+            leading = ", " * (rank - 1)
+            assert r == f".result$found[{leading}seq_len(.result$n_found), drop = FALSE]"

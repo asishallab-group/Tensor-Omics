@@ -1,35 +1,36 @@
 r"""f42_stats
 
-Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+Descriptive statistics: quantiles, empirical distribution functions, and 2-D LOESS smoothing.
 
 One of the modules the `f42_utils` family gathers.
 
 Python binding, generated from f42_stats. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.loess_smooth_2d_c.restype = None
 _lib.loess_smooth_2d_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -39,12 +40,12 @@ _LOESS_SMOOTH_2D_ARGUMENT_SOURCES = ("x_ref", "x_query", None, None, None, "indi
 
 _lib.compute_edf_c.restype = None
 _lib.compute_edf_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -54,13 +55,13 @@ _COMPUTE_EDF_ARGUMENT_SOURCES = (None, "values", None, None, None, None,)
 
 _lib.compute_edf_expert_c.restype = None
 _lib.compute_edf_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -68,67 +69,67 @@ _COMPUTE_EDF_EXPERT_ARGUMENTS = ("values", "n_values", "values_perm", "unique_va
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES = (None, "values", None, None, None, None, None,)
 
-_lib.calc_percentile_c.restype = None
-_lib.calc_percentile_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+_lib.calc_quantile_c.restype = None
+_lib.calc_quantile_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_PERCENTILE_ARGUMENTS = ("array", "n_array", "percentile", "value", "n_considered", "ierr",)
+_CALC_QUANTILE_ARGUMENTS = ("array", "n_array", "level", "value", "n_considered", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_PERCENTILE_ARGUMENT_SOURCES = (None, "array", None, None, None, None,)
+_CALC_QUANTILE_ARGUMENT_SOURCES = (None, "array", None, None, None, None,)
 
-_lib.calc_percentile_expert_c.restype = None
-_lib.calc_percentile_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+_lib.calc_quantile_expert_c.restype = None
+_lib.calc_quantile_expert_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_PERCENTILE_EXPERT_ARGUMENTS = ("array", "n_array", "array_perm", "percentile", "value", "n_considered", "ierr",)
+_CALC_QUANTILE_EXPERT_ARGUMENTS = ("array", "n_array", "array_perm", "level", "value", "n_considered", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_PERCENTILE_EXPERT_ARGUMENT_SOURCES = (None, "array", None, None, None, None, None,)
+_CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES = (None, "array", None, None, None, None, None,)
 
-_lib.compute_scaled_distance_quantile_c.restype = None
-_lib.compute_scaled_distance_quantile_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+_lib.compute_scaled_distance_tail_probability_c.restype = None
+_lib.compute_scaled_distance_tail_probability_c.argtypes = (
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "quantile", "c_const", "ierr",)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "tail_probability", "c_const", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None,)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None,)
 
-_lib.compute_scaled_distance_quantile_expert_c.restype = None
-_lib.compute_scaled_distance_quantile_expert_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+_lib.compute_scaled_distance_tail_probability_expert_c.restype = None
+_lib.compute_scaled_distance_tail_probability_expert_c.argtypes = (
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "quantile", "c_const", "ierr",)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "tail_probability", "c_const", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None,)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None,)
 
 def loess_smooth_2d(
         x_ref,
@@ -170,6 +171,9 @@ def loess_smooth_2d(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -178,62 +182,42 @@ def loess_smooth_2d(
     Generated from the Fortran procedure `f42_stats::loess_smooth_2d`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x_ref = np.ascontiguousarray(x_ref, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_ref' must be an array of np.float64: {error}") from None
-    if x_ref.ndim != 1:
-        raise ValueError(f"'x_ref' must have 1 dimension, but has {x_ref.ndim}")
-    try:
-        y_ref = np.ascontiguousarray(y_ref, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y_ref' must be an array of np.float64: {error}") from None
-    if y_ref.ndim != 1:
-        raise ValueError(f"'y_ref' must have 1 dimension, but has {y_ref.ndim}")
-    try:
-        indices_used = np.ascontiguousarray(indices_used, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'indices_used' must be an array of np.int32: {error}") from None
-    if indices_used.ndim != 1:
-        raise ValueError(f"'indices_used' must have 1 dimension, but has {indices_used.ndim}")
-    try:
-        x_query = np.ascontiguousarray(x_query, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_query' must be an array of np.float64: {error}") from None
-    if x_query.ndim != 1:
-        raise ValueError(f"'x_query' must have 1 dimension, but has {x_query.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    x_ref = _contract.reals(x_ref, "x_ref", ndim=1)
+    y_ref = _contract.reals(y_ref, "y_ref", ndim=1)
+    indices_used = _contract.integers(indices_used, "indices_used", ndim=1)
+    x_query = _contract.reals(x_query, "x_query", ndim=1)
+    kernel_sigma = _contract.real(kernel_sigma, "kernel_sigma")
+    kernel_cutoff = _contract.real(kernel_cutoff, "kernel_cutoff")
 
     # what the inputs already say, rather than asking for it again
     n_total = x_ref.shape[0]
     n_target = x_query.shape[0]
     n_used = indices_used.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if y_ref.shape[0] != n_total:
-        raise ValueError(f"'y_ref' has {y_ref.shape[0]} along axis 0, but "
-            f"'x_ref' implies n_total == {n_total}"
-        )
+        raise _ToxArgumentError(f"'y_ref' has {y_ref.shape[0]} along axis 0, but 'x_ref' implies n_total == {n_total}; 'y_ref' is declared with shape (n_total)", argument="y_ref")
 
     # outputs and work arrays, which the caller never sees
-    y_out = np.empty((n_target,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    y_out = _np.empty((n_target,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.loess_smooth_2d_c(
-        ctypes.byref(ctypes.c_int(n_total)),
-        ctypes.byref(ctypes.c_int(n_target)),
+        _ctypes.byref(_ctypes.c_int(n_total)),
+        _ctypes.byref(_ctypes.c_int(n_target)),
         x_ref,
         y_ref,
         indices_used,
-        ctypes.byref(ctypes.c_int(n_used)),
+        _ctypes.byref(_ctypes.c_int(n_used)),
         x_query,
-        ctypes.byref(ctypes.c_double(kernel_sigma)),
-        ctypes.byref(ctypes.c_double(kernel_cutoff)),
+        _ctypes.byref(_ctypes.c_double(kernel_sigma)),
+        _ctypes.byref(_ctypes.c_double(kernel_cutoff)),
         y_out,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS, _LOESS_SMOOTH_2D_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS, _LOESS_SMOOTH_2D_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     y_out.flags.writeable = False
@@ -269,6 +253,9 @@ def compute_edf(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -280,33 +267,28 @@ def compute_edf(
     This entry point seeds `values_perm` and sorts it by `values`.
     Call `compute_edf_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
-    if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    unique_values = np.empty((n_values,), dtype=np.float64, order='C')
-    cdf_values = np.empty((n_values,), dtype=np.float64, order='C')
-    n_unique = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    unique_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    cdf_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    n_unique = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_edf_c(
         values,
-        ctypes.byref(ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
         unique_values,
         cdf_values,
-        ctypes.byref(n_unique),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_unique),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS, _COMPUTE_EDF_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS, _COMPUTE_EDF_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     unique_values.flags.writeable = False
@@ -352,6 +334,9 @@ def compute_edf_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -363,46 +348,34 @@ def compute_edf_expert(
     The expert entry point: you supply `values_perm` yourself.
     `compute_edf` seeds `values_perm` and sorts it by `values`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
-    if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
-    try:
-        values_perm = np.ascontiguousarray(values_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values_perm' must be an array of np.int32: {error}") from None
-    if values_perm.ndim != 1:
-        raise ValueError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
+    values_perm = _contract.integers(values_perm, "values_perm", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if values_perm.shape[0] != n_values:
-        raise ValueError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but "
-            f"'values' implies n_values == {n_values}"
-        )
+        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}; 'values_perm' is declared with shape (n_values)", argument="values_perm")
 
     # outputs and work arrays, which the caller never sees
-    unique_values = np.empty((n_values,), dtype=np.float64, order='C')
-    cdf_values = np.empty((n_values,), dtype=np.float64, order='C')
-    n_unique = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    unique_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    cdf_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    n_unique = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_edf_expert_c(
         values,
-        ctypes.byref(ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
         values_perm,
         unique_values,
         cdf_values,
-        ctypes.byref(n_unique),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_unique),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS, _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS, _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     unique_values.flags.writeable = False
@@ -413,12 +386,12 @@ def compute_edf_expert(
         "cdf_values": cdf_values[..., :n_unique.value],
     }
 
-def calc_percentile(
+def calc_quantile(
         array,
-        percentile,
+        level,
         n_considered=0,
 ):
-    r"""Calculate the percentile of an array given a sorted permutation
+    r"""Calculate the quantile of an array at a given level, given a sorted permutation
 
     Uses linear interpolation between adjacent values.
 
@@ -426,13 +399,13 @@ def calc_percentile(
     ----------
     array : np.ndarray[np.float64] of shape (n_array,)
         input array
-    percentile : float
-        desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+    level : float
+        quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
     n_considered : int, optional, default 0
-        How many leading entries of `array_perm` the percentile is taken over, for a
-        percentile of a subset -- the trailing entries are ignored rather than sliced
+        How many leading entries of `array_perm` the quantile is taken over, for a
+        quantile of a subset -- the trailing entries are ignored rather than sliced
         off, so the permutation stays the shape the sort produced. Zero, the default,
         considers all `n_array` of them.
         The default value is `0`.
@@ -442,56 +415,56 @@ def calc_percentile(
     Returns
     -------
     value : float
-        output percentile value
+        the quantile: the value a fraction `level` of the considered entries lies at or below
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::calc_percentile`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::calc_quantile`, whose argument names are
     the ones an error message reports.
 
     This entry point seeds `array_perm` and sorts it by `array`.
-    Call `calc_percentile_expert` to do that yourself.
+    Call `calc_quantile_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        array = np.ascontiguousarray(array, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'array' must be an array of np.float64: {error}") from None
-    if array.ndim != 1:
-        raise ValueError(f"'array' must have 1 dimension, but has {array.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    array = _contract.reals(array, "array", ndim=1)
+    level = _contract.real(level, "level")
+    n_considered = _contract.integer(n_considered, "n_considered")
 
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    value = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    value = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
-    _lib.calc_percentile_c(
+    _lib.calc_quantile_c(
         array,
-        ctypes.byref(ctypes.c_int(n_array)),
-        ctypes.byref(ctypes.c_double(percentile)),
-        ctypes.byref(value),
-        ctypes.byref(ctypes.c_int(n_considered)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_array)),
+        _ctypes.byref(_ctypes.c_double(level)),
+        _ctypes.byref(value),
+        _ctypes.byref(_ctypes.c_int(n_considered)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_PERCENTILE_ARGUMENTS, _CALC_PERCENTILE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_QUANTILE_ARGUMENTS, _CALC_QUANTILE_ARGUMENT_SOURCES)
 
     return value.value
 
-def calc_percentile_expert(
+def calc_quantile_expert(
         array,
         array_perm,
-        percentile,
+        level,
         n_considered=0,
 ):
-    r"""Calculate the percentile of an array given a sorted permutation
+    r"""Calculate the quantile of an array at a given level, given a sorted permutation
 
     Uses linear interpolation between adjacent values.
 
@@ -504,13 +477,13 @@ def calc_percentile_expert(
         heapsorts it for you; the expert one takes whatever order you supply.
         The minimum valid value is `1`.
         The maximum valid value is `n_array`.
-    percentile : float
-        desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+    level : float
+        quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
     n_considered : int, optional, default 0
-        How many leading entries of `array_perm` the percentile is taken over, for a
-        percentile of a subset -- the trailing entries are ignored rather than sliced
+        How many leading entries of `array_perm` the quantile is taken over, for a
+        quantile of a subset -- the trailing entries are ignored rather than sliced
         off, so the permutation stays the shape the sort produced. Zero, the default,
         considers all `n_array` of them.
         The default value is `0`.
@@ -520,77 +493,70 @@ def calc_percentile_expert(
     Returns
     -------
     value : float
-        output percentile value
+        the quantile: the value a fraction `level` of the considered entries lies at or below
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::calc_percentile_expert`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::calc_quantile_expert`, whose argument names are
     the ones an error message reports.
 
     The expert entry point: you supply `array_perm` yourself.
-    `calc_percentile` seeds `array_perm` and sorts it by `array`.
+    `calc_quantile` seeds `array_perm` and sorts it by `array`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        array = np.ascontiguousarray(array, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'array' must be an array of np.float64: {error}") from None
-    if array.ndim != 1:
-        raise ValueError(f"'array' must have 1 dimension, but has {array.ndim}")
-    try:
-        array_perm = np.ascontiguousarray(array_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'array_perm' must be an array of np.int32: {error}") from None
-    if array_perm.ndim != 1:
-        raise ValueError(f"'array_perm' must have 1 dimension, but has {array_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    array = _contract.reals(array, "array", ndim=1)
+    array_perm = _contract.integers(array_perm, "array_perm", ndim=1)
+    level = _contract.real(level, "level")
+    n_considered = _contract.integer(n_considered, "n_considered")
 
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if array_perm.shape[0] != n_array:
-        raise ValueError(f"'array_perm' has {array_perm.shape[0]} along axis 0, but "
-            f"'array' implies n_array == {n_array}"
-        )
+        raise _ToxArgumentError(f"'array_perm' has {array_perm.shape[0]} along axis 0, but 'array' implies n_array == {n_array}; 'array_perm' is declared with shape (n_array)", argument="array_perm")
 
     # outputs and work arrays, which the caller never sees
-    value = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    value = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
-    _lib.calc_percentile_expert_c(
+    _lib.calc_quantile_expert_c(
         array,
-        ctypes.byref(ctypes.c_int(n_array)),
+        _ctypes.byref(_ctypes.c_int(n_array)),
         array_perm,
-        ctypes.byref(ctypes.c_double(percentile)),
-        ctypes.byref(value),
-        ctypes.byref(ctypes.c_int(n_considered)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(level)),
+        _ctypes.byref(value),
+        _ctypes.byref(_ctypes.c_int(n_considered)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_PERCENTILE_EXPERT_ARGUMENTS, _CALC_PERCENTILE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_QUANTILE_EXPERT_ARGUMENTS, _CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES)
 
     return value.value
 
-def compute_scaled_distance_quantile(
+def compute_scaled_distance_tail_probability(
         rdi,
         sorted_rdi,
         c_const,
 ):
-    r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+    r"""Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
 
     This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     observed distribution it was drawn from, not an independently generated null distribution.
     It instead measures how extreme an observed distance is relative to all observed distances.
 
     Implements:
-    Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
 
-    Because distances are non-negative, a one-sided upper-tail quantile is used.
+    Because distances are non-negative, a one-sided upper-tail probability is used.
 
     Assumptions / preconditions:
     - sorted_rdi(1:n_genes) contains the empirical distribution D.
@@ -611,82 +577,74 @@ def compute_scaled_distance_quantile(
 
     Returns
     -------
-    quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-        Output array to store the computed quantile for each gene.
+    tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+        Output array to store the computed upper-tail probability for each gene.
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_tail_probability`, whose argument names are
     the ones an error message reports.
 
     This entry point seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
-    Call `compute_scaled_distance_quantile_expert` to do that yourself.
+    Call `compute_scaled_distance_tail_probability_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        rdi = np.ascontiguousarray(rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {error}") from None
-    if rdi.ndim != 1:
-        raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
-    try:
-        sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {error}") from None
-    if sorted_rdi.ndim != 1:
-        raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    rdi = _contract.reals(rdi, "rdi", ndim=1)
+    sorted_rdi = _contract.reals(sorted_rdi, "sorted_rdi", ndim=1)
+    c_const = _contract.real(c_const, "c_const")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi' is declared with shape (n_genes)", argument="sorted_rdi")
 
     # outputs and work arrays, which the caller never sees
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
-    _lib.compute_scaled_distance_quantile_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+    _lib.compute_scaled_distance_tail_probability_c(
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
-        quantile,
-        ctypes.byref(ctypes.c_double(c_const)),
-        ctypes.byref(ierr),
+        tail_probability,
+        _ctypes.byref(_ctypes.c_double(c_const)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
-    return quantile
+    return tail_probability
 
-def compute_scaled_distance_quantile_expert(
+def compute_scaled_distance_tail_probability_expert(
         rdi,
         sorted_rdi,
         sorted_rdi_perm,
         c_const,
 ):
-    r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+    r"""Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
 
     This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     observed distribution it was drawn from, not an independently generated null distribution.
     It instead measures how extreme an observed distance is relative to all observed distances.
 
     Implements:
-    Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
 
-    Because distances are non-negative, a one-sided upper-tail quantile is used.
+    Because distances are non-negative, a one-sided upper-tail probability is used.
 
     Assumptions / preconditions:
     - sorted_rdi(1:n_genes) contains the empirical distribution D.
@@ -712,73 +670,58 @@ def compute_scaled_distance_quantile_expert(
 
     Returns
     -------
-    quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-        Output array to store the computed quantile for each gene.
+    tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+        Output array to store the computed upper-tail probability for each gene.
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile_expert`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_tail_probability_expert`, whose argument names are
     the ones an error message reports.
 
     The expert entry point: you supply `sorted_rdi_perm` yourself.
-    `compute_scaled_distance_quantile` seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
+    `compute_scaled_distance_tail_probability` seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        rdi = np.ascontiguousarray(rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {error}") from None
-    if rdi.ndim != 1:
-        raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
-    try:
-        sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {error}") from None
-    if sorted_rdi.ndim != 1:
-        raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
-    try:
-        sorted_rdi_perm = np.ascontiguousarray(sorted_rdi_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi_perm' must be an array of np.int32: {error}") from None
-    if sorted_rdi_perm.ndim != 1:
-        raise ValueError(f"'sorted_rdi_perm' must have 1 dimension, but has {sorted_rdi_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    rdi = _contract.reals(rdi, "rdi", ndim=1)
+    sorted_rdi = _contract.reals(sorted_rdi, "sorted_rdi", ndim=1)
+    sorted_rdi_perm = _contract.integers(sorted_rdi_perm, "sorted_rdi_perm", ndim=1)
+    c_const = _contract.real(c_const, "c_const")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi' is declared with shape (n_genes)", argument="sorted_rdi")
     if sorted_rdi_perm.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi_perm' has {sorted_rdi_perm.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi_perm' has {sorted_rdi_perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi_perm' is declared with shape (n_genes)", argument="sorted_rdi_perm")
 
     # outputs and work arrays, which the caller never sees
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
-    _lib.compute_scaled_distance_quantile_expert_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+    _lib.compute_scaled_distance_tail_probability_expert_c(
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         sorted_rdi_perm,
-        quantile,
-        ctypes.byref(ctypes.c_double(c_const)),
-        ctypes.byref(ierr),
+        tail_probability,
+        _ctypes.byref(_ctypes.c_double(c_const)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
-    return quantile
+    return tail_probability
