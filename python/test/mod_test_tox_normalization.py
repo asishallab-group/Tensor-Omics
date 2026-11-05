@@ -150,6 +150,14 @@ def test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates():
                      f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_INVALID_INPUT)
 
 
+def test_calc_tiss_avg_refuses_an_expr_shorter_than_its_replicates():
+    """`expr` has `sum(reps_per_tissue)` rows: 4 here, and 2 used to be read past (#221)."""
+    mat = np.asfortranarray(np.ones((2, 2)))
+
+    assert_error(lambda: calc_tiss_avg(np.array([2, 2], dtype=np.int32), mat),
+                 "a 2-row expr for 4 replicates must be refused", ERR_INVALID_INPUT)
+
+
 def test_calc_fchange():
     tissue_averages = calc_tiss_avg(np.array([2, 2, 2], dtype=np.int32), _expr())
     # one control against two conditions

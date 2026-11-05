@@ -142,7 +142,7 @@ Two consequences follow, and both are enforced:
 - **An implementation module lives in a file named after it**
   (`validate._check_module_is_named_for_its_file`). Two independent derivations meet here: the
   wrapper's *contents* come from the module name, which synthesis reads, while its *path*
-  comes from the file name, which the cleaner scans without parsing anything. Let the two
+  is mirrored from the file name. Let the two
   disagree and the generator emits `module tox_a` into a file called `tox_b.F90` — legal
   Fortran, no error anywhere, and a tree in which nothing can be found by the name it has.
 
@@ -171,6 +171,10 @@ It is derived rather than declared because the author has already said it: `pure
 implementation is the single statement of the fact, and a `DM_PURE` would be a second one to
 keep in step. The default is impure, deliberately — claiming purity that is not there is a
 compile error in generated code, while missing it only costs the caller.
+
+`elemental` implies `pure` unless the procedure also says `impure` (F2008), and Ford lists both
+attributes. Reading `elemental` alone as purity is exactly the claim-that-is-not-there case: an
+`impure elemental` implementation got a `pure` wrapper, which does not compile (#221, B17).
 
 ---
 
@@ -502,12 +506,15 @@ byte of generated output — the C bindings are keyed by module name into a flat
 
 **Rejected — deleting `src/generated` wholesale in `clean`, now that it is generated-only.**
 `clean` runs per target, and the generated tree holds three targets' output; the Fortran
-target removes exactly the files it is about to write, one per implementation module, derived
-from the source tree by the same mirror that places them. An `rmtree` of the root would make
-`--target fortran` delete the C and R bindings it was not asked about.
+target removes every wrapper module it finds on disk under `generated_dir` -- every `.F90`
+outside the C and R binding trees (`synthesize.generated_wrapper_paths`). It used to remove
+only the files it was about to write, derived from the source tree by the mirror that places
+them, which missed the wrapper of a deleted implementation: fpm compiles all of
+`src/generated`, and that orphan broke every build after (#221). An `rmtree` of the root would
+make `--target fortran` delete the C and R bindings it was not asked about.
 
 **Ford excludes the generated tree by directory, not by file name.** It used to name the files
-— the same derived list `clean` uses — which is one fact with one definition and looks
+— the same derived list `clean` then used — which is one fact with one definition and looks
 strictly better. It is not, for two reasons the layer-free mirror created. Ford matches a bare
 exclude as `**/<name>`, so once an f42 implementation generates `f42_stats.F90`, excluding
 that name would also drop the hand-written `src/f42/utils/f42_stats.F90` from the parse, and
@@ -587,7 +594,9 @@ if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mo
 
 The generator parsed the table, so it knows the accepted set exactly. An optional mode is
 guarded by `present()`: absent means "use the documented default", which is one of the accepted
-values by construction, and reading an absent optional to discover that is not a Fortran program.
+values by construction, or -- for an optional mode with no default -- "the implementation
+decides", which it learns from `present()` itself. Reading an absent optional to discover
+either is not a Fortran program.
 
 A chain of `/=` rather than `all(x /= [...])`, so the check costs a few integer comparisons and
 no temporary array.
@@ -672,7 +681,12 @@ argument too, since a name that merely ends in `_perm` and orders something the 
 never receives is the caller's own data. There is no override macro: an ordering the default
 sort cannot give is expressed by a prologue that declares the permutation `intent(out)`
 (below), and an argument the convention does not recognise — a bare `perm` — stays the
-caller's own.
+caller's own. Since `foo` builds the permutation, it is something the implementation is handed:
+an `intent(out)` `<base>_perm` is the implementation's *result*, which `foo` would compute and
+throw away (Python and R got nothing back), so `validate` refuses it (#221 B7) rather than the
+convention growing an intent-dependent exception. A result is named for what it is. The same
+holds for a `DM_OUTPUT_FROM(..., AUTO)` value, which `foo` computes with the producer: an
+`intent(out)` one is refused for the same reason (`validate._check_taken_over_is_not_an_output`).
 
 `foo` calls the **implementation directly**, not `foo_expert`. It has just built the
 permutation and work arrays itself, so re-running the expert tier's validation — in particular
@@ -749,7 +763,8 @@ belongs instead: at the top of the implementation, where every caller gets it.
 an emitter has no author's line to point at. Every way of getting one wrong therefore passed --
 a name that resolved to nothing produced a wrapper with no prologue; a dummy that matched nothing
 was dropped from the keyword call; a prologue without `handled` left the wrapper branching on an
-undefined logical. All are errors now, in `ir/validate.py`.
+undefined logical, and one with a `logical(c_bool)` `handled` did not compile, the wrapper's own
+flag being a default logical. All are errors now, in `ir/validate.py`.
 
 **Rejected -- letting the presence of a prologue switch off the `<base>_perm` sorting.** More
 explicit on the face of it, but at the wrong granularity: a prologue is per-implementation and
@@ -790,8 +805,9 @@ the caller passes.
 prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `quantile_level` --
 and
 the implementation, which takes the threshold, has no use for it. So it joins that wrapper's
-signature, after the implementation's own arguments and before `ierr`, and is validated there
-like any other argument. `foo_expert` is untouched: it takes the derived value directly. This
+signature, after the implementation's own arguments and before `ierr` -- the implementation's
+own `ierr` too, where it declares one: until #221 they were appended after that one, publishing
+`..., ierr, quantile_level` -- and is validated there like any other argument. `foo_expert` is untouched: it takes the derived value directly. This
 is also why the two tiers now appear whenever their signatures would differ, rather than only
 when something is taken over -- a prologue with an argument of its own is reason enough.
 
@@ -824,7 +840,9 @@ decision (see [`c-layer.md`](c-layer.md)).
 
 The C layer's null checks are *not* under this directive. They prevent a segfault rather than
 reject a bad value, and a caller who has established that their inputs are good has established
-nothing about a binding language passing a null pointer.
+nothing about a binding language passing a null pointer. Nor is the C wrapper's shape check of an
+axis the declaration computes (`c-layer.md`), for the same reason: it keeps a short buffer from
+being read past.
 
 ### No allocation in an implementation module
 
@@ -919,6 +937,38 @@ It also needed the IR to carry two things it had no other use for — public gen
 and derived types (`entities.Declaration`). A binding can express neither, but authors link to
 both, and an interface block's own `!>` comment belongs to no procedure and no module, so
 without it the links inside it were read nowhere at all.
+
+---
+
+## A function implementation (#221 B1, 2026-10-27)
+
+An implementation may be a function. Its wrappers cannot be: `ierr` has to come back beside the
+result, and the tiers share one signature shape with every other wrapper. So the result becomes
+an `intent(out)` argument of every tier, under the result's own name and with its own `!!` doc,
+**right before `ierr`** (FES's decision) -- before the implementation's own `ierr` where it
+declares one, and so after a prologue's own arguments. The wrapper assigns the call to it
+(`total = total_impl(n = n, x = x)`). `synthesize.published_arguments` is the one place that
+places it; the mode split, the drop set, the prologue's resolution and `validate`'s
+implementation rules all start from that list, so a prologue may answer the result on its
+`handled` path like any output, and a result is taken over, refused or documented exactly as an
+`intent(out)` argument of the same declaration would be. The implementation itself stays a
+function: another implementation calling it is untouched.
+
+Refused, because a result can break what a dummy cannot (`validate.function_result_problems`):
+no `result(...)` clause (the result would be named after the function, which the wrapper imports
+by that name: no compiler accepts the dummy), a result named `ierr`, one with the `tmp_` prefix
+(a work array is never returned, so the function's one output would be swallowed by the
+allocating tier), and an assumed length. Synthesis leaves such a result out rather than
+building a wrapper the error is about.
+
+An `elemental` function is wrapped as an elemental subroutine is, with scalars, and purity is
+derived as ever. A function cannot be `pure` once it has an `intent(out)` argument -- its own
+`ierr`, a `tmp_` work array -- so those implementations, and their wrappers, are impure.
+
+*Rejected:* refusing function implementations (#221 item 6 offered both). Their wrappers were
+`call`ed, which does not compile, and nothing reported it; supporting them costs one argument and
+an assignment. *Rejected:* naming the argument after the function where there is no clause --
+it never compiles.
 
 ---
 

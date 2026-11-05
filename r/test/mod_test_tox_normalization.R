@@ -126,6 +126,12 @@ test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates <- function() {
   }
 }
 
+# `expr` has sum(reps_per_tissue) rows: 4 here, and 2 used to be read past (#221)
+test_calc_tiss_avg_refuses_an_expr_shorter_than_its_replicates <- function() {
+  assert_error(calc_tiss_avg(c(2L, 2L), matrix(1, 2, 2)),
+               "a 2-row expr for 4 replicates must be refused", code = ERR_INVALID_INPUT)
+}
+
 test_calc_fchange <- function() {
   tissue_averages <- calc_tiss_avg(c(2L, 2L, 2L), .expr())
   # one control against two conditions

@@ -28,6 +28,50 @@ GROUP_EXCEPTIONS = {
 
 BASE_EXCEPTION = "ToxError"
 
+#: What a generated binding raises for an argument it refuses itself -- a wrong shape, type or
+#: value found before the library is called. It carries no tox code (`code` is None), because
+#: none was reported: main's convention for a binding-side refusal (#221). An input error all
+#: the same, so `except ToxInputError` catches it beside the Fortran's own; and a `TypeError`
+#: and a `ValueError`, which is what these refusals were before, so an existing `except
+#: ValueError` -- the numpy idiom -- keeps catching them.
+ARGUMENT_EXCEPTION = "ToxArgumentError"
+
+#: The code the C wrapper reports for an array that does not hold what its declaration computes
+#: (#221). Its message is completed with the declared shape the binding passes along.
+SIZE_MISMATCH = "ERR_SIZE_MISMATCH"
+
+#: The constant the argument position is packed by, and the function that decodes a code, as
+#: the module defines them and the package re-exports them
+ARG_POS_FACTOR = "ARG_POS_FACTOR"
+CHECK_ERR_CODE = "check_err_code"
+
+
+def group_exceptions(catalogue: ErrorCatalogue) -> tuple[tuple[str, str], ...]:
+    """The class of each group the catalogue has codes in, as (name, docstring), base aside."""
+    return tuple(
+        GROUP_EXCEPTIONS[group]
+        for group in catalogue.groups()
+        if GROUP_EXCEPTIONS[group][0] != BASE_EXCEPTION
+    )
+
+
+def public_names(catalogue: ErrorCatalogue) -> tuple[str, ...]:
+    """Everything the error module defines for a caller, in the order it defines them.
+
+    The one list of it: the module is emitted from its parts, and the package's `__init__`
+    re-exports exactly this, so a code added to `tox_errors` -- an `ERR_*` or a `STAT_*` -- is
+    importable from `tensor_omics` with no edit anywhere, and a caller never has to know which
+    submodule holds it. The underscored tables are the module's own.
+    """
+    return (
+        ARG_POS_FACTOR,
+        BASE_EXCEPTION,
+        *(name for name, _ in group_exceptions(catalogue)),
+        ARGUMENT_EXCEPTION,
+        *(code.name for code in catalogue),
+        CHECK_ERR_CODE,
+    )
+
 
 class PythonErrorEmitter:
     def __init__(self, catalogue: ErrorCatalogue):
@@ -51,7 +95,7 @@ class PythonErrorEmitter:
         )
         writer.blank()
         writer.line("#: How tox_errors packs the position of the offending argument into a code")
-        writer.line(f"ARG_POS_FACTOR = {self.catalogue.arg_pos_factor}")
+        writer.line(f"{ARG_POS_FACTOR} = {self.catalogue.arg_pos_factor}")
         writer.blank()
 
     def _exceptions(self, writer: Writer) -> None:
@@ -62,8 +106,9 @@ class PythonErrorEmitter:
                 "\n"
                 "Attributes\n"
                 "----------\n"
-                "code : int\n"
-                "    The tox_errors code, without the argument position packed into it.\n"
+                "code : int or None\n"
+                "    The tox_errors code, without the argument position packed into it; None\n"
+                "    for a ToxArgumentError, which the binding raised before any code existed.\n"
                 "name : str or None\n"
                 "    The name of the code, e.g. 'ERR_INVALID_INPUT'.\n"
                 "argument : str or None\n"
@@ -80,15 +125,35 @@ class PythonErrorEmitter:
         writer.blank(collapse=False)
         writer.blank(collapse=False)
 
-        for group in self.catalogue.groups():
-            name, description = GROUP_EXCEPTIONS[group]
-            if name == BASE_EXCEPTION:
-                continue
+        for name, description in group_exceptions(self.catalogue):
             writer.line(f"class {name}({BASE_EXCEPTION}):")
             with writer.indent():
                 writer.line(f'"""{description}"""')
             writer.blank(collapse=False)
             writer.blank(collapse=False)
+
+        self._argument_exception(writer)
+
+    def _argument_exception(self, writer: Writer) -> None:
+        """`ToxArgumentError`, under the input group's class where the catalogue has one."""
+        parent = (GROUP_EXCEPTIONS[ErrorGroup.INPUT][0]
+                  if ErrorGroup.INPUT in self.catalogue.groups() else BASE_EXCEPTION)
+        writer.line(f"class {ARGUMENT_EXCEPTION}({parent}, TypeError, ValueError):")
+        with writer.indent():
+            writer.block(
+                '"""An argument the binding refused before calling the library.\n'
+                "\n"
+                "A wrong shape, type or value, found by the generated function itself, so it\n"
+                "carries no tox code: `code` and `name` are None. It is a TypeError and a\n"
+                "ValueError as well, so code catching either keeps working.\n"
+                '"""'
+            )
+            writer.blank()
+            writer.line("def __init__(self, message, argument=None):")
+            with writer.indent():
+                writer.line("super().__init__(message, code=None, argument=argument)")
+        writer.blank(collapse=False)
+        writer.blank(collapse=False)
 
     def _codes(self, writer: Writer) -> None:
         writer.line("# The codes themselves, so a caller can compare against a name")
@@ -130,7 +195,7 @@ class PythonErrorEmitter:
         writer.blank()
 
     def _check(self, writer: Writer) -> None:
-        writer.line("def check_err_code(ierr, arguments=(), sources=()):")
+        writer.line(f"def {CHECK_ERR_CODE}(ierr, arguments=(), sources=(), shapes=()):")
         with writer.indent():
             writer.block(
                 '"""Raise if `ierr` reports an error.\n'
@@ -148,6 +213,10 @@ class PythonErrorEmitter:
                 "    passed, where the Fortran one was derived from it. An extent read off\n"
                 "    an array names that array here, so the message can blame something the\n"
                 "    caller wrote. None where the Fortran argument is the caller's own.\n"
+                "shapes : sequence of str or None, optional\n"
+                "    Positionally alongside `arguments`: the declared shape of an array\n"
+                "    whose size the C wrapper compares with its declaration, which the\n"
+                f"    message of {SIZE_MISMATCH} then states. None elsewhere.\n"
                 "\n"
                 "Returns\n"
                 "-------\n"
@@ -180,6 +249,8 @@ class PythonErrorEmitter:
                 with writer.indent():
                     writer.line("argument = arguments[arg_pos - 1]")
                     writer.line("source = sources[arg_pos - 1] if arg_pos <= len(sources) else None")
+                    if self.catalogue.code(SIZE_MISMATCH) is not None:
+                        writer.line("shape = shapes[arg_pos - 1] if arg_pos <= len(shapes) else None")
                     writer.line("if source:")
                     with writer.indent():
                         writer.line("# the caller's word first, then the Fortran argument it")
@@ -191,6 +262,13 @@ class PythonErrorEmitter:
                     writer.line("else:")
                     with writer.indent():
                         writer.line("message = f\"{message} (argument '{argument}')\"")
+                    size_mismatch = self.catalogue.code(SIZE_MISMATCH)
+                    if size_mismatch is not None:
+                        writer.line(f"if shape and code == {size_mismatch.value}:")
+                        with writer.indent():
+                            writer.line("# what the array must be, which no code can carry")
+                            writer.line('message = f"{message}; \'{arguments[arg_pos - 1]}\' is '
+                                        'declared with shape ({shape})"')
                 writer.line("else:")
                 with writer.indent():
                     writer.line('message = f"{message} (argument {arg_pos})"')

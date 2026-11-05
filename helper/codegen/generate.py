@@ -13,6 +13,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .abi.c_abi import build_project
+from .abi.extents import check_binding_extents
 from .abi.model import CBinding
 from .config import CONVENTIONS, Conventions, Paths
 from .diagnostics import DiagnosticBag
@@ -20,14 +21,17 @@ from .emit.errors_python import PythonErrorEmitter
 from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
 from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+from .emit.name_clashes import check_wrapper_names
 from .emit.doc_links import LinkResolver, build as build_links
 from .emit.doc_tiers import build as build_tiers
-from .emit.python_ctypes import PythonEmitter
+from .emit.python_contract import contract_module
+from .emit.python_ctypes import PythonEmitter, check_package_names
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
 from .emit.vscode_snippets import SnippetEmitter
 from .frontend.ford_frontend import FordFrontend, ParsedProject
 from .ir.errors import ErrorCatalogue
+from .names import PYTHON_CONTRACT, PYTHON_ERROR_MODULE, PYTHON_LIBRARY_MODULE
 from .ir.roles import analyse_project
 from .ir.validate import validate_project
 from .synthesize import (
@@ -103,6 +107,15 @@ def generate(
 
     binding = build_project(project, diagnostics, conventions)
 
+    # What the Fortran wrappers call, import or declare is read off them as emitted, so it can
+    # only be checked once the model they are emitted from is known to be sound.
+    if not diagnostics.errors:
+        check_wrapper_names(binding, synthesis, parsed.macros, diagnostics, conventions)
+    # The extents Python and R compute themselves, on what reaches them: an expert tier only
+    # Fortran and C publish computes none there
+    published = _published_to_the_languages(binding, synthesis)
+    check_binding_extents(published, diagnostics)
+
     # Every emitter below assumes what validation and the ABI build have just checked: that
     # an argument has an intent, that its type maps to C, that a DM_OUTPUT_FROM resolved.
     # Emitting anyway does not produce a better error -- it produces a Python traceback from
@@ -122,8 +135,9 @@ def generate(
         files += _c_files(binding, paths)
     if any(target in targets for target in ("python", "r", "snippets")):
         catalogue = _catalogue(project, parsed.arg_pos_factor, diagnostics, conventions)
-        published = _published_to_the_languages(binding, synthesis)
         if "python" in targets:
+            # what the package's top level binds is known only with the error table read
+            check_package_names(published, catalogue, diagnostics)
             files += _python_files(published, catalogue, paths, library, synthesis)
         if "r" in targets:
             files += _r_files(published, catalogue, paths, synthesis)
@@ -152,7 +166,7 @@ def generate_and_write(
         return result
 
     if clean:
-        _clean(targets, paths, conventions)
+        _clean(targets, paths)
     for file in result.files:
         file.write()
     return result
@@ -258,9 +272,10 @@ def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,
     )
     out = paths.resolve(paths.python_out_dir)
     files = [
-        GeneratedFile(out / "library.py", emitter.library_module()),
-        GeneratedFile(out / "__init__.py", emitter.package_init(list(binding))),
-        GeneratedFile(out / "error_handling.py", PythonErrorEmitter(catalogue).module()),
+        GeneratedFile(out / f"{PYTHON_LIBRARY_MODULE}.py", emitter.library_module()),
+        GeneratedFile(out / "__init__.py", emitter.package_init(list(binding), catalogue)),
+        GeneratedFile(out / f"{PYTHON_ERROR_MODULE}.py", PythonErrorEmitter(catalogue).module()),
+        GeneratedFile(out / f"{PYTHON_CONTRACT}.py", contract_module()),
     ]
     files += [
         GeneratedFile(out / f"{module.stripped_name}.py", emitter.module(module))
@@ -327,10 +342,13 @@ def _catalogue(project, arg_pos_factor: int, diagnostics: DiagnosticBag,
     )
 
 
-def _clean(targets: tuple[str, ...], paths: Paths,
-           conventions: Conventions = CONVENTIONS) -> None:
+def _owned(targets: tuple[str, ...], paths: Paths) -> tuple[list[Path], list[Path]]:
+    """What the clean step removes for `targets`: whole directories, and single files.
+
+    One list for `_clean`, which removes them, and `files_to_remove`, which `--check` reports
+    from, so the two cannot disagree about what a target owns.
+    """
     directories = []
-    globs = []
     files = []
     if "c" in targets:
         directories.append(paths.resolve(paths.c_binding_dir))
@@ -340,17 +358,42 @@ def _clean(targets: tuple[str, ...], paths: Paths,
         directories.append(paths.resolve(paths.r_binding_dir))   # the C .Call shims
         # the R wrappers sit directly in r_out_dir; remove only the generated `.R` so a
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
-        globs.append((paths.resolve(paths.r_out_dir), "*.R"))
+        files += sorted(paths.resolve(paths.r_out_dir).glob("*.R"))
     if "fortran" in targets:
-        # one file per impl, rather than the whole directory: the same list the Ford
-        # frontend excludes, so the two cannot drift apart
-        files += generated_wrapper_paths(paths, conventions)
+        # file by file rather than the whole directory, which holds the binding trees too
+        files += generated_wrapper_paths(paths)
+    return directories, files
+
+
+def _clean(targets: tuple[str, ...], paths: Paths) -> None:
+    directories, files = _owned(targets, paths)
     for directory in directories:
         if directory.is_dir():
             shutil.rmtree(directory)
-    for directory, pattern in globs:
-        for path in directory.glob(pattern):
-            path.unlink()
     for path in files:
         if path.exists():
             path.unlink()
+
+
+def files_to_remove(result: Result, targets: tuple[str, ...], paths: Paths) -> list[Path]:
+    """The files a clean run would delete and not write back: what `--check` calls stale.
+
+    An orphan -- the wrapper of an implementation since deleted, the binding of a procedure no
+    longer exported -- is removed by the clean, so a regenerated tree is fine. A *committed*
+    one is not: a checkout built without regenerating compiles it, and fails on the module it
+    still uses. `--check` compares only the files this run produces, so without this it would
+    call that tree up to date.
+
+    Python's bytecode cache is not counted: Python writes `__pycache__` beside any package it
+    imports, so after the test suites have run it is always there, and it is no output at all.
+    """
+    directories, files = _owned(targets, paths)
+    on_disk = [
+        path
+        for directory in directories if directory.is_dir()
+        for path in directory.rglob("*")
+        if path.is_file() and "__pycache__" not in path.relative_to(directory).parts
+    ]
+    on_disk += [path for path in files if path.exists()]
+    written = {file.path.resolve() for file in result.files}
+    return sorted(path for path in on_disk if path.resolve() not in written)

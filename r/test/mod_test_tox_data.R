@@ -188,4 +188,56 @@ test_5_zipping <- function() {
   for (f in c(files, archive, partial, bundle)) if (file.exists(f)) file.remove(f)
 }
 
+# ---- An array of no strings (#221 B3) ----
+# Every procedure taking or returning an array of strings works with none of them. The C wrapper
+# used to refuse a zero-length string array as ERR_EMPTY_INPUT before the procedure ran, so a data
+# set with zero families or zero genes could be written from Fortran but not from R.
+test_an_array_of_no_strings <- function() {
+  written <- character(0)
+  scratch <- function(name) {
+    written <<- c(written, name)
+    name
+  }
+  on.exit(for (f in written) if (file.exists(f)) file.remove(f))
+
+  validate_string_array_uniqueness(character(0))
+
+  serialize_char_helper(character(0), scratch("no_strings_R.test.bin"))
+  empty <- deserialize_char_helper("no_strings_R.test.bin")
+  assert_true(is.character(empty) && length(empty) == 0, "an empty array comes back as character(0)")
+
+  create_zip_archive(scratch("no_strings_R.test.zip"), character(0), character(0))
+
+  # zero families
+  save_tox_data(scratch("zero_families_R.test.zip"),
+                gene_ids = c("g1", "g2"), gene_ids_file = scratch("zero_families_genes_R.test.bin"),
+                family_ids = character(0), family_ids_file = scratch("zero_families_ids_R.test.bin"),
+                gene_to_family = c(0L, 0L), gene_to_family_file = scratch("zero_families_g2f_R.test.bin"))
+  data <- read_tox_data_into("zero_families_R.test.zip")
+  assert_true(identical(data$gene_ids, c("g1", "g2")), "the genes come back")
+  assert_true(is.character(data$family_ids) && length(data$family_ids) == 0, "and no family")
+
+  # zero genes
+  save_tox_data(scratch("zero_genes_R.test.zip"), gene_ids = character(0),
+                gene_ids_file = scratch("zero_genes_ids_R.test.bin"))
+  data <- read_tox_data_into("zero_genes_R.test.zip")
+  assert_true(length(data$gene_ids) == 0 && length(data$family_ids) == 0, "no gene, no family")
+
+  expression <- matrix(1, 3, 2)
+  shifts <- matrix(1, 6, 2)
+  validate_data_structure(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
+                          expression, matrix(1, 3, 0), shifts)
+  validate_all_data(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
+                    expression, matrix(1, 3, 0), shifts, check_shift_consistency = FALSE)
+
+  writeLines("id\tv1", scratch("no_genes_R.test.tsv"))
+  ids <- read_gene_ids_from_tsv_file("no_genes_R.test.tsv", 8L, 0L, n_header_rows = 1L, gene_col = 1L)
+  assert_true(length(ids) == 0, "a file of no genes reads as none")
+  read_expression_vectors_tsv(character(0), character(0), matrix(1, 1, 0), 1L, 1L, 2L, 1L)
+  writeLines("Orthogroup\tsp1", scratch("no_families_R.test.tsv"))
+  families <- read_orthofinder_file("no_families_R.test.tsv", character(0), 8L, 0L, 0L)
+  assert_true(length(families$family_ids) == 0 && length(families$gene_to_fam) == 0,
+              "a family file of no family reads as none")
+}
+
 run_all_tests()
