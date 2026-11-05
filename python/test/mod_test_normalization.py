@@ -17,7 +17,7 @@ from tensor_omics import (
     normalize_unit_length
 )
 from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, ERR_NAN_INF
+from tensor_omics.error_handling import ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH
 
 
 def test_normalize_unit_length():
@@ -162,6 +162,14 @@ def test_calc_tiss_avg_example_2():
     result = calc_tiss_avg(group_counts, mat)
 
     assert np.all(np.isfinite(result)), "All results should be finite"
+
+
+def test_calc_tiss_avg_refuses_an_expr_shorter_than_its_replicates():
+    """`expr` has `sum(reps_per_tissue)` rows: 4 here, and 2 used to be read past (#221)."""
+    mat = np.asfortranarray(np.ones((2, 2)))
+
+    assert_error(lambda: calc_tiss_avg(np.array([2, 2], dtype=np.int32), mat),
+                 "a 2-row expr for 4 replicates must be refused", ERR_SIZE_MISMATCH)
 
 
 def test_calc_fchange_example_1():

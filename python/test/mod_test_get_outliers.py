@@ -18,7 +18,6 @@ from tensor_omics import (
     detect_outliers as _detect_outliers,
 )
 from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # compute_rdi returns the sorted array and permutation that identify_outliers wants, so
 # the pipeline composes directly. Only the two shims below remain: one for calling
@@ -33,15 +32,15 @@ def _sort_prep(rdi):
     return sorted_rdi, perm
 
 
-def identify_outliers(rdi, percentile=0.95):
+def identify_outliers(rdi, quantile_level=0.95):
     sorted_rdi, perm = _sort_prep(rdi)
-    result = _identify_outliers(rdi, sorted_rdi, perm, percentile)
+    result = _identify_outliers(rdi, sorted_rdi, perm, quantile_level)
     return dict(result, outliers=result["is_outlier"])
 
 
-def detect_outliers(distances, gene_to_fam, percentile=0.95):
+def detect_outliers(distances, gene_to_fam, quantile_level=0.95):
     n_families = int(np.max(gene_to_fam))
-    result = _detect_outliers(n_families, distances, gene_to_fam, percentile)
+    result = _detect_outliers(n_families, distances, gene_to_fam, quantile_level)
     return dict(result, outliers=result["is_outlier"])
 
 
@@ -246,11 +245,12 @@ def test_compute_family_scaling_input_validation():
         "Expected an error for mismatched distances / gene_to_fam lengths",
     )
 
-    # an unknown mode string is not one of the tabulated values
+    # an unknown mode string is not one of the tabulated values: refused by the binding before
+    # the call, naming the argument and the modes, so with no tox code, as in R (#221 G-I1, G-I2)
     assert_error(
         lambda: compute_family_scaling(
             n_families, distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
-        "Expected an error for an invalid mode string", ERR_INVALID_INPUT,
+        "Expected an error for an invalid mode string",
     )
 
 
@@ -299,7 +299,7 @@ def test_identify_outliers_basic():
     # RDI values with clear outlier
     rdi = np.array([0.5, 0.6, 0.4, 3.5, 0.5], dtype=np.float64)
 
-    result = identify_outliers(rdi, percentile=0.8)  # Use 80th percentile
+    result = identify_outliers(rdi, quantile_level=0.8)  # Use 80th percentile
 
     # Verify that gene with RDI=3.5 is identified as outlier
     assert result['outliers'][3] == True
@@ -311,7 +311,7 @@ def test_identify_outliers_no_outliers():
 
     rdi = np.array([0.5, 0.6, 0.4, 0.7, 0.5], dtype=np.float64)  # All low RDI
 
-    result = identify_outliers(rdi, percentile=0.99)  # Very high percentile
+    result = identify_outliers(rdi, quantile_level=0.99)  # Very high percentile
 
     # With very high percentile, few or no outliers should be found
     assert isinstance(result['outliers'], np.ndarray)
@@ -323,7 +323,7 @@ def test_identify_outliers_all_outliers():
 
     rdi = np.array([3.0, 4.0, 5.0, 3.5], dtype=np.float64)  # All high RDI
 
-    result = identify_outliers(rdi, percentile=0.25)  # Low percentile = more outliers
+    result = identify_outliers(rdi, quantile_level=0.25)  # Low quantile_level = more outliers
 
     # With low percentile, more outliers should be found
     assert sum(result['outliers']) >= 1
@@ -353,9 +353,9 @@ def test_detect_outliers_pipeline():
         5, 5, 5, 5,  # Family 5
         6, 6, 6, 6   # Family 6
     ], dtype=np.int32)
-    percentile = 0.9
+    quantile_level = 0.9
 
-    result = detect_outliers(distances, gene_to_fam, percentile)
+    result = detect_outliers(distances, gene_to_fam, quantile_level)
 
     # Verify structure
     assert len(result['outliers']) == len(distances)
@@ -385,7 +385,7 @@ def test_detect_outliers_performance():
     import time
     start_time = time.time()
 
-    result = detect_outliers(distances, gene_to_fam, percentile=0.95)
+    result = detect_outliers(distances, gene_to_fam, quantile_level=0.95)
 
     end_time = time.time()
     elapsed = end_time - start_time
@@ -404,16 +404,33 @@ def test_detect_outliers_edge_cases():
     distances = np.array([1.0, 2.0, 3.0], dtype=np.float64)
     gene_to_fam = np.array([1, 1, 1], dtype=np.int32)
 
-    result = detect_outliers(distances, gene_to_fam, percentile=0.95)
+    result = detect_outliers(distances, gene_to_fam, quantile_level=0.95)
     assert len(result['loess_x']) == 1
 
     # Case 2: Each gene in different family
     distances = np.array([1.0, 2.0, 3.0], dtype=np.float64)
     gene_to_fam = np.array([1, 2, 3], dtype=np.int32)
 
-    result = detect_outliers(distances, gene_to_fam, percentile=0.95)
+    result = detect_outliers(distances, gene_to_fam, quantile_level=0.95)
     assert len(result['loess_x']) == 3
 
+
+def test_detect_outliers_unused_loess_slots_hold_sentinel():
+    """Slots of loess_x / loess_y that no family occupies hold -1, never NaN (#180)"""
+    rng = np.random.default_rng(4)
+    n_families = 40
+    sizes = [1, 1, 1] + [6] * (n_families - 3)  # three one-member families
+    gene_to_fam = np.repeat(np.arange(1, n_families + 1), sizes).astype(np.int32)
+    distances = rng.lognormal(0.0, 0.5, size=len(gene_to_fam))
+
+    result = _detect_outliers(n_families, distances, gene_to_fam)
+
+    unused = result['loess_n'] == 0
+    assert unused.sum() >= 3, "the three one-member families leave slots unused"
+    for key in ('loess_x', 'loess_y'):
+        assert not np.isnan(result[key]).any(), f"{key} contains NaN"
+        assert np.all(result[key][unused] == -1.0), f"{key}: unused slots must hold -1"
+        assert np.all(result[key][~unused] >= 0.0), f"{key}: used slots must be non-negative"
 
 if __name__ == '__main__':
     run_all_tests(globals().values())

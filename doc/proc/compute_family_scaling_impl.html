@@ -90,7 +90,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.0% of total for procedures.">190 statements</a>
+                 title=" 1.0% of total for procedures.">188 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -171,7 +171,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~28"></span>
+              <span class="anchor" id="variable-n_genes~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -186,7 +186,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~16"></span>
+              <span class="anchor" id="variable-n_families"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -201,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~4"></span>
+              <span class="anchor" id="variable-distances~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -218,7 +218,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~13"></span>
+              <span class="anchor" id="variable-gene_to_fam"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -258,7 +258,8 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_x</strong>(n_families)</td>
             <td>
-                <p>Reference x-coordinates for LOESS smoothing</p>
+                <p>Mean distance of each family in the LOESS fit, packed at the front in the order of
+<code>indices_used</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
@@ -273,12 +274,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_y</strong>(n_families)</td>
             <td>
-                <p>Reference y-coordinates for LOESS smoothing</p>
+                <p>Standard deviation of the distances of each family in the LOESS fit, packed like
+<code>loess_x</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~2"></span>
+              <span class="anchor" id="variable-indices_used"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -288,7 +290,9 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>indices_used</strong>(n_families)</td>
             <td>
-                <p>Indices of reference points used for smoothing</p>
+                <p>Family index of each point in the LOESS fit, packed at the front. Families with a
+single member, and those with the lowest spread, are left out of the fit; the
+remaining slots hold <code>0</code>.</p>
             </td>
         </tr>
         <tr>
@@ -338,7 +342,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~7"></span>
+              <span class="anchor" id="variable-tmp_int_workspace"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -353,7 +357,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~7"></span>
+              <span class="anchor" id="variable-int_workspace_size"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -391,7 +395,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~7"></span>
+              <span class="anchor" id="variable-tmp_real_workspace"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -406,7 +410,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~7"></span>
+              <span class="anchor" id="variable-real_workspace_size"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -489,7 +493,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~4"></span>
+              <span class="anchor" id="variable-tmp_robust_weights"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -504,7 +508,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~4"></span>
+              <span class="anchor" id="variable-tmp_combined_weights"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -519,7 +523,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~4"></span>
+              <span class="anchor" id="variable-tmp_residuals"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -534,7 +538,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~4"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -564,7 +568,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~9"></span>
+              <span class="anchor" id="variable-span"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -584,7 +588,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~9"></span>
+              <span class="anchor" id="variable-degree"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -595,7 +599,9 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
                 <p>Degree of the LOESS polynomial
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -634,7 +640,7 @@ The default value is <code>1_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~5"></span>
+              <span class="anchor" id="variable-n_iters"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -695,7 +701,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~88"></span>
+              <span class="anchor" id="variable-ierr~33"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -742,7 +748,7 @@ The default value is <code>3_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-30 09:20 +0000             </p>
           </div>
         </div>
         <br>
