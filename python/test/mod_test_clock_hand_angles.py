@@ -419,5 +419,14 @@ def test_mixed_positive_negative():
     assert np.isclose(result, np.acos(v1 @ v2)), "Angle mismatch"
 
 
+def test_shift_vectors_refuse_fields_without_two_points():
+    """`fields` is (n_dims, 2, n_fields); a middle axis of 1 used to be read past (#221)."""
+    fields = np.asfortranarray(np.random.rand(2, 1, 3))
+
+    assert_error(lambda: clock_hand_angles_for_shift_vectors(
+        fields, np.ones(3, dtype=bool), ccw_reference(fields[:, 0, 0])),
+        "a field without its target must be refused")
+
+
 if __name__ == "__main__":
     run_all_tests(globals().values())

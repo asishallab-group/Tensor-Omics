@@ -415,6 +415,16 @@ Range & Category & Example constant \\
 \bottomrule
 \end{tabular}
 
+\subsection{\texttt{ierr} Comes Last}
+
+\texttt{ierr} is the last argument of every procedure that reports an error, after the optional
+arguments: an \texttt{\_impl}, a hand-written procedure, and so every generated wrapper, because the
+generator copies the argument order of the \texttt{\_impl}. A caller always finds it in the same
+place, in Fortran and in C. A call that leaves out an optional argument passes it by keyword,
+\texttt{ierr=ierr}, since by position it would bind to the first optional argument left out. The
+exceptions are the helpers of \texttt{tox\_errors}, such as \texttt{set\_err(ierr, code)}, where
+\texttt{ierr} is the value being set or checked, not the helper's own status.
+
 \subsection{Always Initialise \texttt{ierr} First}
 
 Call \texttt{set\_ok(ierr)} at the start of every subroutine that uses \texttt{ierr}:

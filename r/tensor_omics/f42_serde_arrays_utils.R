@@ -6,6 +6,7 @@
 #' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param dims_out_capacity a integer scalar. Capacity of the dims_out array
 #' @return a named list with elements:
 #'   \item{dims_out}{a integer vector. Array to store output dimensions
@@ -13,7 +14,7 @@
 #'   \item{type_code}{a integer scalar. Type code of the serialized array}
 #' @export
 get_array_metadata <- function(filename, dims_out_capacity) {
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     dims_out_capacity <- .tox_as_integer_scalar(dims_out_capacity, "dims_out_capacity")
     .result <- .Call("get_array_metadata_call", filename, dims_out_capacity)
     .arguments <- c("filename", "dims_out", "dims_out_capacity", "ndims", "type_code", "ierr")

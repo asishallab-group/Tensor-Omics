@@ -67,18 +67,156 @@ was not.
 
 ---
 
-## Decision: validation lives in R, not in the C marshalling layer
+## Decision: what an argument accepts -- one table, both languages
 
-The natural instinct is to validate in C, where the data is. It is the wrong instinct.
+Python and R accept the same things for the same Fortran argument, and refuse the rest by name
+(#221). Before, each binding accepted whatever its host's conversion did: `np.ascontiguousarray`
+truncated `1.7` to 1 and wrapped `2**32 + 5` to 5 (past `DM_MAX`, which then saw 5), turned
+`'no'` and `0.5` into a True mask element and `None` into False, parsed `'1.5'` as a number and
+counted a `datetime64` in days since 1970; `str()` turned `None`, a list or bytes into a file
+name; R's `as.integer` truncated as well, and a matrix passed for a vector was flattened.
 
-The `.Call` shim receives only the `SEXP`; `REAL(x)` / `INTEGER(x)` hand back a bare
-pointer that cannot know the argument was called `weights`, so C cannot say so:
+**The rule.** For every target: look at the input's own **kind** first, then accept it only if
+converting it to the Fortran type and back gives **exactly** the same values.
+The kind is an allowlist, checked before anything converts: numpy's `dtype.kind` in Python
+(`i`, `u`, `f` for a number, `b` too for a logical; never `O`, `U`, `S`, `M`, `m`, `c`), and
+`is.numeric` / `is.logical` / `is.character` in R -- never `typeof`, which calls a factor an
+integer (its codes are not its values), and never `storage.mode`. The round trip is one
+comparison that catches a fraction, a NaN, an infinity and an out-of-range value at once, and it
+compares after the range is known, so the cast is never the thing that decides. A single value
+is the 0-d case of the same rule.
 
-```
-Not compatible with requested type: [type=character; target=double].
-```
+**A real is no exception** (FES 2026-10-29). The first form left reals out, on the view that
+every number converts to the nearest float64; but a Python or numpy integer above 2^53 does not
+convert *exactly*, so `euclidean_distance([2**53 + 1, 0], [0, 0])` returned 2^53, and
+`np.uint64(2**64 - 1)` and a long double were rounded as silently. The round trip costs nothing
+where it cannot fail: a float64 is not converted at all, and every float up to float64 and every
+integer up to 32 bits widens exactly, so only a 64-bit integer -- two reductions say that it lies
+within 2^53, and only beyond that is it converted back and compared, in its own type -- and a
+float wider than float64 are checked. R needs no counterpart: its integer is 32 bits, its double
+is real64, and an `integer64` is refused already. The int64 check within 2^53 is a min and a max
+pass with no temporary; measured at 1e7 elements on a loaded machine, that was 8-30% over the
+conversion it rides on, and the full comparison, when a value lies beyond 2^53, 4.9 to 5.9 times
+the conversion (#221 WP8 review, round 2).
 
-R can, for free, and better:
+**Casting back never leaves the integer's range** (WP8 review M1). A float64 at or past 2^63
+(int64) or 2^64 (uint64) was rounded up out of the range, and casting it back is undefined: x86
+wraps it, so it differed and was refused, but aarch64 saturates it to the very value it came from
+(`np.int64(2**63 - 1)`), which then compared equal and was accepted rounded. So those are refused
+first, and only what lies within the range is cast back; the check needs no `errstate`, and a
+test runs it with every cast error raising. A Python int too large for any NumPy integer
+(`2**64`), which numpy holds only as an object, takes the same rule by Python's exact integer
+arithmetic, `int(float(x)) == x`, rather than being refused as no number.
+
+**A list's integers are checked as they were given** (WP8 review S1; FES 2026-10-29: "a").
+numpy decides a list's dtype before any check sees it, so one float beside an integer makes
+them all floats: `[2**53 + 1, 0.5]` and even `[2**64 - 1, -1]` (no integer dtype holds both)
+became float64 rounded, and an array check cannot tell a rounded value from one given that way.
+So for a Python list or tuple, nested too, that numpy made floats of, the Python and NumPy
+integers in it are checked by the target's own integer rule -- exact in float64 for a real, the
+int32 range for an integer, which then names the integer as given rather than as numpy rounded
+it -- and refused by name and element. Two reductions (`fmin`/`fmax`, past NaN) say whether the
+list holds a value at or past the rule's bound (2^53, or the int32 range), since an integer
+within it cannot have been rounded; only then does numpy find where (`flatnonzero`), and only
+those items are looked at, at C speed until one of them is an integer, which is then checked
+in Python. Measured on 1e6-element lists on a quiet machine (#221 WP8 fix 3): ints, floats,
+nested floats, and ints with one float below the bound (`0.5`) all within noise of before
+(27-45 ms); ints with one value past it (`1e20`, accepted; `3e9` for an int32, refused) 45 and
+50 ms; floats past 2^53 holding no integer 121 against 26 ms; a list whose every element is an
+integer past 2^53 beside a float (`[2**60] * n + [0.5]`) about 1.6 µs per element, since every
+one of them is checked. An ndarray is unaffected: its dtype says what it holds.
+
+Two lists are not covered, and are documented (FES 2026-10-30). A Python int too large for
+any NumPy integer beside a float, `[2**64, 0.5]`, is **refused**: numpy makes the list an array
+of objects, which is no number's kind -- refused, never rounded, although each value is exact.
+And a bool in a list of numbers for a real, `[True, 0.5]`, is converted as numpy converts it,
+to 1.0: numpy makes it a float before any check sees it, as `[True, 0, 3]` is an int64 array
+(the edges below), and catching it would walk every list.
+
+| Fortran | Accepted | Refused, naming the argument |
+|---|---|---|
+| `integer(int32)` | Python and numpy integers, 0-d arrays; floats whose every value is whole and in range; R integer, and double with whole values (`2` is a double in R: 96 calls in the suites pass one); `-0.0` as 0 | a bool or R logical; a fraction, NaN/NA, an infinity, out of range; strings, objects, datetimes, complex; an R factor, Date, `integer64`; a masked array with masked elements |
+| `real(real64)` | Python and numpy integers and floats that float64 holds exactly: every float up to float64, every integer up to 32 bits, a 64-bit one within 2^53 or exact beyond it (`2**63`), a long double only if exact, an integer in a list beside floats likewise (a bool in such a list is numpy's 1.0); R integer and double; NaN/Inf as `DM_ALLOW_NAN` says | a bool or R logical; an integer or a long double float64 would round (`2**53 + 1`, also `[2**53 + 1, 0.5]`); a Python int too large for NumPy beside a float (`[2**64, 0.5]`: numpy makes it objects); strings (never parsed), complex, datetimes, objects; an R Date; a masked array with masked elements |
+| `logical` | bools; any number whose every value is exactly 0 or 1 (12 Python call sites pass 0/1 integers, and `c(1, 0, 1)` is R's own literal for a mask) | any other number, NaN/NA/None, strings, objects |
+| a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA, marked UTF-8 or latin1, or unmarked with UTF-8 bytes | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8; an R string marked "bytes", or latin1 with a byte that is no character |
+| an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |
+| a mode | a valid string matching one of the modes whole (case aside, as before), after its trailing blanks are dropped like any string's (`'ward '` is `ward`) | anything else, a leading blank included; the message lists the modes |
+| `complex(real64)` | Python: a single value is any number, complex or real, whose parts float64 holds exactly (the real rule); an array is what numpy converts to `complex128` -- outside the round trip, as numpy converts it; R: a complex or numeric vector. A single output or `intent(inout)` value comes back as a Python `complex` and an R complex | Python, a single value: a bool, a string, an object, an inexact part; R: anything that is not a number |
+| rank | numpy `ndim` == the declared rank; R `length(dim(x))`, where a plain vector, a 1-D array and a table are rank 1, and an all-numeric data.frame is a matrix (as a DataFrame is in Python) | any other rank: nothing is flattened |
+
+**Trailing blanks are Fortran semantics, accepted and documented** (FES, 2026-10-26). A string
+crosses blank-padded, so `'a '` and `'a'` are the same value to Fortran and the blank never
+comes back; like 1-based indexing, this is what the library means, and every generated string
+parameter says so (`emit.doc_contract`). A string longer than a *declared* length is refused:
+the buffer would cut it short, which turned `delimiter='::'` into `':'` and a mode
+`'weightedXYZ'` into `'weighted'`. A mode is therefore matched whole in the binding, which also
+lets the refusal name the argument and list the modes, where the C wrapper's named neither.
+Strings reach Fortran as UTF-8 in R too, and come back marked UTF-8.
+
+**An R string crosses by what R marks it as, never by the session's locale** (FES 2026-10-29).
+Marked UTF-8, it is passed as it stands; marked latin1, it is translated (so it equals its UTF-8
+twin); unmarked -- what `readLines` and `rawToChar` give -- it is passed as it stands if its
+bytes are well-formed UTF-8, in any locale. Everything else is refused by name: an unmarked
+string that is not UTF-8, one marked "bytes", which has no encoding, and a latin1 one holding a
+byte Windows-1252 (R's reading of latin1) leaves undefined. The first design translated every
+string the way `enc2utf8` does, and that is locale-dependent: in the C locale (`Rscript` under
+cron, a container with `LANG` unset) R takes every non-ASCII native byte for one it cannot
+convert and writes it out as escape text, so `"\u00e9t\u00e9"` read from a UTF-8 file reached
+Fortran as the ASCII `<c3><a9>t<c3><a9>` -- valid UTF-8, so nothing refused it -- where main had
+passed the bytes unchanged. *Rejected:* translating an unmarked string from the locale's charset
+and refusing it where that fails: in the C locale it would refuse every non-ASCII string read
+from a file, the commonest case, which main handled. *Consequence:* in a latin1 locale, an
+unmarked latin1 string is refused, with a hint to mark it (`Encoding(x) <- "latin1"`); R has run
+in UTF-8 by default on Windows since 4.2, as on macOS and the Linux distributions.
+
+**A complex value is two doubles to C, and a box for one has to be two wide** (#221 WP8). An
+array of them is numpy's `complex128` and R's complex vector, both the 16-byte layout Fortran
+has. A single complex is a box Python makes, and `ctypes` has no complex type: the box was the
+real part's `c_double`. For an output, Fortran wrote 16 bytes into 8 and the caller got the real
+part back; for an input, a complex raised a bare `TypeError` and a float's imaginary part was read
+from whatever lay past the box; an `intent(inout)` value was passed as the caller's own object, a
+`TypeError` too. Now every single complex is a `(c_double * 2)` box: allocated for an output,
+filled from the value for an input (`None` for an omitted optional) and for an `intent(inout)`,
+whose box is returned, as `complex(z[0], z[1])`. An input is checked first by the contract
+(`_contract.complex_number`): a real number by the real rule, a complex one whose parts float64
+holds, refused by name otherwise. C and R were right already (`Rf_ScalarComplex`). A complex
+*array* keeps numpy's own conversion, which the round trip does not cover; nothing on main has
+one as an input but the serde helpers.
+
+Some refusals say what to do instead: a uint32 bit-mask word of 2^31 or more passes as
+`.view(np.int32)`; a bytes array decodes with `.astype(str)`; an `integer64` converts with
+`as.integer()` or `as.double()`; a masked array fills with `.filled()`.
+
+Edges that are documented rather than fixed: a Python list `[True, 0, 3]` is an int64 array
+before any check sees the bool in it; `-2**31` is an int32 to Python but `NA_integer_` to R,
+which refuses it; a `Decimal` or `Fraction` is an object, and so refused for a real it used to
+reach through `__float__` (a Python int too large for int64 is an object too, which an integer
+refuses as out of range and a real takes by the exact rule); a double above 2^53 is whole
+by construction, so neither language can tell that a typed value was rounded before it arrived.
+
+**Where each check runs.** Python's whole contract is one generated module,
+`tensor_omics/_contract.py` (`emit.python_contract`), which every wrapper calls; it is free for an
+input that already has the Fortran type (no pass at all) and costs one comparison where a
+conversion runs anyway. R checks what an argument *is* -- kind, rank, and a single value in full,
+which R itself uses as an extent -- in `tox_validate.R`; the elements of an integer, logical or
+character array are checked by the C shim while it converts them (`tox_marshal.h`), in the
+pass it makes anyway. That is the change to the decision below.
+
+*Rejected:* converting first and checking the result. A post-conversion check cannot see what
+was converted from, and numpy's unsafe casts and parsing accept far more than numbers.
+*Rejected:* a float range test (`x.max() <= 2**63 - 1`): `float(2**63 - 1)` is `2**63`, so it
+accepts a value the cast then wraps; the round trip does not. *Rejected:* refusing R doubles for
+an integer, and numbers for a logical: the suites rely on both, and the languages would then
+disagree on their most natural input. *Rejected:* refusing trailing blanks, which would make
+fixed-width data need an explicit strip -- FES chose to document them.
+
+---
+
+## Decision: R checks what an argument is, the C shim checks every element
+
+The `.Call` shim receives only the `SEXP`, and `REAL(x)` / `INTEGER(x)` hand back a bare
+pointer that cannot know the argument was called `weights`. So the first design had R do all of
+it, and C none: R can say which argument, for free --
 
 ```r
 if (!is.double(vector)) {
@@ -87,24 +225,42 @@ if (!is.double(vector)) {
 }
 ```
 
-`is.double()` is O(1). The message names the argument. `stop()` raises a **classed
-condition** (`tox_type_error` / `tox_error` / `error`) that `tryCatch` can select on --
-and constructing one from C means calling back into the package environment, which is
-fragile and slow.
+-- and constructing a classed condition in C seemed to mean calling back into the package
+environment. That held while R's checks were O(1). The contract (above) needs every element of
+an integer and a logical array read, and in R that costs more than the call it guards: at 1e7
+elements the round trip `as.integer(x); anyNA(y) || !all(y == x)` took 137-156 ms and `x !=
+trunc(x)` 380 ms, against 70 ms for the whole of `validate_gene_to_family_mapping` on native
+integers. In C, in the loop that converts anyway, the same check costs what `as.integer` alone
+did (46 ms; `attack-contract`).
 
-And once R guarantees the type, `REAL(x)` in the C shim **cannot fail**, so the whole
-problem disappears rather than being worked around.
+So the split is by *what* is checked, not by language:
 
-So: **R validates and marshals nothing; C marshals and validates nothing.**
+- **R** checks the kind and the rank of every argument, coerces a double (`storage.mode`), and
+  checks a single value in full, because R uses those itself -- as extents in the shape checks,
+  as inputs of a producer -- before the call.
+- **The C shim** checks every element of an integer, logical or character array while it
+  converts it for Fortran (`tox_int_in`, `tox_bool_in`, `tox_char_in`). The generated `.R` reads
+  no element of an array.
+- **Both raise the same conditions.** C is handed the argument's name as a literal, builds the
+  condition R's `.tox_raise` builds -- the same classes, fields and NA message, emitted from
+  `emit.errors_r` -- and signals it through base R's `stop()`, which needs nothing of the
+  environment the wrappers were sourced into. It is the refusal path only, and an error longjmp
+  leaks nothing: every buffer is `R_alloc`ed.
+
+And once R has checked the kind, `REAL(x)` in the shim **cannot fail**, as before.
 
 *Rejected:* the `Tox*` C++ wrapper classes (Rcpp `as<>`), as sketched in issue
 #131. They exist to produce good type errors, and R produces better ones for less. The
 `Tox` prefix survives on the **conditions** (`tox_error`), where it earns its keep.
 
-*Known consequence:* validation is skippable by calling the internal `.Call("<name>_call", ...)`
-directly. That is acceptable for a dot-prefixed internal entry point. If the C ever needs to
-be defensive on its own — because something else starts calling it — this decision flips,
-and the marshalling layer grows validation of its own.
+*Rejected:* keeping the element checks in R with cheaper idioms (`min`/`max` for a 0/1
+integer, 37 ms). There is none for a double that must be whole, and two places to check
+elements would be two rules to keep in step.
+
+*Known consequence:* the R-level checks are skippable by calling the internal
+`.Call("<name>_call", ...)` directly. The shim refuses a value of the wrong R type rather than
+reading it as another (`tox_refuse_type`), but a wrong rank or shape would reach Fortran. That
+is acceptable for a dot-prefixed internal entry point.
 
 ---
 
@@ -120,11 +276,10 @@ The cost, per type:
 | `double` | no | none | `NA_real_` is a NaN payload; `validate_in_range_real` already catches it |
 | `logical` | yes | **none** | R logical is `int`, Fortran wants 1-byte `c_bool`; the conversion scans anyway |
 | `character` | yes | **none** | must be copied into a `c_char` buffer anyway |
-| `integer` | yes | one `anyNA()` | the only real cost |
+| `integer` | yes | one pass in the shim, or none | a double is converted anyway, and checked in that pass; an integer vector is scanned for `NA_INTEGER` unless R already knows it holds none |
 
-`anyNA()` rather than a hand-rolled loop: it is ALTREP-aware, so for a compact sequence
-like `1:n` it answers **in O(1) without touching memory**, and it is a tuned C loop
-otherwise.
+`INTEGER_NO_NA` first: it is ALTREP-aware, so for a compact sequence like `1:n` it answers
+**in O(1) without touching memory**, as `anyNA()` did in R.
 
 In practice the large arrays are doubles, which are not scanned at all; integers are
 indices, counts and shapes.
@@ -211,36 +366,77 @@ ToxInputError: invalid input arguments (argument 'n_dims')
 
 Status codes (`STAT_*`) are outcomes, not failures, and never raise.
 
-*Rejected:* raising from C in the R layer. C has no way to construct a classed R condition
-without calling back into the package environment.
+*Rejected:* decoding `ierr` in the R shim's C. It would mean raising the code's own condition
+class from C, from a table the R error module already holds; the shim raises only the binding's
+own refusals of an element (above), which need no code at all.
 
-*Consequence:* in R, type errors are raised by R before the call and Fortran errors by R
-after it — one place, one set of condition classes.
+*Consequence:* in R, a refusal is raised before the call -- by R, or by the shim for an array
+element -- and a Fortran error by R after it, all of one set of condition classes.
+
+**A refusal of the binding's own carries no tox code, and is an input error all the same**
+(#221). A wrong shape, type or value is found before anything is called, so there is no code to
+report, and main's convention is to report none: Python's `assert_error` without a code and R's
+mean exactly that. But the caller made the same mistake as one the library reports itself --
+the C wrapper's `ERR_SIZE_MISMATCH` for an axis only Fortran can evaluate (`c-layer.md`) -- and
+had to catch the two apart: a `ValueError` in one case, a `ToxInputError` in the other. So Python raises `ToxArgumentError(ToxInputError, TypeError,
+ValueError)` with `code` None: an `except ToxInputError` catches both, and an `except ValueError`
+written against the old refusal (the numpy idiom) still works. R's `tox_type_error`,
+`tox_shape_error` and `tox_na_error` gained `tox_input_error` between themselves and `tox_error`,
+with `code` NA, which R's `assert_error` already reads as "no tox code".
+
+*Rejected:* giving the refusal a code (`ERR_SIZE_MISMATCH` for a shape). It would claim the
+library reported something it was never asked, and turn six Python tests that assert "no tox
+code" into failures for no gain.
+
+**The package exports the error module whole** (#221 C, FES). `from tensor_omics import
+ERR_NAN_INF, ToxInputError` works, as do every `ERR_*` and `STAT_*` code, `ARG_POS_FACTOR`, every
+exception class and `check_err_code`, all listed in `__all__`: Python is where R already was, whose
+`error_handling.R` is sourced into the global environment. Before, a caller who wanted to compare
+a code or catch by class had to know the submodule (`tensor_omics.error_handling`), while the
+package itself offered `ToxError` and `check_err_code` alone. The names come from one helper,
+`errors_python.public_names`, that the error module is emitted from too, so #220's `STAT_*` codes
+follow with no edit. A name the top level would then bind twice -- a procedure or module called
+like one of these or like a submodule, ignoring case -- is a generator error
+(`python_ctypes.check_package_names`).
+
+*Rejected:* exporting them without listing them in `__all__`. They would be importable and still
+invisible to `import *`, documentation tools and linters: a half state. `import *` gains only
+`ERR_`, `STAT_` and `Tox` names, and `ARG_POS_FACTOR` and `check_err_code`, which is acceptable.
 
 ---
 
-## Decision: shape cross-checks happen in the binding language — and in R that is R, not C
+## Decision: shape checks happen in the binding language — and in R that is R, not C
 
 `matrix(n_rows, n_cols)` and `weights(n_cols)` share an extent. They agree **by
 declaration only** — Fortran has no way to check that the actual arguments agree, and a
-mismatch surfaces as a wrong answer or a segfault.
+mismatch surfaces as a wrong answer or a read past the buffer.
 
-So the binding language checks it, naming both arguments:
+So the binding language checks it, by one rule (#221, `emit.shape_checks`): **every input axis
+that names an extent is compared with that extent's value, except the axis the value was read
+from, and an axis fixed at a constant with the constant.** The value is read off the first input
+that must be passed, counted from a mask, computed by a producer or passed by the caller; an
+optional array is compared when given. It used to be "two inputs sharing an extent agree", which
+left out an optional array (a 1x1 `neighbor_mask` read past), an input sized by a mask's count
+(compared with nothing) and a constant axis (`fields(n, 2, m)` read a field without its target).
+One module decides and both languages write it out, and Python reads an extent off the very axis
+the rule leaves out (`extent_provider`), so they cannot drift. An axis the declaration computes
+(`sum(reps_per_tissue)`) is not theirs: they pass its extent to C, and the C wrapper compares it
+(`c-layer.md`). The message names the arrays and shows the declared shape:
 
 ```
-ValueError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
+ToxArgumentError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2; 'weights' is declared with shape (n_cols)
 ```
 
 This is the single most valuable thing the generated layer does that a hand-written
 wrapper usually forgets.
 
-In R the check is in the **R** wrapper, not the C. Everything a user can trip over --
-wrong type, wrong shape, an `NA` -- is caught in one place and raised as a **classed
-condition** (`tox_type_error`, `tox_shape_error`, `tox_error`), so `tryCatch` can select
-on it. C raising these would mean calling back into the package environment, which is
-fragile. The split is clean: **R decides and raises; C marshals and calls.** C
-re-derives the extents it needs for the call from the R objects it is handed (`Rf_length(x)`
-is free), rather than being passed them.
+In R the shape check is in the **R** wrapper, not the C: it needs no element, only extents,
+which R has for free, and it is raised as a **classed condition** (`tox_type_error`,
+`tox_shape_error`, `tox_input_error`, `tox_error`), so `tryCatch` can select on it. The shim
+raises the same classes for an element it refuses (above). C re-derives the extents it needs for
+the call from the R objects it is handed (`Rf_length(x)` is free), rather than being passed them.
+A mask that sizes an input is counted in R as the shim counts it, its exact TRUEs and 1s, since
+its elements are checked only later, in C.
 
 ---
 
@@ -268,7 +464,48 @@ one place and out of the wrapper.
 The default must therefore be a **constant expression**, evaluable at generation time. It
 is evaluated once, in the ABI layer, so Python and R cannot disagree about it.
 
+It is evaluated with **Fortran's arithmetic**, because the value a binding passes has to be the
+one a Fortran caller gets when it omits the argument. Python's arithmetic differs in exactly the
+places a default reaches (#221, B9): `round` rounds a half to even (`nint(2.5)` gave 2, Fortran
+3), `**` with a negative exponent gives a float (`2**-1` gave 0.5, Fortran's integer result is
+0), `int(a / b)` goes through a float and loses integers above 2^53, a negative base raised to a
+real power gives a complex number where Fortran refuses, and an unbounded `int` never
+overflows. So every integer carries its kind (`constants.Integer`), overflowing it is an error,
+division and `mod` truncate exactly, and `nint` compares the exact distance to the floor with a
+half rather than computing `floor(x + 0.5)` -- whose addition rounds `0.49999999999999994` to 1.
+The evaluated default must also fit the argument's own kind: `ctypes.c_int` wraps an
+out-of-range value silently, so a default of 3000000000 on an `integer(int32)` is refused.
+A sign binds as Fortran's grammar says, to a whole add-operand below `*` and `**`: `-2**2` is
+-4, where the first grammar computed `(-2)**2` and handed the bindings +4.
+
+Real kinds are **not** tracked: every real literal is read as real64. An unkinded `0.95` is a
+real32 0.949999988 to the compiler and 0.95 here. Reading it the compiler's way would change
+main's `DM_DEFAULT(0.95)` (`tox_data_integration_jsd_impl`) away from the `0.95_real64` the
+implementation itself falls back to, and refusing unkinded reals would break the build; so the
+rule is documented instead -- write `_real64`, and the two readings agree.
+
 ---
+
+## Decision: an extent the binding computes is parsed once, in a grammar every layer agrees on
+
+Python and the R shim allocate outputs and work arrays, and pad strings, before the call, so they
+evaluate the Fortran extent themselves (`n_points - 1`, `max(0_int32, n_timepoints - 1)`,
+`size(gene_to_fam)`). Two regex translators did it, one per language, and each passed through
+what it did not recognise (#221 B11): `/` reached Python as float division, `mod` and `**` reached
+the shim's C, which did not compile, and the shims are bundled into the library.
+
+`abi/extents.py` parses an extent into a tree, and each binding writes it out from that tree. The
+grammar is what means the same number in Fortran, Python and C -- names, module constants, integer
+literals with or without a kind, `+ - * /`, parentheses, `max`, `min`, `size(a[, k])` -- and
+anything else is refused before emission (`check_binding_extents`), pointing at `DM_OUTPUT_FROM`.
+Integer `/` is the one operator that needs writing out: Fortran and C truncate toward zero,
+Python's `//` floors, so `-7/2` is -3 against -4. Python gets the exact
+`(a // b if (a >= 0) == (b > 0) else -(-a // b))`, never `int(a / b)`, which goes through a float.
+
+*Rejected:* refusing `/` along with `mod`, which the first design proposed. Writing it out is one
+line, and a size that halves is common enough to want. *Rejected:* a generated "extent oracle"
+procedure per wrapper, which would let Fortran compute every size: a second call and a new symbol
+per procedure, for a grammar no output on main leaves.
 
 ## Decision: R keeps a hand-generated wrapper over the C `.Call`
 
@@ -339,6 +576,56 @@ in Python and `TRUE` in R.
 **The gap that let this ship** was in the fixtures, not the emitters: `fx_modes` had two mode
 arguments and neither was optional, so "a mode with a default" was generated nowhere in the
 test suite. `link_method` now carries `DM_DEFAULT(METHOD_WARD)`.
+
+---
+
+## Decision: an argument's name must work in every layer, and is refused where it would not
+
+A dummy's name is published verbatim: a Python parameter, an R parameter, a parameter of the C
+`.Call` shim and a dummy of every generated wrapper. Nothing checked it, and a name one layer
+reserves broke more than its own procedure -- a parameter called `lambda` is a SyntaxError, and the
+package `__init__` imports every module, so `import tensor_omics` failed; `next` failed
+`r/load_tensor_omics.R` for every wrapper; `default` failed the C build of the whole library; `np`
+hid numpy inside the function. So `validate` refuses the words each layer reserves
+(`names.language_word`), for an argument and for a procedure's own name, which is a Python and an
+R function.
+
+The names the generated code binds itself are a different problem, and are designed out where the
+language lets them be. Everything the R shim's C and a generated Python module bind beside the
+arguments starts with `_` (`_v_<name>`, `_nprot`, `_np`, `_check_err_code`, `_error`); no Fortran
+name can, so no argument can meet one. The functions the shim's header defines (`tox_int_in`,
+`tox_char_in`, ...) cannot be underscored -- a leading `_` at file scope is reserved to C's
+implementation -- so they are listed (`names.R_SHIM_HELPERS`, held to the emitted header by a
+test) and an argument of one of their names is refused: as a shim parameter it would hide the
+helper, and the library would not build. A Fortran wrapper's own locals cannot start with `_`, so
+they stay `<name>_f`, `<name>_mode_f`, `<name>_mode_p`, `<name>_address`, `<name>_value` and
+`handled` (and the C wrapper module's `empty_view_anchor`), and an argument is refused where the
+wrapper emits the same name -- read off the wrapper as emitted, together with what it calls,
+imports, uses as a kind and finds declared in its module (`emit/name_clashes.py`).
+
+A procedure's or a module's name meets one more set of names at the Python package's top level:
+the error module's exports and the package's submodules, beside which `tensor_omics` binds it. A
+clash there is refused too, ignoring case (`python_ctypes.check_package_names`; the errors
+decision above).
+
+**Rejected -- renaming instead.** The published name is the API, and a binding that quietly calls
+an argument `lambda_` is one more thing a reader of the Fortran cannot predict.
+
+**Rejected -- refusing Fortran keywords and R function names too.** Fortran reserves no word, and
+an R argument cannot shadow a function call (R skips non-function bindings when it looks a call
+up), while main publishes `value`, `mode`, `vector`, `array`, `expression`, `factor`, `points` and
+`weights`. Refusing them would refuse working API for a clash that does not happen.
+
+**Rejected -- refusing every `<other>_<suffix>` and every name a wrapper might use** (WP2's first
+form). It refused `p_value` beside `p` and `window_size` beside `window`, ordinary names whose local
+is never emitted, and a blanket list of intrinsics would refuse `count`, which main publishes in
+`mask_chunk_count`. Refusing where the wrapper really emits the name is both narrower and complete.
+
+**Rejected -- a list of what each emitter might reference**, kept beside the emitter. It would be a
+second description of the emitted code that drifts from the first; reading the rendered wrapper
+cannot.
+
+---
 
 ## Open
 

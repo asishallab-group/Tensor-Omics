@@ -32,21 +32,22 @@ of them sizes a mask.
 Python binding, generated from f42_bit_masks. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.bit_mask_n_words_c.restype = None
 _lib.bit_mask_n_words_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -54,12 +55,12 @@ _BIT_MASK_N_WORDS_ARGUMENTS = ("n_bits", "n_words", "ierr",)
 
 _lib.bit_mask_test_c.restype = None
 _lib.bit_mask_test_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -69,11 +70,11 @@ _BIT_MASK_TEST_ARGUMENT_SOURCES = (None, "bit_mask", None, None, None, None,)
 
 _lib.bit_mask_from_logical_c.restype = None
 _lib.bit_mask_from_logical_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -83,11 +84,11 @@ _BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES = ("flags", "bit_mask", None, None, None
 
 _lib.bit_mask_to_logical_c.restype = None
 _lib.bit_mask_to_logical_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -97,12 +98,12 @@ _BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES = ("flags", "bit_mask", None, None, None,)
 
 _lib.bit_masks_from_logical_2D_c.restype = None
 _lib.bit_masks_from_logical_2D_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -112,12 +113,12 @@ _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES = ("flags", "flags", "bit_masks", No
 
 _lib.bit_masks_to_logical_2D_c.restype = None
 _lib.bit_masks_to_logical_2D_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -145,6 +146,9 @@ def bit_mask_n_words(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -153,17 +157,20 @@ def bit_mask_n_words(
     Generated from the Fortran procedure `f42_bit_masks::bit_mask_n_words`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    n_bits = _contract.integer(n_bits, "n_bits")
+
     # outputs and work arrays, which the caller never sees
-    n_words = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_words = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.bit_mask_n_words_c(
-        ctypes.byref(ctypes.c_int(n_bits)),
-        ctypes.byref(n_words),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_bits)),
+        _ctypes.byref(n_words),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BIT_MASK_N_WORDS_ARGUMENTS)
+    _check_err_code(ierr.value, _BIT_MASK_N_WORDS_ARGUMENTS)
 
     return n_words.value
 
@@ -195,6 +202,9 @@ def bit_mask_test(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -203,31 +213,28 @@ def bit_mask_test(
     Generated from the Fortran procedure `f42_bit_masks::bit_mask_test`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        bit_mask = np.ascontiguousarray(bit_mask, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'bit_mask' must be an array of np.int32: {error}") from None
-    if bit_mask.ndim != 1:
-        raise ValueError(f"'bit_mask' must have 1 dimension, but has {bit_mask.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_bits = _contract.integer(n_bits, "n_bits")
+    bit_mask = _contract.integers(bit_mask, "bit_mask", ndim=1)
+    i_bit = _contract.integer(i_bit, "i_bit")
 
     # what the inputs already say, rather than asking for it again
     n_words = bit_mask.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    is_set = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
+    is_set = _ctypes.c_bool(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.bit_mask_test_c(
-        ctypes.byref(ctypes.c_int(n_bits)),
-        ctypes.byref(ctypes.c_int(n_words)),
+        _ctypes.byref(_ctypes.c_int(n_bits)),
+        _ctypes.byref(_ctypes.c_int(n_words)),
         bit_mask,
-        ctypes.byref(ctypes.c_int(i_bit)),
-        ctypes.byref(is_set),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(i_bit)),
+        _ctypes.byref(is_set),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BIT_MASK_TEST_ARGUMENTS, _BIT_MASK_TEST_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BIT_MASK_TEST_ARGUMENTS, _BIT_MASK_TEST_ARGUMENT_SOURCES)
 
     return is_set.value
 
@@ -254,6 +261,9 @@ def bit_mask_from_logical(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -262,30 +272,26 @@ def bit_mask_from_logical(
     Generated from the Fortran procedure `f42_bit_masks::bit_mask_from_logical`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        flags = np.ascontiguousarray(flags, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'flags' must be an array of np.bool_: {error}") from None
-    if flags.ndim != 1:
-        raise ValueError(f"'flags' must have 1 dimension, but has {flags.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_words = _contract.integer(n_words, "n_words")
+    flags = _contract.logicals(flags, "flags", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_bits = flags.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    bit_mask = np.empty((n_words,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    bit_mask = _np.empty((n_words,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.bit_mask_from_logical_c(
-        ctypes.byref(ctypes.c_int(n_bits)),
-        ctypes.byref(ctypes.c_int(n_words)),
+        _ctypes.byref(_ctypes.c_int(n_bits)),
+        _ctypes.byref(_ctypes.c_int(n_words)),
         flags,
         bit_mask,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BIT_MASK_FROM_LOGICAL_ARGUMENTS, _BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BIT_MASK_FROM_LOGICAL_ARGUMENTS, _BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     bit_mask.flags.writeable = False
@@ -314,6 +320,9 @@ def bit_mask_to_logical(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -322,30 +331,26 @@ def bit_mask_to_logical(
     Generated from the Fortran procedure `f42_bit_masks::bit_mask_to_logical`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        bit_mask = np.ascontiguousarray(bit_mask, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'bit_mask' must be an array of np.int32: {error}") from None
-    if bit_mask.ndim != 1:
-        raise ValueError(f"'bit_mask' must have 1 dimension, but has {bit_mask.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_bits = _contract.integer(n_bits, "n_bits")
+    bit_mask = _contract.integers(bit_mask, "bit_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_words = bit_mask.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    flags = np.empty((n_bits,), dtype=np.bool_, order='C')
-    ierr = ctypes.c_int(0)
+    flags = _np.empty((n_bits,), dtype=_np.bool_, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.bit_mask_to_logical_c(
-        ctypes.byref(ctypes.c_int(n_bits)),
-        ctypes.byref(ctypes.c_int(n_words)),
+        _ctypes.byref(_ctypes.c_int(n_bits)),
+        _ctypes.byref(_ctypes.c_int(n_words)),
         bit_mask,
         flags,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BIT_MASK_TO_LOGICAL_ARGUMENTS, _BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BIT_MASK_TO_LOGICAL_ARGUMENTS, _BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     flags.flags.writeable = False
@@ -375,6 +380,9 @@ def bit_masks_from_logical_2D(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -383,32 +391,28 @@ def bit_masks_from_logical_2D(
     Generated from the Fortran procedure `f42_bit_masks::bit_masks_from_logical_2D`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        flags = np.asfortranarray(flags, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'flags' must be an array of np.bool_: {error}") from None
-    if flags.ndim != 2:
-        raise ValueError(f"'flags' must have 2 dimensions, but has {flags.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_words = _contract.integer(n_words, "n_words")
+    flags = _contract.logicals(flags, "flags", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_bits = flags.shape[0]
     n_masks = flags.shape[1]
 
     # outputs and work arrays, which the caller never sees
-    bit_masks = np.empty((n_words, n_masks,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    bit_masks = _np.empty((n_words, n_masks,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.bit_masks_from_logical_2D_c(
-        ctypes.byref(ctypes.c_int(n_bits)),
-        ctypes.byref(ctypes.c_int(n_masks)),
-        ctypes.byref(ctypes.c_int(n_words)),
+        _ctypes.byref(_ctypes.c_int(n_bits)),
+        _ctypes.byref(_ctypes.c_int(n_masks)),
+        _ctypes.byref(_ctypes.c_int(n_words)),
         flags,
         bit_masks,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENTS, _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENTS, _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     bit_masks.flags.writeable = False
@@ -437,6 +441,9 @@ def bit_masks_to_logical_2D(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -445,32 +452,28 @@ def bit_masks_to_logical_2D(
     Generated from the Fortran procedure `f42_bit_masks::bit_masks_to_logical_2D`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        bit_masks = np.asfortranarray(bit_masks, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'bit_masks' must be an array of np.int32: {error}") from None
-    if bit_masks.ndim != 2:
-        raise ValueError(f"'bit_masks' must have 2 dimensions, but has {bit_masks.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_bits = _contract.integer(n_bits, "n_bits")
+    bit_masks = _contract.integers(bit_masks, "bit_masks", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_masks = bit_masks.shape[1]
     n_words = bit_masks.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    flags = np.empty((n_bits, n_masks,), dtype=np.bool_, order='F')
-    ierr = ctypes.c_int(0)
+    flags = _np.empty((n_bits, n_masks,), dtype=_np.bool_, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.bit_masks_to_logical_2D_c(
-        ctypes.byref(ctypes.c_int(n_bits)),
-        ctypes.byref(ctypes.c_int(n_masks)),
-        ctypes.byref(ctypes.c_int(n_words)),
+        _ctypes.byref(_ctypes.c_int(n_bits)),
+        _ctypes.byref(_ctypes.c_int(n_masks)),
+        _ctypes.byref(_ctypes.c_int(n_words)),
         bit_masks,
         flags,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BIT_MASKS_TO_LOGICAL_2D_ARGUMENTS, _BIT_MASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BIT_MASKS_TO_LOGICAL_2D_ARGUMENTS, _BIT_MASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     flags.flags.writeable = False
