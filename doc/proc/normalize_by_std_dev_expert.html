@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">33 statements</a>
+                 title=" 0.2% of total for procedures.">35 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -155,7 +155,12 @@
     
 
     <p>This procedure applies a global stabilization based on the relationship between
-gene-wise mean expression and empirical standard deviation.</p>
+gene-wise mean expression and empirical standard deviation.
+Genes whose standard deviation is exactly zero carry no information about the trend: they
+are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+-- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+is used as it is.</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +176,7 @@ gene-wise mean expression and empirical standard deviation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~32"></span>
+              <span class="anchor" id="variable-n_genes~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -201,7 +206,7 @@ gene-wise mean expression and empirical standard deviation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~8"></span>
+              <span class="anchor" id="variable-expr~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -211,9 +216,7 @@ gene-wise mean expression and empirical standard deviation.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-                <p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+                <p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -293,7 +296,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~12"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -308,7 +311,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~16"></span>
+              <span class="anchor" id="variable-int_workspace_size~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -346,7 +349,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~12"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -361,7 +364,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~16"></span>
+              <span class="anchor" id="variable-real_workspace_size~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -399,7 +402,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~6"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -429,7 +432,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~10"></span>
+              <span class="anchor" id="variable-tmp_eval_points~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -444,7 +447,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~11"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -459,7 +462,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~11"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -474,7 +477,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~11"></span>
+              <span class="anchor" id="variable-tmp_residuals~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -489,7 +492,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~11"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -504,7 +507,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~10"></span>
+              <span class="anchor" id="variable-span~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -515,12 +518,14 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
             <td><strong>span</strong></td>
             <td>
                 <p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.</p>
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~11"></span>
+              <span class="anchor" id="variable-degree~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -531,12 +536,14 @@ The default value is <code>0.7_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
                 <p>LOESS degree parameter.
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~180"></span>
+              <span class="anchor" id="variable-ierr~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -583,7 +590,7 @@ The default value is <code>2_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-30 09:20 +0000             </p>
+ on 2026-11-06 13:05 +0000             </p>
           </div>
         </div>
         <br>

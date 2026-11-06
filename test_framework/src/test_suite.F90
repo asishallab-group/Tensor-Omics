@@ -74,6 +74,20 @@ contains
         failures_in_case = failures_in_case + 1
     end subroutine record_assertion_failure
 
+    !> Failed assertions recorded so far in the test case currently running. For the framework's
+    !| own cases, which check that an assertion fails when it should (`test/mod_test_asserts.F90`).
+    integer function assertion_failures_in_case()
+        assertion_failures_in_case = failures_in_case
+    end function assertion_failures_in_case
+
+    !> Takes back `n_failures` failures a framework case caused on purpose, so that the case
+    !| passes when the assertion under test failed as it should.
+    subroutine forgive_assertion_failures(n_failures)
+        integer, intent(in) :: n_failures
+
+        failures_in_case = max(0, failures_in_case - n_failures)
+    end subroutine forgive_assertion_failures
+
     !> Whether anything has failed so far.
     logical function any_failures()
         any_failures = cases_failed > 0

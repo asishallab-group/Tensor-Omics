@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.1% of total for modules and submodules.">399 statements</a>
+                 title=" 2.2% of total for modules and submodules.">416 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -185,12 +185,12 @@ callers want. The individual routines are published for a caller assembling thei
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_normalization_impl.html'>tox_normalization_impl</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_normalization_impl.html'>tox_normalization_impl</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_loess_impl.html'>tox_loess_impl</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -239,14 +239,12 @@ callers want. The individual routines are published for a caller assembling thei
             <td>::</td>
             <td><strong>vector</strong></td>
             <td>
-<p>Vector that will be normalized to unit length
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Vector that will be normalized to unit length</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~10"></span>
+              <span class="anchor" id="variable-n_dims"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -261,7 +259,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~176"></span>
+              <span class="anchor" id="variable-ierr~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -301,7 +299,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~29"></span>
+              <span class="anchor" id="variable-n_genes~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -326,12 +324,14 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>n_replicates</strong></td>
             <td>
-<p>Number of replicates per gene</p>
+<p>Number of replicates per gene, the rows of <code>expr</code>; <code>reps_per_tissue</code> must add up to it
+The minimum valid value is <code>sum(reps_per_tissue)</code>.
+The maximum valid value is <code>sum(reps_per_tissue)</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~5"></span>
+              <span class="anchor" id="variable-expr~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -341,9 +341,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -379,7 +377,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~3"></span>
+              <span class="anchor" id="variable-n_tissues"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -394,7 +392,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~7"></span>
+              <span class="anchor" id="variable-span~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -405,12 +403,14 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
             <td><strong>span</strong></td>
             <td>
 <p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.</p>
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~8"></span>
+              <span class="anchor" id="variable-degree~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -421,7 +421,9 @@ The default value is <code>0.7_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
 <p>LOESS degree parameter.
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -442,7 +444,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~177"></span>
+              <span class="anchor" id="variable-ierr~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -482,7 +484,7 @@ The default value is <code>.false.</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~30"></span>
+              <span class="anchor" id="variable-n_genes~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -507,12 +509,14 @@ The default value is <code>.false.</code>.</p>
             <td>::</td>
             <td><strong>n_replicates</strong></td>
             <td>
-<p>Number of replicates per gene</p>
+<p>Number of replicates per gene, the rows of <code>expr</code>; <code>reps_per_tissue</code> must add up to it
+The minimum valid value is <code>sum(reps_per_tissue)</code>.
+The maximum valid value is <code>sum(reps_per_tissue)</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~6"></span>
+              <span class="anchor" id="variable-expr~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -522,9 +526,7 @@ The default value is <code>.false.</code>.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -560,7 +562,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~4"></span>
+              <span class="anchor" id="variable-n_tissues~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -635,7 +637,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~10"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -650,7 +652,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~14"></span>
+              <span class="anchor" id="variable-int_workspace_size~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -661,12 +663,12 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
             <td><strong>int_workspace_size</strong></td>
             <td>
 <p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert.html#variable-int_workspace_size~14" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert.html#variable-int_workspace_size~6" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~10"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -681,7 +683,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~14"></span>
+              <span class="anchor" id="variable-real_workspace_size~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -692,12 +694,12 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
             <td><strong>real_workspace_size</strong></td>
             <td>
 <p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert.html#variable-real_workspace_size~14" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert.html#variable-real_workspace_size~6" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~4"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -727,7 +729,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~8"></span>
+              <span class="anchor" id="variable-tmp_eval_points~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -742,7 +744,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~9"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -757,7 +759,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~9"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -772,7 +774,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~9"></span>
+              <span class="anchor" id="variable-tmp_residuals~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -787,7 +789,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~9"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -802,7 +804,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~8"></span>
+              <span class="anchor" id="variable-span~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -813,12 +815,14 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
             <td><strong>span</strong></td>
             <td>
 <p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.</p>
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~9"></span>
+              <span class="anchor" id="variable-degree~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -829,7 +833,9 @@ The default value is <code>0.7_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
 <p>LOESS degree parameter.
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -850,7 +856,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~178"></span>
+              <span class="anchor" id="variable-ierr~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -890,7 +896,7 @@ The default value is <code>.false.</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~31"></span>
+              <span class="anchor" id="variable-n_genes~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -920,7 +926,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~7"></span>
+              <span class="anchor" id="variable-expr~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -930,9 +936,7 @@ The default value is <code>.false.</code>.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -952,7 +956,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~9"></span>
+              <span class="anchor" id="variable-span~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -963,12 +967,14 @@ Infinite values are permitted for this value.</p>
             <td><strong>span</strong></td>
             <td>
 <p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.</p>
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~10"></span>
+              <span class="anchor" id="variable-degree~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -979,12 +985,14 @@ The default value is <code>0.7_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
 <p>LOESS degree parameter.
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~179"></span>
+              <span class="anchor" id="variable-ierr~33"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1024,7 +1032,7 @@ The default value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~32"></span>
+              <span class="anchor" id="variable-n_genes~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1054,7 +1062,7 @@ The default value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~8"></span>
+              <span class="anchor" id="variable-expr~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1064,9 +1072,7 @@ The default value is <code>2_int32</code>.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -1146,7 +1152,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~12"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1161,7 +1167,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~16"></span>
+              <span class="anchor" id="variable-int_workspace_size~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1172,12 +1178,12 @@ Infinite values are permitted for this value.</p>
             <td><strong>int_workspace_size</strong></td>
             <td>
 <p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert.html#variable-int_workspace_size~16" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert.html#variable-int_workspace_size~8" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~12"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1192,7 +1198,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~16"></span>
+              <span class="anchor" id="variable-real_workspace_size~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1203,12 +1209,12 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
             <td><strong>real_workspace_size</strong></td>
             <td>
 <p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert.html#variable-real_workspace_size~16" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert.html#variable-real_workspace_size~8" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~6"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1238,7 +1244,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~10"></span>
+              <span class="anchor" id="variable-tmp_eval_points~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1253,7 +1259,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~11"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1268,7 +1274,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~11"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1283,7 +1289,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~11"></span>
+              <span class="anchor" id="variable-tmp_residuals~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1298,7 +1304,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~11"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1313,7 +1319,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~10"></span>
+              <span class="anchor" id="variable-span~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1324,12 +1330,14 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
             <td><strong>span</strong></td>
             <td>
 <p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.</p>
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~11"></span>
+              <span class="anchor" id="variable-degree~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1340,12 +1348,14 @@ The default value is <code>0.7_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
 <p>LOESS degree parameter.
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~180"></span>
+              <span class="anchor" id="variable-ierr~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1385,7 +1395,7 @@ The default value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~33"></span>
+              <span class="anchor" id="variable-n_genes~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1415,7 +1425,7 @@ The default value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~9"></span>
+              <span class="anchor" id="variable-expr~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1425,9 +1435,7 @@ The default value is <code>2_int32</code>.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -1447,7 +1455,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~181"></span>
+              <span class="anchor" id="variable-ierr~35"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1487,7 +1495,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~34"></span>
+              <span class="anchor" id="variable-n_genes~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1517,7 +1525,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~10"></span>
+              <span class="anchor" id="variable-expr~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1527,9 +1535,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -1564,7 +1570,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~182"></span>
+              <span class="anchor" id="variable-ierr~36"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1604,7 +1610,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~35"></span>
+              <span class="anchor" id="variable-n_genes~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1634,7 +1640,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~11"></span>
+              <span class="anchor" id="variable-expr~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1644,9 +1650,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -1696,7 +1700,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~8"></span>
+              <span class="anchor" id="variable-tmp_perm~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1711,7 +1715,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~183"></span>
+              <span class="anchor" id="variable-ierr~37"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1751,7 +1755,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~36"></span>
+              <span class="anchor" id="variable-n_genes~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1766,7 +1770,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~5"></span>
+              <span class="anchor" id="variable-n_tissues~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1781,7 +1785,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~12"></span>
+              <span class="anchor" id="variable-expr~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1791,9 +1795,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a>
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
             </td>
         </tr>
         <tr>
@@ -1813,7 +1815,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~184"></span>
+              <span class="anchor" id="variable-ierr~38"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1853,7 +1855,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~37"></span>
+              <span class="anchor" id="variable-n_genes~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1868,7 +1870,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~6"></span>
+              <span class="anchor" id="variable-n_tissues~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1900,7 +1902,7 @@ The minimum valid value is <code>1_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~13"></span>
+              <span class="anchor" id="variable-expr~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1910,9 +1912,7 @@ The minimum valid value is <code>1_int32</code>.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
@@ -1932,7 +1932,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~185"></span>
+              <span class="anchor" id="variable-ierr~39"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1972,7 +1972,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~38"></span>
+              <span class="anchor" id="variable-n_genes~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1987,7 +1987,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~7"></span>
+              <span class="anchor" id="variable-n_tissues~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2002,7 +2002,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_pairs~2"></span>
+              <span class="anchor" id="variable-n_pairs"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2051,7 +2051,7 @@ The maximum valid value is <code>n_tissues</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~14"></span>
+              <span class="anchor" id="variable-expr~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2061,9 +2061,7 @@ The maximum valid value is <code>n_tissues</code>.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-<p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a>
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
             </td>
         </tr>
         <tr>
@@ -2083,7 +2081,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~186"></span>
+              <span class="anchor" id="variable-ierr~40"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2093,7 +2091,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code; zero on success, non-zero on failure.</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2126,7 +2124,7 @@ Infinite values are permitted for this value.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-30 09:20 +0000             </p>
+ on 2026-11-06 13:05 +0000             </p>
           </div>
         </div>
         <br>
