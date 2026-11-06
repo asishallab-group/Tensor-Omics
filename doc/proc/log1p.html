@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>calc_tiss_avg_helper &ndash; TensorOmics</title>
+    <title>log1p &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,34 +77,34 @@
 
     <div class="container">
   <div class="row">
-    <h1>calc_tiss_avg_helper
-      <small>Subroutine</small>
+    <h1>log1p
+      <small>Function</small>
       
     </h1>
       <div class="container p-2 mb-4 bg-light border rounded-3">
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">22 statements</a>
+                 title=" 0.0% of total for procedures.">8 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization_impl.F90"> Source File</a>
+              <a href="../src/f42_math_impl.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_impl.f90.html'>tox_normalization_impl.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></li>
-            <li class="breadcrumb-item active" aria-current="page">calc_tiss_avg_helper</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_math_impl.f90.html'>f42_math_impl.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_math_impl.html'>f42_math_impl</a></li>
+            <li class="breadcrumb-item active" aria-current="page">log1p</li>
           </ol>
         </nav>
       </div>
@@ -151,13 +151,20 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)  
+    <h2>public pure function log1p(x)  
 </h2>
     
 
-    <p>(no input validation) Calculate tissue averages by averaging replicates within each group.
-For each group of tissue replicates, this subroutine computes the average
-expression per gene.</p>
+    <p><code>log(1 + x)</code>, accurate for tiny <code>x</code> as well. Forming <code>1 + x</code> first rounds away most digits of
+a tiny <code>x</code> -- <code>1 + 1e-15</code> is <code>1.00000000000000111</code> -- so <code>log(1 + x)</code> is 11% off there.
+Fortran has no <code>log1p</code> intrinsic. This takes the rounded <code>u = 1 + x</code> and corrects for the
+rounding it suffered, <code>log(u)*x/(u - 1)</code> (Goldberg, "What Every Computer Scientist Should Know
+About Floating-Point Arithmetic", Theorem 4), exact to a few ulps.</p>
+<p>The correction relies on <code>(1 + x) - 1</code> being evaluated as written, so it is spelled out in
+parentheses, which the Fortran standard requires a compiler to respect. gfortran does by
+default; ifx only with <code>-assume protect_parens</code>, which fpm.toml sets for every ifx build.
+Held in a variable instead, ifx folds <code>u - 1</code> back to <code>x</code> even then.</p>
+<p>(no input validation) Ensure <code>x &gt; -1</code>; yields a NaN/Inf result otherwise.</p>
 
 
     <h3>Arguments</h3>
@@ -173,83 +180,29 @@ expression per gene.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~49"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-x~15"></span>
+              real(kind=real64),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>n_genes</strong></td>
+            <td><strong>x</strong></td>
             <td>
-                <p>Number of genes (rows)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_tissues~12"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_tissues</strong></td>
-            <td>
-                <p>Number of tissues</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-reps_per_tissue~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_tissues)
-            </td>
-            <td>::</td>
-            <td><strong>reps_per_tissue</strong></td>
-            <td>
-                <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expr~25"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(sum(reps_per_tissue), n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>expr</strong></td>
-            <td>
-                <p>Gene Expression matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tissue_averages~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_tissues, n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tissue_averages</strong></td>
-            <td>
-                <p>Tissue averages per gene</p>
+                <p>Argument, must be <code>&gt; -1</code></p>
             </td>
         </tr>
     </tbody>
   </table>
 
+      <h3>Return Value
+        <small>
+          <span class="anchor" id="variable-log1p"></span>
+          real(kind=real64)
+        </small>
+      </h3>
+      
     <br>
 
 
@@ -281,7 +234,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-30 09:20 +0000             </p>
+ on 2026-11-06 13:05 +0000             </p>
           </div>
         </div>
         <br>

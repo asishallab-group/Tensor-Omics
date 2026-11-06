@@ -704,7 +704,7 @@
   },
   "normalize_unit_length (call)": {
     "prefix": "tox:normalize_unit_length",
-    "description": "normalize_unit_length",
+    "description": "Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other",
     "body": [
       "normalize_unit_length(",
       "    vector=${1:vector},",

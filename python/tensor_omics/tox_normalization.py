@@ -155,12 +155,18 @@ def normalize_unit_length(
 ):
     r"""Normalizes an input vector to unit length in-place
 
+    Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    coordinates, and the vector's own length is never formed, so it does no harm that this
+    length can be subnormal or overflow, as it does for entries near the smallest normal number
+    (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+    subnormals reads as the zero vector.
+
     Parameters
     ----------
     vector : np.ndarray[np.float64] of shape (n_dims,), modified in place
         Vector that will be normalized to unit length
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -216,17 +222,19 @@ def normalization_pipeline(
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
         e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
+        The minimum valid value is `EPS_LOESS`.
+        The maximum valid value is `1.0`.
     degree : int, optional, default 2
         LOESS degree parameter.
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     use_quantile : bool, optional, default False
         Use quantile normalization.
         The default value is `False`.
@@ -295,19 +303,26 @@ def normalize_by_std_dev(
 
     This procedure applies a global stabilization based on the relationship between
     gene-wise mean expression and empirical standard deviation.
+    Genes whose standard deviation is exactly zero carry no information about the trend: they
+    are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    is used as it is.
 
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
+        The minimum valid value is `EPS_LOESS`.
+        The maximum valid value is `1.0`.
     degree : int, optional, default 2
         LOESS degree parameter.
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
 
     Returns
     -------
@@ -364,13 +379,16 @@ def root_mean_sq_normalization(
     r"""Normalizes each gene's expression vector using `sqrt(mean(x^2))`
 
     across tissues (not classical standard deviation).
+    Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    is; every other gene is divided by its root mean square, however small or large its values,
+    up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    fast floating-point model or by the host program, a gene made only of subnormals reads as
+    the zero gene.
 
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -423,13 +441,18 @@ def quantile_normalization(
     r"""Quantile normalization of a gene expression matrix (F42-compliant).
 
     Computes average expression per rank across tissues.
+    Tied values within a replicate share the mean of the rank means their ranks span, so values
+    that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    The rank means themselves do not depend on ties.
+
+    No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    values are, and a single replicate comes back exactly as it was, ties included.
 
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -494,16 +517,14 @@ def log2_transformation(
     r"""Apply `log2(x + 1)` transformation to each element of the input matrix.
 
     This subroutine performs element-wise `log2(x + 1)` transformation on a
-    matrix flattened in column-major order. The `log2` is computed via:
-    `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
 
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
         Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -567,8 +588,6 @@ def calc_tiss_avg(
         The minimum valid value is `1`.
     expr : np.ndarray[np.float64] of shape (sum(reps_per_tissue), n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -634,6 +653,9 @@ def calc_fchange(
     `log2` scale. Passing tissue averages that have not been log-transformed yields a
     plain difference of expression levels instead, which is not a fold change.
 
+    A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    reported as ERR_NAN_INF instead of being written into the result as Inf.
+
     Parameters
     ----------
     control_tissues : np.ndarray[np.int32] of shape (n_pairs,)
@@ -648,8 +670,6 @@ def calc_fchange(
         Gene Expression matrix on a `log2` scale, i.e. the result of
         :func:`tensor_omics.normalization_pipeline` or of
         :func:`tensor_omics.log2_transformation`
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
