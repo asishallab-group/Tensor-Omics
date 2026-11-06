@@ -1572,7 +1572,7 @@
   },
   "normalize_unit_length (call)": {
     "prefix": "tox:normalize_unit_length",
-    "description": "normalize_unit_length",
+    "description": "Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other",
     "body": [
       "call normalize_unit_length( &",
       "    vector=${1:vector}, &",
@@ -1582,7 +1582,7 @@
   },
   "normalize_unit_length (call, checked)": {
     "prefix": "tox:normalize_unit_length.checked",
-    "description": "normalize_unit_length (with error check)",
+    "description": "Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other (with error check)",
     "body": [
       "call normalize_unit_length( &",
       "    vector=${1:vector}, &",
