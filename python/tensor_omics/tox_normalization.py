@@ -119,17 +119,19 @@ _lib.calc_tiss_avg_c.restype = None
 _lib.calc_tiss_avg_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_TISS_AVG_ARGUMENTS = ("n_genes", "n_replicates", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr",)
+_CALC_TISS_AVG_ARGUMENTS = ("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_TISS_AVG_ARGUMENT_SOURCES = ("expr", "expr", "reps_per_tissue", None, None, None, None,)
+_CALC_TISS_AVG_ARGUMENT_SOURCES = ("expr", "reps_per_tissue", None, None, None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_CALC_TISS_AVG_ARGUMENT_SHAPES = (None, None, None, "sum(reps_per_tissue), n_genes", None, None,)
 
 _lib.calc_fchange_c.restype = None
 _lib.calc_fchange_c.argtypes = (
@@ -584,7 +586,7 @@ def calc_tiss_avg(
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
         e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
         The minimum valid value is `1`.
-    expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+    expr : np.ndarray[np.float64] of shape (sum(reps_per_tissue), n_genes,), column-major (order='F')
         Gene Expression matrix
 
     Returns
@@ -612,8 +614,8 @@ def calc_tiss_avg(
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
-    n_replicates = expr.shape[0]
     n_tissues = reps_per_tissue.shape[0]
+    n_expr_elements_dim_1 = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
     tissue_averages = _np.empty((n_tissues, n_genes,), dtype=_np.float64, order='F')
@@ -621,15 +623,15 @@ def calc_tiss_avg(
 
     _lib.calc_tiss_avg_c(
         _ctypes.byref(_ctypes.c_int(n_genes)),
-        _ctypes.byref(_ctypes.c_int(n_replicates)),
         _ctypes.byref(_ctypes.c_int(n_tissues)),
         reps_per_tissue,
         expr,
+        _ctypes.byref(_ctypes.c_int(n_expr_elements_dim_1)),
         tissue_averages,
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES, shapes=_CALC_TISS_AVG_ARGUMENT_SHAPES)
 
     # a result is a value: modify a copy, not this
     tissue_averages.flags.writeable = False

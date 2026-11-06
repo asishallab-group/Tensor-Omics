@@ -122,14 +122,8 @@ test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates <- function() {
   # rows, 7 would read past the end of the matrix
   for (reps_per_tissue in list(c(3L, 2L), c(3L, 4L))) {
     assert_error(calc_tiss_avg(reps_per_tissue, .expr()),
-                 paste0("reps_per_tissue ", toString(reps_per_tissue), ", but expr has 6 replicates"), ERR_INVALID_INPUT)
+                 paste0("reps_per_tissue ", toString(reps_per_tissue), ", but expr has 6 replicates"), ERR_SIZE_MISMATCH)
   }
-}
-
-# `expr` has sum(reps_per_tissue) rows: 4 here, and 2 used to be read past (#221)
-test_calc_tiss_avg_refuses_an_expr_shorter_than_its_replicates <- function() {
-  assert_error(calc_tiss_avg(c(2L, 2L), matrix(1, 2, 2)),
-               "a 2-row expr for 4 replicates must be refused", code = ERR_INVALID_INPUT)
 }
 
 test_calc_fchange <- function() {

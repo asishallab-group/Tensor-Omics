@@ -26,6 +26,7 @@ from tensor_omics.error_handling import (
     ERR_DIVISION_BY_ZERO,
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
+    ERR_SIZE_MISMATCH,
 )
 
 N_REPLICATES, N_GENES = 6, 10
@@ -147,15 +148,7 @@ def test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates():
     # rows, 7 would read past the end of the matrix
     for reps_per_tissue in ([3, 2], [3, 4]):
         assert_error(lambda: calc_tiss_avg(np.array(reps_per_tissue, dtype=np.int32), _expr()),
-                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_INVALID_INPUT)
-
-
-def test_calc_tiss_avg_refuses_an_expr_shorter_than_its_replicates():
-    """`expr` has `sum(reps_per_tissue)` rows: 4 here, and 2 used to be read past (#221)."""
-    mat = np.asfortranarray(np.ones((2, 2)))
-
-    assert_error(lambda: calc_tiss_avg(np.array([2, 2], dtype=np.int32), mat),
-                 "a 2-row expr for 4 replicates must be refused", ERR_INVALID_INPUT)
+                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_SIZE_MISMATCH)
 
 
 def test_calc_fchange():

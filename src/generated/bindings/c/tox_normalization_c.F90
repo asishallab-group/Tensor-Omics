@@ -15,7 +15,7 @@
 module tox_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_SIZE_MISMATCH
     M_IMPLICIT_NONE
     private
 
@@ -710,10 +710,10 @@ contains
     !| expression per gene.
     subroutine calc_tiss_avg_c(&
             n_genes,&
-            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
+            n_expr_elements_dim_1,&
             tissue_averages,&
             ierr&
         ) bind(C, name="calc_tiss_avg_c")
@@ -721,17 +721,15 @@ contains
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
-        integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
+        integer(c_int), intent(in), target :: n_expr_elements_dim_1
+            !! 1. dimension of `expr`, which must be `sum(reps_per_tissue)`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        real(c_double), dimension(n_expr_elements_dim_1, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
@@ -741,15 +739,18 @@ contains
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_replicates)
         M_CHECK_NON_NULL(n_tissues)
+        M_CHECK_NON_NULL(n_expr_elements_dim_1)
         M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
-        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(expr, n_expr_elements_dim_1 * n_genes)
         M_CHECK_ARRAY_NON_NULL(tissue_averages, n_tissues * n_genes)
+        if (n_expr_elements_dim_1 /= sum(reps_per_tissue)) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 4_int32)
+            return
+        end if
 
         call calc_tiss_avg(&
             n_genes = n_genes,&
-            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&
