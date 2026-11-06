@@ -201,6 +201,15 @@ class Directives:
         return tuple(directive for directive in found if directive is not None)
 
     @property
+    def macro_names(self) -> tuple[str, ...]:
+        """The `DM_` macro each directive found was written as, for a diagnostic to name."""
+        return tuple(
+            _macro_name(field)
+            for field in _MACRO_NAMES
+            if getattr(self, field) is not None
+        )
+
+    @property
     def has_default(self) -> bool:
         return self.default is not None
 

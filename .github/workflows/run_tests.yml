@@ -42,6 +42,17 @@ jobs:
           fi
           [ "$status" -eq 1 ] || exit 2
 
+      # The R and Python suites below run outside test_runner.sh, which exports TOX_EXPECT_OPENMP
+      # for its own run only. They get it from the same option parse (build_utils.sh), so an
+      # --openmp leg whose library came out serial fails them too.
+      - name: Tell the tests whether the build is meant to be OpenMP
+        shell: bash
+        run: |
+          source build_utils.sh
+          handle_args ${{ inputs.extra_build_args }}
+          export_expect_openmp
+          echo "TOX_EXPECT_OPENMP=$TOX_EXPECT_OPENMP" >> "$GITHUB_ENV"
+
       - name: Install Fortran Compiler
         uses: ./.github/actions/install-Fortran
         with:

@@ -10,6 +10,10 @@
 
 source build_utils.sh
 
+# test_runner.sh sets TOX_EXPECT_OPENMP for its own run only; the bindings' suites below need it too
+handle_args "$@"
+export_expect_openmp
+
 ./test_runner.sh "$@"
 
 check_exit_code "Test runner failed"

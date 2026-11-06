@@ -423,7 +423,7 @@ class FortranWrapperEmitter:
         # Below the work arrays, because preparing them is what a prologue is for -- it is the
         # sugar this tier adds over the expert one, which lets a caller prepare them instead.
         self._prologue_call(writer, prologue, alloc, module, taken)
-        self._impl_call(writer, foo, module)
+        self._impl_call(writer, foo, module, allocating=True)
 
     # -- prologue ---------------------------------------------------------------
 
@@ -478,8 +478,8 @@ class FortranWrapperEmitter:
     def _is_pure(self, procedure: Procedure, module: Module) -> bool:
         """Whether this wrapper can be `pure`: everything it calls has to be.
 
-        A caller who wants a `pure` procedure -- to call it from `do concurrent`, or from
-        their own pure code -- should not have to reach past the wrapper to the
+        A caller who wants a `pure` procedure -- to call it from their own pure code, which
+        may call only pure procedures -- should not have to reach past the wrapper to the
         implementation to get one. The wrapper is pure exactly when the implementation is
         and so is everything the wrapper adds, so the property is derived rather than
         declared: `tox_errors`' validators and `set_ok`/`is_err` are pure, and so are
@@ -597,7 +597,13 @@ class FortranWrapperEmitter:
     # -- declarations -----------------------------------------------------------
 
     def _signature(self, writer: Writer, procedure: Procedure, module: Module) -> None:
-        prefix = "pure " if self._is_pure(procedure, module) else ""
+        prefix = ""
+        if self._is_pure(procedure, module):
+            # A root's wrapper is pure only without OpenMP, as its implementation is: the macro
+            # says `pure` or `impure` per build, where a plain `pure` would not compile with
+            # OpenMP. Every tier of a root has `n_omp_threads`, which nothing takes over.
+            root = any(self._is_omp_threads(a) for a in procedure.arguments)
+            prefix = f"{self.conventions.omp_pure_macro} " if root else "pure "
         writer.line(f"{prefix}subroutine {procedure.name}(&")
         names = [a.name for a in procedure.arguments]
         with writer.indent(2):
@@ -985,8 +991,22 @@ class FortranWrapperEmitter:
     def _allocations(self, writer: Writer, taken) -> None:
         for argument in taken:
             if argument.is_array:
-                extents = ", ".join(argument.dimension.extents)
-                writer.line(f"M_ALLOCATE({argument.name}({extents}))")
+                extents = list(argument.dimension.extents)
+                # a per-thread work array: as many columns as the count the implementation is
+                # handed (`_impl_call`), which is one without OpenMP
+                if self.conventions.is_omp_threads_arg(extents[-1]):
+                    extents[-1] = self._omp_n_threads(extents[-1])
+                writer.line(f"M_ALLOCATE({argument.name}({', '.join(extents)}))")
+
+    def _omp_n_threads(self, name: str) -> str:
+        """The thread count the allocating wrapper sizes and passes: `M_OMP_N_THREADS(name)`."""
+        return f"{self.conventions.omp_n_threads_macro}({name})"
+
+    def _is_omp_threads(self, argument: Argument) -> bool:
+        roles = argument.roles
+        if roles is not None:
+            return roles.is_omp_threads
+        return self.conventions.is_omp_threads_arg(argument.name)
 
     def _permutations(self, writer: Writer, taken, prologue) -> None:
         for argument in sorted_permutations(taken, prologue, self.conventions):
@@ -996,7 +1016,14 @@ class FortranWrapperEmitter:
 
     # -- the implementation call --------------------------------------------------------
 
-    def _impl_call(self, writer: Writer, foo: Procedure, module: Module) -> None:
+    def _impl_call(self, writer: Writer, foo: Procedure, module: Module,
+                   allocating: bool = False) -> None:
+        """Call the implementation with every argument this variant supplies, by name.
+
+        `allocating` for the allocating body, which hands an OpenMP root the thread count it
+        sized the work arrays with rather than the caller's (`_allocations`). Every other tier
+        passes the caller's on: its caller sized the arrays, or there are none.
+        """
         impl = self._impl_name(foo, module)
         arguments = self._impl_call_arguments(foo, module)
         mode_fix = self._mode_fix(foo)
@@ -1012,7 +1039,10 @@ class FortranWrapperEmitter:
             if mode_fix is not None and lowered == mode_fix.argument.lower():
                 actuals.append((argument.name, mode_fix.parameter))
             elif lowered in present:
-                actuals.append((argument.name, argument.name))
+                value = argument.name
+                if allocating and self._is_omp_threads(argument):
+                    value = self._omp_n_threads(argument.name)
+                actuals.append((argument.name, value))
         # A function is called for its value, which goes to the argument its result is
         # published as (`synthesize.published_result`): of the same name, on both tiers.
         implementation = self._impl(foo, module)

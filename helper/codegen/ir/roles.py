@@ -140,6 +140,11 @@ class ArgumentRoles:
     #: `tmp_` prefixed: a work array, allocated silently and never returned
     is_temporary: bool = False
 
+    #: `n_omp_threads`: the most threads an OpenMP root's loop may use, and the last extent of
+    #: its per-thread work arrays. The allocating wrapper hands the implementation
+    #: `M_OMP_N_THREADS(n_omp_threads)` for it, one without OpenMP; every other tier passes it on
+    is_omp_threads: bool = False
+
     #: How this argument is computed from another procedure, if it is
     computed_from: OutputFromPlan | None = None
 
@@ -472,6 +477,7 @@ class _Analyser:
         for argument in self.arguments:
             argument.roles = ArgumentRoles(
                 is_temporary=self._is_temporary(argument),
+                is_omp_threads=self.conventions.is_omp_threads_arg(argument.name),
                 mode=self._mode_table(argument),
             )
 

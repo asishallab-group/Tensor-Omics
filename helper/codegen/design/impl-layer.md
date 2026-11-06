@@ -161,9 +161,9 @@ Nothing else needs checking — every validator in `tox_errors`, `set_ok`, `is_e
 `sort_array_heapsort` specifics are `pure` or `elemental` already, and `allocate(..., stat=)`
 is permitted in a pure procedure, so the allocating tier is as eligible as the expert one.
 
-The point is that a caller wanting a pure procedure — to use it in `do concurrent`, or from
-their own pure code — would otherwise have to reach past the wrapper to the implementation,
-giving up validation to get it. 71 of the 87 wrappers the tox tree generates are pure; the
+The point is that a caller wanting a pure procedure — to call it from their own pure code,
+which may call only pure procedures — would otherwise have to reach past the wrapper to the
+implementation, giving up validation to get it. 71 of the 87 wrappers the tox tree generates are pure; the
 16 that are not trace to four impure implementations (LOESS, which calls netlib externals,
 and the two permutation tests, which draw random numbers) and to one impure recommend routine.
 
@@ -175,6 +175,10 @@ compile error in generated code, while missing it only costs the caller.
 `elemental` implies `pure` unless the procedure also says `impure` (F2008), and Ford lists both
 attributes. Reading `elemental` alone as purity is exactly the claim-that-is-not-there case: an
 `impure elemental` implementation got a `pure` wrapper, which does not compile (#221, B17).
+
+An OpenMP root is the one implementation whose purity depends on the build: it is declared
+`M_OMP_PURE`, `pure` without OpenMP and `impure` with it, so its wrappers carry the macro rather
+than either word (see "An OpenMP root" below).
 
 ---
 
@@ -969,6 +973,69 @@ derived as ever. A function cannot be `pure` once it has an `intent(out)` argume
 `call`ed, which does not compile, and nothing reported it; supporting them costs one argument and
 an assignment. *Rejected:* naming the argument after the function where there is no clause --
 it never compiles.
+
+---
+
+## An OpenMP root (#218, 2026-10-31)
+
+A root is an implementation that takes `n_omp_threads` and holds the one parallel loop of its call
+stack. FES decided the shape (`#218` DECIDED: the `_OPENMP` switch, `M_OMP_PURE`, a required
+`n_omp_threads`, per-thread work arrays with the thread axis last); the generator's part is to
+write the wrappers from it and to refuse what they could not honour. Six rules:
+
+- **R1 -- only an implementation takes it**, and the wrappers generated from it. Everything that
+  makes the argument safe is a wrapper's: the check that it is at least 1, its documentation, the
+  `M_OMP_PURE` prefix. A hand-written `M_EXPORT_C` procedure gets none of them, its function result
+  likewise, and a prologue would be handed the caller's count where the root gets
+  `M_OMP_N_THREADS(...)`. A `DM_OUTPUT_FROM` producer is an export, so a root producer would also
+  give its consumer's wrapper a plain `pure` that fails under OpenMP. A wrapper is recognised by
+  `Procedure.implementation`, set by synthesis.
+- **R2 -- a required, scalar `integer(int32)`, `intent(in)`.** Required because it sizes the
+  work arrays and an optional cannot be an extent (DECIDED 3); `int32` because
+  `M_OMP_N_THREADS` stands in for it as `1_int32`; read only because the allocating wrapper passes
+  its own value in its place.
+- **R3 -- it sizes only the last extent of a `tmp_` array, as the bare name.** `foo` allocates that
+  axis with `M_OMP_N_THREADS(n_omp_threads)` and hands the implementation the same count, so the
+  two agree in every build; anything else it sized would be one size in the wrapper and another
+  for the caller. The word is looked for in every extent and length, because the extent roles
+  record only an extent that *is* the bare name: `2*n_omp_threads` would pass them unseen.
+- **R4 -- the generator writes its documentation**, one text for every root and every language
+  (`synthesize._OMP_THREADS_DOC`), and an author's `!!` or `DM_` directive on it is refused.
+- **R5 -- purity is read from the unpreprocessed source.** A root is `M_OMP_PURE` or impure, never
+  plain `pure` (an OpenMP directive is not allowed in a pure procedure) and not `elemental` without
+  `impure`; and in every module `M_OMP_PURE` sits only on a root's own statement and
+  `!M_OMP_PARALLEL(` only inside a root. Each use is placed in the module procedure that holds
+  it, private ones included, from the first line of its statement: so a refusal names the
+  procedure, and `M_OMP_PURE &` above a root's `subroutine` is reported once, as the statement it
+  cannot read.
+- **R6 -- at least 1 in every build, implied.** Synthesis injects `DM_MIN(1_int32)`, so both
+  tiers emit `validate_in_range_int(..., min=1_int32)` -- `ERR_INVALID_INPUT` at its position, where
+  `foo_expert`'s extent check would have said `ERR_EMPTY_INPUT` -- and the documentation carries the
+  sentence that directive writes. It sits inside `NO_INPUT_VALIDATION` with every other check (FES
+  Q8, 2026-10-30): it is a value the caller knows, exactly like an extent of 0, which the
+  guard drops too.
+
+**Two limits, documented rather than checked.** `foo_expert`'s caller sizes the thread axis: it
+passes the count through, and a team larger than the columns writes out of bounds. And C does not
+check the thread axis: it null-checks the array, as it does every array whose extents are plain
+names. Through `foo` neither can happen, because the team is capped by the very count the columns
+were allocated with.
+
+**Rejected -- reading purity off the parse.** Ford reads the preprocessed source, in which
+`M_OMP_PURE` is already `pure`, so a root declared plain `pure` looks the same and would fail only
+in an `--openmp` build. The rev-3 spec accepted that as a known limit; reading the statement the
+author wrote (`SourceFile.procedure_prefix`) removes it. A statement that cannot be read on one line
+(`M_OMP_PURE &` above `subroutine`) is an error, not a pass, because then nothing says it is not
+plain `pure`; on main the reader finds every procedure statement.
+
+**Rejected -- requiring the author to write `DM_MIN(1_int32)`.** It would be one more line every
+root must remember, saying what the convention already implies, and a refusal where an implication
+does. An author's own range is refused instead (R4), so there is one minimum and nothing is
+dropped silently.
+
+**Rejected -- the generated text as a default, like `_ERROR_DOC`.** `ierr`'s text is used only
+where the implementation declares none. For `n_omp_threads` an author's own would only be a copy of
+the one contract every root shares, and would drift; so it replaces, and the author is told.
 
 ---
 
