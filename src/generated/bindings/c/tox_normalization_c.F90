@@ -15,7 +15,7 @@
 module tox_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_SIZE_MISMATCH
     M_IMPLICIT_NONE
     private
 
@@ -34,6 +34,13 @@ module tox_normalization_c
 contains
 
     !> summary: C-wrapper for [[tox_normalization(module):normalize_unit_length(subroutine)]]
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    !| coordinates, and the vector's own length is never formed, so it does no harm that this
+    !| length can be subnormal or overflow, as it does for entries near the smallest normal number
+    !| (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    !| flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     subroutine normalize_unit_length_c(&
             vector,&
             n_dims,&
@@ -298,9 +305,11 @@ contains
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_c(&
             n_genes,&
             n_replicates,&
@@ -356,9 +365,11 @@ contains
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev_expert(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_expert_c(&
             n_genes,&
             n_replicates,&
@@ -502,6 +513,11 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):root_mean_sq_normalization(subroutine)]]
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    !| is; every other gene is divided by its root mean square, however small or large its values,
+    !| up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    !| fast floating-point model or by the host program, a gene made only of subnormals reads as
+    !| the zero gene.
     subroutine root_mean_sq_normalization_c(&
             n_genes,&
             n_replicates,&
@@ -542,7 +558,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     subroutine quantile_normalization_c(&
             n_genes,&
             n_replicates,&
@@ -588,7 +608,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     subroutine quantile_normalization_expert_c(&
             n_genes,&
             n_replicates,&
@@ -686,10 +710,10 @@ contains
     !| expression per gene.
     subroutine calc_tiss_avg_c(&
             n_genes,&
-            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
+            n_expr_elements_dim_1,&
             tissue_averages,&
             ierr&
         ) bind(C, name="calc_tiss_avg_c")
@@ -697,17 +721,15 @@ contains
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
-        integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
+        integer(c_int), intent(in), target :: n_expr_elements_dim_1
+            !! 1. dimension of `expr`, which must be `sum(reps_per_tissue)`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+        real(c_double), dimension(n_expr_elements_dim_1, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
@@ -717,15 +739,18 @@ contains
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_replicates)
         M_CHECK_NON_NULL(n_tissues)
+        M_CHECK_NON_NULL(n_expr_elements_dim_1)
         M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
-        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(expr, n_expr_elements_dim_1 * n_genes)
         M_CHECK_ARRAY_NON_NULL(tissue_averages, n_tissues * n_genes)
+        if (n_expr_elements_dim_1 /= sum(reps_per_tissue)) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 4_int32)
+            return
+        end if
 
         call calc_tiss_avg(&
             n_genes = n_genes,&
-            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&

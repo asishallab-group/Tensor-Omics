@@ -1,21 +1,23 @@
 """Emitting the R half of the R binding.
 
-The thinking layer. Per `design/language-layers.md`, **R decides and raises, C marshals
-and calls**: this validates and coerces every input, cross-checks shapes, applies
-defaults, calls the internal `.Call("<name>_call", ...)`, and turns `ierr` into a raised condition. All
-of it in one place, all raised as classed conditions a caller can `tryCatch`.
-
-It is a thin R function over the C one, but the thinness is the point -- everything a
-user can get wrong is caught here, in their language, with their argument names.
+The thinking layer. Per `design/language-layers.md`, this checks what every input is --
+its kind and rank, and a single value in full -- coerces a double, cross-checks shapes,
+applies defaults, calls the internal `.Call("<name>_call", ...)`, and turns `ierr` into a
+raised condition. The one thing it leaves to the C shim is reading every element of an
+integer, logical or character array, which the shim does in the pass that converts it
+(#221): in R that check cost more than the cheapest call it guards. Both raise the same
+classed conditions a caller can `tryCatch`, naming the argument in the caller's own words.
 """
 
 from __future__ import annotations
 
-from .error_arguments import sources_of
+from .error_arguments import shapes_of, sources_of
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
+from .doc_literals import render as _render
 from .doc_roxygen import render_roxygen
+from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
 
 
 class RWrapperEmitter:
@@ -28,17 +30,21 @@ class RWrapperEmitter:
         self.tiers = tiers or {}
 
     def validators(self) -> str:
-        """The coercion helpers, in one file rather than repeated per module.
+        """The R half of the input contract, in one file rather than repeated per module.
 
-        Each checks the R type and coerces, copying only when it must, and raises a
-        classed `tox_type_error` naming the argument. NA is checked exactly where it is
-        free: on integers (whose sentinel is an ordinary Fortran number), on logicals and
-        characters (converted anyway), and never on doubles (a NaN payload Fortran itself
-        catches). See `design/language-layers.md`.
+        Each checks an argument's kind (`is.numeric`, `is.logical`, `is.character`, never
+        `typeof`) and rank, coerces a double, copying only when it must, and raises a
+        classed `tox_type_error` naming the argument. A single value is checked in full
+        here, NA included; an integer, logical or character array's elements are the C
+        shim's to check, in the pass that converts them (`tox_marshal.h`); a double's are
+        never scanned (an NA is a NaN payload Fortran itself catches). See
+        `design/language-layers.md`.
         """
         return _VALIDATORS
 
     def module(self, module: CWrapperModule) -> str:
+        # a module constant in an extent is its value here: this language cannot name it
+        module = module.with_constant_sizes_evaluated()
         writer = Writer()
         writer.line("# Generated. Do not edit.")
         writer.blank()
@@ -119,20 +125,13 @@ class RWrapperEmitter:
         argument = wrapper.argument(consumer_arg)
         roles = argument.source.roles if argument and argument.source else None
         if roles is not None and roles.is_extent:
-            for owner in roles.extent_of:
-                c_owner = wrapper.argument(owner.name)
-                if c_owner is not None and c_owner.is_temporary:
-                    # a work array the wrapper allocates: not in scope, and sized *from*
-                    # this extent rather than the other way round
-                    continue
-                if c_owner is not None and c_owner.intent.is_input and not c_owner.optional:
-                    axes = self._axes_of(consumer_arg, c_owner)
-                    if axes:
-                        # the first axis is where the value is read from; any others are
-                        # what `_check_shapes` then verifies against it
-                        return self._extent_expression(c_owner, axes[0])
+            # the input it is read off, as everywhere (`shape_checks.extent_provider`); the
+            # other inputs carrying it are what `_check_shapes` verifies against it
+            position = extent_provider(argument, wrapper)
+            if position is not None:
+                return self._position(position)
         if roles is not None and roles.is_mask_count:
-            return f"sum({roles.mask_count_of.name})"
+            return _mask_count(roles.mask_count_of.name)
         return consumer_arg
 
     @staticmethod
@@ -243,9 +242,15 @@ class RWrapperEmitter:
             return f".tox_as_mode({value}, {name}, c({choices}))"
 
         if argument.type.is_character:
-            helper = ".tox_as_string" if argument.rank <= 1 and argument.is_scalar \
-                else ".tox_as_character"
+            # a string's length is its leading C extent, so a single string has rank 1 here
+            helper = ".tox_as_string" if argument.rank <= 1 else ".tox_as_character"
             return f"{helper}({value}, {name})"
+
+        roles = argument.source.roles if argument.source else None
+        if roles is not None and roles.is_shape_arg and argument.type.base is BaseType.INTEGER:
+            # the shim uses this vector itself, as the dim of what it allocates, rather than
+            # converting it for Fortran; a shape is a handful of elements, checked here
+            return f".tox_as_integer_shape({value}, {name})"
 
         base = {
             BaseType.INTEGER: "integer",
@@ -263,64 +268,54 @@ class RWrapperEmitter:
         return f".tox_as_{base}_array({value}, {name}, {argument.rank}L)"
 
     def _check_shapes(self, writer: Writer, wrapper: CWrapper) -> None:
-        """The cross-checks Fortran cannot make: shared extents must agree.
+        """Compare every input axis with what it must be, as Python does (`emit.shape_checks`).
 
-        The same idea as the Python emitter, raised as a `tox_shape_error` classed
-        condition rather than a `ValueError`.
+        Raised as a `tox_shape_error` classed condition rather than a `ToxArgumentError`. R has
+        no extent of its own in hand where the shim derives it, so the value read off the
+        providing array is written out here as that array's extent.
         """
         wrote = False
-        for argument in wrapper:
-            roles = argument.source.roles if argument.source else None
-            if roles is None or not roles.is_extent:
-                continue
-
-            owners = []
-            for owner in roles.extent_of:
-                c_owner = wrapper.argument(owner.name)
-                if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
-                    continue
-                if c_owner.is_temporary:
-                    # a work array C allocates itself always agrees, and is not a
-                    # variable R has in scope
-                    continue
-                owners.extend(
-                    (c_owner, axis)
-                    for axis in self._axes_of(argument.name, c_owner)
+        for check in shape_checks(wrapper):
+            array = check.position.array
+            actual = self._position(check.position)
+            expected = self._expected(check.expected)
+            condition = f"{actual} != {expected}"
+            if array.optional:
+                condition = f"!is.null({array.name}) && {condition}"
+            dimension = "NA_integer_" if check.position.axis is None else f"{check.position.axis + 1}L"
+            shape = _render(declared_shape(array), "r")
+            writer.line(f"if ({condition})")
+            with writer.indent():
+                writer.line(
+                    f'.tox_shape_error("{array.name}", {dimension}, {actual}, '
+                    f'"{reason(check.expected)}", {expected}, "{shape}")'
                 )
-            if len(owners) < 2:
-                continue
-
-            first, first_axis = owners[0]
-            reference = self._extent_expression(first, first_axis)
-            for owner, axis in owners[1:]:
-                actual = self._extent_expression(owner, axis)
-                writer.line(f"if ({actual} != {reference})")
-                with writer.indent():
-                    writer.line(
-                        f'.tox_shape_error("{owner.name}", {actual}, "{first.name}", '
-                        f"{reference})"
-                    )
-                wrote = True
+            wrote = True
         if wrote:
             writer.blank()
+
+    def _expected(self, expected) -> str:
+        """The value a compared axis must have, as R computes it before the call."""
+        if expected.origin == "constant":
+            return f"{expected.value}L"
+        if expected.origin == "axis":
+            return self._position(expected.position)
+        if expected.origin == "mask":
+            return _mask_count(expected.mask)
+        # an argument the caller passed, or one the producer call above computed
+        return expected.extent
+
+    def _position(self, position: Position) -> str:
+        """An axis of an input as R reads it, or its element count."""
+        owner = position.array
+        if position.axis is None:
+            return f"length({owner.name})"
+        return self._extent_expression(owner, position.axis)
 
     def _extent_expression(self, owner: CArgument, axis: int) -> str:
         if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
             return f"length({owner.name})"
         return f"dim({owner.name})[{axis + 1}]"
-
-    @staticmethod
-    def _axes_of(extent: str, owner: CArgument) -> list[int]:
-        """Which axes of `owner` carry `extent` -- all of them, not the first.
-
-        `distances(n_points, n_points)` claims to know `n_points` twice. Checking only
-        the first axis lets a non-square matrix through to a Fortran view that reads,
-        and for an intent(inout) argument writes, past the end of the buffer.
-        """
-        extents = list(owner.dimension.extents)
-        if owner.type.is_character and extents:
-            extents = extents[1:]
-        return [index for index, name in enumerate(extents) if name == extent]
 
     # -- call and return --------------------------------------------------------
 
@@ -336,10 +331,17 @@ class RWrapperEmitter:
         if any(sources):
             rendered = ", ".join(f'"{s}"' if s else "NA_character_" for s in sources)
             writer.line(f".sources <- c({rendered})")
-        if any(sources_of(wrapper.procedure)):
-            writer.line(".status <- check_err_code(.result$ierr, .arguments, .sources)")
-        else:
-            writer.line(".status <- check_err_code(.result$ierr, .arguments)")
+        # and the declared shape of an array the C wrapper compares, which its error states
+        shapes = shapes_of(wrapper, "r")
+        if any(shapes):
+            rendered = ", ".join(f'"{s}"' if s else "NA_character_" for s in shapes)
+            writer.line(f".shapes <- c({rendered})")
+        tables = [".arguments"]
+        if any(sources):
+            tables.append(".sources")
+        if any(shapes):
+            tables.append("shapes = .shapes")
+        writer.line(f".status <- check_err_code(.result$ierr, {', '.join(tables)})")
         writer.blank()
 
     def _return(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -379,12 +381,27 @@ class RWrapperEmitter:
         value = f".result${argument.name}"
 
         if roles is not None and roles.result_size_arg is not None:
-            return f"utils::head({value}, .result${roles.result_size_arg.name})"
+            count = f".result${roles.result_size_arg.name}"
+            if argument.rank <= 1:
+                return f"utils::head({value}, {count})"
+            leading = ", " * (argument.rank - 1)
+            return f"{value}[{leading}seq_len({count}), drop = FALSE]"
 
         if argument.type.is_character and argument.is_scalar:
             # a scalar string comes back as a length-1 character vector
             return f"{value}[[1]]"
         return value
+
+
+def _mask_count(mask: str) -> str:
+    """How many elements of a mask are set, as R counts them before the call.
+
+    A mask reaches the shim unchecked -- its elements are the shim's to check, as it converts
+    them (`tox_validate.R`) -- so it may still hold an NA or a number that is neither 0 nor 1
+    here. Counted as the shim counts it, the exact TRUEs and 1s, it is always a whole number,
+    which `.tox_shape_error` prints as one, and the element is then refused by name in C.
+    """
+    return f"sum({mask} == 1, na.rm = TRUE)"
 
 
 def r_literal(value) -> str:
@@ -402,47 +419,91 @@ def r_literal(value) -> str:
 
 _VALIDATORS = r'''# Generated. Do not edit.
 #
-# Coercion helpers for the R binding. Each checks the type and coerces, copying only
-# when it must, and raises a classed tox_type_error naming the argument. NA is checked
-# only where the check is free: integers (an ordinary Fortran number), logicals and
-# characters (converted anyway), never doubles (a NaN payload Fortran already catches).
+# The R half of the input contract (helper/codegen/design/language-layers.md). Each helper
+# checks what an argument IS -- its kind, by is.numeric / is.logical / is.character and never
+# by typeof (a factor's typeof is integer, and its codes are not its values), and its rank --
+# and raises a classed tox_type_error naming it. A single value is checked here in full, NA
+# included. The elements of an integer, logical or character array are not: the C shim checks
+# every one while it converts it for Fortran, in the pass it makes anyway (tox_marshal.h), so
+# an array reaches it unconverted. Doubles are never scanned: an NA is a NaN payload, which
+# Fortran's own validation catches.
+
+# The rank R sees: a plain vector, a 1-D array and a table are all rank 1
+.tox_rank <- function(x) {
+  dims <- dim(x)
+  if (is.null(dims)) 1L else length(dims)
+}
+
+# A number is what is.numeric() calls one -- not a factor, a Date, a POSIXct or a difftime --
+# except bit64's integer64: a double vector holding int64 bits, which is.numeric() calls
+# numeric and every value of which would be read as a different number
+.tox_check_number <- function(x, name, expected, logical = FALSE) {
+  if (inherits(x, "integer64"))
+    .tox_argument_error(
+      sprintf("'%s' is a bit64 integer64, whose doubles hold int64 bits; convert it with as.integer() or as.double()", name),
+      "tox_type_error", name)
+  if (!is.numeric(x) && !(logical && is.logical(x))) .tox_type_error(name, expected, x)
+}
+
+# A data.frame whose every column is a number (or a logical, for a logical matrix) is a
+# matrix, its rows staying rows, as a pandas DataFrame is in Python
+.tox_frame_as_matrix <- function(x, name, expected, logical = FALSE) {
+  if (!is.data.frame(x)) return(x)
+  is_column <- function(column)
+    !inherits(column, "integer64") && (is.numeric(column) || (logical && is.logical(column)))
+  if (!all(vapply(x, is_column, NA))) .tox_type_error(name, expected, x)
+  as.matrix(x)
+}
+
+# A single number that must be a whole number in R's integer range, which leaves out
+# -2^31: that is NA_integer_. A NaN is refused for its value, an NA for being NA.
+.tox_check_whole <- function(x, name) {
+  if (is.na(x) && !is.nan(x)) .tox_na_error(name)
+  if (is.double(x) && !isTRUE(x >= -.Machine$integer.max && x <= .Machine$integer.max && x == trunc(x)))
+    .tox_argument_error(
+      sprintf("'%s' must be a whole number in the integer range, not %s", name, format(x, digits = 15)),
+      "tox_type_error", name)
+}
 
 .tox_as_double_vector <- function(x, name) {
-  if (!is.numeric(x)) .tox_type_error(name, "a numeric vector", x)
+  .tox_check_number(x, name, "a numeric vector")
+  if (.tox_rank(x) != 1L) .tox_type_error(name, "a numeric vector", x)
   as.double(x)
 }
 
 .tox_as_double_scalar <- function(x, name) {
-  if (!is.numeric(x) || length(x) != 1L) .tox_type_error(name, "a numeric scalar", x)
+  .tox_check_number(x, name, "a numeric scalar")
+  if (length(x) != 1L || .tox_rank(x) != 1L) .tox_type_error(name, "a numeric scalar", x)
   as.double(x)
 }
 
 .tox_as_double_matrix <- function(x, name) {
-  if (!is.matrix(x) || !is.numeric(x)) .tox_type_error(name, "a numeric matrix", x)
+  x <- .tox_frame_as_matrix(x, name, "a numeric matrix")
+  if (!is.matrix(x)) .tox_type_error(name, "a numeric matrix", x)
+  .tox_check_number(x, name, "a numeric matrix")
   storage.mode(x) <- "double"
   x
 }
 
 .tox_as_double_array <- function(x, name, ndim) {
-  if (!is.array(x) || !is.numeric(x) || length(dim(x)) != ndim)
-    .tox_type_error(name, sprintf("a numeric array of rank %d", ndim), x)
+  expected <- sprintf("a numeric array of rank %d", ndim)
+  if (!is.array(x) || length(dim(x)) != ndim) .tox_type_error(name, expected, x)
+  .tox_check_number(x, name, expected)
   storage.mode(x) <- "double"
   x
 }
 
 # An array whose shape travels in a separate argument keeps that shape through
-# coercion: as.integer() and friends drop the dim attribute, and the shape is read off
+# coercion: as.double() and friends drop the dim attribute, and the shape is read off
 # the array after this point. storage.mode() converts in place instead.
 .tox_as_double_shaped <- function(x, name) {
-  if (!is.numeric(x)) .tox_type_error(name, "a numeric array", x)
+  .tox_check_number(x, name, "a numeric array")
   storage.mode(x) <- "double"
   x
 }
 
 .tox_as_integer_shaped <- function(x, name) {
-  if (!is.numeric(x)) .tox_type_error(name, "an integer array", x)
-  storage.mode(x) <- "integer"
-  if (anyNA(x)) .tox_na_error(name)
+  .tox_check_number(x, name, "an integer array")
   x
 }
 
@@ -453,17 +514,13 @@ _VALIDATORS = r'''# Generated. Do not edit.
 }
 
 .tox_as_logical_shaped <- function(x, name) {
-  if (!is.logical(x) && !is.numeric(x)) .tox_type_error(name, "a logical array", x)
-  dims <- dim(x)
-  x <- as.logical(x)
-  if (anyNA(x)) .tox_na_error(name)
-  dim(x) <- dims
+  .tox_check_number(x, name, "a logical array", logical = TRUE)
   x
 }
 
 .tox_as_character_shaped <- function(x, name) {
+  if (is.factor(x)) x <- as.character(x)
   if (!is.character(x)) .tox_type_error(name, "a character array", x)
-  if (anyNA(x)) .tox_na_error(name)
   x
 }
 
@@ -493,79 +550,94 @@ _VALIDATORS = r'''# Generated. Do not edit.
 }
 
 .tox_as_integer_vector <- function(x, name) {
-  if (!is.numeric(x)) .tox_type_error(name, "an integer vector", x)
-  x <- as.integer(x)
-  if (anyNA(x)) .tox_na_error(name)
+  .tox_check_number(x, name, "an integer vector")
+  if (.tox_rank(x) != 1L) .tox_type_error(name, "an integer vector", x)
   x
 }
 
 .tox_as_integer_scalar <- function(x, name) {
-  if (!is.numeric(x) || length(x) != 1L) .tox_type_error(name, "an integer scalar", x)
-  x <- as.integer(x)
-  if (anyNA(x)) .tox_na_error(name)
-  x
+  .tox_check_number(x, name, "an integer scalar")
+  if (length(x) != 1L || .tox_rank(x) != 1L) .tox_type_error(name, "an integer scalar", x)
+  .tox_check_whole(x, name)
+  as.integer(x)
 }
 
 .tox_as_integer_matrix <- function(x, name) {
-  if (!is.matrix(x) || !is.numeric(x)) .tox_type_error(name, "an integer matrix", x)
-  storage.mode(x) <- "integer"
-  if (anyNA(x)) .tox_na_error(name)
-  x
-}
-
-.tox_as_logical_scalar <- function(x, name) {
-  if (!is.logical(x) || length(x) != 1L) .tox_type_error(name, "a logical scalar", x)
-  if (anyNA(x)) .tox_na_error(name)
-  x
-}
-
-.tox_as_logical_vector <- function(x, name) {
-  if (!is.logical(x)) .tox_type_error(name, "a logical vector", x)
-  if (anyNA(x)) .tox_na_error(name)
-  x
-}
-
-.tox_as_logical_matrix <- function(x, name) {
-  if (!is.matrix(x) || !is.logical(x)) .tox_type_error(name, "a logical matrix", x)
-  if (anyNA(x)) .tox_na_error(name)
-  x
-}
-
-.tox_as_logical_array <- function(x, name, ndim) {
-  if (!is.array(x) || !is.logical(x) || length(dim(x)) != ndim)
-    .tox_type_error(name, sprintf("a logical array of rank %d", ndim), x)
-  if (anyNA(x)) .tox_na_error(name)
+  x <- .tox_frame_as_matrix(x, name, "an integer matrix")
+  if (!is.matrix(x)) .tox_type_error(name, "an integer matrix", x)
+  .tox_check_number(x, name, "an integer matrix")
   x
 }
 
 .tox_as_integer_array <- function(x, name, ndim) {
-  if (!is.array(x) || !is.numeric(x) || length(dim(x)) != ndim)
-    .tox_type_error(name, sprintf("an integer array of rank %d", ndim), x)
-  storage.mode(x) <- "integer"
-  if (anyNA(x)) .tox_na_error(name)
+  expected <- sprintf("an integer array of rank %d", ndim)
+  if (!is.array(x) || length(dim(x)) != ndim) .tox_type_error(name, expected, x)
+  .tox_check_number(x, name, expected)
   x
 }
 
+# The shape of an array the shim allocates: it uses the vector itself, as the dim of the
+# result, so it is checked and made an integer vector here. It is a handful of elements.
+.tox_as_integer_shape <- function(x, name) {
+  .tox_check_number(x, name, "an integer vector")
+  if (.tox_rank(x) != 1L) .tox_type_error(name, "an integer vector", x)
+  for (value in x) .tox_check_whole(value, name)
+  as.integer(x)
+}
+
+.tox_as_logical_scalar <- function(x, name) {
+  .tox_check_number(x, name, "a logical scalar", logical = TRUE)
+  if (length(x) != 1L || .tox_rank(x) != 1L) .tox_type_error(name, "a logical scalar", x)
+  if (is.na(x) && !is.nan(x)) .tox_na_error(name)
+  if (!is.logical(x) && !isTRUE(x == 0 || x == 1))
+    .tox_argument_error(
+      sprintf("'%s' must be TRUE or FALSE, or the number 0 or 1, not %s", name, format(x, digits = 15)),
+      "tox_type_error", name)
+  as.logical(x)
+}
+
+.tox_as_logical_vector <- function(x, name) {
+  .tox_check_number(x, name, "a logical vector", logical = TRUE)
+  if (.tox_rank(x) != 1L) .tox_type_error(name, "a logical vector", x)
+  x
+}
+
+.tox_as_logical_matrix <- function(x, name) {
+  x <- .tox_frame_as_matrix(x, name, "a logical matrix", logical = TRUE)
+  if (!is.matrix(x)) .tox_type_error(name, "a logical matrix", x)
+  .tox_check_number(x, name, "a logical matrix", logical = TRUE)
+  x
+}
+
+.tox_as_logical_array <- function(x, name, ndim) {
+  expected <- sprintf("a logical array of rank %d", ndim)
+  if (!is.array(x) || length(dim(x)) != ndim) .tox_type_error(name, expected, x)
+  .tox_check_number(x, name, expected, logical = TRUE)
+  x
+}
+
+# A factor is taken by its labels, which are its values; as.integer() would give its codes
 .tox_as_character <- function(x, name) {
-  if (!is.character(x)) .tox_type_error(name, "a character vector", x)
-  if (anyNA(x)) .tox_na_error(name)
+  if (is.factor(x)) x <- as.character(x)
+  if (!is.character(x) || .tox_rank(x) != 1L) .tox_type_error(name, "a character vector", x)
   x
 }
 
 .tox_as_string <- function(x, name) {
-  if (!is.character(x) || length(x) != 1L) .tox_type_error(name, "a single string", x)
-  if (anyNA(x)) .tox_na_error(name)
+  if (!is.character(x) || length(x) != 1L || .tox_rank(x) != 1L)
+    .tox_type_error(name, "a single string", x)
   x
 }
 
+# Trailing blanks are dropped first, as for every string: to Fortran "ward " is "ward"
 .tox_as_mode <- function(x, name, choices) {
   if (!is.character(x) || length(x) != 1L) .tox_type_error(name, "a single string", x)
-  x <- tolower(x)
+  x <- tolower(sub(" +$", "", x))
   if (!x %in% choices)
-    .tox_raise(
+    .tox_argument_error(
       sprintf("'%s' must be one of %s, not \"%s\"",
               name, paste(sprintf('"%s"', choices), collapse = ", "), x),
-      "tox_type_error", argument = name)
+      "tox_type_error", name)
   x
 }
 '''

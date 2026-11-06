@@ -22,10 +22,10 @@ compute_tissue_versatility <- function(expression_vectors, vectors_selection_mas
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     vectors_selection_mask <- .tox_as_logical_vector(vectors_selection_mask, "vectors_selection_mask")
     axes_selection_mask <- .tox_as_logical_vector(axes_selection_mask, "axes_selection_mask")
-    if (length(axes_selection_mask) != dim(expression_vectors)[1])
-        .tox_shape_error("axes_selection_mask", length(axes_selection_mask), "expression_vectors", dim(expression_vectors)[1])
     if (length(vectors_selection_mask) != dim(expression_vectors)[2])
-        .tox_shape_error("vectors_selection_mask", length(vectors_selection_mask), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("vectors_selection_mask", 1L, length(vectors_selection_mask), "'expression_vectors' implies n_vectors == ", dim(expression_vectors)[2], "n_vectors")
+    if (length(axes_selection_mask) != dim(expression_vectors)[1])
+        .tox_shape_error("axes_selection_mask", 1L, length(axes_selection_mask), "'expression_vectors' implies n_axes == ", dim(expression_vectors)[1], "n_axes")
 
     .result <- .Call("compute_tissue_versatility_call", expression_vectors, vectors_selection_mask, axes_selection_mask)
     .arguments <- c("n_axes", "n_vectors", "expression_vectors", "vectors_selection_mask", "n_selected_vectors", "axes_selection_mask", "n_selected_axes", "tissue_versatilities", "tissue_angles_deg", "ierr")

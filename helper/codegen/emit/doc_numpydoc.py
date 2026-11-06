@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_contract import string_input_notes
 from .doc_links import render_spans as _spans
 from .doc_literals import is_ford_block_tag, render as _render, render_mode_default
 from ..ir.types import BaseType, Intent
@@ -21,10 +22,14 @@ def python_type_of(argument: CArgument) -> str:
         options = " | ".join(f"'{v.string}'" for v in argument.mode.values)
         return f"str, one of {options}"
 
+    # as declared: a module constant by its name, an axis C is given the extent of by the
+    # expression it must equal, never by the name of what C is given (#221)
+    extents = argument.shown_extents
+
     if argument.type.is_character:
         # The length is a C extent, not a numpy axis
         rank = argument.rank - 1
-        return "str" if rank <= 0 else f"sequence of str, of length {argument.dimension.extents[1]}"
+        return "str" if rank <= 0 else f"sequence of str, of length {extents[1]}"
 
     scalar = {
         BaseType.INTEGER: "int",
@@ -36,11 +41,11 @@ def python_type_of(argument: CArgument) -> str:
     if argument.is_scalar:
         return scalar
 
-    from .python_ctypes import dtype_of
+    from .python_ctypes import dtype_label
 
-    shape = ", ".join(argument.dimension.extents)
+    shape = ", ".join(extents)
     order = ", column-major (order='F')" if argument.rank > 1 else ""
-    return _render(f"np.ndarray[{dtype_of(argument)}] of shape ({shape},){order}", "python")
+    return _render(f"np.ndarray[{dtype_label(argument)}] of shape ({shape},){order}", "python")
 
 
 def render_docstring(wrapper: CWrapper, emitter=None) -> str:
@@ -137,7 +142,15 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
     suffix = ", " + ", ".join(annotations) if annotations else ""
     writer.line(f"{argument.name} : {python_type_of(argument)}{suffix}")
     with writer.indent():
-        _description(writer, argument.doc, emitter, argument.mode_default)
+        # on a writer of its own, whose render drops a trailing blank: a mode's description
+        # ends where its table was, and the contract's sentence would have stood after a
+        # blank line, a paragraph of its own, where a string's follows its text directly
+        description = Writer()
+        _description(description, argument.doc, emitter, argument.mode_default)
+        if description:
+            writer.block(description.render())
+        for note in string_input_notes(argument):
+            writer.line(note)
 
 
 def _result(writer: Writer, argument: CArgument, emitter=None) -> None:
@@ -177,6 +190,10 @@ def _raises(writer: Writer, wrapper: CWrapper) -> None:
     writer.blank()
     writer.line("Raises")
     writer.line("------")
+    writer.line("ToxArgumentError")
+    with writer.indent():
+        writer.line("If an argument is refused before the library is called: its shape, type")
+        writer.line("or value. A ToxInputError without a code, and a TypeError and a ValueError.")
     writer.line("ToxError")
     with writer.indent():
         writer.line("If the underlying Fortran reports an error.")

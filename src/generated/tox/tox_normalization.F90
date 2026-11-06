@@ -40,6 +40,13 @@ module tox_normalization
 contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_unit_length_impl]].
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    !| coordinates, and the vector's own length is never formed, so it does no harm that this
+    !| length can be subnormal or overflow, as it does for entries near the smallest normal number
+    !| (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    !| flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     pure subroutine normalize_unit_length(&
             vector,&
             n_dims,&
@@ -339,9 +346,11 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalize_by_std_dev_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalize_by_std_dev_expert]] to prepare it yourself.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev(&
             n_genes,&
             n_replicates,&
@@ -448,9 +457,11 @@ contains
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_by_std_dev_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalize_by_std_dev]] does both.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_expert(&
             n_genes,&
             n_replicates,&
@@ -581,6 +592,11 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    !| is; every other gene is divided by its root mean square, however small or large its values,
+    !| up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    !| fast floating-point model or by the host program, a gene made only of subnormals reads as
+    !| the zero gene.
     pure subroutine root_mean_sq_normalization(&
             n_genes,&
             n_replicates,&
@@ -619,7 +635,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization(&
             n_genes,&
             n_replicates,&
@@ -669,7 +689,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization_expert(&
             n_genes,&
             n_replicates,&
@@ -762,7 +786,6 @@ contains
     !| expression per gene.
     pure subroutine calc_tiss_avg(&
             n_genes,&
-            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
@@ -771,17 +794,13 @@ contains
         )
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
-        integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
             !! Gene Expression matrix
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
@@ -791,16 +810,14 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
-        call validate_dimension_size(n_tissues, ierr, arg_pos=3_int32)
-        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=5_int32)
+        call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_all_in_range_real(expr, (sum(reps_per_tissue)) * n_genes, ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
         call calc_tiss_avg_impl(&
             n_genes = n_genes,&
-            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&

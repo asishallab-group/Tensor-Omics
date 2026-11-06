@@ -15,7 +15,7 @@
 #' @param sample_idx a integer scalar. index of sample to compute the permutation contributions for
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_samples`.
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
 #' @return a named list with elements:
@@ -64,9 +64,9 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
     local_contributions_perm_test <- .tox_as_double_matrix(local_contributions_perm_test, "local_contributions_perm_test")
     total_contributions_perm_test <- .tox_as_double_vector(total_contributions_perm_test, "total_contributions_perm_test")
     if (dim(local_contributions_perm_test)[1] != length(local_contributions_observed))
-        .tox_shape_error("local_contributions_perm_test", dim(local_contributions_perm_test)[1], "local_contributions_observed", length(local_contributions_observed))
+        .tox_shape_error("local_contributions_perm_test", 1L, dim(local_contributions_perm_test)[1], "'local_contributions_observed' implies n_timepoints == ", length(local_contributions_observed), "n_timepoints, n_permutations")
     if (length(total_contributions_perm_test) != dim(local_contributions_perm_test)[2])
-        .tox_shape_error("total_contributions_perm_test", length(total_contributions_perm_test), "local_contributions_perm_test", dim(local_contributions_perm_test)[2])
+        .tox_shape_error("total_contributions_perm_test", 1L, length(total_contributions_perm_test), "'local_contributions_perm_test' implies n_permutations == ", dim(local_contributions_perm_test)[2], "n_permutations")
 
     .result <- .Call("compute_p_values_call", local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test)
     .arguments <- c("local_contributions_observed", "total_contribution_observed", "local_contributions_perm_test", "total_contributions_perm_test", "n_timepoints", "n_permutations", "local_p_values", "total_p_value", "ierr")
@@ -86,7 +86,7 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric vector. Per-element contributions}
 #'   \item{total_contribution}{a numeric scalar. Total contribution (`sum(local_contributions)`)}
@@ -96,7 +96,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
     dependent <- .tox_as_double_vector(dependent, "dependent")
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     if (length(dependent) != length(factor))
-        .tox_shape_error("dependent", length(dependent), "factor", length(factor))
+        .tox_shape_error("dependent", 1L, length(dependent), "'factor' implies n_dims == ", length(factor), "n_dims")
 
     .result <- .Call("compute_contributions_call", factor, dependent, baseline_mode)
     .arguments <- c("factor", "dependent", "n_dims", "baseline_mode", "local_contributions", "total_contribution", "ierr")
@@ -121,7 +121,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 #' @param dependent_indices a integer vector. indices of dependents to compute the contributions for
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_factors`.
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric array of rank 4. Per-timepoint contributions per sample-dependent-factor combination}
 #'   \item{total_contributions}{a numeric array of rank 3. Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination}
@@ -149,7 +149,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{factor_baseline}{a numeric scalar. Computed baseline for factor}
 #'   \item{dependent_baseline}{a numeric scalar. Computed baseline for dependent variable}
@@ -159,7 +159,7 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
     dependent <- .tox_as_double_vector(dependent, "dependent")
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     if (length(dependent) != length(factor))
-        .tox_shape_error("dependent", length(dependent), "factor", length(factor))
+        .tox_shape_error("dependent", 1L, length(dependent), "'factor' implies n_timepoints == ", length(factor), "n_timepoints")
 
     .result <- .Call("compute_baselines_factor_dependent_call", factor, dependent, baseline_mode)
     .arguments <- c("n_timepoints", "factor", "dependent", "baseline_mode", "factor_baseline", "dependent_baseline", "ierr")
@@ -204,7 +204,8 @@ compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints
     n_timepoints <- .tox_as_integer_scalar(n_timepoints, "n_timepoints")
     .result <- .Call("compute_acceleration_from_velocity_trajectory_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_timepoints", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .shapes <- c("max(0, n_timepoints - 1)", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, shapes = .shapes)
 
     .result$acceleration
 }
@@ -242,7 +243,8 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     .result <- .Call("compute_acceleration_from_velocity_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_factors", "n_samples", "n_timepoints", "ierr")
     .sources <- c(NA_character_, NA_character_, "velocity", "velocity", NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .shapes <- c("max(0, n_timepoints - 1), n_factors, n_samples", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$acceleration
 }
@@ -264,7 +266,7 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{contrib_velocity}{a numeric array of rank 3. output velocity contributions}
 #'   \item{velocity_contribution_series}{a numeric array of rank 4. output velocity contribution series}
