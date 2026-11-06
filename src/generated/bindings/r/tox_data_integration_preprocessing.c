@@ -11,7 +11,7 @@ void compute_residuals_c(const int*, const int*, const double*, const double*, d
 void pool_means_c(const double*, const int*, const int*, int*, double*, int*);
 void pool_means_expert_c(const double*, const int*, const int*, const int*, int*, double*, int*);
 void pool_study_means_c(const int*, const double*, const int*, const double*, const int*, int*, double*, int*);
-void construct_neighborhoods_c(const int*, const double*, const int*, const double*, const int*, const double*, double*, int*, const int*, int*);
+void construct_neighborhoods_c(const int*, const double*, const int*, const double*, const int*, const double*, double*, int*, const int*, const int*, int*);
 
 SEXP compute_gene_means_call(SEXP expr) {
     int _nprot = 0;
@@ -185,7 +185,7 @@ SEXP pool_study_means_call(SEXP mean_S1, SEXP mean_S2, SEXP n_points) {
     return _out;
 }
 
-SEXP construct_neighborhoods_call(SEXP x_star, SEXP mean_S, SEXP resid_S, SEXP n_neighbors) {
+SEXP construct_neighborhoods_call(SEXP x_star, SEXP mean_S, SEXP resid_S, SEXP n_neighbors, SEXP n_omp_threads) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_points = (int) Rf_length(x_star);
@@ -194,6 +194,7 @@ SEXP construct_neighborhoods_call(SEXP x_star, SEXP mean_S, SEXP resid_S, SEXP n
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_neighbors = Rf_asInteger(n_neighbors);
+    int _v_n_omp_threads = Rf_asInteger(n_omp_threads);
 
     // outputs and work space
     SEXP neighborhood_residuals = PROTECT(Rf_allocVector(REALSXP, n_reps_S * _v_n_neighbors * n_points)); _nprot++;
@@ -212,6 +213,7 @@ SEXP construct_neighborhoods_call(SEXP x_star, SEXP mean_S, SEXP resid_S, SEXP n
         REAL(neighborhood_residuals),
         INTEGER(neighborhood_indices),
         &_v_n_neighbors,
+        &_v_n_omp_threads,
         &ierr
     );
 

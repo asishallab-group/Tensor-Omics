@@ -14,7 +14,7 @@ module mod_test_tox_data
     use tox_data_archive, only: save_tox_data, read_tox_data, create_zip_archive, extract_zip_archive, delete_file
     use f42_serde_arrays_deserialize
     use f42_serde_arrays_serialize
-    use test_suite, only: test_case
+    use test_suite, only: test_case, TEST_N_OMP_THREADS
     implicit none
     public
 
@@ -65,7 +65,7 @@ contains
         character(len=256), allocatable :: expr_file(:)
         integer(int32) :: ierr, i, n_genes_kept
         logical(c_bool), allocatable :: ortholog_mask(:), unassigned_mask(:)
-        integer(int32), allocatable :: selected_indices(:), value_cols(:)
+        integer(int32), allocatable :: selected_indices(:, :), value_cols(:)
 
         ! Initialize file lists
         allocate (expr_file(1))
@@ -123,17 +123,17 @@ contains
 
         ! Create explicit arrays instead of array constructors
         allocate (ortholog_mask(n_genes))
-        allocate (selected_indices(n_genes))
+        allocate (selected_indices(n_genes, TEST_N_OMP_THREADS))
 
         do i = 1, n_genes
             ortholog_mask(i) = .true.
-            selected_indices(i) = i
+            selected_indices(i, :) = i
         end do
 
         ! write(*,*) 'Size of family_centroids: ', size(family_centroids, 1), size(family_centroids, 2)
 
         call group_centroid_all_expert(kallisto_expr, total_samples, n_genes, gene_to_fam, &
-                                n_families, family_centroids, selected_indices, ierr=ierr)
+                                n_families, family_centroids, selected_indices, TEST_N_OMP_THREADS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Computing centroids should succeed")
 
         ! Compute shift vectors

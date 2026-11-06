@@ -274,7 +274,7 @@ contains
 
         call set_ok(ierr)
 
-        !TODO optimize: work across samples is embarrassingly parallel (each i_sample only reads its own slice of `trajectories` and writes its own slice of the outputs), but this loop is sequential because `tmp_factors`/`tmp_dependent` are single shared work buffers reused across iterations. Parallelizing would require per-iteration private copies of these buffers.
+        !TODO parallelize: the samples are independent (each reads its own slice of `trajectories` and writes its own slice of the outputs), but compute_contributions_impl, called per item, returns an `ierr` (a baseline that is not finite) and the loop stops at the first one. An OpenMP root (#218) needs that condition per item in a status array, the error set after the loop, and `tmp_factors`/`tmp_dependent` with a thread axis; until then it stays serial (FES, #218 Q2).
         do i_sample = 1, n_samples
             ! create factor vectors for current sample
             do i_sel_factor = 1, n_selected_factors
@@ -567,6 +567,7 @@ contains
         n_vel = n_timepoints - 1_int32
         n_acc = n_timepoints - 2_int32
 
+        !TODO parallelize: the samples are independent (each reads its own slice of `trajectories` and writes its own slots of the outputs), but compute_contributions_impl, called per item, returns an `ierr` (a baseline that is not finite) and the last one wins. An OpenMP root (#218) needs that condition per item in a status array, the error set after the loop, and `tmp_factors`/`tmp_dependent`/`tmp_contributions` with a thread axis; until then it stays serial (FES, #218 Q2).
         do i_sample = 1, n_samples
             ! ---- Step 1: velocity contributions ----
             do i_factor = 1, n_factors

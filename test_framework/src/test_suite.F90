@@ -2,7 +2,13 @@
 !> Common definitions for all test suites.
 module test_suite
     use, intrinsic :: iso_c_binding, only: c_bool
+    use, intrinsic :: iso_fortran_env, only: int32
     implicit none
+
+    !> The `n_omp_threads` the tests pass to a procedure that takes one (#218). More than one, so
+    !| an `--openmp` build runs the parallel loop of every call whose trip count reaches the
+    !| procedure's threshold.
+    integer(int32), parameter :: TEST_N_OMP_THREADS = 4_int32
 
     !> Common interface for all test procedures.
     abstract interface

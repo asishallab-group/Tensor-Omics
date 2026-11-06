@@ -31,7 +31,7 @@ refused <- function(expr, argument, pattern, class = "tox_type_error") {
 }
 
 centroid <- function(gene_to_family = FAMILY, n_families = 1L, mask = MASK, expr = EXPR)
-  group_centroid_orthologs(expr, gene_to_family, n_families, mask)
+  group_centroid_orthologs(expr, gene_to_family, n_families, TEST_N_OMP_THREADS, mask)
 
 # =====================================================================================
 # integer(int32)

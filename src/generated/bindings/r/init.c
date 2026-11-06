@@ -105,7 +105,7 @@ SEXP compute_residuals_call(SEXP, SEXP);
 SEXP pool_means_call(SEXP, SEXP);
 SEXP pool_means_expert_call(SEXP, SEXP, SEXP);
 SEXP pool_study_means_call(SEXP, SEXP, SEXP);
-SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP);
+SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
 SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_expression_vectors_tsv_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -122,8 +122,8 @@ SEXP validate_all_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP
 SEXP euclidean_distance_call(SEXP, SEXP);
 SEXP distance_to_centroid_call(SEXP, SEXP, SEXP);
 SEXP mean_vector_call(SEXP, SEXP);
-SEXP group_centroid_orthologs_call(SEXP, SEXP, SEXP, SEXP);
-SEXP group_centroid_all_call(SEXP, SEXP, SEXP);
+SEXP group_centroid_orthologs_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP group_centroid_all_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_family_scaling_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_rdi_call(SEXP, SEXP, SEXP);
 SEXP identify_outliers_call(SEXP, SEXP, SEXP, SEXP);
@@ -216,7 +216,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"pool_means_call", (DL_FUNC) &pool_means_call, 2},
     {"pool_means_expert_call", (DL_FUNC) &pool_means_expert_call, 3},
     {"pool_study_means_call", (DL_FUNC) &pool_study_means_call, 3},
-    {"construct_neighborhoods_call", (DL_FUNC) &construct_neighborhoods_call, 4},
+    {"construct_neighborhoods_call", (DL_FUNC) &construct_neighborhoods_call, 5},
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},
     {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 9},
     {"read_expression_vectors_tsv_call", (DL_FUNC) &read_expression_vectors_tsv_call, 8},
@@ -233,8 +233,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"euclidean_distance_call", (DL_FUNC) &euclidean_distance_call, 2},
     {"distance_to_centroid_call", (DL_FUNC) &distance_to_centroid_call, 3},
     {"mean_vector_call", (DL_FUNC) &mean_vector_call, 2},
-    {"group_centroid_orthologs_call", (DL_FUNC) &group_centroid_orthologs_call, 4},
-    {"group_centroid_all_call", (DL_FUNC) &group_centroid_all_call, 3},
+    {"group_centroid_orthologs_call", (DL_FUNC) &group_centroid_orthologs_call, 5},
+    {"group_centroid_all_call", (DL_FUNC) &group_centroid_all_call, 4},
     {"compute_family_scaling_call", (DL_FUNC) &compute_family_scaling_call, 7},
     {"compute_rdi_call", (DL_FUNC) &compute_rdi_call, 3},
     {"identify_outliers_call", (DL_FUNC) &identify_outliers_call, 4},

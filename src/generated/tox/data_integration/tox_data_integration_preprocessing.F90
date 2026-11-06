@@ -328,7 +328,7 @@ contains
     end subroutine pool_study_means_expert
 
     !> summary: Validates its inputs, prepares what [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_preprocessing(module):construct_neighborhoods_expert]] to prepare it yourself.
-    pure subroutine construct_neighborhoods(&
+    M_OMP_PURE subroutine construct_neighborhoods(&
             n_points,&
             x_star,&
             n_genes_S,&
@@ -338,6 +338,7 @@ contains
             neighborhood_residuals,&
             neighborhood_indices,&
             n_neighbors,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_points
@@ -366,10 +367,16 @@ contains
             !! Collection of residual vectors for each neighborhood
         integer(int32), dimension(n_neighbors, n_points), intent(out) :: neighborhood_indices
             !! Indices of selected neighborhood genes
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
-        real(real64), dimension(:), allocatable :: tmp_distances
-        integer(int32), dimension(:), allocatable :: tmp_distances_perm
+        real(real64), dimension(:, :), allocatable :: tmp_distances
+        integer(int32), dimension(:, :), allocatable :: tmp_distances_perm
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -377,14 +384,15 @@ contains
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S, ierr, arg_pos=5_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=9_int32, min=1_int32, max=count(.not. ieee_is_nan(mean_S), kind=int32))
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=10_int32, min=1_int32)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
-        M_ALLOCATE(tmp_distances(n_genes_S))
-        M_ALLOCATE(tmp_distances_perm(n_genes_S))
+        M_ALLOCATE(tmp_distances(n_genes_S, M_OMP_N_THREADS(n_omp_threads)))
+        M_ALLOCATE(tmp_distances_perm(n_genes_S, M_OMP_N_THREADS(n_omp_threads)))
 
         call construct_neighborhoods_impl(&
             n_points = n_points,&
@@ -397,12 +405,13 @@ contains
             tmp_distances_perm = tmp_distances_perm,&
             neighborhood_residuals = neighborhood_residuals,&
             neighborhood_indices = neighborhood_indices,&
-            n_neighbors = n_neighbors&
+            n_neighbors = n_neighbors,&
+            n_omp_threads = M_OMP_N_THREADS(n_omp_threads)&
         )
     end subroutine construct_neighborhoods
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_preprocessing(module):construct_neighborhoods]] does both.
-    pure subroutine construct_neighborhoods_expert(&
+    M_OMP_PURE subroutine construct_neighborhoods_expert(&
             n_points,&
             x_star,&
             n_genes_S,&
@@ -414,6 +423,7 @@ contains
             neighborhood_residuals,&
             neighborhood_indices,&
             n_neighbors,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_points
@@ -429,6 +439,12 @@ contains
             !! The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
             !! It is recommended to compute this with
             !! [[tox_data_integration_preprocessing_impl(module):calc_neighborhood_size(function)]].
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_points), intent(in) :: x_star
             !! Mean-expression reference points
             !! NaN is permitted for this value.
@@ -438,10 +454,10 @@ contains
         real(real64), dimension(n_reps_S, n_genes_S), intent(in) :: resid_S
             !! Matrix of signed residuals
             !! NaN is permitted for this value.
-        real(real64), dimension(n_genes_S), intent(out) :: tmp_distances
-            !! Distances work array
-        integer(int32), dimension(n_genes_S), intent(out) :: tmp_distances_perm
-            !! Work array for the permutation that sorts `tmp_distances`
+        real(real64), dimension(n_genes_S, n_omp_threads), intent(out) :: tmp_distances
+            !! Distances work array, one column per thread
+        integer(int32), dimension(n_genes_S, n_omp_threads), intent(out) :: tmp_distances_perm
+            !! Work array for the permutation that sorts `tmp_distances`, one column per thread
         real(real64), dimension(n_reps_S, n_neighbors, n_points), intent(out) :: neighborhood_residuals
             !! Collection of residual vectors for each neighborhood
         integer(int32), dimension(n_neighbors, n_points), intent(out) :: neighborhood_indices
@@ -455,6 +471,7 @@ contains
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S, ierr, arg_pos=5_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=11_int32, min=1_int32, max=count(.not. ieee_is_nan(mean_S), kind=int32))
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=12_int32, min=1_int32)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
@@ -472,7 +489,8 @@ contains
             tmp_distances_perm = tmp_distances_perm,&
             neighborhood_residuals = neighborhood_residuals,&
             neighborhood_indices = neighborhood_indices,&
-            n_neighbors = n_neighbors&
+            n_neighbors = n_neighbors,&
+            n_omp_threads = n_omp_threads&
         )
     end subroutine construct_neighborhoods_expert
 

@@ -112,12 +112,13 @@ _lib.construct_neighborhoods_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CONSTRUCT_NEIGHBORHOODS_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr",)
+_CONSTRUCT_NEIGHBORHOODS_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "n_omp_threads", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "resid_S", None, None, None, "neighborhood_residuals", None,)
+_CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "resid_S", None, None, None, "neighborhood_residuals", None, None,)
 
 def compute_gene_means(
         expr,
@@ -487,6 +488,7 @@ def construct_neighborhoods(
         mean_S,
         resid_S,
         n_neighbors,
+        n_omp_threads,
 ):
     r"""Construct neighborhood-based residual sets (kNN)
 
@@ -508,6 +510,12 @@ def construct_neighborhoods(
         The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
         It is recommended to compute this with
         :func:`tensor_omics.calc_neighborhood_size`.
+    n_omp_threads : int
+        The most threads the parallel loop may use (OpenMP): it caps the team size.
+        It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+        It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+        Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+        The minimum valid value is `1`.
 
     Returns
     -------
@@ -539,6 +547,7 @@ def construct_neighborhoods(
     mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
     resid_S = _contract.reals(resid_S, "resid_S", ndim=2, order="F")
     n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    n_omp_threads = _contract.integer(n_omp_threads, "n_omp_threads")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]
@@ -564,6 +573,7 @@ def construct_neighborhoods(
         neighborhood_residuals,
         neighborhood_indices,
         _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_omp_threads)),
         _ctypes.byref(ierr),
     )
 
