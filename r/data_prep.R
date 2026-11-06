@@ -13,7 +13,7 @@
 #' This function examines the input matrix for common data quality issues
 #' that could cause problems in downstream analysis.
 #'
-#' @param input_matrix A numeric matrix with genes as columns and tissues as rows.
+#' @param input_matrix A numeric matrix with genes as rows and tissues as columns.
 #' @param show_details Logical indicating whether to show detailed information.
 #' @return A list with diagnostic information about the data quality.
 #' @examples
@@ -110,7 +110,7 @@ tox_diagnose_data_quality <- function(input_matrix, show_details = TRUE) {
   return(invisible(diagnostics))
 }
 
-#' @param df_matrix A numeric matrix with genes as columns and tissues as rowss
+#' @param df_matrix A numeric matrix with genes as rows and tissues as columns
 #' @param remove_all_zero_genes Logical, whether to remove genes that are all zeros
 #' @param na_strategy Strategy for handling NA values: "remove_genes", "remove_samples", "impute_zero", "impute_mean"
 #' @param min_expression_threshold Minimum expression value to consider (values below this become 0)
