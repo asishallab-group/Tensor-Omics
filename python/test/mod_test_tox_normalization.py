@@ -26,6 +26,7 @@ from tensor_omics.error_handling import (
     ERR_DIVISION_BY_ZERO,
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
+    ERR_SIZE_MISMATCH,
 )
 
 N_REPLICATES, N_GENES = 6, 10
@@ -52,6 +53,15 @@ def test_normalize_unit_length():
     assert normalize_unit_length(vector) is None, "the vector is modified in place, nothing is returned"
     # the only way to see the in-place write-back reach the caller's array
     assert np.isclose(np.linalg.norm(vector), 1.0), "the caller's array was not normalized in place"
+
+
+def test_normalize_unit_length_smallest_subnormal():
+    # [s, s] for the smallest subnormal s still has a direction; the values themselves are the
+    # Fortran suite's job
+    smallest_subnormal = np.nextafter(0.0, 1.0)
+    vector = np.array([smallest_subnormal, smallest_subnormal], dtype=np.float64)
+    normalize_unit_length(vector)
+    assert np.all(np.isfinite(vector)), "non-finite values in the result"
 
 
 def test_normalize_unit_length_rejects_zero_vector():
@@ -98,6 +108,14 @@ def test_quantile_normalization():
     _assert_matrix(result["rank_means"], (N_GENES,), "rank_means")
 
 
+def test_quantile_normalization_near_huge():
+    # one replicate [1e308, 1e308], a tie near the largest float64; the values themselves are the
+    # Fortran suite's job
+    result = quantile_normalization(np.full((1, 2), 1e308, dtype=np.float64))
+    _assert_matrix(result["normalized_expr"], (1, 2), "normalized_expr")
+    _assert_matrix(result["rank_means"], (2,), "rank_means")
+
+
 def test_log2_transformation():
     tissue_averages = calc_tiss_avg(REPS_PER_TISSUE, _expr())
     _assert_matrix(log2_transformation(tissue_averages), (len(REPS_PER_TISSUE), N_GENES), "log2_transformation")
@@ -130,7 +148,7 @@ def test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates():
     # rows, 7 would read past the end of the matrix
     for reps_per_tissue in ([3, 2], [3, 4]):
         assert_error(lambda: calc_tiss_avg(np.array(reps_per_tissue, dtype=np.int32), _expr()),
-                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_INVALID_INPUT)
+                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_SIZE_MISMATCH)
 
 
 def test_calc_fchange():

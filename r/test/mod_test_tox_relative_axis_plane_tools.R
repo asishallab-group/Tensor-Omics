@@ -83,9 +83,9 @@ test_omics_vector_RAP_projection_rejects_a_mask_of_the_wrong_length <- function(
 }
 
 test_omics_vector_RAP_projection_rejects_a_mask_that_is_not_logical <- function() {
-  # the binding's own type check: 0/1 numbers are not accepted as a mask
-  assert_error(omics_vector_RAP_projection(.vecs(), as.integer(VECS_SELECTION_MASK), AXES_SELECTION_MASK),
-               "an integer mask")
+  # the binding's own type check: only the numbers 0 and 1 are accepted as a mask
+  assert_error(omics_vector_RAP_projection(.vecs(), as.integer(VECS_SELECTION_MASK) + 1L, AXES_SELECTION_MASK),
+               "a mask of ones and twos")
   assert_error(omics_vector_RAP_projection(.vecs(), .with(VECS_SELECTION_MASK, NA), AXES_SELECTION_MASK),
                "a mask with NA")
 }
@@ -126,6 +126,12 @@ test_omics_field_RAP_projection_rejects_a_mask_of_the_wrong_length <- function()
   # the binding's own shape check, before the library is called
   assert_error(omics_field_RAP_projection(.fields(), VECS_SELECTION_MASK[-1], AXES_SELECTION_MASK),
                "fields has five fields, the mask four")
+}
+
+# `fields` is (n_axes, 2, n_fields); a middle extent of 1 used to be read past (#221)
+test_omics_field_RAP_projection_rejects_fields_without_two_points <- function() {
+  assert_error(omics_field_RAP_projection(.fields()[, 1, , drop = FALSE], VECS_SELECTION_MASK, AXES_SELECTION_MASK),
+               "a field without its shift must be refused")
 }
 
 test_omics_field_RAP_projection_rejects_non_finite_fields <- function() {
@@ -200,6 +206,12 @@ test_clock_hand_angles_for_shift_vectors_rejects_a_mask_of_the_wrong_length <- f
   # the binding's own shape check, before the library is called
   assert_error(clock_hand_angles_for_shift_vectors(.fields(), VECS_SELECTION_MASK[-1], rep(1, N_AXES)),
                "fields has five fields, the mask four")
+}
+
+# `fields` is (n_dims, 2, n_fields); a middle extent of 1 used to be read past (#221)
+test_clock_hand_angles_for_shift_vectors_rejects_fields_without_two_points <- function() {
+  assert_error(clock_hand_angles_for_shift_vectors(.fields()[, 1, , drop = FALSE], VECS_SELECTION_MASK, rep(1, N_AXES)),
+               "a field without its shift must be refused")
 }
 
 test_clock_hand_angles_for_shift_vectors_rejects_non_finite_fields <- function() {

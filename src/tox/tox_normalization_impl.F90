@@ -16,9 +16,9 @@ module tox_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
-                          validate_in_range_real, validate_all_in_range_real, ERR_NAN_INF
-    use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
-    use f42_vector_impl, only: norm
+                          validate_all_in_range_real, ERR_NAN_INF
+    use f42_math_impl, only: log1p, LOG_2, above, mean, std_dev
+    use f42_vector_impl, only: scaled_length
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
@@ -29,6 +29,13 @@ contains
 
     !> summary: Normalizes an input vector to unit length in-place
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    !| coordinates, and the vector's own length is never formed, so it does no harm that this
+    !| length can be subnormal or overflow, as it does for entries near the smallest normal number
+    !| (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    !| flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     pure subroutine normalize_unit_length_impl(vector, n_dims, ierr)
         integer(int32), intent(in) :: n_dims
             !! number of elements in `vector`
@@ -37,26 +44,22 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: i_dim
-        real(real64) :: vector_norm
+        integer(int32) :: i_dim, exponent
+        real(real64) :: scaled_norm
 
         call set_ok(ierr)
 
-        ! The norm is a derived quantity, so its non-finite / zero guards are runtime checks here.
-        vector_norm = norm(vector)
-        call validate_in_range_real(vector_norm, ierr)
-        if (is_err(ierr)) return
-
-        ! Only an exactly zero norm is rejected: the zero vector alone has no direction, and any
-        ! other norm, however tiny, still divides the vector into a unit one. A finite norm is
-        ! never negative, so `<=` is that exact test without comparing reals for equality.
-        if (vector_norm <= 0.0_real64) then
+        ! The division happens in scaled coordinates, so the vector's own length, which may
+        ! overflow or be subnormal, is never formed. A length is never negative, so `<=` is the
+        ! exact test for zero without comparing reals for equality.
+        call scaled_length(n_dims, vector, exponent, scaled_norm)
+        if (scaled_norm <= 0.0_real64) then
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
 
-        do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
-            vector(i_dim) = vector(i_dim)/vector_norm
+        do concurrent (i_dim = 1:n_dims) shared(vector, exponent, scaled_norm)
+            vector(i_dim) = scale(vector(i_dim), exponent)/scaled_norm
         end do
     end subroutine normalize_unit_length_impl
 
@@ -205,7 +208,7 @@ contains
                                     tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used)
         end if
 
-        call calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
+        call calc_tiss_avg_impl(n_genes, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
 
         ! Step 4: Log2(x+1) transformation
         call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
@@ -216,9 +219,11 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_impl(n_genes, n_replicates, expr, normalized_expr, &
                                     tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
                                     tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
@@ -386,9 +391,11 @@ contains
 
             ! Genes with zero variance across replicates carry no information about the mean-vs-sd
             ! trend and would only produce a degenerate (division-by-zero) target for LOESS, so they
-            ! are dropped from the fit here. Since n_valid <= i_gene always, this compacts the arrays
-            ! in place (overwriting already-consumed slots) rather than needing a separate buffer.
-            if (is_close(tmp_loess_y(i_gene), 0.0_real64)) cycle
+            ! are dropped from the fit here. Only an exactly zero sd counts: a small one is still a
+            ! spread. An sd is never negative, so `<=` is that exact test. Since n_valid <= i_gene
+            ! always, this compacts the arrays in place (overwriting already-consumed slots) rather
+            ! than needing a separate buffer.
+            if (tmp_loess_y(i_gene) <= 0.0_real64) cycle
 
             n_valid = n_valid + 1
             tmp_loess_x(n_valid) = tmp_loess_x(i_gene)
@@ -426,9 +433,10 @@ contains
         do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
             fitted_sd = tmp_yhat_global(i_valid)
             ! A LOESS fit can dip below zero even on non-negative data, and dividing by a negative
-            ! fitted sd would flip the gene's sign. So a fit at or below zero, like one near it,
-            ! falls back to the gene's own sd, which is positive for every gene in the fit.
-            if (fitted_sd <= 0.0_real64 .or. is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
+            ! fitted sd would flip the gene's sign. So a fit at or below zero falls back to the
+            ! gene's own sd, which is positive for every gene in the fit; a small positive fit is
+            ! the trend's value there and is used as it is.
+            if (fitted_sd <= 0.0_real64) fitted_sd = tmp_loess_y(i_valid)
 
             gene_idx = tmp_indices_used(i_valid)
             do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)
@@ -440,6 +448,11 @@ contains
     !> summary: Normalizes each gene's expression vector using `sqrt(mean(x^2))`
     !| AUTHOR_VIVIAN_BASS
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    !| is; every other gene is divided by its root mean square, however small or large its values,
+    !| up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    !| fast floating-point model or by the host program, a gene made only of subnormals reads as
+    !| the zero gene.
     pure subroutine root_mean_sq_normalization_impl(n_genes, n_replicates, expr, normalized_expr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -457,6 +470,8 @@ contains
     !> AUTHOR_VIVIAN_BASS
     !| Normalizes each gene's expression vector using `sqrt(mean(x^2))`
     !| across tissues (not classical standard deviation).
+    !| A gene is left unchanged only where its root mean square is exactly zero, which makes it the
+    !| zero gene (or, where subnormals are flushed, one made only of subnormal values).
     pure subroutine root_mean_sq_normalization_inplace_helper(n_genes, n_replicates, expr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -466,18 +481,21 @@ contains
             !! Gene Expression matrix
 
         ! Local variables
-        integer(int32) :: i_gene, i_tissue
-        real(real64) :: rms
+        integer(int32) :: i_gene, i_tissue, exponent
+        real(real64) :: scaled_norm, scaled_rms
 
         ! Loop over each gene
-        do concurrent (i_gene = 1:n_genes) local(rms) shared(n_replicates, expr)
-            ! sqrt(mean(x**2)) is norm(x)/sqrt(n), and f42's norm is scaled: squares past the real64
-            ! range neither overflow, which divided the gene by Inf into zeros, nor underflow.
-            rms = norm(expr(:, i_gene))/sqrt(real(n_replicates, real64))
+        do concurrent (i_gene = 1:n_genes) local(exponent, scaled_norm, scaled_rms) shared(n_replicates, expr)
+            ! sqrt(mean(x**2)) is the gene's length over sqrt(n). The division happens in scaled
+            ! coordinates: for values near huge the rms itself overflows, or its reciprocal is
+            ! subnormal, and dividing by either zeroed the gene.
+            call scaled_length(n_replicates, expr(:, i_gene), exponent, scaled_norm)
 
-            if (.not. is_close(rms, 0.0_real64)) then
-                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, rms)
-                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / rms
+            ! A length is never negative, so `>` is the exact test for non-zero.
+            if (scaled_norm > 0.0_real64) then
+                scaled_rms = scaled_norm/sqrt(real(n_replicates, real64))
+                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, exponent, scaled_rms)
+                    expr(i_tissue, i_gene) = scale(expr(i_tissue, i_gene), exponent)/scaled_rms
                 end do
             end if
         end do
@@ -488,7 +506,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization_impl(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -511,7 +533,11 @@ contains
 
     !> AUTHOR_VIVIAN_BASS
     !| Quantile normalization of a gene expression matrix (F42-compliant).
-    !| Computes average expression per rank across tissues.
+    !| Computes average expression per rank across tissues, each value divided by the number of
+    !| replicates before it is added, so no rank mean overflows for finite input; a rank mean that
+    !| still rounds past `huge` is `huge`, with its sign. A tie gets the
+    !| [[f42_math_impl(module):mean(function)]] of the rank means it spans, or their common value
+    !| exactly where they are equal, so a single replicate comes back unchanged.
     pure subroutine quantile_normalization_inplace_helper(n_genes, n_replicates, expr, rank_means, tmp_genes_row, tmp_perm)
         use f42_sort_impl, only: sort_array_heapsort
 
@@ -550,15 +576,18 @@ contains
             ! Sort current column with index tracking
             call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-            ! Accumulate values for each rank
+            ! Accumulate the mean of each rank. Each value is divided before it is added, so no
+            ! partial sum outgrows the largest value: the rank means of values near huge do not
+            ! overflow where their plain sum would, and one replicate is its own rank means exactly.
             do i_gene = 1, n_genes
-                rank_means(i_gene) = rank_means(i_gene) + tmp_genes_row(tmp_perm(i_gene))
+                rank_means(i_gene) = rank_means(i_gene) + tmp_genes_row(tmp_perm(i_gene))/real(n_replicates, real64)
             end do
         end do
 
-        ! Average the rank values
-        do concurrent (i_gene = 1:n_genes) shared(rank_means, n_replicates)
-            rank_means(i_gene) = rank_means(i_gene) / real(n_replicates, real64)
+        ! The divided terms can still round past huge where every one of them lies within about
+        ! n_replicates*epsilon of it; such a rank mean is huge, with its sign.
+        do concurrent (i_gene = 1:n_genes) shared(rank_means)
+            if (.not. ieee_is_finite(rank_means(i_gene))) rank_means(i_gene) = sign(huge(1.0_real64), rank_means(i_gene))
         end do
 
         ! === Second pass: give each value the mean of its rank ===
@@ -580,7 +609,13 @@ contains
                     last_rank = last_rank + 1
                 end do
 
-                tied_mean = sum(rank_means(first_rank:last_rank))/real(last_rank - first_rank + 1, real64)
+                ! The rank means are sorted, so equal ends mean an equal group, which keeps that value
+                ! exactly; a computed mean of equal values can round away from it.
+                if (rank_means(first_rank) == rank_means(last_rank)) then
+                    tied_mean = rank_means(first_rank)
+                else
+                    tied_mean = mean(rank_means(first_rank:last_rank))
+                end if
                 do concurrent (i_rank = first_rank:last_rank) shared(expr, tmp_perm, i_tissue, tied_mean)
                     expr(i_tissue, tmp_perm(i_rank)) = tied_mean
                 end do
@@ -651,23 +686,16 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| For each tissue of tissue replicates, this subroutine computes the average
     !| expression per gene.
-    pure subroutine calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, expr, tissue_averages)
+    pure subroutine calc_tiss_avg_impl(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
-        ! Sizes expr, rather than sum(reps_per_tissue): the bindings derive a dimension only from an
-        ! array, and the markers check it against the sum. DM_MIN and DM_MAX of one expression say
-        ! "equal to" until the generator has DM_EQUALS (#203).
-        integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! DM_MIN(sum(reps_per_tissue))
-            !! DM_MAX(sum(reps_per_tissue))
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! DM_MIN(1_int32)
-        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
             !! Gene Expression matrix
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene

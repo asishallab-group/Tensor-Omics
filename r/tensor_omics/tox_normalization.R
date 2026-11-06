@@ -2,6 +2,14 @@
 
 #' Normalizes an input vector to unit length in-place
 #'
+#' Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+#' vector becomes its unit vector, however short or long. Its entries are divided in scaled
+#' coordinates, and the vector's own length is never formed, so it does no harm that this
+#' length can be subnormal or overflow, as it does for entries near the smallest normal number
+#' (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+#' flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+#' subnormals reads as the zero vector.
+#'
 #' Generated from the Fortran procedure \code{tox_normalization::normalize_unit_length}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -58,9 +66,11 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #'
 #' This procedure applies a global stabilization based on the relationship between
 #' gene-wise mean expression and empirical standard deviation.
-#' Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-#' non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-#' changes sign.
+#' Genes whose standard deviation is exactly zero carry no information about the trend: they
+#' are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+#' -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+#' standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+#' is used as it is.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::normalize_by_std_dev}, whose argument names
 #' are the ones an error message reports.
@@ -91,6 +101,11 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
 #' Normalizes each gene's expression vector using `sqrt(mean(x^2))`
 #'
 #' across tissues (not classical standard deviation).
+#' Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+#' is; every other gene is divided by its root mean square, however small or large its values,
+#' up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+#' fast floating-point model or by the host program, a gene made only of subnormals reads as
+#' the zero gene.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::root_mean_sq_normalization}, whose argument names
 #' are the ones an error message reports.
@@ -113,7 +128,11 @@ root_mean_sq_normalization <- function(expr) {
 #' Computes average expression per rank across tissues.
 #' Tied values within a replicate share the mean of the rank means their ranks span, so values
 #' that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-#' `normalizeQuantiles`. The rank means themselves do not depend on ties.
+#' `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+#' The rank means themselves do not depend on ties.
+#'
+#' No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+#' values are, and a single replicate comes back exactly as it was, ties included.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization}, whose argument names
 #' are the ones an error message reports.
@@ -177,9 +196,10 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
     reps_per_tissue <- .tox_as_integer_vector(reps_per_tissue, "reps_per_tissue")
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("calc_tiss_avg_call", reps_per_tissue, expr)
-    .arguments <- c("n_genes", "n_replicates", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
-    .sources <- c("expr", "expr", "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .arguments <- c("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
+    .sources <- c("expr", "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
+    .shapes <- c(NA_character_, NA_character_, NA_character_, "sum(reps_per_tissue), n_genes", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$tissue_averages
 }
@@ -209,7 +229,7 @@ calc_fchange <- function(control_tissues, condition_tissues, expr) {
     condition_tissues <- .tox_as_integer_vector(condition_tissues, "condition_tissues")
     expr <- .tox_as_double_matrix(expr, "expr")
     if (length(condition_tissues) != length(control_tissues))
-        .tox_shape_error("condition_tissues", length(condition_tissues), "control_tissues", length(control_tissues))
+        .tox_shape_error("condition_tissues", 1L, length(condition_tissues), "'control_tissues' implies n_pairs == ", length(control_tissues), "n_pairs")
 
     .result <- .Call("calc_fchange_call", control_tissues, condition_tissues, expr)
     .arguments <- c("n_genes", "n_tissues", "n_pairs", "control_tissues", "condition_tissues", "expr", "fold_changes", "ierr")

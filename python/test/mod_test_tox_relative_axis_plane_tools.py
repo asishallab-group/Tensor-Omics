@@ -136,6 +136,12 @@ def test_omics_field_RAP_projection_rejects_a_mask_of_the_wrong_length():
                  "fields has five fields, the mask four")
 
 
+def test_omics_field_RAP_projection_rejects_fields_without_two_points():
+    # `fields` is (n_axes, 2, n_fields); a middle axis of 1 used to be read past (#221)
+    assert_error(lambda: omics_field_RAP_projection(_fields()[:, :1, :], VECS_SELECTION_MASK, AXES_SELECTION_MASK),
+                 "a field without its shift must be refused")
+
+
 def test_omics_field_RAP_projection_rejects_non_finite_fields():
     for value in NON_FINITE_VALUES:
         assert_error(lambda: omics_field_RAP_projection(_with(_fields(), value), VECS_SELECTION_MASK,
@@ -212,6 +218,12 @@ def test_clock_hand_angles_for_shift_vectors_rejects_a_mask_of_the_wrong_length(
     assert_error(lambda: clock_hand_angles_for_shift_vectors(_fields(), VECS_SELECTION_MASK[:-1],
                                                              np.ones(N_AXES)),
                  "fields has five fields, the mask four")
+
+
+def test_clock_hand_angles_for_shift_vectors_rejects_fields_without_two_points():
+    # `fields` is (n_dims, 2, n_fields); a middle axis of 1 used to be read past (#221)
+    assert_error(lambda: clock_hand_angles_for_shift_vectors(_fields()[:, :1, :], VECS_SELECTION_MASK, np.ones(N_AXES)),
+                 "a field without its shift must be refused")
 
 
 def test_clock_hand_angles_for_shift_vectors_rejects_non_finite_fields():

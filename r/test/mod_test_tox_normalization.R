@@ -31,6 +31,15 @@ test_normalize_unit_length <- function() {
   assert_true(all(is.finite(result)), "non-finite values in the result")
 }
 
+test_normalize_unit_length_smallest_subnormal <- function() {
+  # c(s, s) for the smallest subnormal s still has a direction; the values themselves are the
+  # Fortran suite's job
+  smallest_subnormal <- 2^-1074
+  result <- normalize_unit_length(c(smallest_subnormal, smallest_subnormal))
+  assert_true(is.double(result) && length(result) == 2L, "expected a double vector of length 2")
+  assert_true(all(is.finite(result)), "non-finite values in the result")
+}
+
 test_normalize_unit_length_rejects_zero_vector <- function() {
   assert_error(normalize_unit_length(c(0, 0, 0)), "a zero vector has no direction", ERR_DIVISION_BY_ZERO)
 }
@@ -71,6 +80,14 @@ test_quantile_normalization <- function() {
               "rank_means: expected a double vector, one per gene")
 }
 
+test_quantile_normalization_near_huge <- function() {
+  # one replicate c(1e308, 1e308), a tie near the largest double; the values themselves are the
+  # Fortran suite's job
+  result <- quantile_normalization(matrix(1e308, nrow = 1L, ncol = 2L))
+  .assert_matrix(result$normalized_expr, c(1L, 2L), "normalized_expr")
+  assert_true(all(is.finite(result$rank_means)), "rank_means: non-finite values")
+}
+
 test_log2_transformation <- function() {
   tissue_averages <- calc_tiss_avg(REPS_PER_TISSUE, .expr())
   .assert_matrix(log2_transformation(tissue_averages), c(length(REPS_PER_TISSUE), N_GENES), "log2_transformation")
@@ -105,7 +122,7 @@ test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates <- function() {
   # rows, 7 would read past the end of the matrix
   for (reps_per_tissue in list(c(3L, 2L), c(3L, 4L))) {
     assert_error(calc_tiss_avg(reps_per_tissue, .expr()),
-                 paste0("reps_per_tissue ", toString(reps_per_tissue), ", but expr has 6 replicates"), ERR_INVALID_INPUT)
+                 paste0("reps_per_tissue ", toString(reps_per_tissue), ", but expr has 6 replicates"), ERR_SIZE_MISMATCH)
   }
 }
 

@@ -58,9 +58,9 @@ contains
         write (label, '(a, i0, a, l1)') "test_pipeline_matches_its_steps: tissues=", n_tissues, " quantile=", use_quantile
 
         if (use_quantile) then
-          call calc_tiss_avg(n_genes, n_replicates, n_tissues, reps_per_tissue, quantile, averages, ierr)
+          call calc_tiss_avg(n_genes, n_tissues, reps_per_tissue, quantile, averages, ierr)
         else
-          call calc_tiss_avg(n_genes, n_replicates, n_tissues, reps_per_tissue, by_std_dev, averages, ierr)
+          call calc_tiss_avg(n_genes, n_tissues, reps_per_tissue, by_std_dev, averages, ierr)
         end if
         call assert_equal_int(get_err_code(ierr), ERR_OK, trim(label)//" calc_tiss_avg")
         call log2_transformation(n_genes, n_tissues, averages, from_steps, ierr)
