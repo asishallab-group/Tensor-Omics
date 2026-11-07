@@ -67,7 +67,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' @return a named list with elements:
 #'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`}
 #'   \item{work_arr_paralog_subsets}{a integer matrix. working array to hold bitmask encoded subsets for detection.
-#'     Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks}
+#'     Each column is a bit mask of the `n_genes` genes, laid out as \code{f42_bit_masks_impl} describes.}
 #' @export
 detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, max_angle = 3.141592653589793, gain_gamma = 0.1) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -121,7 +121,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 #' @return a named list with elements:
 #'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`}
 #'   \item{work_arr_paralog_subsets}{a integer matrix. working array to hold bitmask encoded subsets for detection.
-#'     Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks}
+#'     Each column is a bit mask of the `n_genes` genes, laid out as \code{f42_bit_masks_impl} describes.}
 #' @export
 detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, rdi_threshold, paralog_norms, sorted_paralog_norms_perm) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -171,7 +171,7 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
-#'   The minimum valid value is `(n_genes + 31) / 32`.
+#'   The minimum valid value is `((n_genes)/32 + min(1, mod((n_genes), 32)))`.
 #' @return a integer matrix. bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #' @export
 filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks) {
@@ -209,7 +209,7 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
-#'   The minimum valid value is `(n_genes + 31) / 32`.
+#'   The minimum valid value is `((n_genes)/32 + min(1, mod((n_genes), 32)))`.
 #' @return a integer matrix. bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #' @export
 filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks) {
@@ -227,4 +227,49 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$masks
+}
+
+#' Calculates the needed size for the paralog-subsets work array
+#'
+#' The `detect_*` subroutines need a work array for the to be tested subsets.
+#' In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+#' This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
+#'
+#' This subroutine calculates the needed size for the work array.
+#'
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::calc_work_arr_paralog_subsets_size}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param max_subset_size a integer scalar. maximum size that a subset must not exceed. Zero is in range and means there is
+#'   nothing to size a work array for, which is reported back as a size of zero.
+#'   The minimum valid value is `0`.
+#'   If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+#'
+#'   Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+#' @param n_genes a integer scalar. number of genes
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_mask_chunks * 32`.
+#' @param filtered_paralogs_mask a integer vector. Output mask with all genes disabled that did not pass the filter
+#' @return a named list with elements:
+#'   \item{max_subset_size}{a integer scalar. maximum size that a subset must not exceed. Zero is in range and means there is
+#'     nothing to size a work array for, which is reported back as a size of zero.
+#'     The minimum valid value is `0`.
+#'     If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+#'
+#'     Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.}
+#'   \item{work_array_size}{a integer scalar. The calculated needed work array size in absolute worst case scenario. Look into source for details.}
+#' @export
+calc_work_arr_paralog_subsets_size <- function(max_subset_size, n_genes, filtered_paralogs_mask) {
+    max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")
+    n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")
+    filtered_paralogs_mask <- .tox_as_integer_vector(filtered_paralogs_mask, "filtered_paralogs_mask")
+    .result <- .Call("calc_work_arr_paralog_subsets_size_call", max_subset_size, n_genes, filtered_paralogs_mask)
+    .arguments <- c("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_mask", "n_mask_chunks", "ierr")
+    .sources <- c(NA_character_, NA_character_, NA_character_, NA_character_, "filtered_paralogs_mask", NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        max_subset_size = .result$max_subset_size,
+        work_array_size = .result$work_array_size
+    )
 }
