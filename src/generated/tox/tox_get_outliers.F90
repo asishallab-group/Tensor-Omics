@@ -99,8 +99,9 @@ contains
             !! cutoff used to filter families with low std
         integer(int32), dimension(n_families), intent(out) :: excluded_low_sd
             !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
-            !! lists, `1` for every other one -- a family with a single member, or with a spread
-            !! below `low_sd_cutoff`.
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), dimension(:), allocatable :: tmp_perm
@@ -315,8 +316,9 @@ contains
             !! cutoff used to filter families with low std
         integer(int32), dimension(n_families), intent(out) :: excluded_low_sd
             !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
-            !! lists, `1` for every other one -- a family with a single member, or with a spread
-            !! below `low_sd_cutoff`.
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
         real(real64), dimension(n_families), intent(out) :: tmp_means_aux
             !! Work array for saving raw means
         integer(int32), intent(out) :: ierr

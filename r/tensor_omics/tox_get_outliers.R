@@ -36,8 +36,9 @@
 #'     remaining slots hold `0`.}
 #'   \item{low_sd_cutoff}{a numeric scalar. cutoff used to filter families with low std}
 #'   \item{excluded_low_sd}{a integer vector. Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
-#'     lists, `1` for every other one -- a family with a single member, or with a spread
-#'     below `low_sd_cutoff`.}
+#'     lists, `1` for every other one -- a family with no or a single member, or with a spread
+#'     below `low_sd_cutoff`. With too few families for a fit, the one family with several
+#'     members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.}
 #' @export
 compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.7, degree = 2L, mode = "robust", n_iters = 3L) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
