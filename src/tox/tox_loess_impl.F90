@@ -494,7 +494,7 @@ contains
 
         ! Perform robust iterative refinement
         do iter = 1, actual_n_iters
-            do concurrent (i = 1:n) shared(tmp_combined_weights, weights, tmp_robust_weights)
+            do i = 1, n
                 tmp_combined_weights(i) = weights(i)*tmp_robust_weights(i)
             end do
 
@@ -507,7 +507,7 @@ contains
             call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n, eval_points, fitted_values)
 
             ! Compute residuals for robust reweighting in next iteration
-            do concurrent (i = 1:n) shared(tmp_residuals, y, fitted_values)
+            do i = 1, n
                 tmp_residuals(i) = y(i) - fitted_values(i)
             end do
 

@@ -262,13 +262,13 @@ contains
         ! does not assume the caller's `distances` are well-formed -- a NaN/Inf distance propagates into
         ! `loess_x`/`loess_y` and is caught here. These same family means feed the second log2 loop
         ! below via `tmp_means_aux` (identical values), so validating them here covers both loops.
-        ! With the arguments guaranteed valid, the transform runs as a race-free `do concurrent`
+        ! With the arguments guaranteed valid, the transform runs as a loop of independent iterations
         ! calling the non-validating `logx_helper` -- no per-iteration write to the shared `ierr`.
         call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr, min=above(-eps_mean))
         call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr, min=above(-eps_sd))
         if (is_err(ierr)) return
 
-        do concurrent(i_valid=1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
+        do i_valid = 1, n_valid
             call logx_helper(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid))
             call logx_helper(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid))
         end do
@@ -319,7 +319,7 @@ contains
         ! -- EPS_LOESS, the smoothing floor -- since a spread finer than that is no spread to
         ! fit a curve through, however different the two ends are as floating point numbers.
         if (is_close(xmax, xmin, EPS_LOESS)) then
-            do concurrent (i_family = 1:n_families) shared(dscale, std_median)
+            do i_family = 1, n_families
                 if (tmp_means_aux(i_family) >= 0.0_real64) then
                     dscale(i_family) = std_median
                 else
@@ -352,9 +352,9 @@ contains
             ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
             ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
             ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
-            ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
+            ! non-validating `logx_helper` runs in a loop of independent iterations with no shared `ierr`
             ! (each iteration writes only its own `tmp_eval_points` row).
-            do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_eval_points, eps_mean, xmin, xmax)
+            do i_family = 1, n_families
                 if (tmp_means_aux(i_family) >= 0.0_real64) then
                     call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_eval_points(i_family, 1))
                     if (tmp_eval_points(i_family, 1) < xmin) tmp_eval_points(i_family, 1) = xmin
@@ -372,7 +372,7 @@ contains
             ! Map compact tmp_residuals back to full dscale
             ! ------------------------------------------------------------
 
-            do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_fitted_values, eps_sd)
+            do i_family = 1, n_families
                 if (tmp_means_aux(i_family) < 0.0_real64) then
                     dscale(i_family) = 0.0_real64
                 else
@@ -383,7 +383,7 @@ contains
 
         ! The fit works in log2 space. Both branches end here, so the LOESS points and the cutoff go
         ! back to the linear scale they were measured on in one place, whichever branch was taken.
-        do concurrent (i_valid = 1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
+        do i_valid = 1, n_valid
             loess_x(i_valid) = max(2.0_real64**loess_x(i_valid) - eps_mean, 0.0_real64)
             loess_y(i_valid) = max(2.0_real64**loess_y(i_valid) - eps_sd, 0.0_real64)
         end do

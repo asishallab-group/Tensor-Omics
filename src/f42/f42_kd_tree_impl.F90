@@ -120,7 +120,7 @@ contains
         if (n_sliced_elements <= 1) return
 
         ! Fill tmp_value_buffer with the values of points(dimension, kd_indices(left_idx:right_idx))
-        do concurrent (i_sliced_element = 1:n_sliced_elements) shared(tmp_value_buffer, tmp_permutation, kd_indices, left_idx, dim)
+        do i_sliced_element = 1, n_sliced_elements
             tmp_value_buffer(i_sliced_element) = points(dim, kd_indices(left_idx + i_sliced_element - 1))
             tmp_permutation(i_sliced_element) = i_sliced_element
         end do
@@ -128,11 +128,11 @@ contains
         call sort_array_heapsort(tmp_value_buffer(1:n_sliced_elements), tmp_permutation(1:n_sliced_elements))
 
         ! Reorder kd_indices(left_idx:right_idx) according to tmp_permutation
-        do concurrent (i_sliced_element = 1:n_sliced_elements) shared(tmp_workspace, kd_indices, left_idx, tmp_permutation)
+        do i_sliced_element = 1, n_sliced_elements
             tmp_workspace(i_sliced_element) = kd_indices(left_idx + tmp_permutation(i_sliced_element) - 1)
         end do
 
-        do concurrent (i_sliced_element = 1:n_sliced_elements) shared (kd_indices, left_idx, tmp_workspace)
+        do i_sliced_element = 1, n_sliced_elements
             kd_indices(left_idx + i_sliced_element - 1) = tmp_workspace(i_sliced_element)
         end do
     end subroutine partial_sort_by_dimension_helper

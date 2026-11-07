@@ -875,7 +875,7 @@ contains
 
   !> A non-finite distance must surface as an error, not silently flow into log2.
   !| `compute_family_scaling` feeds family means/stddevs to `logx_helper` (non-validating) inside a
-  !| `do concurrent`. The callee validates those log2 arguments up front so a NaN/Inf distance -- which
+  !| loop. The callee validates those log2 arguments up front so a NaN/Inf distance -- which
   !| propagates into a family mean -- is rejected with `ierr`, rather than producing a NaN/Inf scale.
   subroutine test_family_scaling_non_finite_distance()
     use, intrinsic :: iso_fortran_env, only: int32, real64

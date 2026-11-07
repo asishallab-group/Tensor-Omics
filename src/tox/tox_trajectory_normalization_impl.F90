@@ -46,7 +46,7 @@ contains
             return
         end if
 
-        do concurrent (i_point = 1:n_points) shared(v_norm, v, min_val, denominator)
+        do i_point = 1, n_points
             v_norm(i_point) = (v(i_point) - min_val)/denominator
         end do
     end subroutine normalize_variable_timeseries_impl
@@ -110,7 +110,7 @@ contains
         ! Normalize each sample/entity independently
         do i_sample = 1, n_samples
             do i_factor = 1, n_factors
-                do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_series, trajectories, i_sample, i_factor)
+                do i_timepoint = 1, n_timepoints
                     tmp_series(i_timepoint) = trajectories(i_factor, i_sample, i_timepoint)
                 end do
 
