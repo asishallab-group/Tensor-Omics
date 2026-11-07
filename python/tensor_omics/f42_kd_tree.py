@@ -52,15 +52,15 @@ _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES = (None, "points", "points", None, None, No
 
 _lib.vicinity_vectors_c.restype = None
 _lib.vicinity_vectors_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -70,15 +70,15 @@ _VICINITY_VECTORS_ARGUMENT_SOURCES = (None, None, "query_point", "points", None,
 
 _lib.vicinity_vectors_count_c.restype = None
 _lib.vicinity_vectors_count_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -257,6 +257,9 @@ def vicinity_vectors(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -265,67 +268,42 @@ def vicinity_vectors(
     Generated from the Fortran procedure `f42_kd_tree::vicinity_vectors`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        query_point = np.ascontiguousarray(query_point, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'query_point' must be an array of np.float64: {error}") from None
-    if query_point.ndim != 1:
-        raise ValueError(f"'query_point' must have 1 dimension, but has {query_point.ndim}")
-    try:
-        points = np.asfortranarray(points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'points' must be an array of np.float64: {error}") from None
-    if points.ndim != 2:
-        raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
-    try:
-        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {error}") from None
-    if dimension_order.ndim != 1:
-        raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
-    try:
-        kd_indices = np.ascontiguousarray(kd_indices, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'kd_indices' must be an array of np.int32: {error}") from None
-    if kd_indices.ndim != 1:
-        raise ValueError(f"'kd_indices' must have 1 dimension, but has {kd_indices.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    query_point = _contract.reals(query_point, "query_point", ndim=1)
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    r = _contract.real(r, "r")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
+    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = query_point.shape[0]
     n_points = points.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if points.shape[0] != n_dimensions:
-        raise ValueError(f"'points' has {points.shape[0]} along axis 0, but "
-            f"'query_point' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'points' has {points.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'points' is declared with shape (n_dimensions, n_points)", argument="points")
     if dimension_order.shape[0] != n_dimensions:
-        raise ValueError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but "
-            f"'query_point' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
     if kd_indices.shape[0] != n_points:
-        raise ValueError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but "
-            f"'points' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'points' implies n_points == {n_points}; 'kd_indices' is declared with shape (n_points)", argument="kd_indices")
 
     # outputs and work arrays, which the caller never sees
-    vicinity_mask = np.empty((n_points,), dtype=np.bool_, order='C')
-    ierr = ctypes.c_int(0)
+    vicinity_mask = _np.empty((n_points,), dtype=_np.bool_, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.vicinity_vectors_c(
         query_point,
         points,
-        ctypes.byref(ctypes.c_int(n_dimensions)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(r)),
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(r)),
         dimension_order,
         kd_indices,
         vicinity_mask,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VICINITY_VECTORS_ARGUMENTS, _VICINITY_VECTORS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _VICINITY_VECTORS_ARGUMENTS, _VICINITY_VECTORS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     vicinity_mask.flags.writeable = False
@@ -366,6 +344,9 @@ def vicinity_vectors_count(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -374,66 +355,41 @@ def vicinity_vectors_count(
     Generated from the Fortran procedure `f42_kd_tree::vicinity_vectors_count`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        query_point = np.ascontiguousarray(query_point, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'query_point' must be an array of np.float64: {error}") from None
-    if query_point.ndim != 1:
-        raise ValueError(f"'query_point' must have 1 dimension, but has {query_point.ndim}")
-    try:
-        points = np.asfortranarray(points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'points' must be an array of np.float64: {error}") from None
-    if points.ndim != 2:
-        raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
-    try:
-        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {error}") from None
-    if dimension_order.ndim != 1:
-        raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
-    try:
-        kd_indices = np.ascontiguousarray(kd_indices, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'kd_indices' must be an array of np.int32: {error}") from None
-    if kd_indices.ndim != 1:
-        raise ValueError(f"'kd_indices' must have 1 dimension, but has {kd_indices.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    query_point = _contract.reals(query_point, "query_point", ndim=1)
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    r = _contract.real(r, "r")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
+    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = query_point.shape[0]
     n_points = points.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if points.shape[0] != n_dimensions:
-        raise ValueError(f"'points' has {points.shape[0]} along axis 0, but "
-            f"'query_point' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'points' has {points.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'points' is declared with shape (n_dimensions, n_points)", argument="points")
     if dimension_order.shape[0] != n_dimensions:
-        raise ValueError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but "
-            f"'query_point' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
     if kd_indices.shape[0] != n_points:
-        raise ValueError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but "
-            f"'points' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'points' implies n_points == {n_points}; 'kd_indices' is declared with shape (n_points)", argument="kd_indices")
 
     # outputs and work arrays, which the caller never sees
-    n_neighbors = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_neighbors = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.vicinity_vectors_count_c(
         query_point,
         points,
-        ctypes.byref(ctypes.c_int(n_dimensions)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(r)),
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(r)),
         dimension_order,
         kd_indices,
-        ctypes.byref(n_neighbors),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_neighbors),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VICINITY_VECTORS_COUNT_ARGUMENTS, _VICINITY_VECTORS_COUNT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _VICINITY_VECTORS_COUNT_ARGUMENTS, _VICINITY_VECTORS_COUNT_ARGUMENT_SOURCES)
 
     return n_neighbors.value
