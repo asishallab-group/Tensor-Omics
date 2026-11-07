@@ -54,7 +54,7 @@ _lib.normalization_pipeline_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZATION_PIPELINE_ARGUMENTS = ("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "log_transformed_expr", None, None, None, None,)
+_NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "reps_per_tissue", None, None, None, None,)
 
 _lib.normalize_by_std_dev_c.restype = None
 _lib.normalize_by_std_dev_c.argtypes = (

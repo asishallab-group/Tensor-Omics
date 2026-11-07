@@ -56,7 +56,7 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
     use_quantile <- .tox_as_logical_scalar(use_quantile, "use_quantile")
     .result <- .Call("normalization_pipeline_call", expr, reps_per_tissue, span, degree, use_quantile)
     .arguments <- c("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr")
-    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "log_transformed_expr", NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$log_transformed_expr
