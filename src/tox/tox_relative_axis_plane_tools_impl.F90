@@ -25,6 +25,10 @@ contains
 
     !> summary: Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| A vector's projection is the vector minus the mean of its selected coordinates. A vector whose
+    !| selected coordinates are all equal lies on the space diagonal and projects to exact zeros,
+    !| decided on the coordinates themselves rather than on their rounded mean, so
+    !| `normalize_unit_length` refuses it as the zero vector it is.
     pure subroutine omics_vector_RAP_projection_impl(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections)
         integer(int32), intent(in) :: n_axes
             !! number of axes
@@ -66,6 +70,11 @@ contains
 
     !> summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| A field is projected as the difference of its two vectors, origin minus target, taken on the
+    !| selected axes; that difference minus the mean of its coordinates is the projection. A field
+    !| whose differences are all equal shifts along the space diagonal and projects to exact zeros,
+    !| decided on the differences themselves rather than on their rounded mean, so
+    !| `normalize_unit_length` refuses it as the zero vector it is.
     pure subroutine omics_field_RAP_projection_impl(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
         integer(int32), intent(in) :: n_axes
             !! number of axes
@@ -117,7 +126,7 @@ contains
             !! matrix with vectors for selected axes
 
         ! project selected vectors onto RAP
-        integer(int32) :: i_vec, i_axis
+        integer(int32) :: i_vec, i_axis, i_axis_differing
         real(real64) :: diagonal_component
 
         ! The RAP is the hyperplane orthogonal to the space diagonal (1,1,...,1) through the origin,
@@ -125,19 +134,34 @@ contains
         ! onto that hyperplane is v - ((v . 1)/(1 . 1)) * 1, and since 1 . 1 = n_selected_axes and
         ! every component of the diagonal unit direction is equal, this reduces to subtracting the
         ! mean of v's coordinates ("diagonal_component") from each coordinate of v.
-        do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component) shared(n_selected_axes, selected_vecs)
+        do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component, i_axis_differing) &
+            shared(n_selected_axes, selected_vecs)
 
-            ! calculate diagonal component to be subtracted from vectors for projection
-            diagonal_component = 0.0_real64
-            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec) reduce(+:diagonal_component)
-                diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)
+            ! The projection is the origin exactly when all coordinates are equal, so that case is
+            ! decided on the coordinates themselves: their rounded mean need not equal them, and
+            ! subtracting it leaves rounding noise, which normalization would scale up to a
+            ! full-length direction. The loop runs past its end only when every coordinate equals
+            ! the first, a single one included. `/=` is IEEE's quiet comparison, which raises no
+            ! flag on a NaN.
+            do i_axis_differing = 2, n_selected_axes
+                if (selected_vecs(i_axis_differing, i_vec) /= selected_vecs(1, i_vec)) exit
             end do
-            diagonal_component = diagonal_component / n_selected_axes
 
-            ! transform vector to its projection
-            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, diagonal_component)
-                selected_vecs(i_axis, i_vec) = selected_vecs(i_axis, i_vec) - diagonal_component
-            end do
+            if (i_axis_differing > n_selected_axes) then
+                selected_vecs(:, i_vec) = 0.0_real64
+            else
+                ! calculate diagonal component to be subtracted from vectors for projection
+                diagonal_component = 0.0_real64
+                do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec) reduce(+:diagonal_component)
+                    diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)
+                end do
+                diagonal_component = diagonal_component / n_selected_axes
+
+                ! transform vector to its projection
+                do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, diagonal_component)
+                    selected_vecs(i_axis, i_vec) = selected_vecs(i_axis, i_vec) - diagonal_component
+                end do
+            end if
         end do
     end subroutine project_selected_vecs_onto_rap_helper
 

@@ -2,7 +2,9 @@
 module mod_test_rap_tools_omics_field_RAP_projection
     use asserts
     use tox_relative_axis_plane_tools
+    use tox_normalization, only: normalize_unit_length
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_next_after
     use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     use tox_errors
@@ -15,7 +17,7 @@ contains
     function get_all_tests_rap_tools_omics_field_RAP_projection() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(10))
+        allocate (all_tests(11))
 
         all_tests(1) = test_case("test_omics_field_RAP_projection_all_selected", test_all_selected)
         all_tests(2) = test_case("test_omics_field_RAP_projection_one_axis_selected", test_one_axis_selected)
@@ -27,6 +29,8 @@ contains
         all_tests(8) = test_case("test_omics_field_RAP_projection_mixed_selection", test_mixed_selection)
         all_tests(9) = test_case("test_omics_field_RAP_projection_non_square_vecs", test_non_square_vecs)
         all_tests(10) = test_case("test_omics_field_RAP_projection_concrete_example", test_concrete_example)
+        all_tests(11) = test_case("test_omics_field_RAP_projection_equal_shifts_give_exact_zeros", &
+                                  test_equal_shifts_give_exact_zeros)
     end function get_all_tests_rap_tools_omics_field_RAP_projection
 
     !> Test all axes and vectors are selected
@@ -279,5 +283,55 @@ contains
             "test_omics_field_RAP_projection_constant_vector: Calculated projection doesn't match expected" &
             )
     end subroutine test_concrete_example
+
+    !> A field whose computed differences, origin minus target, are all equal projects to exact
+    !| zeros, and normalize_unit_length then refuses it as the zero vector. Subtracting the rounded
+    !| mean used to leave a residue for many of them, which normalization turned into a direction.
+    subroutine test_equal_shifts_give_exact_zeros()
+        real(real64) :: smallest_subnormal
+
+        smallest_subnormal = ieee_next_after(0.0_real64, 1.0_real64)
+
+        call check_equal_shifts_give_exact_zeros("0.7 - 0 on 6 axes", spread(0.7_real64, 1, 6), spread(0.0_real64, 1, 6))
+        call check_equal_shifts_give_exact_zeros("0.1 - 0 on 7 axes", spread(0.1_real64, 1, 7), spread(0.0_real64, 1, 7))
+        call check_equal_shifts_give_exact_zeros("3.3 - 0 on 13 axes", spread(3.3_real64, 1, 13), spread(0.0_real64, 1, 13))
+        call check_equal_shifts_give_exact_zeros("1e300 - -1e300 on 3 axes", spread(1.0e300_real64, 1, 3), &
+                                                 spread(-1.0e300_real64, 1, 3))
+        call check_equal_shifts_give_exact_zeros("-2.5 - 0 on 4 axes", spread(-2.5_real64, 1, 4), spread(0.0_real64, 1, 4))
+        call check_equal_shifts_give_exact_zeros("tiny - 0 on 5 axes", spread(tiny(1.0_real64), 1, 5), &
+                                                 spread(0.0_real64, 1, 5))
+        call check_equal_shifts_give_exact_zeros("smallest subnormal - 0 on 7 axes", spread(smallest_subnormal, 1, 7), &
+                                                 spread(0.0_real64, 1, 7))
+        ! distinct points whose differences all round to the same 0.7
+        call check_equal_shifts_give_exact_zeros("distinct points, shift 0.7", [1.5_real64, 2.5_real64, 0.75_real64], &
+                                                 [0.8_real64, 1.8_real64, 0.05_real64])
+    end subroutine test_equal_shifts_give_exact_zeros
+
+    !> Projects the field from `origin_point` to `target_point` and checks its projection is exact
+    !| zeros that normalization refuses.
+    subroutine check_equal_shifts_give_exact_zeros(case_name, origin_point, target_point)
+        character(len=*), intent(in) :: case_name
+        real(real64), intent(in) :: origin_point(:), target_point(:)
+
+        real(real64) :: fields(size(origin_point), 2, 1), projections(size(origin_point), 1), zeros(size(origin_point))
+        logical(c_bool) :: axes_mask(size(origin_point)), fields_mask(1)
+        integer(int32) :: ierr, n_axes
+
+        n_axes = size(origin_point)
+        fields(:, 1, 1) = origin_point
+        fields(:, 2, 1) = target_point
+        axes_mask = .true.
+        fields_mask = .true.
+        zeros = 0.0_real64
+        projections = 1.0_real64
+
+        call omics_field_RAP_projection(fields, n_axes, 1, fields_mask, 1, axes_mask, n_axes, projections, ierr)
+        call assert_err(ierr, ERR_OK, "equal shifts "//case_name//": projection")
+        call assert_identical_array_real(projections(:, 1), zeros, n_axes, &
+                                         "equal shifts "//case_name//": projection is not exact zeros")
+
+        call normalize_unit_length(projections(:, 1), n_axes, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "equal shifts "//case_name//": normalization must refuse")
+    end subroutine check_equal_shifts_give_exact_zeros
 
 end module mod_test_rap_tools_omics_field_RAP_projection

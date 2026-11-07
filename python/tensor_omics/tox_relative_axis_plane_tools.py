@@ -142,6 +142,11 @@ def omics_vector_RAP_projection(
 ):
     r"""Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
 
+    A vector's projection is the vector minus the mean of its selected coordinates. A vector whose
+    selected coordinates are all equal lies on the space diagonal and projects to exact zeros,
+    decided on the coordinates themselves rather than on their rounded mean, so
+    `normalize_unit_length` refuses it as the zero vector it is.
+
     Parameters
     ----------
     vecs : np.ndarray[np.float64] of shape (n_axes, n_vecs,), column-major (order='F')
@@ -216,6 +221,12 @@ def omics_field_RAP_projection(
         axes_selection_mask,
 ):
     r"""Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+
+    A field is projected as the difference of its two vectors, origin minus target, taken on the
+    selected axes; that difference minus the mean of its coordinates is the projection. A field
+    whose differences are all equal shifts along the space diagonal and projects to exact zeros,
+    decided on the differences themselves rather than on their rounded mean, so
+    `normalize_unit_length` refuses it as the zero vector it is.
 
     Parameters
     ----------

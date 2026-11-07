@@ -33,6 +33,10 @@ module tox_relative_axis_plane_tools_c
 contains
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):omics_vector_RAP_projection(subroutine)]]
+    !| A vector's projection is the vector minus the mean of its selected coordinates. A vector whose
+    !| selected coordinates are all equal lies on the space diagonal and projects to exact zeros,
+    !| decided on the coordinates themselves rather than on their rounded mean, so
+    !| `normalize_unit_length` refuses it as the zero vector it is.
     subroutine omics_vector_RAP_projection_c(&
             vecs,&
             n_axes,&
@@ -90,6 +94,11 @@ contains
     end subroutine omics_vector_RAP_projection_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):omics_field_RAP_projection(subroutine)]]
+    !| A field is projected as the difference of its two vectors, origin minus target, taken on the
+    !| selected axes; that difference minus the mean of its coordinates is the projection. A field
+    !| whose differences are all equal shifts along the space diagonal and projects to exact zeros,
+    !| decided on the differences themselves rather than on their rounded mean, so
+    !| `normalize_unit_length` refuses it as the zero vector it is.
     subroutine omics_field_RAP_projection_c(&
             fields,&
             n_axes,&
