@@ -29,6 +29,8 @@ program main
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
     use mod_test_tail_probability, only: get_all_tests_tail_probability
+    use mod_test_json_serialize, only: get_all_tests_json_serialize
+    use mod_test_flyer_json, only: get_all_tests_flyer_json
     use mod_test_f42_reductions, only: get_all_tests_f42_reductions
     implicit none
 
@@ -64,6 +66,8 @@ program main
     call add_suite("data_integration", get_all_tests_data_integration)
     call add_suite("binary_search", get_all_tests_binary_search)
     call add_suite("tail_probability", get_all_tests_tail_probability)
+    call add_suite("json_serialize", get_all_tests_json_serialize)
+    call add_suite("flyer_json", get_all_tests_flyer_json)
     call add_suite("f42_reductions", get_all_tests_f42_reductions)
 
     nargs = command_argument_count()

@@ -10,3 +10,7 @@ snippets/** linguist-generated=true
 # doc/ is written by Ford in the main-branch workflow (.github/workflows/main_branch.yml),
 # never by hand and never on a feature branch. Marking it collapses it in diffs as well.
 doc/** linguist-generated=true
+
+# Compared byte for byte with the file save_flyer_json writes, so no checkout may turn its line
+# feed into CR LF.
+test/test_files/flyer_expected.json -text
