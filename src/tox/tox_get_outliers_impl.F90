@@ -12,10 +12,10 @@ module tox_get_outliers_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: logx_helper, above, is_close
     use f42_sort_impl, only: sort_array, init_perm
-    use f42_stats_impl, only: calc_percentile_impl, compute_scaled_distance_quantile_impl
+    use f42_stats_impl, only: calc_quantile_impl, compute_scaled_distance_tail_probability_impl
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err, &
                           validate_all_in_range_real
     use tox_loess_impl, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
@@ -25,7 +25,10 @@ module tox_get_outliers_impl
 #define CM_FAMILY_DEGREE_DEFAULT 2_int32
 #define CM_FAMILY_MODE_DEFAULT 1_int32
 #define CM_FAMILY_N_ITERS_DEFAULT 3_int32
-#define CM_OUTLIER_PERCENTILE_DEFAULT 0.95_real64
+#define CM_OUTLIER_QUANTILE_LEVEL_DEFAULT 0.95_real64
+! Fills the slots of loess_x / loess_y that no family occupies. They hold a mean and a standard
+! deviation of distances, neither of which can be negative, so -1 cannot be mistaken for data.
+#define CM_LOESS_POINT_SENTINEL -1.0_real64
 
     integer(int32), parameter, public :: MODE_PLAIN = 0_int32
         !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
@@ -59,11 +62,15 @@ contains
 
         ! Buffers (reused)
         real(real64), intent(out) :: loess_x(n_families)
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(real64), intent(out) :: loess_y(n_families)
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), intent(out) :: indices_used(n_families)
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         integer(int32), intent(out) :: tmp_perm(n_genes)
             !! Permutation array for sorting gene distances
         integer(int32), intent(out) :: tmp_stack_left(n_genes)
@@ -126,6 +133,8 @@ contains
         integer(int32), intent(in), optional   :: degree
             !! Degree of the LOESS polynomial
             !! DM_DEFAULT(CM_FAMILY_DEGREE_DEFAULT)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(2_int32)
         integer(int32), intent(in), optional   :: mode
             !! Mode for LOESS fitting
             !! DM_DEFAULT(CM_FAMILY_MODE_DEFAULT)
@@ -157,8 +166,9 @@ contains
         ! Initialize error code and output arrays
         call set_ok(ierr)
         dscale  = 0.0_real64
-        loess_x = 0.0_real64
-        loess_y = 0.0_real64
+        loess_x = CM_LOESS_POINT_SENTINEL
+        loess_y = CM_LOESS_POINT_SENTINEL
+        indices_used = 0_int32
         n_valid = 0
 
         ! Validate family indices; the -1 sentinel output on failure is part of the contract, so this
@@ -224,7 +234,7 @@ contains
         ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
         ! constant, so log2(mean + eps_mean) below stays well-scaled across datasets with very
         ! different absolute expression ranges.
-        call calc_percentile_impl(loess_x, n_valid, tmp_perm, 0.05_real64, eps_mean)
+        call calc_quantile_impl(loess_x, n_valid, tmp_perm, 0.05_real64, eps_mean)
 
         eps_mean = max(eps_mean, EPS_LOESS)
 
@@ -267,7 +277,7 @@ contains
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
         ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
-        call calc_percentile_impl(loess_y, n_valid, tmp_perm, 0.01_real64, low_sd_cutoff)
+        call calc_quantile_impl(loess_y, n_valid, tmp_perm, 0.01_real64, low_sd_cutoff)
 
         ! Compact loess_x/loess_y/indices_used in place, keeping only families at or above the low-sd
         ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)
@@ -288,6 +298,12 @@ contains
         end do
 
         n_valid = k
+
+        ! The compaction leaves the slots after the retained families holding values it moved
+        ! forward; mark them unused, as the slots no family ever reached already are.
+        loess_x(n_valid + 1:) = CM_LOESS_POINT_SENTINEL
+        loess_y(n_valid + 1:) = CM_LOESS_POINT_SENTINEL
+        indices_used(n_valid + 1:) = 0_int32
 
         ! Trigger fallback case when having too few points
         if (n_valid <= 1) then
@@ -310,75 +326,67 @@ contains
                     dscale(i_family) = 0.0_real64
                 end if
             end do
-
-            low_sd_cutoff = max(2.0_real64**low_sd_cutoff - eps_sd, 0.0_real64)
-            return
-        end if
-
-        ! ------------------------------------------------------------
-        ! LOESS GLOBAL: smooth y_ref as function of x_ref (once)
-        ! ------------------------------------------------------------
-        tmp_weights(1:n_valid) = 1.0_real64
-        tmp_eval_points(1:n_valid, 1) = loess_x(1:n_valid)
-
-        if (actual_mode == 0) then
-            ! If you have a plain routine, call it; otherwise keep robust always.
-            call loess_fit_plain_impl( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
-                actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
         else
-            call loess_fit_robust_impl( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
-                actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, actual_n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
-                tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+            ! ------------------------------------------------------------
+            ! LOESS GLOBAL: smooth y_ref as function of x_ref (once)
+            ! ------------------------------------------------------------
+            tmp_weights(1:n_valid) = 1.0_real64
+            tmp_eval_points(1:n_valid, 1) = loess_x(1:n_valid)
+
+            if (actual_mode == 0) then
+                ! If you have a plain routine, call it; otherwise keep robust always.
+                call loess_fit_plain_impl( &
+                    n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
+                    actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+            else
+                call loess_fit_robust_impl( &
+                    n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
+                    actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, actual_n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
+                    tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+            end if
+
+            if (is_err(ierr)) return
+
+            ! The `>= 0` branch feeds `tmp_means_aux(i_family) + eps_mean` to log2. Every such family had
+            ! `n_in_family > 1` and therefore contributed exactly this mean to `loess_x`, whose
+            ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
+            ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
+            ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
+            ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
+            ! (each iteration writes only its own `tmp_eval_points` row).
+            do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_eval_points, eps_mean, xmin, xmax)
+                if (tmp_means_aux(i_family) >= 0.0_real64) then
+                    call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_eval_points(i_family, 1))
+                    if (tmp_eval_points(i_family, 1) < xmin) tmp_eval_points(i_family, 1) = xmin
+                    if (tmp_eval_points(i_family, 1) > xmax) tmp_eval_points(i_family, 1) = xmax
+                else
+                    tmp_eval_points(i_family, 1) = xmin
+                end if
+            end do
+
+            call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n_families, tmp_eval_points, tmp_fitted_values(1:n_families))
+
+            if (is_err(ierr)) return
+
+            ! ------------------------------------------------------------
+            ! Map compact tmp_residuals back to full dscale
+            ! ------------------------------------------------------------
+
+            do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_fitted_values, eps_sd)
+                if (tmp_means_aux(i_family) < 0.0_real64) then
+                    dscale(i_family) = 0.0_real64
+                else
+                    dscale(i_family) = max(2.0_real64**tmp_fitted_values(i_family) - eps_sd, 0.0_real64)
+                end if
+            end do
         end if
 
-        if (is_err(ierr)) return
-
-        ! The `>= 0` branch feeds `tmp_means_aux(i_family) + eps_mean` to log2. Every such family had
-        ! `n_in_family > 1` and therefore contributed exactly this mean to `loess_x`, whose
-        ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
-        ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
-        ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
-        ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
-        ! (each iteration writes only its own `tmp_eval_points` row).
-        do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_eval_points, eps_mean, xmin, xmax)
-            if (tmp_means_aux(i_family) >= 0.0_real64) then
-                call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_eval_points(i_family, 1))
-                if (tmp_eval_points(i_family, 1) < xmin) tmp_eval_points(i_family, 1) = xmin
-                if (tmp_eval_points(i_family, 1) > xmax) tmp_eval_points(i_family, 1) = xmax
-            else
-                tmp_eval_points(i_family, 1) = xmin
-            end if
-        end do
-
-        call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n_families, tmp_eval_points, tmp_fitted_values(1:n_families))
-
-        if (is_err(ierr)) return
-
-        ! ------------------------------------------------------------
-        ! Map compact tmp_residuals back to full dscale
-        ! ------------------------------------------------------------
-
-        do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_fitted_values, eps_sd)
-            if (tmp_means_aux(i_family) < 0.0_real64) then
-                dscale(i_family) = 0.0_real64
-            else
-                dscale(i_family) = max(2.0_real64**tmp_fitted_values(i_family) - eps_sd, 0.0_real64)
-            end if
-        end do
-
+        ! The fit works in log2 space. Both branches end here, so the LOESS points and the cutoff go
+        ! back to the linear scale they were measured on in one place, whichever branch was taken.
         do concurrent (i_valid = 1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
-            ! linear scale for return
             loess_x(i_valid) = max(2.0_real64**loess_x(i_valid) - eps_mean, 0.0_real64)
             loess_y(i_valid) = max(2.0_real64**loess_y(i_valid) - eps_sd, 0.0_real64)
         end do
-
-        if (n_valid < n_families) then
-            loess_x(n_valid + 1:) = M_NAN
-            loess_y(n_valid + 1:) = M_NAN
-            indices_used(n_valid + 1:n_families) = 0_int32
-        end if
 
         low_sd_cutoff = max(2.0_real64**low_sd_cutoff - eps_sd, 0.0_real64)
 
@@ -454,11 +462,11 @@ contains
 
     end subroutine compute_rdi_impl
 
-    !> summary: Identify gene outliers based on the top percentile of RDI values
+    !> summary: Identify gene outliers based on an upper quantile of the RDI values
     !| AUTHOR_VIVIAN_BASS
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
-    pure subroutine identify_outliers_impl(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)
+    pure subroutine identify_outliers_impl(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, tail_probability, quantile_level)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         real(real64), intent(in) :: rdi(n_genes)
@@ -475,21 +483,21 @@ contains
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
-            !! DM_DEFAULT(CM_OUTLIER_PERCENTILE_DEFAULT)
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
+            !! DM_DEFAULT(CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-        real(real64), intent(out) :: quantile(n_genes)
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), intent(out) :: tail_probability(n_genes)
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
+            !! upper-tail probability is used.
 
         integer(int32) :: i, idx
-        real(real64) :: perc_pos, percentile_val
+        real(real64) :: fractional_rank, actual_quantile_level
 
-        M_DEFAULT_VAL(percentile, percentile_val, CM_OUTLIER_PERCENTILE_DEFAULT)
+        M_DEFAULT_VAL(quantile_level, actual_quantile_level, CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
 
         ! Initialize output
         is_outlier = .false.
@@ -501,11 +509,11 @@ contains
             return
         end if
 
-        ! Nearest-rank percentile: round the fractional rank up to the next integer index into the
+        ! Nearest-rank quantile: round the fractional rank up to the next integer index into the
         ! ascending-sorted array, so `threshold` is always an observed RDI value rather than an
-        ! interpolated one. `percentile_val` is a fraction in [0,1].
-        perc_pos = n_genes*percentile_val
-        idx = ceiling(perc_pos)
+        ! interpolated one. `actual_quantile_level` is a fraction in [0,1].
+        fractional_rank = n_genes*actual_quantile_level
+        idx = ceiling(fractional_rank)
         ! Clamp idx to valid range
         if (idx < 1) idx = 1
         if (idx > n_genes) idx = n_genes
@@ -518,7 +526,7 @@ contains
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        call compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
+        call compute_scaled_distance_tail_probability_impl(n_genes, rdi, sorted_rdi, perm, tail_probability, 1.0_real64)
 
     end subroutine identify_outliers_impl
 
@@ -533,7 +541,7 @@ contains
                                tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
                                tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, tmp_means_aux, &
                                tmp_dscale, tmp_excluded_low_sd, tmp_low_sd_cutoff, tmp_rdi, tmp_sorted_rdi, tmp_threshold, &
-                               is_outlier, loess_x, loess_y, loess_n, quantile, ierr, percentile)
+                               is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         integer(int32), intent(in) :: n_families
@@ -610,23 +618,27 @@ contains
         logical(c_bool), intent(out) :: is_outlier(n_genes)
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: loess_x(n_families)
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(real64), intent(out) :: loess_y(n_families)
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), intent(out) :: loess_n(n_families)
-            !! Indices of reference points used for smoothing.
-        real(real64), intent(out) :: quantile(n_genes)
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
+        real(real64), intent(out) :: tail_probability(n_genes)
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
-        integer(int32), intent(out) :: ierr
-            !! Error code
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] for outlier detection.
-            !! DM_DEFAULT(CM_OUTLIER_PERCENTILE_DEFAULT)
+            !! upper-tail probability is used.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
+            !! DM_DEFAULT(CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         call set_ok(ierr)
 
@@ -640,6 +652,6 @@ contains
 
         call compute_rdi_impl(n_genes, distances, gene_to_fam, tmp_dscale, tmp_rdi, tmp_sorted_rdi, tmp_perm, tmp_stack_left, tmp_stack_right)
 
-        call identify_outliers_impl(n_genes, tmp_rdi, tmp_sorted_rdi, tmp_perm, is_outlier, tmp_threshold, quantile, percentile)
+        call identify_outliers_impl(n_genes, tmp_rdi, tmp_sorted_rdi, tmp_perm, is_outlier, tmp_threshold, tail_probability, quantile_level)
     end subroutine detect_outliers_impl
 end module tox_get_outliers_impl

@@ -52,7 +52,12 @@ function get_c_flags() {
   # a clean build. A C-only flag does: the library sits in the Fortran-keyed directory, so
   # switching one back reuses the objects without relinking -- check_build_state hashes these.
   # That is also why the R fallback adds NO_R_BINDING to $DIRECTIVES, not to the C flags alone.
-  C_ONLY_FLAGS="-fPIC"
+  #
+  # -O2 in every profile: the shims are marshalling glue with no arithmetic a level could change,
+  # and since #221 they check every element of an integer, logical and string array while
+  # converting it. Without a level gcc compiles them at -O0 (fpm hands --flag to Fortran only),
+  # which made that pass cost more than the R-level as.integer() it replaced.
+  C_ONLY_FLAGS="-fPIC -O2"
   if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
     :
   elif [[ -z $(command -v R) ]]; then
@@ -294,24 +299,60 @@ function find_and_mv_libs() {
 # clean builds on branch switches used to wipe it away by accident. So a library older than any
 # object `fpm build --list` names for it ($1) is removed here, before the build, and fpm links it
 # again -- which also repairs a tree an earlier run left behind.
+#
+# A library is compared with its own objects only. fpm lists every library and every object
+# without saying which belongs to which, but it names an object after its source path: a
+# dependency's objects start with the directory it lives in, `<package>_` (test_framework's are
+# test_framework_src_*.o), and every other object is the root package's ($2, which defaults to
+# fpm.toml's name). Comparing every library with the newest object of any made a changed
+# tensor_omics source relink libtest_framework.so for nothing.
 function remove_stale_libraries() {
-  declare line library newest_object=""
-  declare -a libraries=()
+  declare root_package="${2:-$(fpm_package_name)}" line library object package
+  declare -a libraries=() objects=()
+  declare -A newest_object=()
   while IFS= read -r line; do
     line="${line#"${line%%[![:space:]]*}"}"
     if [[ $line == *.so || $line == *.a ]]; then
       libraries+=("$line")
-    elif [[ $line == *.o && -e $line && ( -z $newest_object || $line -nt $newest_object ) ]]; then
-      newest_object="$line"
+    elif [[ $line == *.o && -e $line ]]; then
+      objects+=("$line")
     fi
   done <<< "$1"
-  [[ $newest_object ]] || return 0
+  for object in "${objects[@]}"; do
+    package="$root_package"
+    for library in "${libraries[@]}"; do
+      library="${library##*/lib}"
+      library="${library%.*}"
+      if [[ $library != "$root_package" && ${object##*/} == "${library}_"* ]]; then
+        package="$library"
+        break
+      fi
+    done
+    if [[ -z ${newest_object[$package]} || $object -nt ${newest_object[$package]} ]]; then
+      newest_object[$package]="$object"
+    fi
+  done
   for library in "${libraries[@]}"; do
-    if [[ -e $library && $newest_object -nt $library ]]; then
-      warning "'$library' is older than its object '$newest_object' -- an earlier build stopped before linking it. Relinking."
+    package="${library##*/lib}"
+    package="${package%.*}"
+    object="${newest_object[$package]}"
+    if [[ $object && -e $library && $object -nt $library ]]; then
+      warning "'$library' is older than its object '$object' -- an earlier build stopped before linking it. Relinking."
       rm -f "$library"
     fi
   done
+}
+
+# The root package's name, the first `name = "..."` of fpm.toml in the current directory.
+function fpm_package_name() {
+  declare key equals value
+  while read -r key equals value; do
+    if [[ $key == name && $equals == "=" ]]; then
+      value="${value#\"}"
+      echo "${value%\"}"
+      return
+    fi
+  done < fpm.toml
 }
 
 function echo_compiler() {

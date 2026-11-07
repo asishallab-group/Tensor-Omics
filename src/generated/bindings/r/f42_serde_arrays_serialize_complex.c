@@ -3,21 +3,21 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void serialize_complex_helper_c(const double _Complex*, const int*, const int*, const int*, const char*, const int*, int*);
 
 SEXP serialize_complex_helper_call(SEXP arr, SEXP filename) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
-    SEXP arr_shape = PROTECT(tox_shape_of(arr)); nprot++;
+    SEXP arr_shape = PROTECT(tox_shape_of(arr)); _nprot++;
     int n_elements = (int) Rf_length(arr);
     int n_arr_shape_elements = (int) Rf_length(arr_shape);
     int filename_strlen = tox_max_strlen(filename);
 
     // convert what Fortran cannot take from R directly
-    char* filename_c = tox_char_in(filename, filename_strlen);
+    char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
     int ierr = 0;
@@ -27,17 +27,17 @@ SEXP serialize_complex_helper_call(SEXP arr, SEXP filename) {
         &n_elements,
         INTEGER(arr_shape),
         &n_arr_shape_elements,
-        filename_c,
+        _c_filename,
         &filename_strlen,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 1)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 1)); _nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 1)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 1)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
