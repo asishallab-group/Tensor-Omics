@@ -58,8 +58,6 @@ contains
             !! Total number of gene families
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Mapping of each gene to its family (1-based)
         real(real64), dimension(n_families), intent(out) :: dscale
@@ -77,7 +75,7 @@ contains
         real(real64), intent(in), optional :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! The default value is `0.7_real64`.
             !! The minimum valid value is `EPS_LOESS`.
             !! The maximum valid value is `1.0_real64`.
@@ -126,6 +124,7 @@ contains
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(span, ierr, arg_pos=9_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=10_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
         if (is_err(ierr)) return
 #endif
@@ -247,8 +246,6 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Mapping of each gene to its family (1-based)
         real(real64), dimension(n_families), intent(out) :: dscale
@@ -292,7 +289,7 @@ contains
         real(real64), intent(in), optional :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! The default value is `0.7_real64`.
             !! The minimum valid value is `EPS_LOESS`.
             !! The maximum valid value is `1.0_real64`.
@@ -329,6 +326,7 @@ contains
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=15_int32)
         call validate_in_range_real(span, ierr, arg_pos=24_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=25_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(tmp_diagl, n_families, ierr, arg_pos=16_int32)
         call validate_all_in_range_real(tmp_eval_points, n_families * 1, ierr, arg_pos=18_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=26_int32); end if
@@ -387,14 +385,10 @@ contains
             !! Total number of genes
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         real(real64), dimension(:), intent(in) :: dscale
             !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(out) :: rdi
             !! Output array of RDI values for each gene
         real(real64), dimension(n_genes), intent(out) :: sorted_rdi
@@ -409,6 +403,8 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(dscale, (size(dscale, 1)), ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -446,14 +442,10 @@ contains
             !! Total number of genes
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         real(real64), dimension(:), intent(in) :: dscale
             !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(out) :: rdi
             !! Output array of RDI values for each gene
         real(real64), dimension(n_genes), intent(out) :: sorted_rdi
@@ -470,6 +462,8 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(dscale, (size(dscale, 1)), ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -504,12 +498,8 @@ contains
             !! Total number of genes
         real(real64), dimension(n_genes), intent(in) :: rdi
             !! Array of RDI values for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(in) :: sorted_rdi
             !! Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: perm
             !! Permutation array with sorted indices
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
@@ -533,6 +523,8 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_in_range_real(quantile_level, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(rdi, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(sorted_rdi, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -572,8 +564,6 @@ contains
             !! Total number of gene families
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
@@ -628,6 +618,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(quantile_level, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -759,8 +750,6 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         integer(int32), dimension(n_genes), intent(out) :: tmp_perm
@@ -835,6 +824,7 @@ contains
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
         call validate_in_range_real(quantile_level, ierr, arg_pos=32_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 

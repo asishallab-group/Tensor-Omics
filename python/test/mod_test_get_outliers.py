@@ -17,6 +17,7 @@ from tensor_omics import (
     identify_outliers as _identify_outliers,
     detect_outliers as _detect_outliers,
 )
+from tensor_omics.error_handling import ERR_NAN_INF, ToxError
 from test_helpers import run_all_tests, assert_error
 
 # compute_rdi returns the sorted array and permutation that identify_outliers wants, so
@@ -431,6 +432,30 @@ def test_detect_outliers_unused_loess_slots_hold_sentinel():
         assert not np.isnan(result[key]).any(), f"{key} contains NaN"
         assert np.all(result[key][unused] == -1.0), f"{key}: unused slots must hold -1"
         assert np.all(result[key][~unused] >= 0.0), f"{key}: used slots must be non-negative"
+
+def test_detect_outliers_refuses_nan_distance():
+    """A NaN or Inf distance is refused as ERR_NAN_INF naming `distances`, whatever the families.
+
+    It used to be let through in a one-member family (its gene got the most extreme tail
+    probability) and in the only multi-member family (it came back in loess_x).
+    """
+    layouts = {
+        "one family": (1, [1, 1, 1, 1]),
+        "one multi-member family and a singleton": (2, [1, 1, 1, 2]),
+        "two multi-member families": (2, [1, 1, 2, 2]),
+    }
+    for label, (n_families, families) in layouts.items():
+        gene_to_fam = np.array(families, dtype=np.int32)
+        for bad in (np.nan, np.inf):
+            distances = np.array([bad, 1.0, 2.0, 3.0])
+            try:
+                _detect_outliers(n_families, distances, gene_to_fam)
+            except ToxError as error:
+                assert error.code == ERR_NAN_INF, f"{label}, {bad}: expected ERR_NAN_INF, got {error.code}: {error}"
+                assert error.argument == "distances", f"{label}, {bad}: expected 'distances' named, got {error.argument!r}"
+            else:
+                raise AssertionError(f"{label}: a {bad} distance was not refused")
+
 
 if __name__ == '__main__':
     run_all_tests(globals().values())

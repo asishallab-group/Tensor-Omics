@@ -9,12 +9,10 @@
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
 #' @param span a numeric scalar. Span parameter for LOESS smoothing, passed straight to
 #'   \code{\link{loess_fit_plain}}, so it is held to that
-#'   procedure's own range rather than to the NaN tolerance the distance data carries.
+#'   procedure's own range.
 #'   The default value is `0.7`.
 #'   The minimum valid value is `EPS_LOESS`.
 #'   The maximum valid value is `1.0`.
@@ -73,12 +71,8 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #' are the ones an error message reports.
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param dscale a numeric vector. Array of scaling factors for each family
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a named list with elements:
 #'   \item{rdi}{a numeric vector. Output array of RDI values for each gene}
 #'   \item{sorted_rdi}{a numeric vector. Work array for sorting (dimension n_genes)}
@@ -112,11 +106,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' are the ones an error message reports.
 #'
 #' @param rdi a numeric vector. Array of RDI values for each gene
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param sorted_rdi a numeric vector. Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param perm a integer vector. Permutation array with sorted indices
 #' @param quantile_level a numeric scalar. Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
 #'   The default value is `0.95`.
@@ -164,8 +154,6 @@ identify_outliers <- function(rdi, sorted_rdi, perm, quantile_level = 0.95) {
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param quantile_level a numeric scalar. Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
 #'   The default value is `0.95`.
