@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, int*, int*, const int*, int*);
@@ -11,7 +11,7 @@ void k_means_clustering_c(const int*, const double*, const int*, const int*, dou
 void linkage_clustering_c(double*, const int*, int*, int*, double*, int*, const char*, int*);
 
 SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids, SEXP max_iterations) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_clusters = INTEGER(Rf_getAttrib(centroids, R_DimSymbol))[1];
     int n_factors = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[0];
@@ -19,14 +19,14 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    int max_iterations_v = Rf_asInteger(max_iterations);
+    int _v_max_iterations = Rf_asInteger(max_iterations);
 
     // copy what is modified in place, so the caller's stays intact
-    SEXP centroids_out = PROTECT(Rf_duplicate(centroids)); nprot++;
+    SEXP _out_centroids = PROTECT(Rf_duplicate(centroids)); _nprot++;
 
     // outputs and work space
-    SEXP labels = PROTECT(Rf_allocVector(INTSXP, (n_samples*n_timepoints))); nprot++;
-    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); nprot++;
+    SEXP labels = PROTECT(Rf_allocVector(INTSXP, (n_samples * n_timepoints))); _nprot++;
+    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); _nprot++;
     int ierr = 0;
 
     cluster_factor_trajectories_k_means_c(
@@ -35,44 +35,44 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
         &n_factors,
         &n_samples,
         &n_timepoints,
-        REAL(centroids_out),
+        REAL(_out_centroids),
         INTEGER(labels),
         INTEGER(label_counts),
-        &max_iterations_v,
+        &_v_max_iterations,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
-    SET_VECTOR_ELT(_out, 0, centroids_out);
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, _out_centroids);
     SET_VECTOR_ELT(_out, 1, labels);
     SET_VECTOR_ELT(_out, 2, label_counts);
     SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("centroids"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("labels"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("label_counts"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP k_means_clustering_call(SEXP data_points, SEXP centroids, SEXP max_iterations) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_clusters = INTEGER(Rf_getAttrib(centroids, R_DimSymbol))[1];
     int n_points = INTEGER(Rf_getAttrib(data_points, R_DimSymbol))[1];
     int n_dims = INTEGER(Rf_getAttrib(data_points, R_DimSymbol))[0];
 
     // scalar inputs, pulled from their length-1 vectors
-    int max_iterations_v = Rf_asInteger(max_iterations);
+    int _v_max_iterations = Rf_asInteger(max_iterations);
 
     // copy what is modified in place, so the caller's stays intact
-    SEXP centroids_out = PROTECT(Rf_duplicate(centroids)); nprot++;
+    SEXP _out_centroids = PROTECT(Rf_duplicate(centroids)); _nprot++;
 
     // outputs and work space
-    SEXP labels = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); nprot++;
+    SEXP labels = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); _nprot++;
     int ierr = 0;
 
     k_means_clustering_c(
@@ -80,65 +80,65 @@ SEXP k_means_clustering_call(SEXP data_points, SEXP centroids, SEXP max_iteratio
         REAL(data_points),
         &n_points,
         &n_dims,
-        REAL(centroids_out),
+        REAL(_out_centroids),
         INTEGER(labels),
         INTEGER(label_counts),
-        &max_iterations_v,
+        &_v_max_iterations,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
-    SET_VECTOR_ELT(_out, 0, centroids_out);
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, _out_centroids);
     SET_VECTOR_ELT(_out, 1, labels);
     SET_VECTOR_ELT(_out, 2, label_counts);
     SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("centroids"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("labels"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("label_counts"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP linkage_clustering_call(SEXP distances, SEXP method) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_points = INTEGER(Rf_getAttrib(distances, R_DimSymbol))[0];
 
     // copy what is modified in place, so the caller's stays intact
-    SEXP distances_out = PROTECT(Rf_duplicate(distances)); nprot++;
+    SEXP _out_distances = PROTECT(Rf_duplicate(distances)); _nprot++;
 
     // convert what Fortran cannot take from R directly
-    char* method_c = tox_char_in(method, 8);
+    char* _c_method = tox_char_in(method, 8, "method");
 
     // outputs and work space
-    SEXP merge_i = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); nprot++;
-    SEXP merge_j = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); nprot++;
-    SEXP heights = PROTECT(Rf_allocVector(REALSXP, (n_points - 1))); nprot++;
-    SEXP cluster_sizes = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); nprot++;
+    SEXP merge_i = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); _nprot++;
+    SEXP merge_j = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); _nprot++;
+    SEXP heights = PROTECT(Rf_allocVector(REALSXP, (n_points - 1))); _nprot++;
+    SEXP cluster_sizes = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); _nprot++;
     int ierr = 0;
 
     linkage_clustering_c(
-        REAL(distances_out),
+        REAL(_out_distances),
         &n_points,
         INTEGER(merge_i),
         INTEGER(merge_j),
         REAL(heights),
         INTEGER(cluster_sizes),
-        method_c,
+        _c_method,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 6)); nprot++;
-    SET_VECTOR_ELT(_out, 0, distances_out);
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 6)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, _out_distances);
     SET_VECTOR_ELT(_out, 1, merge_i);
     SET_VECTOR_ELT(_out, 2, merge_j);
     SET_VECTOR_ELT(_out, 3, heights);
     SET_VECTOR_ELT(_out, 4, cluster_sizes);
     SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 6)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 6)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("distances"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("merge_i"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("merge_j"));
@@ -146,7 +146,7 @@ SEXP linkage_clustering_call(SEXP distances, SEXP method) {
     SET_STRING_ELT(_nms, 4, Rf_mkChar("cluster_sizes"));
     SET_STRING_ELT(_nms, 5, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 

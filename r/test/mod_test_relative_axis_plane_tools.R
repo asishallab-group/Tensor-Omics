@@ -61,4 +61,11 @@ test_partial_selection <- function() {
 
 }
 
+# `fields` is (n_axes, 2, n_fields); a middle extent of 1 used to be read past (#221)
+test_omics_field_RAP_projection_refuses_fields_without_two_points <- function() {
+  assert_error(omics_field_RAP_projection(array(1, dim = c(3L, 1L, 2L)), c(TRUE, TRUE),
+                                          c(TRUE, TRUE, TRUE)),
+               "a field without its target must be refused")
+}
+
 run_all_tests()

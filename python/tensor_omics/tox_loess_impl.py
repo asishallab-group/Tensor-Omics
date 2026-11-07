@@ -18,24 +18,25 @@ routines themselves are not re-documented beyond their calling convention.
 Python binding, generated from tox_loess_impl. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.tox_loess_required_workspace_c.restype = None
 _lib.tox_loess_required_workspace_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -72,6 +73,9 @@ def tox_loess_required_workspace(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -80,21 +84,26 @@ def tox_loess_required_workspace(
     Generated from the Fortran procedure `tox_loess_impl::tox_loess_required_workspace`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    n_dim = _contract.integer(n_dim, "n_dim")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
+
     # outputs and work arrays, which the caller never sees
-    int_workspace_size = ctypes.c_int(0)
-    real_workspace_size = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    int_workspace_size = _ctypes.c_int(0)
+    real_workspace_size = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.tox_loess_required_workspace_c(
-        ctypes.byref(ctypes.c_int(n_dim)),
-        ctypes.byref(ctypes.c_int(max_neighborhood_size)),
-        ctypes.byref(int_workspace_size),
-        ctypes.byref(real_workspace_size),
-        ctypes.byref(ctypes.c_bool(save_factorization)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_dim)),
+        _ctypes.byref(_ctypes.c_int(max_neighborhood_size)),
+        _ctypes.byref(int_workspace_size),
+        _ctypes.byref(real_workspace_size),
+        _ctypes.byref(_ctypes.c_bool(save_factorization)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _TOX_LOESS_REQUIRED_WORKSPACE_ARGUMENTS)
+    _check_err_code(ierr.value, _TOX_LOESS_REQUIRED_WORKSPACE_ARGUMENTS)
 
     return {
         "int_workspace_size": int_workspace_size.value,

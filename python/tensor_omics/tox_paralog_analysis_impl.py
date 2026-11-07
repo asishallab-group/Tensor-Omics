@@ -17,23 +17,24 @@ site, and each routine takes only the thresholds its own pattern needs.
 Python binding, generated from tox_paralog_analysis_impl. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.mask_check_state_c.restype = None
 _lib.mask_check_state_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -41,9 +42,9 @@ _MASK_CHECK_STATE_ARGUMENTS = ("bit_mask", "i_gene",)
 
 _lib.mask_chunk_count_c.restype = None
 _lib.mask_chunk_count_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -51,12 +52,12 @@ _MASK_CHUNK_COUNT_ARGUMENTS = ("n_genes", "count",)
 
 _lib.calc_work_arr_paralog_subsets_size_c.restype = None
 _lib.calc_work_arr_paralog_subsets_size_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -84,6 +85,9 @@ def mask_check_state(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -92,30 +96,26 @@ def mask_check_state(
     Generated from the Fortran procedure `tox_paralog_analysis_impl::mask_check_state`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        bit_mask = np.ascontiguousarray(bit_mask, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'bit_mask' must be an array of np.int32: {error}") from None
-    if bit_mask.ndim != 1:
-        raise ValueError(f"'bit_mask' must have 1 dimension, but has {bit_mask.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    bit_mask = _contract.integers(bit_mask, "bit_mask", ndim=1)
+    i_gene = _contract.integer(i_gene, "i_gene")
 
     # what the inputs already say, rather than asking for it again
     n_bit_mask_elements = bit_mask.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    state = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
+    state = _ctypes.c_bool(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.mask_check_state_c(
         bit_mask,
-        ctypes.byref(ctypes.c_int(n_bit_mask_elements)),
-        ctypes.byref(ctypes.c_int(i_gene)),
-        ctypes.byref(state),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_bit_mask_elements)),
+        _ctypes.byref(_ctypes.c_int(i_gene)),
+        _ctypes.byref(state),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _MASK_CHECK_STATE_ARGUMENTS)
+    _check_err_code(ierr.value, _MASK_CHECK_STATE_ARGUMENTS)
 
     return state.value
 
@@ -138,6 +138,9 @@ def mask_chunk_count(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -146,17 +149,20 @@ def mask_chunk_count(
     Generated from the Fortran procedure `tox_paralog_analysis_impl::mask_chunk_count`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    n_genes = _contract.integer(n_genes, "n_genes")
+
     # outputs and work arrays, which the caller never sees
-    count = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    count = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.mask_chunk_count_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(count),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(count),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _MASK_CHUNK_COUNT_ARGUMENTS)
+    _check_err_code(ierr.value, _MASK_CHUNK_COUNT_ARGUMENTS)
 
     return count.value
 
@@ -204,6 +210,9 @@ def calc_work_arr_paralog_subsets_size(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -212,32 +221,28 @@ def calc_work_arr_paralog_subsets_size(
     Generated from the Fortran procedure `tox_paralog_analysis_impl::calc_work_arr_paralog_subsets_size`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    max_subset_size = ctypes.c_int(max_subset_size)
-    try:
-        filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {error}") from None
-    if filtered_paralogs_mask.ndim != 1:
-        raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    max_subset_size = _ctypes.c_int(_contract.integer(max_subset_size, "max_subset_size"))
+    n_genes = _contract.integer(n_genes, "n_genes")
+    filtered_paralogs_mask = _contract.integers(filtered_paralogs_mask, "filtered_paralogs_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    work_array_size = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    work_array_size = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_work_arr_paralog_subsets_size_c(
-        ctypes.byref(max_subset_size),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(work_array_size),
+        _ctypes.byref(max_subset_size),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(work_array_size),
         filtered_paralogs_mask,
-        ctypes.byref(ctypes.c_int(n_mask_chunks)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_mask_chunks)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES)
 
     return {
         "max_subset_size": max_subset_size.value,

@@ -186,7 +186,7 @@ test_tox_build_residual_histograms <- function() {
     filtered <- function(E, Rval, n_bins) {
         build_residual_histograms(
             E, Rval, n_bins,
-            neighbor_mask = matrix(TRUE, nrow = dim(E)[3], ncol=dim(E)[2], byrow=TRUE)
+            neighbor_mask = matrix(TRUE, nrow = dim(E)[2], ncol = dim(E)[3])
         )
     }
 
@@ -482,8 +482,8 @@ test_gjct_permutation_test <- function() {
           shared_residual_range=shared_residual_range,
           n_permutations=n_permutations,
           random_seed=random_seed,
-          neighbor_mask_S1 = matrix(TRUE, nrow = dim(S1_arr)[3], ncol=dim(S1_arr)[2], byrow=TRUE),
-          neighbor_mask_S2 = matrix(TRUE, nrow = dim(S2_arr)[3], ncol=dim(S2_arr)[2], byrow=TRUE)
+          neighbor_mask_S1 = matrix(TRUE, nrow = dim(S1_arr)[2], ncol = dim(S1_arr)[3]),
+          neighbor_mask_S2 = matrix(TRUE, nrow = dim(S2_arr)[2], ncol = dim(S2_arr)[3])
       )
   }
 
@@ -535,6 +535,22 @@ test_gjct_permutation_test <- function() {
   }
 
   invisible(TRUE)
+}
+
+# an optional mask was compared with nothing, and a 1x1 one read past (#221 attack-shape F1)
+test_a_mask_smaller_than_its_neighbourhoods_is_refused <- function() {
+  small <- matrix(TRUE, 1, 1)
+  assert_error(build_residual_histograms(array(0, dim = c(1L, 2L, 4L)), 2.0, 4L,
+                                         neighbor_mask = small),
+               "a 1x1 mask for 2x4 neighbourhoods must be refused")
+  S1 <- array(0, dim = c(4L, 1L, 2L))
+  S2 <- array(0, dim = c(3L, 1L, 2L))
+  assert_error(gjct_permutation_test(S1, S2, 0.0, 4L, 10.0, 2L, random_seed = 666L,
+                                     neighbor_mask_S1 = small),
+               "neighbor_mask_S1 of 1x1 for 1x2 neighbourhoods must be refused")
+  assert_error(gjct_permutation_test(S1, S2, 0.0, 4L, 10.0, 2L, random_seed = 666L,
+                                     neighbor_mask_S2 = small),
+               "neighbor_mask_S2 of 1x1 for 1x2 neighbourhoods must be refused")
 }
 
 run_all_tests()

@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for modules and submodules.">59 statements</a>
+                 title=" 0.4% of total for modules and submodules.">70 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -153,6 +153,7 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/f42_vector_impl.html#proc-angle_between">angle_between</a>
+            <a class="list-group-item" href="../module/f42_vector_impl.html#proc-scaled_length">scaled_length</a>
             <a class="list-group-item" href="../module/f42_vector_impl.html#proc-add_vector">add_vector</a>
             <a class="list-group-item" href="../module/f42_vector_impl.html#proc-subtract_vector">subtract_vector</a>
         </div>
@@ -181,8 +182,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
@@ -210,7 +211,11 @@
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Calculates the euclidean norm of a vector</p>
+  <p>Calculates the euclidean norm of a vector, as
+<a href="../proc/scaled_length.html">scaled_length</a> scaled back: squaring an entry neither
+overflows (past about 1e154) nor underflows to zero (below about 1e-162), so a vector of any
+finite magnitude gets its norm. The result is Inf only where the true norm exceeds <code>huge</code>, as
+for <code>[huge, huge]</code>; the zero vector has norm 0.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -225,17 +230,17 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~2"></span>
+              <span class="anchor" id="variable-vector~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(:)
+              dimension(:), contiguous
             </td>
             <td>::</td>
             <td><strong>vector</strong></td>
             <td>
-<p>Input vector the norm will be calcuated for</p>
+<p>Input vector the norm will be calculated for</p>
             </td>
         </tr>
     </tbody>
@@ -279,7 +284,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~3"></span>
+              <span class="anchor" id="variable-v1~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -294,7 +299,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~3"></span>
+              <span class="anchor" id="variable-v2~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -309,7 +314,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~23"></span>
+              <span class="anchor" id="variable-n_dims~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -339,7 +344,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~219"></span>
+              <span class="anchor" id="variable-ierr~389"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -350,6 +355,99 @@
             <td><strong>ierr</strong></td>
             <td>
 <p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-scaled_length"></span> <h3>public pure subroutine <a href='../proc/scaled_length.html'>scaled_length</a>(n_dims, vector, exponent, scaled_norm)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Length of a vector in scaled coordinates: <code>scaled_norm</code> is the euclidean length of
+<code>scale(vector, exponent)</code>, and <code>scale(scaled_norm, -exponent)</code> the vector's own length. The
+exponent comes from <a href="../proc/scaling_exponent.html">scaling_exponent</a>, so it is 0 for
+ordinary data, and the sum of squares overflows or underflows for no finite vector.</p><a href="../proc/scaled_length.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~30"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>Number of elements in <code>vector</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vector~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>vector</strong></td>
+            <td>
+<p>The vector, of any finite magnitude</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-exponent~11"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>exponent</strong></td>
+            <td>
+<p>Power of two the vector is scaled by before its length is taken; meaningless for
+the zero vector</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-scaled_norm~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>scaled_norm</strong></td>
+            <td>
+<p>Euclidean length of <code>scale(vector, exponent)</code>; exactly 0 for the zero vector</p>
             </td>
         </tr>
     </tbody>
@@ -383,7 +481,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~3"></span>
+              <span class="anchor" id="variable-vector~6"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -442,7 +540,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~4"></span>
+              <span class="anchor" id="variable-vector~7"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -500,7 +598,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-11-07 17:33 +0000             </p>
           </div>
         </div>
         <br>

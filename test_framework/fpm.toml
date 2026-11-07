@@ -1,0 +1,16 @@
+# The Fortran test framework: the `test_suite` registry and the `asserts` library.
+#
+# A package of its own, taken by tensor_omics as a dev-dependency, because fpm lets a test source
+# use only library modules and modules in its own directory or below. As a library, the framework
+# is visible to a suite in any subdirectory of test/. It depends on nothing but the intrinsic
+# modules: tensor_omics depends on it, so it cannot depend back on tensor_omics.
+name = "test_framework"
+version = "0.1.0"
+license = "MIT"
+
+# Static, so that nothing of it reaches the published library: fpm links dev-dependencies into
+# tensor_omics's shared library as well, and a shared framework became a NEEDED entry of
+# libtensor_omics.so -- the Python and R bindings could no longer load it. From a static archive
+# the linker takes only what is referenced, and the library references nothing here.
+[library]
+type = "static"
