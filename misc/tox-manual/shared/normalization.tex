@@ -1,0 +1,188 @@
+%% normalization.tex -- shared sub-recipe. Referenced by every analysis that
+%% consumes expression vectors, via \dependson{sub:normalization}.
+
+\begin{recipe}[label=sub:normalization]{Normalization of Expression Values}
+
+\recipepurpose{Turn a replicate-level expression table into the gene
+  $\times$ tissue matrix that every Tensor Omics analysis uses as its
+  expression vectors: gene-wise scale removed, replicates averaged per tissue,
+  dynamic range compressed. This is the shared entry point of the TOX
+  pipeline; the geometry of every later recipe is fixed by the choices made
+  here.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item A table of non-negative expression measurements (e.g.\ TPM from
+        \cmd{kallisto}), genes $\times$ replicates, one column per biological
+        replicate.
+  \item The replicate layout: how many replicates belong to each tissue,
+        condition or time point. The replicates of one tissue must occupy
+        \emph{adjacent} columns.
+  \item For stress-response designs only: which tissue is the control and
+        which the condition, for each pair you want a fold change of.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \item None --- this is the first step of every Tensor Omics analysis.
+\end{prerequisites}
+
+\begin{workflow}
+  \step{Arrange the measurements as an \code{(n\_replicates, n\_genes)}
+        column-major array, so that \emph{one gene is one column}. Group the
+        replicates of each tissue into adjacent rows and record the group
+        sizes in \code{reps\_per\_tissue}, e.g.\ \code{[4, 5, 5]} for three
+        tissues measured with four, five and five replicates.}
+  \step{Decide whether to quantile-normalize across replicates
+        (\optn{use\_quantile}). It is off by default; switch it on when the
+        replicate distributions differ enough that the difference is technical
+        rather than biological.}
+  \step{Run \code{normalization\_pipeline}. It scales each gene by a
+        LOESS-stabilized standard deviation, optionally quantile-normalizes,
+        averages the replicates of each tissue, and finally applies
+        $x \mapsto \log_2(x+1)$.}
+  \step{Check the result against the expectations below before using it:
+        the shape, the value range, and the number of genes that reached the
+        output unscaled.}
+  \step{Stress-response designs only: call \code{calc\_fchange} on the
+        \emph{log-transformed} matrix to turn control/condition pairs into
+        log2 fold changes, so each such axis carries e.g.\ ``drought in root
+        over control root'' rather than an absolute level.}
+\end{workflow}
+
+\examplescript{python/examples/normalization.py}{%
+  Reads a replicate-level TSV, derives the tissue layout from its header,
+  runs the pipeline and writes the normalized matrix. Run unchanged from the
+  repository root, it normalizes the bundled
+  \file{material/kallisto_sex_data_no_na.tsv} (88\,327 genes, 67 replicates,
+  13 tissues) in a few seconds and writes
+  \file{results/normalized_expression.tsv}.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: the input, the tissue layout, the parameters}]
+import numpy as np
+from tensor_omics import normalization_pipeline
+
+# --- input: one gene per COLUMN, --------------------------
+#     replicates of a tissue in adjacent ROWS
+expr = np.asfortranarray(raw_counts)  # (n_replicates, n_genes)
+
+# --- tissue layout: one entry per tissue, -----------------
+#     summing to n_replicates
+reps_per_tissue = np.array([4, 5, 5], dtype=np.int32)
+
+# --- parameters (see the table below) ---------------------
+normalized = normalization_pipeline(
+    expr, reps_per_tissue,
+    span=0.7,            # LOESS span, mean-vs-SD fit
+    degree=2,            # LOESS polynomial degree
+    use_quantile=False,  # quantile normalization
+)                        # -> (n_tissues, n_genes)
+\end{codefragment}
+
+\begin{note}
+  Tensor Omics stores one expression vector per \emph{column} because Fortran
+  is column-major. A matrix handed over as genes $\times$ replicates is not
+  rejected --- it is silently interpreted as replicates $\times$ genes, and
+  every downstream distance and angle is then meaningless. Check
+  \code{expr.shape} before you call.
+\end{note}
+
+\begin{parameters}
+  \param{reps\_per\_tissue}{How the replicate rows are grouped into tissues;
+    entry $i$ is the number of adjacent rows belonging to tissue $i$}{%
+    Must sum to \code{n\_replicates}, otherwise the call fails with
+    \code{Array size mismatch}. Replicate counts may differ between tissues}
+  \param{span}{Fraction of the genes entering each local fit of the
+    mean--SD LOESS curve}{Keep the default \code{0.7}.
+    Lower it only if the mean--SD trend is genuinely non-monotonic and the
+    fit visibly oversmooths; too low a span makes the curve follow noise}
+  \param{degree}{Polynomial degree of the local LOESS fits}{%
+    Keep the default \code{2}. Use \code{1} for a strongly linear trend or
+    very few genes}
+  \param{use\_quantile}{Whether the replicate distributions are forced onto a
+    common distribution after gene-wise scaling}{Default \code{False}. Switch
+    on when replicates differ in distribution for technical reasons; leave off
+    when the between-replicate differences are the signal}
+\end{parameters}
+
+\begin{expectedresults}
+  The result has shape \code{(n\_tissues, n\_genes)} and is read-only ---
+  call \code{.copy()} if you need to modify it. For a non-negative input every
+  value is $\geq 0$, since $\log_2(x+1) \geq 0$ there. On the bundled example
+  data the values span $[0, 4.06]$ without quantile normalization and
+  $[0, 4.27]$ with it, and 2\,627 of the 88\,327 genes (3\%) have zero
+  variance across their replicates and therefore reach the output unscaled.
+  A value range wildly different from this, or a much larger unscaled
+  fraction, points at the input layout rather than at biology.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: replicates that are not adjacent]
+  \code{reps\_per\_tissue} describes \emph{contiguous blocks} of rows, not a
+  grouping by name. If the replicate columns of a tissue are scattered through
+  the table, the pipeline still runs and silently averages the wrong columns
+  together. Sort the columns tissue by tissue first; the example script
+  refuses to continue when it detects a non-adjacent tissue.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: genes the standard-deviation fit cannot use]
+  The scaling factor comes from a LOESS curve fitted over all genes, so a gene
+  with zero variance across its replicates carries no mean-versus-SD
+  information. Such genes are left out of the fit \emph{and reach the output
+  unscaled} --- they are not dropped and not flagged. Count them, as the
+  example script does. If fewer than five genes have non-zero variance, the
+  whole call fails with \code{ToxInputError: invalid input arguments}; this is
+  what you get for an all-zero matrix, or for a toy example with too few
+  genes.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: expecting quantile normalization by default]
+  Quantile normalization is an \emph{option}, not a pipeline stage: the
+  default is scale $\rightarrow$ average $\rightarrow$ $\log_2(x+1)$. Two
+  analyses that differ only in \optn{use\_quantile} live in different
+  geometries and must not be compared. Record the flag alongside the results.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: fold changes computed on the wrong matrix]
+  \code{calc\_fchange} \emph{subtracts} one axis from another. That is a log2
+  fold change only if you pass the log-transformed matrix --- which is what
+  \code{normalization\_pipeline} returns. Passing raw tissue averages instead
+  yields a plain difference of expression levels that merely looks like a fold
+  change.
+\end{pitfall}
+
+\begin{warning}
+  \code{root\_mean\_sq\_normalization} divides by
+  $\sqrt{\mathrm{mean}(x^2)}$, which is not a standard deviation. It is kept
+  for possible future use and must not be used for normalization; use
+  \code{normalization\_pipeline} or \code{normalize\_by\_std\_dev}.
+\end{warning}
+
+\begin{interpretation}
+  After normalization, a gene's coordinates state \emph{where its expression
+  sits across tissues}, not how many transcripts were counted. Gene-wise
+  scaling removes each gene's own expression magnitude, so two genes differing
+  a thousandfold in abundance can be neighbours if their tissue profiles agree;
+  the $\log_2(x+1)$ step then compresses the remaining dynamic range so that no
+  single highly expressed tissue dominates a distance. Distances and angles in
+  this space therefore compare the \emph{shape} of expression across tissues.
+
+  Because each choice made above defines a different space, results obtained
+  under different settings answer different questions and generally disagree.
+  Agreement between them is evidence of a robust effect; disagreement is
+  usually informative rather than an error. Report the normalization settings
+  with any result derived from this matrix.
+\end{interpretation}
+
+\begin{references}
+  \reference{Cleveland (1979). Robust locally weighted regression and
+    smoothing scatterplots. \emph{Journal of the American Statistical
+    Association} 74(368):829--836.}
+  \reference{Cleveland \& Devlin (1988). Locally weighted regression: an
+    approach to regression analysis by local fitting. \emph{Journal of the
+    American Statistical Association} 83(403):596--610.}
+  \reference{Bolstad, Irizarry, {\AA}strand \& Speed (2003). A comparison of
+    normalization methods for high density oligonucleotide array data based on
+    variance and bias. \emph{Bioinformatics} 19(2):185--193.}
+\end{references}
+
+\end{recipe}

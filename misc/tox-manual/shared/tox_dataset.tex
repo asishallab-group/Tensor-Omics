@@ -1,0 +1,174 @@
+%% tox_dataset.tex -- shared sub-recipe. The step every other recipe assumes has
+%% already happened: getting your data into TOX's arrays, and keeping it there.
+
+\begin{recipe}[label=sub:tox-dataset]{Creating a TOX Dataset}
+
+\recipepurpose{Read your expression table and gene families into the arrays
+  Tensor Omics works on, check that they agree with each other, and store them
+  together as a \file{.txdata} archive you can reopen later. Every other recipe
+  starts from the arrays this one produces.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item A gene $\times$ sample table (CSV/TSV): one identifier column, then one
+        column per replicate or sample.
+  \item A gene family table in OrthoFinder's \file{Orthogroups.tsv} layout: one
+        family per row, one column per species, gene ids comma-separated.
+  \item Nothing else --- this is the entry point.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \item None. Later recipes depend on this one, not the other way round.
+\end{prerequisites}
+
+\begin{note}
+  A TOX dataset is not an object. It is a handful of plain arrays that agree by
+  \emph{position}: column $i$ of \code{expression} belongs to the gene named by
+  \code{gene\_ids[i]}, and entry $i$ of \code{gene\_to\_family} names that
+  gene's family in \code{family\_ids}. Nothing enforces this at run time, and
+  nothing owns the arrays --- keeping them consistent is yours to do, which is
+  what the validation step below is for.
+\end{note}
+
+\begin{workflow}
+  \step{Measure your files first. The readers \emph{fill arrays you allocate},
+        so the number of genes, the number of samples, the number of families
+        and the width of the longest identifier all have to be known before the
+        first read. Count them from the files.}
+  \step{Read the identifiers with \code{read\_gene\_ids\_from\_tsv\_file},
+        then the matrix with \code{read\_expression\_vectors\_tsv} into an
+        \code{(n\_samples, n\_genes)} column-major array you allocated, then the
+        families with \code{read\_orthofinder\_file}. A gene in no family gets
+        the sentinel \code{0}.}
+  \step{Check the arrays against each other before you rely on them:
+        identifiers unique, family indices in range, expression non-negative.
+        These are cheap and they catch the mistakes that are silent later.}
+  \step{Store what you have with \code{save\_tox\_data}. Each array is passed
+        together with the name it gets inside the archive; you may store any
+        subset, so a dataset without centroids yet is perfectly valid.}
+  \step{Reopen with \code{read\_tox\_data\_into}, which returns every member.
+        Members that were never written come back with zero extents.}
+\end{workflow}
+
+\examplescript{python/examples/tox_dataset.py}{%
+  Reads the bundled tables with the library's own readers, validates the
+  relationships, writes an archive and reads it back to show the round trip is
+  exact. Run unchanged from the repository root it takes about eight seconds
+  over 88\,327 genes and writes \file{results/example.txdata}.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: the files, their shape, and what you store}]
+import numpy as np
+from tensor_omics import (read_gene_ids_from_tsv_file,
+                          read_expression_vectors_tsv,
+                          read_orthofinder_file, save_tox_data,
+                          read_tox_data_into)
+
+# --- sizes FIRST: the readers fill arrays you allocate -----
+n_genes, n_samples, id_width  = 88327, 67, 14
+n_families, family_id_width   = 15512, 9
+
+gene_ids = read_gene_ids_from_tsv_file(
+    "expression.tsv", id_width, n_genes,
+    n_header_rows=1, gene_col=1)
+
+# filled in place, so allocate it in its final form
+expression = np.zeros((n_samples, n_genes),
+                      dtype=np.float64, order="F")
+read_expression_vectors_tsv(
+    file_list=["expression.tsv"], gene_ids=gene_ids,
+    expression_vectors=expression,
+    n_header_rows=1, gene_col=1,
+    value_cols=np.arange(2, n_samples + 2, dtype=np.int32),
+    start_row=1)
+
+families = read_orthofinder_file(
+    "Orthogroups.tsv", gene_ids, family_id_width,
+    n_families, n_genes)
+
+# --- store: each array WITH the name it gets in the archive
+save_tox_data("dataset.txdata",
+    gene_ids=gene_ids,   gene_ids_file="gene_ids.bin",
+    expression=expression, expression_file="expression.bin")
+
+back = read_tox_data_into("dataset.txdata")
+\end{codefragment}
+
+\begin{parameters}
+  \param{gene\_ids\_strlen}{Width of the fixed-size character slot each
+    identifier is stored in}{Must be at least the longest identifier; measure
+    it, do not guess. Anything longer is truncated, which silently breaks the
+    match between the expression table and the family table}
+  \param{value\_cols}{Which columns of the table hold values, 1-based}{%
+    \code{2 \dots n\_samples+1} for the usual layout of one identifier column
+    followed by the samples. Getting the count wrong leaves rows of the matrix
+    untouched at zero}
+  \param{n\_header\_rows}{Rows to skip before the data}{\code{1} for a single
+    header line}
+  \param{*\_file}{The name each array is given inside the archive}{Required
+    whenever its array is passed, and vice versa. The names are yours to
+    choose; the manifest records which is which}
+\end{parameters}
+
+\begin{expectedresults}
+  On the bundled data the readers report 88\,327 genes $\times$ 67 samples and
+  15\,512 families, of which 81\,960 genes are assigned to a family and 6\,367
+  carry the unassigned sentinel. All four checks pass, and reading the archive
+  back reproduces every array exactly. \code{get\_tox\_data\_dims} then reports
+  \code{gene\_id\_len=14} and \code{family\_id\_len=9} --- the widths actually
+  needed. The file is about 47\,MB for a 47.3\,MB matrix: the archive is a
+  container, not compression, so expect roughly the size of the raw data.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: sizing the arrays by guess]
+  Every extent has to be supplied before the read, and a wrong one fails
+  quietly rather than loudly. An identifier width below the longest id
+  truncates identifiers, so genes stop matching between the two tables and the
+  family assignment comes back mostly empty; a \code{value\_cols} shorter than
+  the sample count leaves the remaining rows of the matrix at zero. Derive all
+  of them from the files, as the example script does.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: passing an array without its member name]
+  \code{save\_tox\_data} takes each array together with the name it gets inside
+  the archive, and needs both. Passing only one half fails with
+  \code{ToxInputError: invalid input arguments}, naming the missing argument.
+  Do not work around it by dropping the array --- that is the data you meant to
+  keep.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: assuming the archive validates itself]
+  Nothing checks the arrays against each other on the way in or out. An
+  archive whose \code{gene\_to\_family} is a different length from its
+  \code{gene\_ids} stores and reloads without complaint, and the mismatch only
+  surfaces as a wrong answer several recipes later. Validate before storing.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: reading a file that is not a TOX archive]
+  The reader reports what went wrong at the file level, not at the schema
+  level: a missing file gives \code{ToxIOError: could not open file}, an
+  ordinary zip gives \code{Could not extract file from archive}, and an archive
+  whose manifest lists nothing gives \code{could not read array data}. None of
+  these means your analysis is wrong --- they mean the path is.
+\end{pitfall}
+
+\begin{interpretation}
+  What you have at the end is the dataset every other recipe names in its
+  required inputs. The expression matrix here is still \emph{raw}: normalize it
+  before any distance or angle is computed from it, and store the normalized
+  matrix rather than recomputing it, so that every later result refers to one
+  known state of the data.
+
+  Treat the archive as the unit of reproducibility. It records the arrays and
+  their agreed positions, but not how they were produced --- not the
+  normalization settings, not which centroid convention was used, not the
+  outlier threshold. Keep that alongside it, because a \file{.txdata} on its own
+  cannot tell you which of the choices in the recipes that follow were made.
+\end{interpretation}
+
+\begin{references}
+  \reference{Emms \& Kelly (2019). OrthoFinder: phylogenetic orthology
+    inference for comparative genomics. \emph{Genome Biology} 20:238.}
+\end{references}
+
+\end{recipe}
