@@ -595,7 +595,7 @@ contains
             end if
 
             ! Use the chosen k-neighbor distance percentile as this seed's local seeding and growth radius.
-            call calc_percentile_impl(tmp_distances, n_vectors, tmp_perm, &
+            call calc_quantile_impl(tmp_distances, n_vectors, tmp_perm, &
                                       coverage_quant, coverage_radius, n_considered=k_seeding)
 
             seed_radii(candidate_idx) = coverage_radius
