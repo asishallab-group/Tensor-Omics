@@ -208,13 +208,16 @@ class RErrorEmitter:
             "#' @param shapes positionally alongside `arguments`: the declared shape of an array\n"
             f"#'   whose size the C wrapper compares, which the message of {SIZE_MISMATCH}\n"
             "#'   then states. NA elsewhere.\n"
+            "#' @param equals positionally alongside `arguments`: what an argument documented\n"
+            f"#'   with DM_EQUALS must equal, which the message of {SIZE_MISMATCH} then\n"
+            "#'   states. NA elsewhere.\n"
             "#' @return invisibly, the name of the status code if the call reported one;\n"
             "#'   status codes are outcomes, not failures, and never raise\n"
             "#' @keywords internal"
         )
         writer.line("check_err_code <- function(ierr, arguments = character(), sources = character(),")
         with writer.indent(9):
-            writer.line("shapes = character()) {")
+            writer.line("shapes = character(), equals = character()) {")
         with writer.indent():
             writer.line("code <- ierr %% ARG_POS_FACTOR")
             writer.line("if (code == 0L) return(invisible(NULL))")
@@ -259,6 +262,11 @@ class RErrorEmitter:
                             writer.line("# what the array must be, which no code can carry")
                             writer.line("message <- sprintf(\"%s; '%s' is declared with shape (%s)\", "
                                         "message, arguments[[arg_pos]], shape)")
+                        writer.line("expected <- if (arg_pos <= length(equals)) equals[[arg_pos]] else NA_character_")
+                        writer.line(f"if (!is.na(expected) && code == {size_mismatch.value}L)")
+                        with writer.indent():
+                            writer.line("message <- sprintf(\"%s; '%s' must equal %s\", "
+                                        "message, arguments[[arg_pos]], expected)")
                 writer.line("} else {")
                 with writer.indent():
                     writer.line('message <- sprintf("%s (argument %d)", message, arg_pos)')

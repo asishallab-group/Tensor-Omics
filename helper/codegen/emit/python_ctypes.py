@@ -39,7 +39,7 @@ from ..names import (
     PYTHON_THIRD_PARTY_IMPORTS,
 )
 from ..render import Writer
-from .error_arguments import shapes_of, sources_of
+from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
@@ -465,6 +465,15 @@ class PythonEmitter:
             writer.line("#: For an array the C wrapper compares with its declaration, that shape")
             writer.line(
                 f"_{wrapper.stripped_name.upper()}_ARGUMENT_SHAPES = "
+                f"({rendered}{',' if rendered else ''})"
+            )
+        # and what a `DM_EQUALS` argument had to equal, which its error states
+        equalities = equalities_of(wrapper.procedure, "python")
+        if any(equalities):
+            rendered = ", ".join(f'"{e}"' if e else "None" for e in equalities)
+            writer.line("#: For an argument with a DM_EQUALS, what it must equal")
+            writer.line(
+                f"_{wrapper.stripped_name.upper()}_ARGUMENT_EQUALS = "
                 f"({rendered}{',' if rendered else ''})"
             )
         return writer.render()
@@ -1122,6 +1131,8 @@ class PythonEmitter:
             tables.append(f"{prefix}_ARGUMENT_SOURCES")
         if any(shapes_of(wrapper, "python")):
             tables.append(f"shapes={prefix}_ARGUMENT_SHAPES")
+        if any(equalities_of(wrapper.procedure, "python")):
+            tables.append(f"equals={prefix}_ARGUMENT_EQUALS")
         writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {', '.join(tables)})")
         writer.blank()
 

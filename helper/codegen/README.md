@@ -302,7 +302,7 @@ The parts a source author does not need, and a generator maintainer does:
 - **A dummy is referred to by its declared spelling.** Fortran is case-insensitive, so
   `integer :: N` sizes `x(n)`; Python and the R shim are not, and saw two variables, one never
   defined. The frontend rewrites every reference to a dummy -- in extents, character lengths,
-  `DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE` and the `DM_MIN`/`DM_MAX`/`DM_SENTINEL`
+  `DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE` and the `DM_MIN`/`DM_MAX`/`DM_SENTINEL`/`DM_EQUALS`
   expressions -- to the declared spelling once (`ford_frontend._use_declared_spellings`), so
   every emitter can compare names exactly. The declared names are never changed: they are the
   published API, mixed case included (`neighbor_mask_S1`, `omics_field_RAP_projection`).
@@ -397,6 +397,17 @@ The parts a source author does not need, and a generator maintainer does:
   (`error_arguments.shapes_of`), so the error says what the array must be: `Array size mismatch
   (argument 'expr'); 'expr' is declared with shape (sum(reps_per_tissue), n_genes)`. Docs keep showing the declared extents (`CArgument.declared_extents`), a
   module constant by its name.
+- **An integer that must equal another size says so with `DM_EQUALS(EXPR)`** (#203):
+  `n_replicates` beside `reps_per_tissue`. The generated Fortran wrapper emits
+  `if (n_replicates /= (sum(reps_per_tissue))) call set_err_once(ierr, ERR_SIZE_MISMATCH, ...)`
+  after the other scalar checks and before the arrays, under the one return; an extent keeps its
+  dimension check beside it, so an empty input is still `ERR_EMPTY_INPUT`. It is a value check,
+  under `NO_INPUT_VALIDATION`, and the C wrapper adds none. Nothing is widened: an int32 sum
+  that wraps is not caught. The binding passes `EXPR` to `check_err_code` (`error_arguments.equalities_of`):
+  `Array size mismatch (argument 'expr', via 'n_replicates'); 'n_replicates' must equal
+  sum(reps_per_tissue)`; and where the extent is read off an array, the "Must equal" sentence goes
+  onto that array's parameter doc (`doc_contract.equality_notes`), since the extent has none, its
+  axis counted from 0 in Python and from 1 in R.
 - **A function is published as a subroutine, its result right before `ierr`** (#221 B1). Both
   Fortran tiers of a function implementation are subroutines taking the result as an
   `intent(out)` argument of the result's own name, before the implementation's own `ierr` where
@@ -548,6 +559,8 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   with a count** — the count is derived from the mask before the call, in every layer
 - a **`DM_RESULT_SIZE_IS` naming an `intent(in)` count** — the bindings read the count back after
   the call; a size the caller chooses sizes the result directly
+- a **`DM_EQUALS` on anything but a required `intent(in)` scalar integer** (`validate._check_equals`) —
+  the wrapper compares the value the caller passed before the call
 - a **module constant sizing an argument that the generator cannot evaluate to an integer** — Python and R
   allocate and pad with its value, so the generator has to know it
 - an **input axis computed from arguments that the C wrapper cannot evaluate** (`c_abi._can_check`):

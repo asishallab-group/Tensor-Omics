@@ -60,3 +60,20 @@ def shapes_of(wrapper, language: str) -> list[str | None]:
         for argument in wrapper.procedure.arguments
     ]
 
+
+
+def equalities_of(procedure: Procedure, language: str) -> list[str | None]:
+    """The `DM_EQUALS` expression of each argument that has one, positionally, else None.
+
+    The wrapper reports a mismatch as `ERR_SIZE_MISMATCH` at the argument, and a code carries
+    no text, so the binding states what it had to equal: `'n_replicates' must equal
+    sum(reps_per_tissue)`. As the author wrote it, with its literals written the way
+    `language` writes them.
+    """
+    from .doc_literals import render
+
+    return [
+        render(argument.directives.equals.expression, language)
+        if argument.directives.equals is not None else None
+        for argument in procedure.arguments
+    ]

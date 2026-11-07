@@ -351,6 +351,51 @@ class TestEveryInputAxisIsCompared:
         assert out[0] == out[1]
 
 
+class TestAnExtentThatMustEqual:
+    """#203: `n_rows` must equal `sum(group_sizes)`; the caller passes neither, the binding reads it.
+
+    A mismatch is ERR_SIZE_MISMATCH at the extent, blamed on `values` and saying what it had to
+    equal; an empty input stays ERR_EMPTY_INPUT; a bad count is the count's own error.
+    """
+
+    def test_python(self, built):
+        out = run_python(built, _PY_REFUSED + """
+            print(json.dumps([
+                refused(lambda: tox.grouped_rows([2, 2], [1.0, 2.0, 3.0])),
+                refused(lambda: tox.grouped_rows([5, -3], [1.0, 2.0])),
+                refused(lambda: tox.grouped_rows([], [1.0, 2.0])),
+                list(tox.grouped_rows([2, 1], [1.0, 2.0, 4.0])),
+            ]))
+        """)
+
+        mismatch, negative, empty, sums = out
+        assert mismatch == ["ToxInputError", 206, "values",
+                            "Array size mismatch (argument 'values', via 'n_rows'); "
+                            "'n_rows' must equal sum(group_sizes)"]
+        assert negative[:3] == ["ToxInputError", 201, "group_sizes"]
+        assert empty[:3] == ["ToxInputError", 202, "group_sizes"]
+        assert sums == [3.0, 4.0]
+
+    def test_r(self, built):
+        out = run_r(built, _R_REFUSED + """
+            refused(grouped_rows(c(2L, 2L), c(1, 2, 3)))
+            refused(grouped_rows(c(5L, -3L), c(1, 2)))
+            refused(grouped_rows(integer(), c(1, 2)))
+            cat(grouped_rows(c(2L, 1L), c(1, 2, 4)), "\\n")
+            cat(tryCatch(grouped_rows(c(2L, 2L), c(1, 2, 3)),
+                         tox_input_error = function(e) conditionMessage(e)), "\\n")
+        """)
+
+        assert out[:9] == [
+            "tox_input_error", "206", "values",
+            "tox_input_error", "201", "group_sizes",
+            "tox_input_error", "202", "group_sizes",
+        ]
+        assert out[9:11] == ["3", "4"]
+        assert " ".join(out[11:]) == ("Array size mismatch (argument 'values', via 'n_rows'); "
+                                      "'n_rows' must equal sum(group_sizes)")
+
+
 class TestTheRestOfTheFixture:
     def test_an_assumed_shape_input_and_an_impure_elemental_in_python(self, built):
         out = run_python(built, """

@@ -246,7 +246,8 @@ class FortranWrapperEmitter:
         for procedure in module:
             for argument in procedure.arguments:
                 directives = argument.directives
-                for directive in (directives.minimum, directives.maximum, directives.sentinel):
+                for directive in (directives.minimum, directives.maximum, directives.sentinel,
+                                  directives.equals):
                     if directive is not None:
                         identifiers.update(
                             i.lower() for i in _EXTENT_IDENTIFIER_RE.findall(directive.expression)
@@ -294,6 +295,9 @@ class FortranWrapperEmitter:
             for a in p.arguments
         ):
             names |= {"set_err_once", "ERR_INVALID_INPUT"}
+        # a `DM_EQUALS` comparison, which no validator call names
+        if any(a.directives.equals is not None for p in module for a in p.arguments):
+            names |= {"set_err_once", "ERR_SIZE_MISMATCH"}
         ordered = ["set_ok", "is_err"]
         return ordered + sorted(names - set(ordered))
 
@@ -672,8 +676,11 @@ class FortranWrapperEmitter:
             for position, argument in enumerate(procedure.arguments, start=1)
             if argument.name.lower() != error.lower()
         ]
-        emitted = [c for is_array in (False, True) for array, c in calls
-                   if array is is_array and c]
+        scalars = [c for array, c in calls if not array and c]
+        # after every scalar check, so an empty dimension is still ERR_EMPTY_INPUT rather than
+        # a mismatch of its empty sum; before the arrays, which may be sized by the argument
+        scalars += self._equality_checks(procedure)
+        emitted = scalars + [c for array, c in calls if array and c]
         emitted += self._convention_checks(procedure)
         if not emitted:
             return  # nothing to guard, and no `is_err` to test either
@@ -682,6 +689,16 @@ class FortranWrapperEmitter:
             writer.line(line)
         writer.line(f"if (is_err({error})) return")
         writer.directive("#endif")
+
+    def _equality_checks(self, procedure: Procedure) -> list[str]:
+        """`DM_EQUALS(EXPR)`: the argument must equal `EXPR`, else `ERR_SIZE_MISMATCH` at it."""
+        error = self.conventions.error_arg
+        return [
+            f"if ({argument.name} /= ({argument.directives.equals.expression})) "
+            f"call set_err_once({error}, ERR_SIZE_MISMATCH, arg_pos={position}_int32)"
+            for position, argument in enumerate(procedure.arguments, start=1)
+            if argument.directives.equals is not None
+        ]
 
     def _convention_checks(self, procedure: Procedure) -> list[str]:
         """Checks driven by a naming convention rather than a per-argument range.

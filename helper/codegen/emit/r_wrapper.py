@@ -11,7 +11,7 @@ classed conditions a caller can `tryCatch`, naming the argument in the caller's 
 
 from __future__ import annotations
 
-from .error_arguments import shapes_of, sources_of
+from .error_arguments import equalities_of, shapes_of, sources_of
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
@@ -336,11 +336,18 @@ class RWrapperEmitter:
         if any(shapes):
             rendered = ", ".join(f'"{s}"' if s else "NA_character_" for s in shapes)
             writer.line(f".shapes <- c({rendered})")
+        # and what a `DM_EQUALS` argument had to equal, which its error states
+        equalities = equalities_of(wrapper.procedure, "r")
+        if any(equalities):
+            rendered = ", ".join(f'"{e}"' if e else "NA_character_" for e in equalities)
+            writer.line(f".equals <- c({rendered})")
         tables = [".arguments"]
         if any(sources):
             tables.append(".sources")
         if any(shapes):
             tables.append("shapes = .shapes")
+        if any(equalities):
+            tables.append("equals = .equals")
         writer.line(f".status <- check_err_code(.result$ierr, {', '.join(tables)})")
         writer.blank()
 

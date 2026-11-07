@@ -689,7 +689,7 @@ def _use_declared_spellings(arguments) -> None:
 
     Covers the places an argument is named from another one: extents, character lengths,
     and the directives naming an argument (`DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE`) or
-    an expression over them (`DM_MIN`, `DM_MAX`, `DM_SENTINEL`).
+    an expression over them (`DM_MIN`, `DM_MAX`, `DM_SENTINEL`, `DM_EQUALS`).
     """
     spellings = {argument.name.lower(): argument.name for argument in arguments}
 
@@ -725,7 +725,7 @@ def _respelled_directives(directives: Directives, respell) -> Directives:
             directives.required_if_mode,
             mode_arg=respell(directives.required_if_mode.mode_arg),
         )
-    for field_name in ("minimum", "maximum", "sentinel"):
+    for field_name in ("minimum", "maximum", "sentinel", "equals"):
         bound = getattr(directives, field_name)
         if bound is not None:
             changes[field_name] = replace(bound, expression=respell(bound.expression))

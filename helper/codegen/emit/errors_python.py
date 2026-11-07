@@ -195,7 +195,7 @@ class PythonErrorEmitter:
         writer.blank()
 
     def _check(self, writer: Writer) -> None:
-        writer.line(f"def {CHECK_ERR_CODE}(ierr, arguments=(), sources=(), shapes=()):")
+        writer.line(f"def {CHECK_ERR_CODE}(ierr, arguments=(), sources=(), shapes=(), equals=()):")
         with writer.indent():
             writer.block(
                 '"""Raise if `ierr` reports an error.\n'
@@ -217,6 +217,10 @@ class PythonErrorEmitter:
                 "    Positionally alongside `arguments`: the declared shape of an array\n"
                 "    whose size the C wrapper compares with its declaration, which the\n"
                 f"    message of {SIZE_MISMATCH} then states. None elsewhere.\n"
+                "equals : sequence of str or None, optional\n"
+                "    Positionally alongside `arguments`: what an argument documented with\n"
+                "    DM_EQUALS must equal, which the message of\n"
+                f"    {SIZE_MISMATCH} then states. None elsewhere.\n"
                 "\n"
                 "Returns\n"
                 "-------\n"
@@ -251,6 +255,7 @@ class PythonErrorEmitter:
                     writer.line("source = sources[arg_pos - 1] if arg_pos <= len(sources) else None")
                     if self.catalogue.code(SIZE_MISMATCH) is not None:
                         writer.line("shape = shapes[arg_pos - 1] if arg_pos <= len(shapes) else None")
+                        writer.line("expected = equals[arg_pos - 1] if arg_pos <= len(equals) else None")
                     writer.line("if source:")
                     with writer.indent():
                         writer.line("# the caller's word first, then the Fortran argument it")
@@ -269,6 +274,10 @@ class PythonErrorEmitter:
                             writer.line("# what the array must be, which no code can carry")
                             writer.line('message = f"{message}; \'{arguments[arg_pos - 1]}\' is '
                                         'declared with shape ({shape})"')
+                        writer.line(f"if expected and code == {size_mismatch.value}:")
+                        with writer.indent():
+                            writer.line('message = f"{message}; \'{arguments[arg_pos - 1]}\' must '
+                                        'equal {expected}"')
                 writer.line("else:")
                 with writer.indent():
                     writer.line('message = f"{message} (argument {arg_pos})"')
