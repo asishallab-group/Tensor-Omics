@@ -168,7 +168,9 @@ def compute_family_scaling(
         low_sd_cutoff : float
             cutoff used to filter families with low std
         excluded_low_sd : np.ndarray[np.int32] of shape (n_families,), read-only
-            Mask to save those families that have low sd
+            Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            lists, `1` for every other one -- a family with a single member, or with a spread
+            below `low_sd_cutoff`.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

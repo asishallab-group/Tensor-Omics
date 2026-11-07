@@ -96,7 +96,9 @@ contains
         real(c_double), intent(out), target :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with a single member, or with a spread
+            !! below `low_sd_cutoff`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         integer(int32) :: mode_mode_f
@@ -280,7 +282,9 @@ contains
         real(c_double), intent(out), target :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with a single member, or with a spread
+            !! below `low_sd_cutoff`.
         real(c_double), dimension(n_families), intent(out), target :: tmp_means_aux
             !! Work array for saving raw means
         integer(c_int), intent(out), target :: ierr

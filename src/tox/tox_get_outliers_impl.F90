@@ -29,6 +29,8 @@ module tox_get_outliers_impl
 ! deviation of distances, neither of which can be negative, so -1 cannot be mistaken for data.
 #define CM_LOESS_POINT_SENTINEL -1.0_real64
 
+    private :: require_finite_loess_points
+
     integer(int32), parameter, public :: MODE_PLAIN = 0_int32
         !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
     integer(int32), parameter, public :: MODE_ROBUST = 1_int32
@@ -77,7 +79,9 @@ contains
         real(real64), intent(out) :: tmp_means_aux(n_families)
             !! Work array for saving raw means
         integer(int32), intent(out) :: excluded_low_sd(n_families)
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with a single member, or with a spread
+            !! below `low_sd_cutoff`.
 
         ! LOESS workspace
         integer(int32), intent(in)    :: int_workspace_size
@@ -166,6 +170,7 @@ contains
         loess_x = CM_LOESS_POINT_SENTINEL
         loess_y = CM_LOESS_POINT_SENTINEL
         indices_used = 0_int32
+        excluded_low_sd = 1_int32
         n_valid = 0
 
         ! Validate family indices; the -1 sentinel output on failure is part of the contract, so this
@@ -222,18 +227,14 @@ contains
 
         ! The caller's distances are finite, so a non-finite mean or standard deviation here means a
         ! sum over a family overflowed. Checked before the exit for too few families, which returns
-        ! loess_x / loess_y as they stand, so that no exit hands such a value back.
-        call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr)
-        call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr)
-        if (is_err(ierr)) then
-            loess_x = CM_LOESS_POINT_SENTINEL
-            loess_y = CM_LOESS_POINT_SENTINEL
-            indices_used = 0_int32
-            return
-        end if
+        ! loess_x / loess_y as they stand, and before the LOESS fit, which cannot take such a point.
+        call require_finite_loess_points(n_valid, loess_x, loess_y, indices_used, excluded_low_sd, ierr)
+        if (is_err(ierr)) return
 
+        ! Too few families for a fit: the points stay as measured, with nothing dropped for low spread.
         if (n_valid <= 1) then
             low_sd_cutoff = 0.0_real64
+            excluded_low_sd(indices_used(1:n_valid)) = 0_int32
             return
         end if
 
@@ -290,7 +291,6 @@ contains
         ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)
         ! subset only. excluded_low_sd flags which families were dropped from the fit (they still get a
         ! dscale prediction from the resulting curve further below).
-        excluded_low_sd = 1_int32
         k = 0
 
         do i_valid = 1, n_valid
@@ -396,6 +396,10 @@ contains
         end do
 
         low_sd_cutoff = max(2.0_real64**low_sd_cutoff - eps_sd, 0.0_real64)
+
+        ! The way back can overflow although every point was finite: a mean of huge/2 plus an
+        ! `eps_mean` as large is huge, whose log2 rounds to 1024, and 2**1024 is Inf.
+        call require_finite_loess_points(n_valid, loess_x, loess_y, indices_used, excluded_low_sd, ierr)
 
     end subroutine compute_family_scaling_impl
 
@@ -648,4 +652,23 @@ contains
 
         call identify_outliers_impl(n_genes, tmp_rdi, tmp_sorted_rdi, tmp_perm, is_outlier, tmp_threshold, tail_probability, quantile_level)
     end subroutine detect_outliers_impl
+
+    ! ERR_NAN_INF unless the first n_valid LOESS points are finite. On failure the fit's outputs
+    ! describe a fit without points -- loess_x / loess_y hold the sentinel, indices_used 0 and every
+    ! family counts as left out -- so that no non-finite point is returned, on error either.
+    pure subroutine require_finite_loess_points(n_valid, loess_x, loess_y, indices_used, excluded_low_sd, ierr)
+        integer(int32), intent(in)    :: n_valid
+        real(real64), intent(inout)   :: loess_x(:), loess_y(:)
+        integer(int32), intent(inout) :: indices_used(:), excluded_low_sd(:)
+        integer(int32), intent(inout) :: ierr
+
+        call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr)
+        call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr)
+        if (is_err(ierr)) then
+            loess_x = CM_LOESS_POINT_SENTINEL
+            loess_y = CM_LOESS_POINT_SENTINEL
+            indices_used = 0_int32
+            excluded_low_sd = 1_int32
+        end if
+    end subroutine require_finite_loess_points
 end module tox_get_outliers_impl

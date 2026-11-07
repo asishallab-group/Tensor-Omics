@@ -98,7 +98,9 @@ contains
         real(real64), intent(out) :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(int32), dimension(n_families), intent(out) :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with a single member, or with a spread
+            !! below `low_sd_cutoff`.
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), dimension(:), allocatable :: tmp_perm
@@ -312,7 +314,9 @@ contains
         real(real64), intent(out) :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(int32), dimension(n_families), intent(out) :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with a single member, or with a spread
+            !! below `low_sd_cutoff`.
         real(real64), dimension(n_families), intent(out) :: tmp_means_aux
             !! Work array for saving raw means
         integer(int32), intent(out) :: ierr

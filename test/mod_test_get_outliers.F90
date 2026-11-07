@@ -841,6 +841,7 @@ contains
 
     call assert_equal_int(get_err_code(ierr), 201, 'Error code 201 for invalid family indices')
     call assert_true(all(dscale == -1.0_real64), 'dscale fallback to -1.0 on invalid indices')
+    call assert_true(all(excluded_low_sd == 1_int32), 'every family is left out of the fit on invalid indices')
   end subroutine test_invalid_family_indices
 
   subroutine test_single_gene_family_scaling()
@@ -1132,18 +1133,24 @@ contains
   !| The wrapper refuses non-finite distances, but finite ones can still overflow a family's sum:
   !| four distances of 1e308 sum to Inf, 1e200 squares to Inf. With a single multi-member family
   !| the routine leaves early, before the LOESS fit, and that exit used to return such a mean as
-  !| it stood (`loess_x = [inf]`). An overflowing sum is ERR_NAN_INF; whether 1e200's overflowing
-  !| squares are caught depends on the compiler (`max(0, Inf - Inf)` is 0 on gfortran), so that
-  !| case asserts finiteness only. Both outputs are checked through `detect_outliers` and
-  !| `compute_family_scaling`.
+  !| it stood (`loess_x = [inf]`). Means of huge/2 survive the fit but overflow on the way back
+  !| from log2, which returned `[inf, inf]` with no error. An overflowing sum or back-transform is
+  !| ERR_NAN_INF; whether overflowing squares are caught depends on the compiler (`max(0, Inf - Inf)`
+  !| is 0 on gfortran, NaN on ifx), so those cases accept success too. Both outputs are checked
+  !| through `detect_outliers` and `compute_family_scaling`, and `excluded_low_sd` with them.
   subroutine test_loess_points_finite_on_every_exit()
     integer(int32), parameter :: n_genes = 4_int32
-    real(real64), parameter :: near_huge = 1.0e308_real64, squares_overflow = 1.0e200_real64
+    real(real64), parameter :: near_huge = 1.0e308_real64, squares_overflow = 1.0e200_real64, &
+                               half_huge = huge(1.0_real64)/2.0_real64
     real(real64)   :: all_near_huge(n_genes), one_family_ordinary(n_genes), &
-                      one_family_squares_overflow(n_genes)
-    integer(int32) :: one_family(n_genes), one_family_and_singleton(n_genes), two_families(n_genes)
+                      one_family_squares_overflow(n_genes), all_half_huge(n_genes), two_half_huge(n_genes)
+    integer(int32) :: one_family(n_genes), one_family_and_singleton(n_genes), two_families(n_genes), &
+                      one_family_and_two_singletons(n_genes)
 
     all_near_huge = near_huge
+    all_half_huge = half_huge
+    two_half_huge = [half_huge, half_huge, 1.0_real64, 2.0_real64]
+    one_family_and_two_singletons = [1_int32, 1_int32, 2_int32, 3_int32]
     one_family_ordinary = [5.0_real64, 1.0_real64, 1.0_real64, 1.0_real64]
     one_family_squares_overflow = [squares_overflow, 2.0_real64*squares_overflow, 3.0_real64*squares_overflow, 5.0_real64]
     one_family = 1_int32
@@ -1156,14 +1163,20 @@ contains
     call assert_loess_points_finite("one family, ordinary", 1_int32, one_family_ordinary, one_family, 0_int32)
     call assert_loess_points_finite("one multi-member family and a singleton, squares overflow", 2_int32, &
                                     one_family_squares_overflow, one_family_and_singleton, -1_int32)
+    call assert_loess_points_finite("one family of two at huge/2 and two singletons", 3_int32, two_half_huge, &
+                                    one_family_and_two_singletons, -1_int32)
     ! the main path, n_valid = 2
     call assert_loess_points_finite("two families, sum overflows", 2_int32, all_near_huge, &
                                     two_families, ERR_NAN_INF)
+    ! the main path, back from log2: huge/2 + eps_mean is huge, log2 rounds to 1024
+    call assert_loess_points_finite("two families, huge/2", 2_int32, all_half_huge, two_families, ERR_NAN_INF)
   end subroutine test_loess_points_finite_on_every_exit
 
   !> Runs `detect_outliers` and `compute_family_scaling` on one input and asserts that their
   !| `loess_x` / `loess_y` are finite. `expected_code` is the error code both must return, or -1
-  !| for "either success or ERR_NAN_INF".
+  !| for "either success or ERR_NAN_INF". Also asserts that `compute_family_scaling`'s
+  !| `excluded_low_sd` is 0 exactly for the families `indices_used` lists and 1 for the others,
+  !| which on an error is every family.
   subroutine assert_loess_points_finite(label, n_families, distances, gene_to_fam, expected_code)
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     character(*), intent(in)   :: label
@@ -1174,7 +1187,8 @@ contains
 
     real(real64)    :: loess_x(n_families), loess_y(n_families), dscale(n_families), low_sd_cutoff
     real(real64)    :: tail_probability(size(distances))
-    integer(int32)  :: loess_n(n_families), excluded_low_sd(n_families), ierr, n_genes
+    integer(int32)  :: loess_n(n_families), excluded_low_sd(n_families), ierr, n_genes, i_family
+    logical         :: listed
     logical(c_bool) :: is_outlier(size(distances))
 
     n_genes = size(distances, kind=int32)
@@ -1191,6 +1205,15 @@ contains
     call assert_code(ierr, "compute_family_scaling")
     call assert_true(all(ieee_is_finite(loess_x)) .and. all(ieee_is_finite(loess_y)), &
                      "test_loess_points_finite_on_every_exit: "//label//": compute_family_scaling's loess_x / loess_y finite")
+    if (get_err_code(ierr) /= 0_int32) then
+      call assert_true(all(loess_n == 0_int32), &
+                       "test_loess_points_finite_on_every_exit: "//label//": an error leaves no LOESS point")
+    end if
+    do i_family = 1, n_families
+      listed = any(loess_n == i_family)
+      call assert_true(excluded_low_sd(i_family) == merge(0_int32, 1_int32, listed), &
+                       "test_loess_points_finite_on_every_exit: "//label//": excluded_low_sd is 0 exactly for the listed families")
+    end do
 
   contains
 

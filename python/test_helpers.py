@@ -85,7 +85,7 @@ def _code_label(code):
     return f"{name} ({code})" if name else f"code {code}"
 
 
-def assert_error(func, msg, code=None):
+def assert_error(func, msg, code=None, argument=None):
     """Fail unless calling `func` raises the expected error.
 
     `code` is a bare tox_errors code -- ERR_INVALID_INPUT, not the `ierr` the Fortran packs
@@ -95,6 +95,8 @@ def assert_error(func, msg, code=None):
     Omit `code` to demand an error that carries no tox code at all: the binding's own
     ToxArgumentError (a ValueError and a TypeError too), raised before the library is ever
     called.
+
+    `argument`, if given, is the name the error must blame (ToxError.argument).
     """
     if code is not None and code >= ARG_POS_FACTOR:
         raise AssertionError(
@@ -113,6 +115,9 @@ def assert_error(func, msg, code=None):
             raise AssertionError(
                 f"{msg}: expected {_code_label(code)}, but got "
                 f"{_code_label(error.code)}: {error}") from None
+        if argument is not None and error.argument != argument:
+            raise AssertionError(
+                f"{msg}: expected '{argument}' named, but got {error.argument!r}: {error}") from None
     except (RuntimeError, ValueError, TypeError, FileNotFoundError) as error:
         if code is not None:
             raise AssertionError(
