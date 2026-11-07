@@ -23,8 +23,8 @@ module tox_shatter_cluster_data
     use tox_gene_centroids, only: mean_vector
     use tox_euclidean_distance_impl, only: euclidean_distance_impl
     use f42_sort_impl, only: sort_array_heapsort, init_perm
-    use f42_stats, only: calc_percentile_expert
-    use f42_stats_impl, only: calc_percentile_impl
+    use f42_stats, only: calc_quantile_expert
+    use f42_stats_impl, only: calc_quantile_impl
     use f42_kd_tree_impl, only: vicinity_vectors_helper, vicinity_vectors_count_helper, &
                                 KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
     implicit none
@@ -186,7 +186,7 @@ contains
         call sort_array_heapsort(tmp_distances, tmp_perm)
 
         ! Extract the adaptive search radius corresponding to the specified distance percentile.
-        call calc_percentile_expert(tmp_distances, n_vectors, tmp_perm, &
+        call calc_quantile_expert(tmp_distances, n_vectors, tmp_perm, &
                                     actual_quant, radius, ierr=ierr)
 
     end subroutine calculate_density_radius_helper
@@ -614,7 +614,7 @@ contains
         ! 1. Calculate ambient median density: median_{i=1..N}(rho_i)
         call init_perm(tmp_perm)
         call sort_array_heapsort(density_labels, tmp_perm)
-        call calc_percentile_impl(density_labels, n_vectors, tmp_perm, &
+        call calc_quantile_impl(density_labels, n_vectors, tmp_perm, &
                                   0.5_real64, median_ambient)
 
         ! 2. Compute absolute deviation from ambient median for all vectors
@@ -625,7 +625,7 @@ contains
         ! 3. Compute MAD_ambient = median_{i=1..N}(|rho_i - median_ambient|)
         call init_perm(tmp_perm)
         call sort_array_heapsort(tmp_abs_diff, tmp_perm)
-        call calc_percentile_impl(tmp_abs_diff, n_vectors, tmp_perm, &
+        call calc_quantile_impl(tmp_abs_diff, n_vectors, tmp_perm, &
                                   0.5_real64, mad_ambient)
 
     end subroutine compute_ambient_density_stats_helper
@@ -946,7 +946,7 @@ contains
         end do
         call init_perm(tmp_perm(1:k))
         call sort_array_heapsort(tmp_abs_diff(1:k), tmp_perm(1:k))
-        call calc_percentile_impl(tmp_abs_diff, n_vectors, tmp_perm, 0.5_real64, &
+        call calc_quantile_impl(tmp_abs_diff, n_vectors, tmp_perm, 0.5_real64, &
                                   ensemble_center_density, n_considered=k)
 
         do concurrent(i_vec=1:n_vectors) &

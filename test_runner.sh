@@ -23,7 +23,7 @@ if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
     msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$kind"
     # these builds are meant to fail in the preprocessor, so regenerating for each of them
     # would only cost time -- the build below does it once for the run
-    bash build.sh "$@" --skip-code-generation "$directive" 1>kinds.out 2>/dev/null
+    bash build.sh "$@" --skip-code-generation "$directive" >kinds.out 2>&1
     if file_matches 'Divi.*zero' kinds.out; then
       stderr "$msg_prefix$COLOR_CREAM: ${COLOR_GREEN}success"
     else
