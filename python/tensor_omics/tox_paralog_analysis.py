@@ -66,7 +66,7 @@ _lib.detect_dosage_effect_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_DOSAGE_EFFECT_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "max_angle", "gain_gamma", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, "work_arr_paralog_subsets", None, None, None,)
+_DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, None, None, None, None,)
 
 _lib.detect_subfunctionalization_c.restype = None
 _lib.detect_subfunctionalization_c.argtypes = (
@@ -89,7 +89,7 @@ _lib.detect_subfunctionalization_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, "work_arr_paralog_subsets", None, None, None, None,)
+_DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, None, None, None, None, None,)
 
 _lib.filter_paralogs_by_pattern_dosage_effect_c.restype = None
 _lib.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
@@ -106,7 +106,7 @@ _lib.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENTS = ("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "gene_angles", "masks", None, None, "masks", None,)
+_FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "gene_angles", None, None, None, None, None,)
 
 _lib.filter_paralogs_by_pattern_subfunctionalization_c.restype = None
 _lib.filter_paralogs_by_pattern_subfunctionalization_c.argtypes = (
@@ -123,7 +123,7 @@ _lib.filter_paralogs_by_pattern_subfunctionalization_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS = ("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", "masks", None, None, "masks", None,)
+_FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", None, None, None, None, None,)
 
 def detect_neofunctionalization(
         ancestors,

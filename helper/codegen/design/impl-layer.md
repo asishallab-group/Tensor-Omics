@@ -621,12 +621,14 @@ real argument is checked, and an argument opts *out* per failure mode.
 DM_MIN(EXPR)         The minimum valid value is `EXPR`.
 DM_MAX(EXPR)         The maximum valid value is `EXPR`.
 DM_SENTINEL(EXPR)    The value `EXPR` is additionally accepted.
+DM_EQUALS(EXPR)      Must equal `EXPR`.
 DM_ALLOW_NAN         NaN is permitted for this value.
 DM_ALLOW_INFINITE    Infinite values are permitted for this value.
 ```
 
-These compose onto the existing `tox_errors` validators — the generator never writes an ad-hoc
-check:
+These compose onto the existing `tox_errors` validators. The generator writes a check of its own
+only where a convention states one no validator expresses: the `n_selected_` count against its
+mask, a mode against its table, and `DM_EQUALS` (below):
 
 - Extent scalars → `validate_dimension_size` (automatic, from the argument's extent role; no
   macro needed).
@@ -635,6 +637,8 @@ check:
   (exclusive bounds via `above(0.0_real64)` / `below(…)`, written verbatim). `DM_ALLOW_NAN` /
   `DM_ALLOW_INFINITE` pass the corresponding new optional logical.
 - Integer scalars/arrays → validated only if they carry a bound (integers cannot be NaN/Inf).
+- `DM_EQUALS(EXPR)` → `if (n /= (EXPR)) call set_err_once(ierr, ERR_SIZE_MISMATCH, ...)` after
+  the scalar checks; an extent keeps `validate_dimension_size` beside it (#203).
 - `arg_pos` is the 1-based position of the argument in the *emitted* procedure's dummy list, so
   `foo` and `foo_expert` number independently — they have to, since `foo` is the shorter list.
 
@@ -663,6 +667,28 @@ wrong.** The generator's vocabulary is the API review. If a genuine new kind of 
 turns up, it earns a *convention* — a directive with a name, a meaning, and every implementation
 that qualifies using it — not a per-procedure escape hatch that hides one bad signature and stops
 anyone from noticing the next.
+
+### An integer that must equal another size: `DM_EQUALS` (#203)
+
+`normalization_pipeline_impl` takes `n_replicates`, the rows of `expr`, and `reps_per_tissue`,
+which must add up to it. Until #203 that was said as `DM_MIN(sum(...))` beside `DM_MAX(sum(...))`:
+two doc sentences for one fact, `ERR_INVALID_INPUT` for a size, and no dimension check. FES's
+brief for the convention: "Keep it safe and simple."
+
+- **Only on a required `intent(in)` scalar integer** (`validate._check_equals`): the wrapper compares the
+  value the caller passed, before the call.
+- **Emitted like `DM_MIN`/`DM_MAX`**: `if (n /= (EXPR)) call set_err_once(ierr, ERR_SIZE_MISMATCH, ...)`,
+  after the other scalar checks and before the array checks, under the one return, inside
+  `NO_INPUT_VALIDATION`. After every scalar check, so an extent keeps its dimension check and an
+  empty input stays `ERR_EMPTY_INPUT` (FES on #203, 2026-09-14).
+- **Not done, on purpose** (FES, 2026-11-07): no int64 widening, so a sum that wraps in int32 is
+  not caught; no scope rule for `EXPR`, as there is none for `DM_MIN`/`DM_MAX`; no ordering of the
+  arrays `EXPR` reads before it; no separate check in the C wrapper.
+- **The bindings say it.** The argument's doc reads "Must equal `EXPR`." Where Python and R read
+  the extent off an array, that doc never reaches them, so `doc_contract.equality_notes` puts the
+  sentence on the array, its axis counted as each language counts; and
+  `error_arguments.equalities_of` hands `EXPR`, as written, to `check_err_code`, which appends
+  `'n_replicates' must equal sum(reps_per_tissue)`.
 
 ### Sorting and work arrays (the allocating tier)
 

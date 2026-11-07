@@ -53,6 +53,7 @@ Related reading, once this is not enough:
   - [5.14 A genuine runtime error](#514-a-genuine-runtime-error)
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
   - [5.16 A function](#516-a-function)
+  - [5.17 An extent that must equal another size](#517-an-extent-that-must-equal-another-size)
 
 **Part II — the export path** (IO, infrastructure, and everything else)
 
@@ -1029,6 +1030,58 @@ An **`elemental`** function is wrapped like an elemental subroutine, with scalar
 an `intent(out)` argument — its own `ierr`, a `tmp_` work array — cannot be `pure`, so neither are
 its wrappers.
 
+### 5.17 An extent that must equal another size
+
+**When** an integer argument, usually an extent, has its value fixed by other arguments: `n_replicates` is the number of rows of `expr`, and `reps_per_tissue` says how many of
+them belong to each tissue, so the two must agree.
+
+**Write** `DM_EQUALS` with the expression it must equal. Fortran source, as for `DM_MIN`:
+
+```fortran
+integer(int32), intent(in) :: n_replicates
+    !! Number of replicates per gene, the rows of `expr`
+    !! DM_EQUALS(sum(reps_per_tissue))
+integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
+    !! Number of replicates per tissue in `expr`
+    !! DM_MIN(1_int32)
+real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+    !! Gene Expression matrix
+```
+
+**You get** a comparison reporting `ERR_SIZE_MISMATCH` at the argument, emitted like a `DM_MIN`
+check: after the other scalar checks, before the array checks, under the one return. An extent
+keeps its dimension check beside it, so an empty input is still `ERR_EMPTY_INPUT` and a negative
+one `ERR_INVALID_INPUT`.
+
+```fortran
+call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
+...                                                    ! span, degree
+if (n_replicates /= (sum(reps_per_tissue))) call set_err_once(ierr, ERR_SIZE_MISMATCH, arg_pos=2_int32)
+call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
+call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=5_int32, min=1_int32)
+if (is_err(ierr)) return
+```
+
+The comparison is plain Fortran in `int32`: a sum that wraps (`[huge, huge, 4]` is 2) is not
+caught.
+
+The documentation says "Must equal `sum(reps_per_tissue)`." on the argument. Where Python and R
+read the extent off an array and so never show it, the sentence goes onto that array instead,
+the axis counted as the language counts it: "`n_replicates`, its axis 0, must equal
+`sum(reps_per_tissue)`." in Python, axis 1 in R. The error names the expression too:
+`Array size mismatch (argument 'expr', via 'n_replicates'); 'n_replicates' must equal
+sum(reps_per_tissue)`. The check is a value check, inside `#ifndef NO_INPUT_VALIDATION` like the
+others: a build without validation does without it.
+
+**Only** on a required `intent(in)` scalar integer. On a hand-written `M_EXPORT_C` procedure it is
+documentation only, like `DM_MIN` (Section 6.3).
+
+If the array can be declared with the expression itself — `expr(sum(reps_per_tissue), n_genes)`,
+as `calc_tiss_avg_impl` does — that needs no marker and no extent argument at all (Section 4).
+`DM_EQUALS` is for a size that the implementation needs as an argument anyway.
+
 ---
 
 # Part II — the export path
@@ -1097,8 +1150,8 @@ requirements, not implementation requirements. Untagged procedures are held to n
 This is the one real difference, and the one that bites.
 
 > **The range macros generate checks only in generated wrappers.** On a hand-written procedure,
-> `DM_MIN`, `DM_MAX`, `DM_SENTINEL`, `DM_ALLOW_NAN` and `DM_ALLOW_INFINITE` are **documentation
-> only** — they render into the Ford, Python and R docs and validate nothing. There is likewise
+> `DM_MIN`, `DM_MAX`, `DM_SENTINEL`, `DM_EQUALS`, `DM_ALLOW_NAN` and `DM_ALLOW_INFINITE` are
+> **documentation only** — they render into the Ford, Python and R docs and validate nothing. There is likewise
 > **no default finiteness contract**: a real argument here is checked only if you check it.
 
 So the procedure declares its own `ierr`, opens with `set_ok`, and calls the `tox_errors`
@@ -1352,6 +1405,7 @@ source and carries a note saying what to write instead.
 | an extent that is not `intent(in)`, or that only optional arrays carry | the bindings read an extent off the arrays they are passed (Section 5.3) |
 | a mask and its `n_selected_` count that are not both `intent(in)`, or an optional mask with a count | the count is derived from the mask before the call (Section 5.3) |
 | a `DM_RESULT_SIZE_IS` naming an `intent(in)` count | the count is what the procedure reports back (Section 5.6) |
+| a `DM_EQUALS` on anything but a required `intent(in)` scalar integer | the wrapper compares the value the caller passed, before the call (Section 5.17) |
 | an `intent(out)` `<base>_perm` whose base is an argument, or an `intent(out)` `DM_OUTPUT_FROM(..., AUTO)` value | `foo` builds or computes it itself and would discard the result (Sections 5.8, 5.9) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
@@ -1470,8 +1524,9 @@ Two things that will bite when you convert an existing procedure to an implement
 - [ ] No `!!` on an ordinary comment inside a procedure *body*: `!!` is Ford's docmark, silent
       while the procedure is unexported and stray documentation lines in the wrapper once it is
       not. `grep -n '^\s*!! ' <file>` before converting one.
-- [ ] Every bounded value carries `DM_MIN` / `DM_MAX` / `DM_SENTINEL`. Every real that may be
-      non-finite carries the matching `DM_ALLOW_*` — and no other real does.
+- [ ] Every bounded value carries `DM_MIN` / `DM_MAX` / `DM_SENTINEL`, and an extent fixed by
+      other arguments `DM_EQUALS`. Every real that may be non-finite carries the matching
+      `DM_ALLOW_*` — and no other real does.
 - [ ] No validation in the implementation; no `ierr` unless it reports a genuine runtime failure.
 - [ ] The generated wrapper was read once, and validates what you expected it to — and where two
       were generated, the plain one prepares what you meant it to.

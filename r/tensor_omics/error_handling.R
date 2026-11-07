@@ -215,11 +215,14 @@ ERR_UNKNOWN <- 9999L
 #' @param shapes positionally alongside `arguments`: the declared shape of an array
 #'   whose size the C wrapper compares, which the message of ERR_SIZE_MISMATCH
 #'   then states. NA elsewhere.
+#' @param equals positionally alongside `arguments`: what an argument documented
+#'   with DM_EQUALS must equal, which the message of ERR_SIZE_MISMATCH then
+#'   states. NA elsewhere.
 #' @return invisibly, the name of the status code if the call reported one;
 #'   status codes are outcomes, not failures, and never raise
 #' @keywords internal
 check_err_code <- function(ierr, arguments = character(), sources = character(),
-                                    shapes = character()) {
+                                    shapes = character(), equals = character()) {
     code <- ierr %% ARG_POS_FACTOR
     if (code == 0L) return(invisible(NULL))
 
@@ -249,6 +252,9 @@ check_err_code <- function(ierr, arguments = character(), sources = character(),
             if (!is.na(shape) && code == 206L)
                 # what the array must be, which no code can carry
                 message <- sprintf("%s; '%s' is declared with shape (%s)", message, arguments[[arg_pos]], shape)
+            expected <- if (arg_pos <= length(equals)) equals[[arg_pos]] else NA_character_
+            if (!is.na(expected) && code == 206L)
+                message <- sprintf("%s; '%s' must equal %s", message, arguments[[arg_pos]], expected)
         } else {
             message <- sprintf("%s (argument %d)", message, arg_pos)
         }

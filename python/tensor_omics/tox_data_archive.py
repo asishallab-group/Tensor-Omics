@@ -126,8 +126,6 @@ _lib.read_tox_data_into_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _READ_TOX_DATA_INTO_ARGUMENTS = ("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_READ_TOX_DATA_INTO_ARGUMENT_SOURCES = (None, "gene_ids", None, None, "expression", "expression", None, "gene_to_family", None, "family_ids", None, None, "family_centroids", "family_centroids", None, "shift_vectors", "shift_vectors", None, None,)
 
 def create_zip_archive(
         zip_filename,
@@ -580,7 +578,7 @@ def read_tox_data_into(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS, _READ_TOX_DATA_INTO_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     expression.flags.writeable = False

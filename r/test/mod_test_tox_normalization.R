@@ -53,7 +53,20 @@ test_normalization_pipeline <- function() {
 
 test_normalization_pipeline_rejects_reps_not_summing_to_the_replicates <- function() {
   assert_error(normalization_pipeline(.expr(), c(3L, 2L)),
-               "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_INVALID_INPUT)
+               "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_SIZE_MISMATCH)
+  # the message says what the hidden n_replicates had to equal, and blames the array it is read off
+  err <- tryCatch({ normalization_pipeline(.expr(), c(3L, 2L)); NULL }, error = function(e) e)
+  assert_true(identical(err$argument, "expr"), paste("blames", err$argument))
+  expected <- "(argument 'expr', via 'n_replicates'); 'n_replicates' must equal sum(reps_per_tissue)"
+  assert_true(endsWith(conditionMessage(err), expected), conditionMessage(err))
+}
+
+test_normalization_pipeline_checks_the_counts <- function() {
+  # a count below one is reps_per_tissue's own error, though c(5, -3) sums to the two rows
+  assert_error(normalization_pipeline(.expr()[1:2, ], c(5L, -3L)),
+               "reps_per_tissue c(5, -3) has a negative count", ERR_INVALID_INPUT)
+  # no tissues: an empty input, not a mismatch
+  assert_error(normalization_pipeline(.expr(), integer()), "reps_per_tissue is empty", ERR_EMPTY_INPUT)
 }
 
 test_normalize_by_std_dev <- function() {

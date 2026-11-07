@@ -46,8 +46,6 @@ _lib.get_array_metadata_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GET_ARRAY_METADATA_ARGUMENTS = ("filename", "dims_out", "dims_out_capacity", "ndims", "type_code", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_GET_ARRAY_METADATA_ARGUMENT_SOURCES = (None, None, "dims_out", None, None, None,)
 
 def get_array_metadata(
         filename,
@@ -111,7 +109,7 @@ def get_array_metadata(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS, _GET_ARRAY_METADATA_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     dims_out.flags.writeable = False

@@ -77,7 +77,7 @@ _lib.fjct_compute_masked_jsd_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _FJCT_COMPUTE_MASKED_JSD_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "neighbor_mask_S1", "neighbor_mask_S2", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "total_included_n_reps", "global_js_divergence", "weights", "pmf_S1", "pmf_S2", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_FJCT_COMPUTE_MASKED_JSD_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, "pmf_S1", None, None, None, None, None, None, None, None, None, None,)
+_FJCT_COMPUTE_MASKED_JSD_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.fjct_compute_contribution_scores_c.restype = None
 _lib.fjct_compute_contribution_scores_c.argtypes = (
