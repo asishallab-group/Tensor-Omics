@@ -93,10 +93,24 @@ def test_omics_vector_RAP_projection_equal_coordinates_give_exact_zeros():
 def test_omics_field_RAP_projection_equal_shifts_give_exact_zeros():
     for case_name, value, n_axes in _EQUAL_COORDINATE_CASES:
         fields = np.zeros((n_axes, 2, 1), order="F")
-        fields[:, 0, 0] = value  # the origin; the target stays at 0, so every shift is `value`
+        fields[:, 1, 0] = value  # the target; the origin stays at 0, so every shift is `value`
         projections = np.asarray(omics_field_RAP_projection(
             fields, np.ones(1, dtype=bool), np.ones(n_axes, dtype=bool)))
         _assert_exact_zeros_that_normalization_refuses(projections[:, 0], "shift " + case_name)
+
+
+
+def test_omics_field_RAP_projection_shifts_from_origin_to_target():
+    """Signs worked out by hand: (0,0,0) to (3,0,0) is the shift (3,0,0), mean 1, so (2,-1,-1)."""
+    fields = np.zeros((3, 2, 2), order="F")
+    fields[:, 1, 0] = [3.0, 0.0, 0.0]  # field 1: origin 0, target (3,0,0)
+    fields[:, 0, 1] = [3.0, 0.0, 0.0]  # field 2: the reverse
+    projections = np.asarray(omics_field_RAP_projection(fields, np.ones(2, dtype=bool), np.ones(3, dtype=bool)))
+
+    assert np.array_equal(projections[:, 0], [2.0, -1.0, -1.0]), \
+        f"origin (0,0,0) to target (3,0,0) must project to (2,-1,-1), got {projections[:, 0]}"
+    assert np.array_equal(projections[:, 1], [-2.0, 1.0, 1.0]), \
+        f"origin (3,0,0) to target (0,0,0) must project to (-2,1,1), got {projections[:, 1]}"
 
 
 if __name__ == "__main__":

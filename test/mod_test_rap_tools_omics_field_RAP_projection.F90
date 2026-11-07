@@ -17,7 +17,7 @@ contains
     function get_all_tests_rap_tools_omics_field_RAP_projection() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(11))
+        allocate (all_tests(12))
 
         all_tests(1) = test_case("test_omics_field_RAP_projection_all_selected", test_all_selected)
         all_tests(2) = test_case("test_omics_field_RAP_projection_one_axis_selected", test_one_axis_selected)
@@ -31,6 +31,8 @@ contains
         all_tests(10) = test_case("test_omics_field_RAP_projection_concrete_example", test_concrete_example)
         all_tests(11) = test_case("test_omics_field_RAP_projection_equal_shifts_give_exact_zeros", &
                                   test_equal_shifts_give_exact_zeros)
+        all_tests(12) = test_case("test_omics_field_RAP_projection_shifts_from_origin_to_target", &
+                                  test_shifts_from_origin_to_target)
     end function get_all_tests_rap_tools_omics_field_RAP_projection
 
     !> Test all axes and vectors are selected
@@ -259,10 +261,11 @@ contains
         real(real64), dimension(3) :: expected_projection_vec
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
+        ! from the origin to the target, the shift is (2, 9, 1.1) with mean 12.1/3, so
+        ! (2 - 12.1/3, 9 - 12.1/3, 1.1 - 12.1/3) = (-6.1/3, 14.9/3, -8.8/3)
         vecs(:, 1, 1) = [1.0_real64, -3.0_real64, 1.1_real64]
         vecs(:, 2, 1) = [3.0_real64, 6.0_real64, 2.2_real64]
-        expected_projection_vec = vecs(:, 1, 1) - vecs(:, 2, 1)
-        expected_projection_vec = expected_projection_vec - sum(expected_projection_vec)/3
+        expected_projection_vec = [-6.1_real64, 14.9_real64, -8.8_real64]/3
 
         axes_mask = [.true., .true., .true.]
         vecs_mask = [.true.]
@@ -284,7 +287,7 @@ contains
             )
     end subroutine test_concrete_example
 
-    !> A field whose computed differences, origin minus target, are all equal projects to exact
+    !> A field whose computed shift, target minus origin, has all coordinates equal projects to exact
     !| zeros, and normalize_unit_length then refuses it as the zero vector. Subtracting the rounded
     !| mean used to leave a residue for many of them, which normalization turned into a direction.
     subroutine test_equal_shifts_give_exact_zeros()
@@ -303,7 +306,7 @@ contains
         call check_equal_shifts_give_exact_zeros("smallest subnormal - 0 on 7 axes", spread(smallest_subnormal, 1, 7), &
                                                  spread(0.0_real64, 1, 7))
         ! distinct points whose differences all round to the same 0.7
-        call check_equal_shifts_give_exact_zeros("distinct points, shift 0.7", [1.5_real64, 2.5_real64, 0.75_real64], &
+        call check_equal_shifts_give_exact_zeros("distinct points, shift -0.7", [1.5_real64, 2.5_real64, 0.75_real64], &
                                                  [0.8_real64, 1.8_real64, 0.05_real64])
     end subroutine test_equal_shifts_give_exact_zeros
 
@@ -333,5 +336,28 @@ contains
         call normalize_unit_length(projections(:, 1), n_axes, ierr)
         call assert_err(ierr, ERR_DIVISION_BY_ZERO, "equal shifts "//case_name//": normalization must refuse")
     end subroutine check_equal_shifts_give_exact_zeros
+
+    !> The shift runs from the origin to the target, so its sign is pinned by values worked out by
+    !| hand, independently of the formula: (0,0,0) to (3,0,0) is the shift (3,0,0), whose mean is 1,
+    !| so it projects to (2,-1,-1); the reverse field projects to (-2,1,1).
+    subroutine test_shifts_from_origin_to_target()
+        real(real64) :: fields(3, 2, 2), projections(3, 2)
+        logical(c_bool) :: axes_mask(3), fields_mask(2)
+        integer(int32) :: ierr
+
+        fields(:, 1, 1) = [0.0_real64, 0.0_real64, 0.0_real64]
+        fields(:, 2, 1) = [3.0_real64, 0.0_real64, 0.0_real64]
+        fields(:, 1, 2) = [3.0_real64, 0.0_real64, 0.0_real64]
+        fields(:, 2, 2) = [0.0_real64, 0.0_real64, 0.0_real64]
+        axes_mask = .true.
+        fields_mask = .true.
+
+        call omics_field_RAP_projection(fields, 3, 2, fields_mask, 2, axes_mask, 3, projections, ierr)
+        call assert_err(ierr, ERR_OK, "shift from origin to target: projection")
+        call assert_identical_array_real(projections(:, 1), [2.0_real64, -1.0_real64, -1.0_real64], 3, &
+                                         "shift from origin (0,0,0) to target (3,0,0)")
+        call assert_identical_array_real(projections(:, 2), [-2.0_real64, 1.0_real64, 1.0_real64], 3, &
+                                         "shift from origin (3,0,0) to target (0,0,0)")
+    end subroutine test_shifts_from_origin_to_target
 
 end module mod_test_rap_tools_omics_field_RAP_projection

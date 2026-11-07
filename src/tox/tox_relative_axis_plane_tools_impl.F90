@@ -70,10 +70,10 @@ contains
 
     !> summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| A field is projected as the difference of its two vectors, origin minus target, taken on the
-    !| selected axes; that difference minus the mean of its coordinates is the projection. A field
-    !| whose differences are all equal shifts along the space diagonal and projects to exact zeros,
-    !| decided on the differences themselves rather than on their rounded mean, so
+    !| A field is projected as its shift vector, from the origin to the target: target minus origin,
+    !| taken on the selected axes. That shift minus the mean of its coordinates is the projection.
+    !| A shift whose coordinates are all equal runs along the space diagonal and projects to exact
+    !| zeros, decided on those coordinates themselves rather than on their rounded mean, so
     !| `normalize_unit_length` refuses it as the zero vector it is.
     pure subroutine omics_field_RAP_projection_impl(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
         integer(int32), intent(in) :: n_axes
@@ -101,8 +101,8 @@ contains
                 i_axis_proj = 1
                 do i_axis = 1, n_axes
                     if (axes_selection_mask(i_axis)) then
-                        ! compute shift vector as difference between origin and target
-                        projections(i_axis_proj, i_vec_proj) = fields(i_axis, 1, i_vec) - fields(i_axis, 2, i_vec)
+                        ! the shift vector, from the origin to the target
+                        projections(i_axis_proj, i_vec_proj) = fields(i_axis, 2, i_vec) - fields(i_axis, 1, i_vec)
 
                         i_axis_proj = i_axis_proj + 1
                     end if
