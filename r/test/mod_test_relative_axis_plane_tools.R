@@ -68,4 +68,58 @@ test_omics_field_RAP_projection_refuses_fields_without_two_points <- function() 
                "a field without its target must be refused")
 }
 
+# Vectors whose coordinates are all equal. Many of them used to project to a residue of rounding
+# noise instead of zeros, rep(0.7, 6) to about -1.1e-16 per coordinate.
+.smallest_subnormal <- 2^-1074
+.equal_coordinate_cases <- list(
+  list(name = "rep(0.7, 6)", value = 0.7, n_axes = 6L),
+  list(name = "rep(0.1, 3)", value = 0.1, n_axes = 3L),
+  list(name = "rep(0.1, 7)", value = 0.1, n_axes = 7L),
+  list(name = "rep(3.3, 13)", value = 3.3, n_axes = 13L),
+  list(name = "rep(1e300, 3)", value = 1e300, n_axes = 3L),
+  list(name = "rep(-2.5, 4)", value = -2.5, n_axes = 4L),
+  list(name = "rep(tiny, 5)", value = .Machine$double.xmin, n_axes = 5L),
+  list(name = "rep(tiny / 4, 3), subnormal", value = .Machine$double.xmin / 4, n_axes = 3L),
+  list(name = "rep(smallest subnormal, 7)", value = .smallest_subnormal, n_axes = 7L),
+  list(name = "5 on a single axis", value = 5, n_axes = 1L)
+)
+
+.assert_exact_zeros_that_normalization_refuses <- function(projection, case_name) {
+  assert_true(all(projection == 0), paste0(case_name, ": projection is not exact zeros"))
+  assert_error(normalize_unit_length(projection),
+               paste0(case_name, ": normalize_unit_length must refuse the zero vector"),
+               code = ERR_DIVISION_BY_ZERO)
+}
+
+test_omics_vector_RAP_projection_equal_coordinates_give_exact_zeros <- function() {
+  for (case in .equal_coordinate_cases) {
+    vecs <- matrix(case$value, nrow = case$n_axes, ncol = 1L)
+    res <- omics_vector_RAP_projection(vecs, TRUE, rep(TRUE, case$n_axes))
+    .assert_exact_zeros_that_normalization_refuses(res[, 1], case$name)
+  }
+}
+
+test_omics_field_RAP_projection_equal_shifts_give_exact_zeros <- function() {
+  for (case in .equal_coordinate_cases) {
+    # the target holds `value`, the origin 0, so every shift is `value`
+    fields <- array(0, dim = c(case$n_axes, 2L, 1L))
+    fields[, 2L, 1L] <- case$value
+    res <- omics_field_RAP_projection(fields, TRUE, rep(TRUE, case$n_axes))
+    .assert_exact_zeros_that_normalization_refuses(res[, 1], paste("shift", case$name))
+  }
+}
+
+# Signs worked out by hand: (0,0,0) to (3,0,0) is the shift (3,0,0), mean 1, so (2,-1,-1)
+test_omics_field_RAP_projection_shifts_from_origin_to_target <- function() {
+  fields <- array(0, dim = c(3L, 2L, 2L))
+  fields[, 2L, 1L] <- c(3, 0, 0)  # field 1: origin 0, target (3,0,0)
+  fields[, 1L, 2L] <- c(3, 0, 0)  # field 2: the reverse
+  res <- omics_field_RAP_projection(fields, c(TRUE, TRUE), c(TRUE, TRUE, TRUE))
+
+  assert_true(identical(res[, 1], c(2, -1, -1)),
+              "origin (0,0,0) to target (3,0,0) must project to (2,-1,-1)")
+  assert_true(identical(res[, 2], c(-2, 1, 1)),
+              "origin (3,0,0) to target (0,0,0) must project to (-2,1,1)")
+}
+
 run_all_tests()

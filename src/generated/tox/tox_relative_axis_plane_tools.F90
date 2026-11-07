@@ -37,6 +37,10 @@ module tox_relative_axis_plane_tools
 contains
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):omics_vector_RAP_projection_impl]].
+    !| A vector's projection is the vector minus the mean of its selected coordinates. A vector whose
+    !| selected coordinates are all equal lies on the space diagonal and projects to exact zeros,
+    !| decided on the coordinates themselves rather than on their rounded mean, so
+    !| `normalize_unit_length` refuses it as the zero vector it is.
     pure subroutine omics_vector_RAP_projection(&
             vecs,&
             n_axes,&
@@ -92,6 +96,11 @@ contains
     end subroutine omics_vector_RAP_projection
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):omics_field_RAP_projection_impl]].
+    !| A field is projected as its shift vector, from the origin to the target: target minus origin,
+    !| taken on the selected axes. That shift minus the mean of its coordinates is the projection.
+    !| A shift whose coordinates are all equal runs along the space diagonal and projects to exact
+    !| zeros, decided on those coordinates themselves rather than on their rounded mean, so
+    !| `normalize_unit_length` refuses it as the zero vector it is.
     pure subroutine omics_field_RAP_projection(&
             fields,&
             n_axes,&
