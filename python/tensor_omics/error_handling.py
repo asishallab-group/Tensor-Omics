@@ -129,7 +129,7 @@ STAT_TOO_FEW_MEMBERS = 403
 STAT_NO_FAMILY = 404
 #: no family: the gene is assigned to no family
 STAT_ZERO_VECTOR = 405
-#: zero vector: the gene's expression vector is zero (or all its components subnormal), so it has no direction
+#: zero vector: the gene's expression vector is zero, so it has no direction
 ERR_UNIT_NOT_CONNECTED = 5002
 #: Fortran runtime error: unit not connected
 ERR_INTERNAL = 9001

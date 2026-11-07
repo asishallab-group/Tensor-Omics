@@ -13,10 +13,11 @@
 #' loses nothing to cancellation when the members are close.
 #'
 #' A gene whose expression vector is zero has no direction. It is left out of its family's
-#' statistics entirely -- neither counted nor summed. A vector whose components are all
-#' subnormal (below `tiny(1.0)`, about `2.2e-308`, in magnitude) counts as zero too, in every
-#' build: whether such numbers survive at all depends on the build's floating-point mode. A
-#' family whose statistics do not exist gets the zero vector as its direction; see `status`.
+#' statistics entirely -- neither counted nor summed. A vector made only of subnormal numbers
+#' (below `tiny(1.0)`, about `2.2e-308`, in magnitude) is not zero and has its direction, as
+#' long as the build reads such numbers as themselves; where its floating-point mode reads
+#' subnormal inputs as zero (denormals-are-zero), the vector is zero. A family whose
+#' statistics do not exist gets the zero vector as its direction; see `status`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers_by_angle::compute_family_direction}, whose argument names
 #' are the ones an error message reports.
@@ -87,7 +88,7 @@ compute_family_direction <- function(n_families, expression_vectors, gene_to_fam
 #'   The value `0` is additionally accepted.
 #' @return a numeric vector. Angle in radians between each gene and its family's direction, in \eqn{[0, \pi]}, or
 #'   `-1.0` where the gene has no family, its expression vector
-#'   is zero or all subnormal, or its family has no direction
+#'   is zero, or its family has no direction
 #' @export
 compute_angular_deviations <- function(expression_vectors, family_directions, gene_to_fam) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -379,7 +380,7 @@ flag_angle_outliers <- function(relative_angular_deviations, threshold) {
 #'   \item{gene_status}{a integer vector. Zero where the gene has a relative angular deviation, otherwise the reason it has
 #'     not: \code{STAT_NO_FAMILY} for a gene without a family,
 #'     \code{STAT_ZERO_VECTOR} for one whose expression vector is
-#'     zero or all subnormal, and otherwise its family's `status`}
+#'     zero, and otherwise its family's `status`}
 #' @export
 detect_angle_outliers <- function(n_families, expression_vectors, gene_to_fam, quantile_level = 0.95, min_angular_dispersion = 0.0, max_angular_dispersion = 1.1774100225154747) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")

@@ -17,6 +17,7 @@ module mod_test_tox_get_outliers_by_angle
     use tox_get_outliers_by_angle
     use tox_errors
     use test_suite, only: test_case
+    use mod_test_f42_vector, only: reads_subnormal_inputs
     implicit none
     private
     public :: get_all_tests_tox_get_outliers_by_angle
@@ -96,7 +97,8 @@ contains
         all_tests(37) = test_case("test_detect_999_plus_1_not_masked", test_detect_999_plus_1_not_masked)
         all_tests(38) = test_case("test_published_defaults", test_published_defaults)
         all_tests(39) = test_case("test_nearly_cancelling_resultant", test_nearly_cancelling_resultant)
-        all_tests(40) = test_case("test_subnormal_vector_is_zero_vector", test_subnormal_vector_is_zero_vector)
+        all_tests(40) = test_case("test_subnormal_vector_in_both_underflow_modes", &
+                                  test_subnormal_vector_in_both_underflow_modes)
         all_tests(41) = test_case("test_cancellation_never_stable_up_to_the_limit", &
                                   test_cancellation_never_stable_up_to_the_limit)
         all_tests(42) = test_case("test_noise_floor_at_its_boundary", test_noise_floor_at_its_boundary)
@@ -406,7 +408,7 @@ contains
 
     !> Magnitudes whose squares overflow or underflow still give exact directions: the length is
     !| taken on the vector scaled by a power of two that brings its largest component into
-    !| [2^-500, 2^500].
+    !| [2^-470, 2^496].
     subroutine test_family_direction_extreme_magnitudes()
         integer(int32), parameter :: n_axes = 2, n_genes = 3, n_families = 1
         real(real64) :: expression_vectors(n_axes, n_genes)
@@ -1800,60 +1802,81 @@ contains
                                      "nearly cancelling spherical: no deviations")
     end subroutine test_nearly_cancelling_resultant
 
-    !> A vector whose components are all subnormal counts as a zero vector, whether the build
-    !| flushes subnormals to zero or not: three copies of (0, 0, -1e-310, 0, 0, 0) used to give NaN
-    !| with ifx's fast floating-point model and gradual underflow (as under Python or R). Where
-    !| the underflow mode can be switched, both modes are tried, and the mode is restored after.
-    subroutine test_subnormal_vector_is_zero_vector()
-        logical :: gradual_at_start, gradual
+    !> A vector made only of subnormal numbers is not the zero vector: three copies of
+    !| (0, 0, -1e-310, 0, 0, 0) and (1, ..., 6) make a family of four, and against e1 each copy is
+    !| at pi/2. Where the build reads subnormal inputs as zero, the copies are zero vectors instead:
+    !| one member, too few, no angle, STAT_ZERO_VECTOR. Either way every result is finite (the
+    !| vector once gave NaN with ifx's fast floating-point model). Where the underflow mode can be
+    !| switched, both modes are tried, and the mode is restored after.
+    subroutine test_subnormal_vector_in_both_underflow_modes()
+        logical :: gradual_at_start
         integer :: i_mode
 
         call ieee_get_underflow_mode(gradual_at_start)
         do i_mode = 1, 2
-            gradual = i_mode == 1
             if (ieee_support_underflow_control(1.0_real64)) then
-                call ieee_set_underflow_mode(gradual)
+                call ieee_set_underflow_mode(i_mode == 1)
             else if (i_mode == 2) then
                 exit  ! the mode cannot be switched: the build's own mode was tried once
             end if
-            call check_subnormal_vector(gradual)
+            call check_subnormal_vector()
         end do
         if (ieee_support_underflow_control(1.0_real64)) call ieee_set_underflow_mode(gradual_at_start)
-    end subroutine test_subnormal_vector_is_zero_vector
+    end subroutine test_subnormal_vector_in_both_underflow_modes
 
-    subroutine check_subnormal_vector(gradual)
-        logical, intent(in) :: gradual
-        character(len=*), parameter :: SUBNORMAL_LABEL = "subnormal vector: "
+    subroutine check_subnormal_vector()
         real(real64) :: vectors(6, 4), directions(6, 1), dispersions(1), deviations(4), relative(4), threshold
         integer(int32) :: gene_to_fam(4), counts(1), status(1), gene_status(4), ierr
         logical(c_bool) :: is_outlier(4)
-        character(len=16) :: mode
+        logical :: gradual, subnormals_read
+        character(len=:), allocatable :: label
 
-        mode = merge("gradual         ", "flush to zero   ", gradual)
+        call ieee_get_underflow_mode(gradual)
+        subnormals_read = reads_subnormal_inputs()
+        if (gradual) then
+            label = "subnormal vector, gradual underflow"
+        else
+            label = "subnormal vector, flush to zero"
+        end if
+        if (.not. subnormals_read) label = label//", subnormals read as 0"
+        label = label//": "
         vectors = 0.0_real64
         vectors(3, 1:3) = -1.0e-310_real64
         vectors(:, 4) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 6.0_real64]
         gene_to_fam = 1
 
         call compute_family_direction(6, 4, 1, vectors, gene_to_fam, directions, dispersions, counts, status, ierr=ierr)
-        call assert_err(ierr, ERR_OK, SUBNORMAL_LABEL//trim(mode)//": ierr")
-        call assert_equal_int(counts(1), 1, SUBNORMAL_LABEL//trim(mode)//": not counted as members")
-        call assert_equal_int(status(1), STAT_TOO_FEW_MEMBERS, SUBNORMAL_LABEL//trim(mode)//": too few members")
-        call assert_all_finite(directions, 6, SUBNORMAL_LABEL//trim(mode)//": direction")
-        call assert_all_finite(dispersions, 1, SUBNORMAL_LABEL//trim(mode)//": dispersion")
+        call assert_err(ierr, ERR_OK, label//"ierr")
+        if (subnormals_read) then
+            call assert_equal_int(counts(1), 4, label//"counted as members")
+            call assert_equal_int(status(1), ERR_OK, label//"family status")
+        else
+            call assert_equal_int(counts(1), 1, label//"not counted as members")
+            call assert_equal_int(status(1), STAT_TOO_FEW_MEMBERS, label//"too few members")
+        end if
+        call assert_all_finite(directions, 6, label//"direction")
+        call assert_all_finite(dispersions, 1, label//"dispersion")
 
-        ! against a real direction, a subnormal vector has no angle
+        ! against e1: (0, 0, -1, 0, 0, 0) is orthogonal, 2 atan2(sqrt 2, sqrt 2) = pi/2
         directions(:, 1) = [1.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64]
         call compute_angular_deviations(6, 4, 1, vectors, directions, gene_to_fam, deviations, ierr=ierr)
-        call assert_equal_array_real(deviations(1:3), spread(ANGULAR_DEVIATIONS_SENTINEL, 1, 3), 3, 0.0_real64, &
-                                     SUBNORMAL_LABEL//trim(mode)//": no angle")
-        call assert_all_finite(deviations, 4, SUBNORMAL_LABEL//trim(mode)//": angles")
+        if (subnormals_read) then
+            call assert_equal_array_real(deviations(1:3), spread(PI/2, 1, 3), 3, TOL_ULP, label//"angle pi/2")
+        else
+            call assert_equal_array_real(deviations(1:3), spread(ANGULAR_DEVIATIONS_SENTINEL, 1, 3), 3, 0.0_real64, &
+                                         label//"no angle")
+        end if
+        call assert_all_finite(deviations, 4, label//"angles")
 
         call detect_angle_outliers(6, 4, 1, vectors, gene_to_fam, directions, dispersions, counts, status, relative, &
                                    threshold, is_outlier, gene_status, ierr=ierr)
-        call assert_equal_array_int(gene_status(1:3), [STAT_ZERO_VECTOR, STAT_ZERO_VECTOR, STAT_ZERO_VECTOR], 3, &
-                                    SUBNORMAL_LABEL//trim(mode)//": gene status")
-        call assert_all_finite(relative, 4, SUBNORMAL_LABEL//trim(mode)//": relative deviations")
+        if (subnormals_read) then
+            call assert_equal_array_int(gene_status(1:3), [ERR_OK, ERR_OK, ERR_OK], 3, label//"gene status")
+        else
+            call assert_equal_array_int(gene_status(1:3), [STAT_ZERO_VECTOR, STAT_ZERO_VECTOR, STAT_ZERO_VECTOR], 3, &
+                                        label//"gene status")
+        end if
+        call assert_all_finite(relative, 4, label//"relative deviations")
     end subroutine check_subnormal_vector
 
     !> m - 1 identical members and one at angle a: the direction turns by phi = atan2(sin a,

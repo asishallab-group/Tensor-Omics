@@ -7,7 +7,7 @@ module f42_vector_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err
-    use f42_math_impl, only: clamp, is_close
+    use f42_math_impl, only: clamp, is_close, scaling_exponent
     M_IMPLICIT_NONE
 
 contains
@@ -53,20 +53,58 @@ contains
     end subroutine angle_between
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the euclidean norm of a vector
+    !| Calculates the euclidean norm of a vector, as
+    !| [[f42_vector_impl(module):scaled_length(subroutine)]] scaled back: squaring an entry neither
+    !| overflows (past about 1e154) nor underflows to zero (below about 1e-162), so a vector of any
+    !| finite magnitude gets its norm. The result is Inf only where the true norm exceeds `huge`, as
+    !| for `[huge, huge]`; the zero vector has norm 0.
     pure real(real64) function norm(vector)
-        real(real64), dimension(:), intent(in) :: vector
-            !! Input vector the norm will be calcuated for
+        real(real64), dimension(:), contiguous, intent(in) :: vector
+            !! Input vector the norm will be calculated for
+
+        integer(int32) :: exponent
+        real(real64) :: scaled_norm
+
+        call scaled_length(size(vector, kind=int32), vector, exponent, scaled_norm)
+        norm = scale(scaled_norm, -exponent)
+    end function norm
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Length of a vector in scaled coordinates: `scaled_norm` is the euclidean length of
+    !| `scale(vector, exponent)`, and `scale(scaled_norm, -exponent)` the vector's own length. The
+    !| exponent comes from [[f42_math_impl(module):scaling_exponent(function)]], so it is 0 for
+    !| ordinary data, and the sum of squares overflows or underflows for no finite vector.
+    !|
+    !| `scale(vector(i), exponent)/scaled_norm` is the unit vector's component. Computed that way,
+    !| it never passes through the vector's length itself, which may overflow or be subnormal.
+    !| `scaled_norm` is exactly 0 for the zero vector, and positive for every other one -- but see
+    !| the next paragraph for a vector made only of subnormal numbers.
+    !|
+    !| An input made only of subnormal numbers can give different results in builds that flush
+    !| subnormals to zero (a fast floating-point model, or a host program that sets flush-to-zero or
+    !| denormals-are-zero): there it reads as the zero vector, with a `scaled_norm` of 0.
+    pure subroutine scaled_length(n_dims, vector, exponent, scaled_norm)
+        integer(int32), intent(in) :: n_dims
+            !! Number of elements in `vector`
+        real(real64), dimension(n_dims), intent(in) :: vector
+            !! The vector, of any finite magnitude
+        integer(int32), intent(out) :: exponent
+            !! Power of two the vector is scaled by before its length is taken; meaningless for
+            !! the zero vector
+        real(real64), intent(out) :: scaled_norm
+            !! Euclidean length of `scale(vector, exponent)`; exactly 0 for the zero vector
 
         integer(int32) :: i_dim
-        real(real64) :: norm_val
+        real(real64) :: scaled_squares_sum
 
-        norm_val = 0.0_real64
-        do concurrent(i_dim=1:size(vector)) shared(vector) reduce(+:norm_val)
-            norm_val = norm_val + vector(i_dim)**2
+        exponent = scaling_exponent(vector)
+
+        scaled_squares_sum = 0.0_real64
+        do concurrent(i_dim=1:n_dims) shared(vector, exponent) reduce(+:scaled_squares_sum)
+            scaled_squares_sum = scaled_squares_sum + scale(vector(i_dim), exponent)**2
         end do
-        norm = sqrt(norm_val)
-    end function norm
+        scaled_norm = sqrt(scaled_squares_sum)
+    end subroutine scaled_length
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Adds two vectors in-place
@@ -99,69 +137,20 @@ contains
     end subroutine subtract_vector
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Length of a vector as `scaled_norm / factor`, where `scaled_norm` is the Euclidean length
-    !| of `vector * factor` and `factor` a power of two that brings the largest component into
-    !| \([2^{-500}, 2^{500}]\) -- 1 for most data. The plain sum of squares overflows once a
-    !| component passes about `1e154` and underflows to zero once all lie below about `1e-162`;
-    !| scaled, it does neither for any finite vector, and `scaled_norm` stays within
-    !| \([2^{-500}, 2^{500} \sqrt{n}]\). `vector(i) * factor / scaled_norm` is then the unit vector's
-    !| component.
-    !|
-    !| Multiplying by a power of two is exact, so scaling loses nothing: a vector and any power-of-two
-    !| multiple of it give the same unit vector to the last bit, and lengths that differ by exactly
-    !| that power, as long as no square in either sum falls below `tiny`. That is why the factor is a
-    !| constant rather than the reciprocal of the largest component, which would round, and which is
-    !| subnormal for components near `huge` -- zero in a floating-point environment that flushes
-    !| subnormals.
-    !|
-    !| A vector whose largest component is subnormal counts as the zero vector, so that the answer
-    !| does not depend on that environment: a build with a fast floating-point model, or a host
-    !| program that sets flush-to-zero or denormals-are-zero, already reads such components as zero.
-    pure subroutine scaled_length(n_dims, vector, factor, scaled_norm)
-        integer(int32), intent(in) :: n_dims
-            !! Number of elements in `vector`
-        real(real64), intent(in) :: vector(n_dims)
-            !! The vector
-        real(real64), intent(out) :: factor
-            !! Power of two the vector is multiplied by before its length is taken
-        real(real64), intent(out) :: scaled_norm
-            !! Euclidean length of `vector * factor`; zero exactly for the zero vector and for one
-            !! whose components are all subnormal
-
-        real(real64), parameter :: LARGEST_UNSCALED = 2.0_real64**500, SMALLEST_UNSCALED = 2.0_real64**(-500)
-        real(real64), parameter :: SCALE_DOWN = 2.0_real64**(-600), SCALE_UP = 2.0_real64**600
-        real(real64) :: largest
-        integer(int32) :: i_dim
-
-        largest = 0.0_real64
-        do i_dim = 1, n_dims
-            largest = max(largest, abs(vector(i_dim)))
-        end do
-
-        factor = 1.0_real64
-        scaled_norm = 0.0_real64
-        if (largest < tiny(1.0_real64)) return
-        if (largest > LARGEST_UNSCALED) factor = SCALE_DOWN
-        if (largest < SMALLEST_UNSCALED) factor = SCALE_UP
-
-        do concurrent (i_dim = 1:n_dims) shared(vector, factor) reduce(+:scaled_norm)
-            scaled_norm = scaled_norm + (vector(i_dim)*factor)**2
-        end do
-        scaled_norm = sqrt(scaled_norm)
-    end subroutine scaled_length
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Whether a vector has a direction: it is not the zero vector, nor one whose components are
-    !| all subnormal -- the rule of [[f42_vector_impl(module):scaled_length(subroutine)]].
+    !| Whether a vector has a direction: it is not the zero vector. A vector made only of subnormal
+    !| numbers has one too, as long as the build reads such numbers as themselves: where its
+    !| floating-point mode reads subnormal inputs as zero (denormals-are-zero), it is the zero
+    !| vector. See [[f42_vector_impl(module):scaled_length(subroutine)]].
     pure logical(c_bool) function has_direction(n_dims, vector)
         integer(int32), intent(in) :: n_dims
             !! Number of elements in `vector`
         real(real64), intent(in) :: vector(n_dims)
             !! The vector
 
-        real(real64) :: factor, scaled_norm
+        integer(int32) :: exponent
+        real(real64) :: scaled_norm
 
-        call scaled_length(n_dims, vector, factor, scaled_norm)
+        call scaled_length(n_dims, vector, exponent, scaled_norm)
         has_direction = scaled_norm > 0.0_real64
     end function has_direction
 
@@ -183,20 +172,20 @@ contains
         real(real64), intent(in) :: direction(n_dims)
             !! The direction, of any length
 
-        real(real64) :: vector_factor, vector_scaled_norm, direction_factor, direction_scaled_norm
+        real(real64) :: vector_scaled_norm, direction_scaled_norm
         real(real64) :: vector_unit, direction_unit, difference_squared, sum_squared
-        integer(int32) :: i_dim
+        integer(int32) :: vector_exponent, direction_exponent, i_dim
 
         angle = -1.0_real64
-        call scaled_length(n_dims, vector, vector_factor, vector_scaled_norm)
-        call scaled_length(n_dims, direction, direction_factor, direction_scaled_norm)
+        call scaled_length(n_dims, vector, vector_exponent, vector_scaled_norm)
+        call scaled_length(n_dims, direction, direction_exponent, direction_scaled_norm)
         if (vector_scaled_norm == 0.0_real64 .or. direction_scaled_norm == 0.0_real64) return
 
         difference_squared = 0.0_real64
         sum_squared = 0.0_real64
         do i_dim = 1, n_dims
-            vector_unit = (vector(i_dim)*vector_factor)/vector_scaled_norm
-            direction_unit = (direction(i_dim)*direction_factor)/direction_scaled_norm
+            vector_unit = scale(vector(i_dim), vector_exponent)/vector_scaled_norm
+            direction_unit = scale(direction(i_dim), direction_exponent)/direction_scaled_norm
             difference_squared = difference_squared + (vector_unit - direction_unit)**2
             sum_squared = sum_squared + (vector_unit + direction_unit)**2
         end do

@@ -28,8 +28,8 @@ contains
         all_tests(1) = test_case("test_angular_distance", test_angular_distance)
         all_tests(2) = test_case("test_one_minus_cosine", test_one_minus_cosine)
         all_tests(3) = test_case("test_log_one_minus_small", test_log_one_minus_small)
-        all_tests(4) = test_case("test_log_one_minus_series_terms", test_log_one_minus_series_terms)
-        all_tests(5) = test_case("test_log_one_minus_at_the_switch", test_log_one_minus_at_the_switch)
+        all_tests(4) = test_case("test_log_one_minus_correctly_rounded", test_log_one_minus_correctly_rounded)
+        all_tests(5) = test_case("test_log_one_minus_near_1e_3", test_log_one_minus_near_1e_3)
         all_tests(6) = test_case("test_log_one_minus_large", test_log_one_minus_large)
     end function get_all_tests_f42_math
 
@@ -94,10 +94,10 @@ contains
     subroutine test_log_one_minus_small()
         real(real64) :: x
 
-        ! 0 exactly, and a tiny x gives -x exactly: -x*(1 + x*(...)) with 1 + x*(...) rounding to 1
+        ! 0 exactly, and a tiny x gives -x exactly: below half an ulp of 1, log1p is its argument
         call assert_exact(log_one_minus(0.0_real64), 0.0_real64, "x = 0")
         call assert_exact(log_one_minus(1.0e-300_real64), -1.0e-300_real64, "x = 1e-300")
-        ! ln(1 - 1e-8) = -1.00000000500000003e-8; log(1 - 1e-8) could be off by up to 1e-8 relative
+        ! ln(1 - 1e-8) = -1.00000000500000003e-8; a plain log(1 - 1e-8) could be off by up to 1e-8 relative
         x = 1.0e-8_real64
         call assert_close(log_one_minus(x), -1.0000000050000001e-8_real64, 2*spacing(1.0e-8_real64), "x = 1e-8")
         ! x = 2^-30: ln(1 - x) = -9.313225750491594e-10 (reference to 60 digits)
@@ -105,14 +105,8 @@ contains
         call assert_close(log_one_minus(x), -9.313225750491594e-10_real64, 2*spacing(9.3e-10_real64), "x = 2^-30")
     end subroutine test_log_one_minus_small
 
-    !> Every coefficient of the series matters, even the last. The x^6/6 term is
-    !| x^6/6 = 1.2e-19 at x = 9.5e-4, about one ulp of the result; replacing x/6 by x/5 adds
-    !| x^6/30, about a quarter ulp, so only a result exactly at the correctly rounded value can
-    !| see it. At the three x below -- k * 2^-34, exact -- the series gives the correctly rounded
-    !| ln(1 - x) whether or not the compiler fuses its multiply-adds, while x/5 in its place
-    !| rounds one ulp away (searched with the Horner scheme evaluated plainly and fused).
-    !| A wrong x^2 coefficient (0.5000001) is off by 1e-7 x^2, a million ulp.
-    subroutine test_log_one_minus_series_terms()
+    !> At the three x below -- k * 2^-34, exact -- the result is the correctly rounded ln(1 - x).
+    subroutine test_log_one_minus_correctly_rounded()
         integer(int32), parameter :: n_points = 3
         real(real64), parameter :: k(n_points) = [16300343.0_real64, 16301379.0_real64, 16302485.0_real64]
         ! ln(1 - k * 2^-34), correctly rounded
@@ -123,14 +117,13 @@ contains
 
         do i_point = 1, n_points
             call assert_exact(log_one_minus(k(i_point)*2.0_real64**(-34)), expected(i_point), &
-                              "series correctly rounded at k = "//k(i_point))
+                              "correctly rounded at k = "//k(i_point))
         end do
-    end subroutine test_log_one_minus_series_terms
+    end subroutine test_log_one_minus_correctly_rounded
 
-    !> Both sides of the switch at x = 1e-3. Below, the series: within 2 ulp. From 1e-3 on,
-    !| log(1 - x): 1 - x rounds by at most 2^-54 = 5.6e-17, which moves ln(1 - x) by as much
-    !| again, relative 5.6e-14 at x = 1e-3; measured it is 3.9 ulp there.
-    subroutine test_log_one_minus_at_the_switch()
+    !> Around x = 1e-3, where 1 - x rounds: the rounding would move ln(1 - x) by as much as
+    !| 5.6e-17 again, relative 5.6e-14, had log1p not corrected for it.
+    subroutine test_log_one_minus_near_1e_3()
         real(real64) :: x_below
 
         ! ln(1 - 1e-3) = -0.0010005003335835335; one ulp lower, -0.0010005003335835333
@@ -138,9 +131,9 @@ contains
         call assert_close(log_one_minus(x_below), -0.0010005003335835333_real64, 2*spacing(1.0e-3_real64), &
                           "just below 1e-3")
         call assert_close(log_one_minus(1.0e-3_real64), -0.0010005003335835335_real64, 6.0e-17_real64, "x = 1e-3")
-    end subroutine test_log_one_minus_at_the_switch
+    end subroutine test_log_one_minus_near_1e_3
 
-    !> Large x: log(1 - x), exact 1 - x from 1/2 on.
+    !> Large x, up to the largest below 1.
     subroutine test_log_one_minus_large()
         ! ln(1/2) = -ln 2 = -0.6931471805599453; ln(3/4) = -0.2876820724517809
         call assert_close(log_one_minus(0.5_real64), -0.6931471805599453_real64, TOL_ULP, "x = 1/2")

@@ -97,10 +97,11 @@ contains
     !| loses nothing to cancellation when the members are close.
     !|
     !| A gene whose expression vector is zero has no direction. It is left out of its family's
-    !| statistics entirely -- neither counted nor summed. A vector whose components are all
-    !| subnormal (below `tiny(1.0)`, about `2.2e-308`, in magnitude) counts as zero too, in every
-    !| build: whether such numbers survive at all depends on the build's floating-point mode. A
-    !| family whose statistics do not exist gets the zero vector as its direction; see `status`.
+    !| statistics entirely -- neither counted nor summed. A vector made only of subnormal numbers
+    !| (below `tiny(1.0)`, about `2.2e-308`, in magnitude) is not zero and has its direction, as
+    !| long as the build reads such numbers as themselves; where its floating-point mode reads
+    !| subnormal inputs as zero (denormals-are-zero), the vector is zero. A family whose
+    !| statistics do not exist gets the zero vector as its direction; see `status`.
     pure subroutine compute_family_direction_impl(n_axes, n_genes, n_families, expression_vectors, gene_to_fam, &
                                                   family_directions, angular_dispersions, member_counts, status, &
                                                   min_angular_dispersion, max_angular_dispersion)
@@ -142,8 +143,8 @@ contains
             !! At most 5 (\(R \ge e^{-12.5} \approx 4 \times 10^{-6}\)): above that, a resultant that cancels only up to rounding would pass as a stable direction.
 
         real(real64) :: actual_min_dispersion, actual_max_dispersion
-        real(real64) :: gene_factor, gene_scaled_norm, sum_factor, sum_scaled_norm, deviation
-        integer(int32) :: i_gene, i_family, i_axis
+        real(real64) :: gene_scaled_norm, sum_scaled_norm, deviation
+        integer(int32) :: gene_exponent, sum_exponent, i_gene, i_family, i_axis
 
         M_DEFAULT_VAL(min_angular_dispersion, actual_min_dispersion, CM_MIN_ANGULAR_DISPERSION_DEFAULT)
         M_DEFAULT_VAL(max_angular_dispersion, actual_max_dispersion, CM_MAX_ANGULAR_DISPERSION_DEFAULT)
@@ -156,21 +157,21 @@ contains
             i_family = gene_to_fam(i_gene)
             if (i_family == M_GENE_TO_FAM_SENTINEL) cycle
 
-            call scaled_length(n_axes, expression_vectors(:, i_gene), gene_factor, gene_scaled_norm)
+            call scaled_length(n_axes, expression_vectors(:, i_gene), gene_exponent, gene_scaled_norm)
             if (gene_scaled_norm == 0.0_real64) cycle  ! a zero vector has no direction
 
             member_counts(i_family) = member_counts(i_family) + 1_int32
             do concurrent (i_axis = 1:n_axes) shared(family_directions, expression_vectors, i_family, i_gene, &
-                                                      gene_factor, gene_scaled_norm)
+                                                      gene_exponent, gene_scaled_norm)
                 family_directions(i_axis, i_family) = family_directions(i_axis, i_family) &
-                                                      + (expression_vectors(i_axis, i_gene)*gene_factor)/gene_scaled_norm
+                                                      + scale(expression_vectors(i_axis, i_gene), gene_exponent)/gene_scaled_norm
             end do
         end do
 
         ! the mean direction of every family with enough members. Each iteration reads and writes
         ! only its own family's column and entries; `angular_dispersions` then gathers the members'
         ! 1 - cos(deviation) until the dispersions replace it
-        do concurrent (i_family = 1:n_families) local(sum_factor, sum_scaled_norm) &
+        do concurrent (i_family = 1:n_families) local(sum_exponent, sum_scaled_norm) &
             shared(family_directions, angular_dispersions, member_counts, status, n_axes)
 
             angular_dispersions(i_family) = 0.0_real64
@@ -181,13 +182,13 @@ contains
                 cycle
             end if
 
-            call scaled_length(n_axes, family_directions(:, i_family), sum_factor, sum_scaled_norm)
+            call scaled_length(n_axes, family_directions(:, i_family), sum_exponent, sum_scaled_norm)
             if (sum_scaled_norm == 0.0_real64) then  ! the unit vectors cancel out exactly
                 family_directions(:, i_family) = 0.0_real64
                 call set_err(status(i_family), STAT_NO_STABLE_DIRECTION)
                 cycle
             end if
-            family_directions(:, i_family) = (family_directions(:, i_family)*sum_factor)/sum_scaled_norm
+            family_directions(:, i_family) = scale(family_directions(:, i_family), sum_exponent)/sum_scaled_norm
         end do
 
         ! each member's deviation from its family's direction, the very angle
@@ -238,7 +239,7 @@ contains
         real(real64), intent(out) :: angular_deviations(n_genes)
             !! Angle in radians between each gene and its family's direction, in \([0, \pi]\), or
             !! `CM_ANGULAR_DEVIATIONS_SENTINEL` where the gene has no family, its expression vector
-            !! is zero or all subnormal, or its family has no direction
+            !! is zero, or its family has no direction
 
         real(real64) :: deviation
         integer(int32) :: i_gene, i_family
@@ -627,7 +628,7 @@ contains
             !! Zero where the gene has a relative angular deviation, otherwise the reason it has
             !! not: [[tox_errors(module):STAT_NO_FAMILY(variable)]] for a gene without a family,
             !! [[tox_errors(module):STAT_ZERO_VECTOR(variable)]] for one whose expression vector is
-            !! zero or all subnormal, and otherwise its family's `status`
+            !! zero, and otherwise its family's `status`
         real(real64), intent(out) :: tmp_angular_deviations(n_genes)
             !! Work array: the angle between each gene and its family's direction
         integer(int32), intent(out) :: tmp_relative_angular_deviations_perm(n_genes)

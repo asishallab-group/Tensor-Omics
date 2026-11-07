@@ -81,10 +81,11 @@ contains
     !| loses nothing to cancellation when the members are close.
     !|
     !| A gene whose expression vector is zero has no direction. It is left out of its family's
-    !| statistics entirely -- neither counted nor summed. A vector whose components are all
-    !| subnormal (below `tiny(1.0)`, about `2.2e-308`, in magnitude) counts as zero too, in every
-    !| build: whether such numbers survive at all depends on the build's floating-point mode. A
-    !| family whose statistics do not exist gets the zero vector as its direction; see `status`.
+    !| statistics entirely -- neither counted nor summed. A vector made only of subnormal numbers
+    !| (below `tiny(1.0)`, about `2.2e-308`, in magnitude) is not zero and has its direction, as
+    !| long as the build reads such numbers as themselves; where its floating-point mode reads
+    !| subnormal inputs as zero (denormals-are-zero), the vector is zero. A family whose
+    !| statistics do not exist gets the zero vector as its direction; see `status`.
     pure subroutine compute_family_direction(&
             n_axes,&
             n_genes,&
@@ -199,7 +200,7 @@ contains
         real(real64), dimension(n_genes), intent(out) :: angular_deviations
             !! Angle in radians between each gene and its family's direction, in \([0, \pi]\), or
             !! `-1.0_real64` where the gene has no family, its expression vector
-            !! is zero or all subnormal, or its family has no direction
+            !! is zero, or its family has no direction
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -663,7 +664,7 @@ contains
             !! Zero where the gene has a relative angular deviation, otherwise the reason it has
             !! not: [[tox_errors(module):STAT_NO_FAMILY(variable)]] for a gene without a family,
             !! [[tox_errors(module):STAT_ZERO_VECTOR(variable)]] for one whose expression vector is
-            !! zero or all subnormal, and otherwise its family's `status`
+            !! zero, and otherwise its family's `status`
         real(real64), intent(in), optional :: quantile_level
             !! Quantile level in \([0, 1]\) the threshold is taken at
             !! The default value is `0.95_real64`.
@@ -793,7 +794,7 @@ contains
             !! Zero where the gene has a relative angular deviation, otherwise the reason it has
             !! not: [[tox_errors(module):STAT_NO_FAMILY(variable)]] for a gene without a family,
             !! [[tox_errors(module):STAT_ZERO_VECTOR(variable)]] for one whose expression vector is
-            !! zero or all subnormal, and otherwise its family's `status`
+            !! zero, and otherwise its family's `status`
         real(real64), dimension(n_genes), intent(out) :: tmp_angular_deviations
             !! Work array: the angle between each gene and its family's direction
         integer(int32), dimension(n_genes), intent(out) :: tmp_relative_angular_deviations_perm
