@@ -295,17 +295,17 @@ contains
 
         smallest_subnormal = ieee_next_after(0.0_real64, 1.0_real64)
 
-        call check_equal_shifts_give_exact_zeros("from 0.7 to 0 on 6 axes", spread(0.7_real64, 1, 6), spread(0.0_real64, 1, 6))
-        call check_equal_shifts_give_exact_zeros("from 0.1 to 0 on 7 axes", spread(0.1_real64, 1, 7), spread(0.0_real64, 1, 7))
-        call check_equal_shifts_give_exact_zeros("from 3.3 to 0 on 13 axes", spread(3.3_real64, 1, 13), spread(0.0_real64, 1, 13))
-        call check_equal_shifts_give_exact_zeros("from 1e300 to -1e300 on 3 axes", spread(1.0e300_real64, 1, 3), &
+        call check_equal_shifts_give_exact_zeros("0.7 - 0 on 6 axes", spread(0.7_real64, 1, 6), spread(0.0_real64, 1, 6))
+        call check_equal_shifts_give_exact_zeros("0.1 - 0 on 7 axes", spread(0.1_real64, 1, 7), spread(0.0_real64, 1, 7))
+        call check_equal_shifts_give_exact_zeros("3.3 - 0 on 13 axes", spread(3.3_real64, 1, 13), spread(0.0_real64, 1, 13))
+        call check_equal_shifts_give_exact_zeros("1e300 - -1e300 on 3 axes", spread(1.0e300_real64, 1, 3), &
                                                  spread(-1.0e300_real64, 1, 3))
-        call check_equal_shifts_give_exact_zeros("from -2.5 to 0 on 4 axes", spread(-2.5_real64, 1, 4), spread(0.0_real64, 1, 4))
-        call check_equal_shifts_give_exact_zeros("from tiny to 0 on 5 axes", spread(tiny(1.0_real64), 1, 5), &
+        call check_equal_shifts_give_exact_zeros("-2.5 - 0 on 4 axes", spread(-2.5_real64, 1, 4), spread(0.0_real64, 1, 4))
+        call check_equal_shifts_give_exact_zeros("tiny - 0 on 5 axes", spread(tiny(1.0_real64), 1, 5), &
                                                  spread(0.0_real64, 1, 5))
-        call check_equal_shifts_give_exact_zeros("from smallest subnormal to 0 on 7 axes", spread(smallest_subnormal, 1, 7), &
+        call check_equal_shifts_give_exact_zeros("smallest subnormal - 0 on 7 axes", spread(smallest_subnormal, 1, 7), &
                                                  spread(0.0_real64, 1, 7))
-        ! distinct points whose shifts all round to the same -0.7
+        ! distinct points whose differences all round to the same 0.7
         call check_equal_shifts_give_exact_zeros("distinct points, shift -0.7", [1.5_real64, 2.5_real64, 0.75_real64], &
                                                  [0.8_real64, 1.8_real64, 0.05_real64])
     end subroutine test_equal_shifts_give_exact_zeros
