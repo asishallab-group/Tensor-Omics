@@ -34,11 +34,9 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 
 #' Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
 #'
-#' A field is projected as the difference of its two vectors, origin minus target, taken on the
-#' selected axes; that difference minus the mean of its coordinates is the projection. A field
-#' whose differences are all equal shifts along the space diagonal and projects to exact zeros,
-#' decided on the differences themselves rather than on their rounded mean, so
-#' `normalize_unit_length` refuses it as the zero vector it is.
+#' A field whose projected vector has all coordinates equal on the selected axes lies on the space
+#' diagonal and projects to exact zeros, decided on the coordinates themselves rather than on their
+#' rounded mean, so `normalize_unit_length` refuses it as the zero vector it is.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_field_RAP_projection}, whose argument names
 #' are the ones an error message reports.

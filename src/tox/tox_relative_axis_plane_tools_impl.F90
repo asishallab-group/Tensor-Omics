@@ -70,11 +70,9 @@ contains
 
     !> summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| A field is projected as the difference of its two vectors, origin minus target, taken on the
-    !| selected axes; that difference minus the mean of its coordinates is the projection. A field
-    !| whose differences are all equal shifts along the space diagonal and projects to exact zeros,
-    !| decided on the differences themselves rather than on their rounded mean, so
-    !| `normalize_unit_length` refuses it as the zero vector it is.
+    !| A field whose projected vector has all coordinates equal on the selected axes lies on the space
+    !| diagonal and projects to exact zeros, decided on the coordinates themselves rather than on their
+    !| rounded mean, so `normalize_unit_length` refuses it as the zero vector it is.
     pure subroutine omics_field_RAP_projection_impl(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
         integer(int32), intent(in) :: n_axes
             !! number of axes
