@@ -347,7 +347,8 @@ class FortranWrapperEmitter:
         """Every producer call an allocating wrapper here makes: (alloc, foo, group).
 
         `group` is the expert sibling's arguments one call fills, in their order -- each
-        producer is called once for all of its outputs a wrapper takes over.
+        producer is called once per distinct set of inputs, for all of the outputs a wrapper
+        takes over from it with those inputs (`_producer_groups`).
         """
         for alloc in module:
             if not self._is_allocating(alloc, module):
@@ -1029,7 +1030,7 @@ class FortranWrapperEmitter:
         self, writer: Writer, foo: Procedure, alloc: Procedure, taken,
         materialized: dict[str, Argument] | None = None,
     ) -> None:
-        """Call each recommend routine once, into the sizes it produces.
+        """Call each recommend routine once per distinct set of inputs, into the sizes it produces.
 
         The routine is called directly (its Fortran, not a binding), so every one of its
         dummies is supplied: its inputs from the `DM_OUTPUT_FROM` plan -- the ones its own

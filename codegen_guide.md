@@ -752,7 +752,9 @@ A generated producer validates its inputs, so calling it can fail. What you get 
   same question in turn).
 - **A producer in your own module works**: it is in scope, and the module does not `use` itself.
 
-`foo` calls the producer directly, so it passes every one of the producer's arguments:
+`foo` calls the producer directly — once for each distinct set of inputs: two sizes from one
+producer through different table rows are two calls, each into its own size — so it passes every
+one of the producer's arguments:
 
 - **An input the producer refines in place** (`intent(inout)`, a cap it lowers) is written back
   through whatever supplies it, so it must be supplied by a **required `intent(inout)`** argument
