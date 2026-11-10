@@ -757,3 +757,35 @@ class TestAGeneratedWrapperAsProducer:
             cat(length(fx_status_per_vector(array(1, c(2, 3, 4)))),
                 fx_status_per_vector(c(1, 2, 3)))
         """) == ["12", "3"]
+
+
+class TestJustInfoLinksThePublishedWrapper:
+    """`DM_OUTPUT_FROM(..., JUST_INFO)` names the producer as `AUTO` does, by its wrapper.
+
+    So the link every layer renders is to the entry point a reader can call -- the generated
+    `fx_scaled_size` in `fx_producers` -- not to the unvalidated implementation behind it. The
+    link is checked like any (`ir.validate.check_doc_links`), which `_generate` asserts passed.
+    """
+
+    LINK = "produced by [[fx_producers(module):fx_scaled_size]]."
+
+    def info_lines(self, path):
+        return [line.strip() for line in path.read_text().splitlines() if "It is recommended" in line]
+
+    def test_the_fortran_and_c_wrappers_link_it_for_ford(self, built):
+        for path in (built / "fortran" / "fx_sized.F90", built / "c" / "fx_sized_c.F90"):
+            lines = self.info_lines(path)
+            assert lines and all(line.endswith(self.LINK) for line in lines), (path, lines)
+
+    def test_python_and_r_link_their_own_binding(self, built):
+        python = self.info_lines(built / "py" / "fx_impl" / "fx_sized.py")
+        r = self.info_lines(built / "r" / "fx_sized.R")
+        assert python == ["It is recommended to compute this argument from the `scaled_size` "
+                          "output produced by :func:`tensor_omics.fx_scaled_size`."]
+        assert r == ["#'   It is recommended to compute this argument from the `scaled_size` "
+                     "output produced by \\code{\\link{fx_scaled_size}}."]
+
+    def test_the_caller_passes_the_size(self, built):
+        assert run_python(built, """
+            print(json.dumps(list(tox.fx_info([1.0], 3))))
+        """) == [1.0, 1.0, 1.0]

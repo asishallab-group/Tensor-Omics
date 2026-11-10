@@ -13,7 +13,7 @@ module fx_sized_impl
     private
 
     public :: fx_fill_impl, fx_work_total_impl, fx_two_producers_impl, fx_extent_total_impl
-    public :: fx_first_of_two_impl, fx_status_per_vector_impl
+    public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl
 
 contains
 
@@ -156,4 +156,19 @@ contains
             !! the length of each vector
         status = arr_shape(1) + 0_int32*int(sum(arr), int32)
     end subroutine fx_status_per_vector_impl
+
+    !> summary: A result whose size the caller passes, pointed at its producer by `JUST_INFO`
+    !| author: A Developer
+    pure subroutine fx_info_impl(n_items, x, out_size, ones)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, JUST_INFO)
+        real(real64), dimension(out_size), intent(out) :: ones
+            !! ones
+        ones = 1.0_real64 + 0.0_real64*sum(x)
+    end subroutine fx_info_impl
 end module fx_sized_impl

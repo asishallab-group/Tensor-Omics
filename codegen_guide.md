@@ -761,7 +761,9 @@ in another module `use`s that module, so two modules sizing each other's argumen
 cycle, which fpm stops on.
 
 Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
-then the docs say where to get the value, and nothing is called for them.
+then the docs say where to get the value, and nothing is called for them. It names the producer the same
+way, so the link the docs render, in Ford as in Python and R, is to the published wrapper a
+reader can call, never to the implementation behind it.
 
 ### 5.10 A mode argument
 
