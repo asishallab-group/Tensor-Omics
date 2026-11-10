@@ -962,6 +962,8 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
   `intent(in)` dummy to something that writes it
 - a value the prologue produces that the allocations, the permutation sorts or the recommend
   calls *above* it read — the name resolves either way, so it would compile and compute rubbish.
+  A recommend call reads every producer input it passes, including one the producer's own
+  binding derives, such as an extent (Section 5.9).
   (A permutation the prologue itself builds is not sorted above it, so rewriting that one's
   `<base>` is fine.)
 
