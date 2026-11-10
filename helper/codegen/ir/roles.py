@@ -314,10 +314,15 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
 
         producer = project.procedure(directive.module, directive.procedure)
         if producer is None:
+            # an implementation, named with its generated module: say what that module has
+            implementation = project.procedure(directive.module + conventions.impl_suffix,
+                                               directive.procedure)
             diagnostics.error(
                 f"'{argument.name}' is computed from '{directive.procedure}' in "
                 f"'{directive.module}', which does not exist",
                 entity=argument,
+                note=(_not_exported_note(implementation, project, conventions)
+                      if implementation is not None else None),
             )
             continue
 
@@ -327,6 +332,17 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"exported, so there is no wrapper to call",
                 entity=argument,
                 note=_not_exported_note(producer, project, conventions),
+            )
+            continue
+
+        plain = _plain_of_an_expert(producer, project, conventions)
+        if plain is not None:
+            diagnostics.error(
+                f"'{argument.name}' is computed from '{producer.name}', the expert tier, "
+                f"which leaves preparing its work to the caller",
+                entity=argument,
+                note=(f"name the plain-named wrapper, which prepares it itself: "
+                      f"'{plain.name}' in '{plain.module.name}'"),
             )
             continue
 
@@ -484,6 +500,17 @@ def _check_unused_outputs(arguments: list[Argument], diagnostics: DiagnosticBag,
                 "here can spell"
             ),
         )
+
+
+def _plain_of_an_expert(producer: Procedure, project, conventions: Conventions):
+    """The plain-named wrapper beside `producer`, if `producer` is a generated `foo_expert`."""
+    module = producer.module
+    suffix = conventions.expert_suffix
+    if module is None or not producer.name.lower().endswith(suffix):
+        return None
+    if project.module(module.name + conventions.impl_suffix) is None:
+        return None  # a hand-written pair: its `_expert` is the author's own name
+    return module.procedure(producer.name[: -len(suffix)])
 
 
 def _not_exported_note(producer: Procedure, project, conventions: Conventions) -> str:

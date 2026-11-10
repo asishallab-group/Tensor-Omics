@@ -331,7 +331,7 @@ The parts a source author does not need, and a generator maintainer does:
 - **A producer is a published entry point**: an `M_EXPORT_C` procedure, or an implementation's
   plain-named generated wrapper `foo`, named in its generated module (`ir.roles`). Naming
   `foo_impl` is refused with a note naming `foo` and its module, or for a mode split the per-mode
-  wrappers. A generated producer validates, so its error carries its own argument's position:
+  wrappers; so is `foo_expert`, with a note naming `foo`. A generated producer validates, so its error carries its own argument's position:
   the generated `foo` that calls it checks `ierr` after each producer call and maps the position
   to the dummy that supplied that input, else clears it (`emit.fortran_wrapper`), and Python and
   R re-raise a producer's error from their own call through `_consumer_error` /

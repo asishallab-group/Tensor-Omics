@@ -164,6 +164,43 @@ class TestTheProducerIsAPublishedEntryPoint:
         assert error.note == ("an implementation is published as its generated wrapper: name "
                               "'scaled_size' in 'tox_prod'")
 
+    def test_the_implementation_with_its_generated_module_is_refused_and_names_it(self):
+        # `scaled_size_impl` in `tox_prod`: there is no such procedure there
+        _, bag = analysed(producers(), work_consumer("scaled_size_impl", "tox_prod"))
+
+        error = next(e for e in bag.errors if "does not exist" in e.message)
+        assert error.note == ("an implementation is published as its generated wrapper: name "
+                              "'scaled_size' in 'tox_prod'")
+
+    def test_the_expert_tier_is_refused_and_names_the_plain_one(self):
+        # `middle` takes a work array over, so it has a `middle_expert` -- published, but not
+        # what a producer call may name
+        middle = procedure(
+            "middle_impl",
+            integer("n_items", doc="items"),
+            integer("scale", doc="scale"),
+            integer("work_size", doc=table(("factor", "scale")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            integer("middle_size", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        )
+        cons = work_consumer("middle_expert", "tox_prod", "middle_size", doc=table())
+        _, bag = analysed(producers(middle), cons)
+
+        error = next(e for e in bag.errors if "middle_expert" in e.message)
+        assert "the expert tier" in error.message
+        assert error.note == ("name the plain-named wrapper, which prepares it itself: "
+                              "'middle' in 'tox_prod'")
+
+    def test_a_hand_written_expert_name_is_the_author_s_own(self):
+        hand = module("tox_hand", procedure(
+            "sizer_expert", integer("n_items", doc="n"), integer("scaled", Intent.OUT, doc="s"),
+            integer("ierr", Intent.OUT, doc="e")))
+        _, bag = analysed(hand, work_consumer("sizer_expert", "tox_hand", doc=table()))
+
+        assert bag.errors == ()
+
     def test_a_mode_split_implementation_names_its_per_mode_wrappers(self):
         cons = work_consumer("split_size_impl", "tox_split_impl", "sized", doc=table())
         _, bag = analysed(split_producer(), cons)

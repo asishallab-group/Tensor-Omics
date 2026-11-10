@@ -767,8 +767,11 @@ wrappers into the project before the output-from pass, so the wrapper resolves l
 and every emitter reads its name, module, arguments and outputs off the plan with nothing to
 translate. `foo_impl` itself is refused (it is not exported, and exporting it is refused too),
 with a note naming `foo` and its module -- or, for a mode split, which has no `foo`, the per-mode
-wrappers. `foo_expert` is not diagnosed: it would compile into a missing work-array actual, so
-the compiler catches it; the docs say "the plain-named wrapper".
+wrappers -- and so it is when spelled with the generated module, where it does not exist.
+`foo_expert` is refused too, with a note naming `foo`: it is published, so it resolves, but it
+leaves its work arrays to the caller, and nothing downstream catches it -- where Fortran calls
+it, a missing work-array actual or an unrelated refusal; where Python or R does, an
+`ImportError` or "could not find function" at run time, since only `foo` reaches them.
 
 A generated producer validates its inputs, so a call of one can fail, and it reports the failure
 by **its own** argument position -- which none of the hand-written recommend routines sets.

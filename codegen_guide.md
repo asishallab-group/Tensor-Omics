@@ -731,7 +731,8 @@ generated wrapper of an implementation**, named in its generated module:
 for `fx_scaled_size_impl` in `fx_producers_impl` (`helper/codegen/tests/fixtures/impl/`). Name
 `foo`, never `foo_impl` — the implementation is not published, and the generator refuses it with
 a note naming `foo` and its module — and never `foo_expert`: the plain-named wrapper is the one
-that prepares what it needs itself. A mode-split implementation has no `foo`; name the per-mode
+that prepares what it needs itself, and the generator refuses the expert tier with a note naming
+`foo`. A mode-split implementation has no `foo`; name the per-mode
 wrapper you mean (Section 5.11), which the refusal lists.
 
 A generated producer validates its inputs, so calling it can fail. What you get then:
@@ -1460,6 +1461,7 @@ source and carries a note saying what to write instead.
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
 | an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
