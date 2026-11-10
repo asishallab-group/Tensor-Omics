@@ -1,7 +1,6 @@
 #include <src/macros.h>
 
-#define CM_KD_STACK_ENTRY_SIZE 3
-#define CM_KD_TRAVERSAL_STACK_DEPTH 64
+#include <src/f42/kd_tree_workspace.h>
 
 !> k-d tree spatial index over fixed-dimensional point sets.
 !| Builds a k-d tree by recursively partitioning `kd_indices` around the median point along a

@@ -1,6 +1,6 @@
 # Shatter Specifications
 
-Working notes on the current Shatter (`tox_shatter_cluster_data`, `src/tox_shatter_cluster_data.F90`)
+Working notes on the current Shatter (`tox_stc`, `src/tox/tox_stc_impl.F90`)
 implementation, kept separate from the methodology writeup
 (`misc/Tensor_Omics_Methods/Shatter_Clustering.tex`) so it can track engineering detail --
 memory layout, complexity, optimization -- without polluting the math spec.
@@ -18,6 +18,28 @@ actually uses and every size below assumes it).
 `accept_ensemble_helper` (stability check on the observable history). Everything below is the
 data this one call touches, per call.
 
+## Generated API
+
+The `tox_stc` API is generated from [the annotated Fortran implementation](../src/tox/tox_stc_impl.F90).
+Use `calculate_density_radius`, `calculate_labels_as_density`, and `identify_ensemble_seeds`
+to prepare the seeds. The seeding routine returns radii indexed by input point, so gather
+the seed radii in the same order as the seed indices before calling the growth routine.
+
+- `obtain_ensembles_global_radius` takes one growth radius shared by all seeds.
+- `obtain_ensembles_seed_radius` takes one growth radius per seed.
+- `merge_ensembles` combines the resulting raw masks. Python and R return only the
+  surviving columns. Fortran and C return the output buffer and the surviving count.
+
+The single-step growth routine takes an input membership mask and returns the grown mask.
+
+Both growth calls take the observable history window and number of work tiles.
+Use a history window of 10 for the benchmark setting. The Fortran and C expert
+entry points accept caller-managed workspaces. Fortran callers provide the result
+buffers, including the observable history matrix and merged membership buffer.
+
+Regenerate the Fortran API and C, Python and R bindings from the repository root
+with `python3 helper/generate_code.py`. Use `--check` to check for stale outputs.
+
 ## Shared, read-only inputs (not owned by the growth call)
 
 These are computed once for the whole dataset and passed down by reference into every seed's
@@ -25,7 +47,7 @@ growth, seed-selection call, and the eventual merge step:
 
 - `vectors(D, N)`, `real64` -- the ambient point cloud, $8DN$ bytes.
 - `density_labels(N)`, `real64` -- one density scalar per point (neighbor count within the
-  density radius, from `calculate_labels_as_density_helper`), $8N$ bytes.
+  density radius, from `calculate_labels_as_density`), $8N$ bytes.
 - `dimension_order(D)`, `int32` -- the K-D tree's per-depth split-axis sequence, $4D$ bytes.
 - `kd_indices(N)`, `int32` -- the K-D tree's index permutation (implicit balanced tree: a
   contiguous `[left, right]` range plus a depth is a subtree; no explicit node/pointer structure
