@@ -454,9 +454,14 @@ class TestPurity:
 class TestAnInputTheProducerRefines:
     """An `intent(inout)` producer input -- a cap the producer lowers in place.
 
-    Where the generated Fortran calls the producer it hands it the dummy that supplies the
-    input, so that dummy has to be writable; an `intent(in)` one did not compile.
+    Where the generated Fortran calls the producer, it is passed through a required
+    `intent(inout)` argument of the consumer, and nothing else: that is what the call can write
+    and what carries the refined value back. Python and R adopt the value themselves.
     """
+
+    MESSAGE = ("'work_size' is computed from 'capped_size', which refines its input 'cap' in "
+               "place, so it must be passed through a required intent(inout) argument; it is "
+               "given {}")
 
     def capping(self):
         return module("tox_hand", procedure(
@@ -467,32 +472,62 @@ class TestAnInputTheProducerRefines:
             integer("ierr", Intent.OUT, doc="error"),
         ))
 
-    def capped(self, cap_intent, sized_result=False):
-        size = integer("work_size", doc="size", directives=auto("sized", "capped_size", "tox_hand"))
+    def capped(self, cap=None, sized_result=False, doc=None):
+        size = integer("work_size", doc=doc or "size",
+                       directives=auto("sized", "capped_size", "tox_hand"))
         sized = (real("res", Intent.OUT, "(work_size)", doc="the result") if sized_result
                  else real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"))
-        return consumer("capped_impl", integer("n_items", doc="items"),
-                        integer("cap", cap_intent, doc="a cap"), size, sized)
+        caps = [cap] if cap is not None else []
+        return consumer("capped_impl", integer("n_items", doc="items"), *caps, size, sized)
 
-    def test_an_intent_in_dummy_supplying_it_is_refused(self):
-        _, bag = analysed(self.capping(), self.capped(Intent.IN))
+    def refusals(self, bag):
+        return [e for e in bag.errors if "refines its input" in e.message]
 
-        [error] = [e for e in bag.errors if "refines its input" in e.message]
-        assert error.message == ("'work_size' is computed from 'capped_size', which refines its "
-                                 "input 'cap' in place, but 'cap' supplying it is intent(in)")
-        assert "Declare 'cap' intent(inout) on the implementation" in error.note
+    def refused_as(self, cons, given):
+        _, bag = analysed(self.capping(), cons)
 
-    def test_an_intent_inout_dummy_is_passed_to_it(self):
-        synthesis, bag = analysed(self.capping(), self.capped(Intent.INOUT))
+        [error] = self.refusals(bag)
+        assert error.message == self.MESSAGE.format(given)
+        assert error.note == (
+            "the generated wrapper calls 'capped_size' itself, and writes 'cap' back through "
+            "what supplies it: supply it by a required intent(inout) argument of the "
+            "implementation, which the refined value then reaches, and the caller with it")
+
+    def test_an_intent_in_argument_is_refused(self):
+        self.refused_as(self.capped(integer("cap", Intent.IN, doc="a cap")), "intent(in) 'cap'")
+
+    def test_a_constant_is_refused(self):
+        self.refused_as(self.capped(doc=table(("cap", "5_int32"))), "the constant 5")
+
+    def test_an_optional_with_a_default_is_refused(self):
+        # its value reaches the call as a local, which would swallow the refined one
+        from codegen.ir.directives import Default
+
+        cap = integer("cap", Intent.IN, doc="a cap", optional=True,
+                      directives=Directives(default=Default("20_int32")))
+        self.refused_as(self.capped(cap), "optional intent(in) 'cap'")
+
+    def test_an_optional_without_one_is_refused(self):
+        cap = integer("cap", Intent.IN, doc="a cap", optional=True)
+        self.refused_as(self.capped(cap), "optional intent(in) 'cap'")
+
+    def test_an_optional_intent_inout_is_refused_too(self):
+        cap = integer("cap", Intent.INOUT, doc="a cap", optional=True)
+        self.refused_as(self.capped(cap), "optional intent(inout) 'cap'")
+
+    def test_a_required_intent_inout_argument_is_passed_to_it(self):
+        synthesis, bag = analysed(self.capping(),
+                                  self.capped(integer("cap", Intent.INOUT, doc="a cap")))
 
         assert bag.errors == ()
         assert "cap = cap" in call_of(body(fortran(synthesis), "capped"), "capped_size")
 
     def test_the_bindings_adopt_the_refined_value_instead(self):
         # nothing in Fortran calls it: Python and R take the producer's returned cap
-        _, bag = analysed(self.capping(), self.capped(Intent.IN, sized_result=True))
+        _, bag = analysed(self.capping(),
+                          self.capped(integer("cap", Intent.IN, doc="a cap"), sized_result=True))
 
-        assert bag.errors == ()
+        assert self.refusals(bag) == []
 
 
 class TestACycle:

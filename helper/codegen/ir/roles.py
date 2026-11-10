@@ -512,33 +512,41 @@ def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: Diagnost
 def _refines_a_read_only_input(argument: Argument, consumer: Procedure, producer: Procedure,
                                inputs: list[ProducerInput], diagnostics: DiagnosticBag,
                                conventions: Conventions) -> bool:
-    """Refuse an `intent(inout)` producer input the Fortran call would hand an `intent(in)` dummy.
+    """Refuse an `intent(inout)` producer input not supplied by a required `intent(inout)` dummy.
 
-    The generated wrapper calls the producer directly and passes the dummy that supplies the
-    input, which the producer then writes: Fortran refuses to compile that. Python and R adopt
-    the refined value instead (`inout_feedback`), so this is a refusal only where the Fortran
-    wrapper makes the call. True when something was refused.
+    The rule, where the generated Fortran wrapper calls the producer itself: an input the
+    producer refines in place is passed through a required `intent(inout)` argument of the
+    consumer, and nothing else. That is what the call can write -- an `intent(in)` dummy or a
+    constant does not compile -- and what carries the refined value back to the caller, which
+    the local an optional is materialised into would swallow. Python and R adopt the refined
+    value themselves (`inout_feedback`), so where only they call the producer nothing is
+    refused. True when something was.
     """
     plain = consumer.module.procedure(consumer.name[: -len(conventions.expert_suffix)])
     refused = False
     for supply in inputs:
+        if producer.argument(supply.name).intent is not Intent.INOUT:
+            continue
+        dummy = plain.argument(supply.argument) if supply.argument is not None else None
+        if dummy is not None and dummy.intent is Intent.INOUT and not dummy.optional:
+            continue
         if supply.argument is None:
-            continue
-        producer_input = producer.argument(supply.name)
-        if producer_input.intent is not Intent.INOUT:
-            continue
-        dummy = plain.argument(supply.argument)
-        if dummy is None or dummy.intent is not Intent.IN:
-            continue  # a local the wrapper owns, or a dummy it may write
+            given = f"the constant {supply.constant!r}"
+        elif dummy is None:
+            given = f"'{supply.argument}', which the wrapper computes itself"
+        else:
+            intent = f"intent({dummy.intent.value})" if dummy.intent else "no intent"
+            given = f"{'optional ' if dummy.optional else ''}{intent} '{supply.argument}'"
         diagnostics.error(
             f"'{argument.name}' is computed from '{producer.name}', which refines its input "
-            f"'{supply.name}' in place, but '{supply.argument}' supplying it is intent(in)",
+            f"'{supply.name}' in place, so it must be passed through a required intent(inout) "
+            f"argument; it is given {given}",
             entity=argument,
             note=(
-                f"the generated wrapper calls '{producer.name}' itself and would hand it "
-                f"'{supply.argument}' to write, which does not compile. Declare "
-                f"'{supply.argument}' intent(inout) on the implementation, so the refined value "
-                "reaches it and the caller, or supply the input by a constant in the table"
+                f"the generated wrapper calls '{producer.name}' itself, and writes "
+                f"'{supply.name}' back through what supplies it: supply it by a required "
+                "intent(inout) argument of the implementation, which the refined value then "
+                "reaches, and the caller with it"
             ),
         )
         refused = True
