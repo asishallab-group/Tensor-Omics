@@ -807,6 +807,10 @@ And what calling one directly takes:
   Python and R alone, which never pass it. The resolution used to skip derived inputs before it
   read the table, so a row `n | m` was validated and then dropped, and `foo` found `n` by name
   or not at all.
+- **A producer may not come back to its consumer.** A procedure sizing an argument by itself,
+  or two sizing each other, recursed at run time until the stack ran out -- in Fortran, and in
+  Python and R through the bindings. `roles._check_producer_cycles` refuses the cycle over the
+  graph of producers (a generated pair is one node), naming the chain.
 - **Two modules may not consume each other's producers.** Generated modules now `use` generated
   modules, so a pair sizing each other's arguments is a module cycle, which fpm stops on. Stated
   rather than diagnosed: fpm already refuses it, by name.

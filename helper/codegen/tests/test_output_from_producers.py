@@ -382,8 +382,8 @@ class TestPurity:
             assert ("pure subroutine work_total(" in fortran(synthesis)) is expected
 
     def test_a_producer_that_reaches_back_to_its_consumer_ends(self):
-        # work_total sizes itself by its own wrapper: nothing proves that pure, and asking
-        # must not recurse until Python gives up
+        # work_total sizes itself by its own wrapper: refused (`TestACycle`), but nothing
+        # proves that pure either, and asking must not recurse until Python gives up
         cons = work_consumer("work_total", "tox_cons", "total", doc=table())
         synthesis, _ = analysed(producers(), cons)
 
@@ -398,6 +398,72 @@ class TestPurity:
             synthesis, bag = analysed(split_producer(pure=pure), cons)
             assert bag.errors == (), bag.render()
             assert ("pure subroutine work_total(" in fortran(synthesis)) is pure
+
+
+class TestACycle:
+    """A producer that, through its producers, comes back to its consumer is refused.
+
+    Each call would make the next until the stack ran out -- in the generated Fortran, and in
+    Python and R through the producers' bindings.
+    """
+
+    def sized_by(self, name, producer, output, size_name="k"):
+        return procedure(
+            name,
+            integer("n_items", doc="items"),
+            integer(size_name, doc="size", directives=auto(output, producer, "tox_cyc")),
+            real("tmp_w", Intent.OUT, f"({size_name})", doc="scratch"),
+            integer(f"{name[:-5]}_size", Intent.OUT, doc="a size"),
+            meta=IMPL, is_pure=True,
+        )
+
+    def cycles(self, bag):
+        return [e for e in bag.errors if "comes back to it" in e.message]
+
+    def test_one_sizing_itself(self):
+        _, bag = analysed(module("tox_cyc_impl", self.sized_by("self_impl", "self", "self_size")))
+
+        [error] = self.cycles(bag)
+        assert error.message == ("'k' of 'self' is computed from a producer that comes back to "
+                                 "it: self -> self")
+
+    def test_two_sizing_each_other(self):
+        source = module("tox_cyc_impl",
+                        self.sized_by("a_impl", "b", "b_size"),
+                        self.sized_by("b_impl", "a", "a_size", size_name="j"))
+        _, bag = analysed(source)
+
+        [error] = self.cycles(bag)  # one cycle, reported once
+        assert error.message == ("'k' of 'a' is computed from a producer that comes back to "
+                                 "it: a -> b -> a")
+
+    def test_two_the_bindings_call_are_refused_too(self):
+        # hand-written: nothing in Fortran calls either, but Python and R would, forever
+        def sizes_result(name, producer, output):
+            return procedure(
+                name,
+                integer("n_items", doc="items"),
+                integer("k", doc="size", directives=auto(output, producer, "tox_hand")),
+                real("res", Intent.OUT, "(k)", doc="the result"),
+                integer(f"{name}_size", Intent.OUT, doc="a size"),
+                integer("ierr", Intent.OUT, doc="error"),
+            )
+        _, bag = analysed(module("tox_hand", sizes_result("p", "q", "q_size"),
+                                 sizes_result("q", "p", "p_size")))
+
+        assert [e.message.split(": ", 1)[1] for e in self.cycles(bag)] == ["p -> q -> p"]
+
+    def test_a_chain_that_ends_is_not_a_cycle(self):
+        middle = self.sized_by("middle_impl", "end", "end_size")
+        end = procedure("end_impl", integer("n_items", doc="items"),
+                        integer("end_size", Intent.OUT, doc="a size"), meta=IMPL, is_pure=True)
+        cons = module("tox_top_impl", procedure(
+            "top_impl", integer("n_items", doc="items"),
+            integer("k", doc="size", directives=auto("middle_size", "middle", "tox_cyc")),
+            real("tmp_w", Intent.OUT, "(k)", doc="scratch"), meta=IMPL, is_pure=True))
+        _, bag = analysed(module("tox_cyc_impl", middle, end), cons)
+
+        assert bag.errors == ()
 
 
 class TestASameModuleProducer:

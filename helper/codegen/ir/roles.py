@@ -276,6 +276,7 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     for module in project:
         for procedure in module.exported_procedures:
             _resolve_output_from(procedure, project, diagnostics, conventions, evaluator)
+    _check_producer_cycles(project, diagnostics, conventions)
 
 
 def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag,
@@ -428,6 +429,74 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
 
     for arguments in called_here.values():
         _check_unused_outputs(arguments, diagnostics, conventions)
+
+
+def _check_producer_cycles(project, diagnostics: DiagnosticBag,
+                           conventions: Conventions) -> None:
+    """Refuse a producer that, through its own producers, comes back to its consumer.
+
+    Calling it recurses until the stack runs out: the generated wrapper calls its producer, which
+    calls its own, and so on, and the bindings do the same through the producers' bindings. One
+    procedure sizing an argument by itself is the shortest such chain.
+
+    A generated pair is one procedure here: a producer is always the plain-named wrapper, and what
+    it calls is what either tier of it names, the work it takes over sitting on its expert half.
+    """
+    edges: dict[int, list[tuple[Procedure, Argument]]] = {}
+    nodes: dict[int, Procedure] = {}
+    for module in project:
+        for consumer in module.exported_procedures:
+            entry = _plain_of_an_expert(consumer, project, conventions) or consumer
+            for argument in consumer.arguments:
+                plan = argument.roles.computed_from if argument.roles else None
+                if plan is None or not plan.is_automatic:
+                    continue
+                nodes[id(entry)] = entry
+                nodes.setdefault(id(plan.producer), plan.producer)
+                callees = edges.setdefault(id(entry), [])
+                if all(callee is not plan.producer for callee, _ in callees):
+                    callees.append((plan.producer, argument))
+
+    reported: set[frozenset] = set()
+    finished: set[int] = set()
+
+    def visit(node: Procedure, chain: list[tuple[Procedure, Argument]]) -> None:
+        # `chain`: each procedure on the way here, with its argument that calls the next one
+        on_chain = [id(procedure) for procedure, _ in chain]
+        for callee, argument in edges.get(id(node), []):
+            here = chain + [(node, argument)]
+            if id(callee) == id(node) or id(callee) in on_chain:
+                cycle = here[(on_chain + [id(node)]).index(id(callee)):]
+                key = frozenset(id(procedure) for procedure, _ in cycle)
+                if key not in reported:
+                    reported.add(key)
+                    _report_cycle(cycle, diagnostics)
+            elif id(callee) not in finished:
+                visit(callee, here)
+        finished.add(id(node))
+
+    for node_id, node in nodes.items():
+        if node_id not in finished:
+            visit(node, [])
+
+
+def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: DiagnosticBag) -> None:
+    """One diagnostic per cycle, on the argument where its chain starts, naming the whole chain.
+
+    `cycle` holds each procedure on it with its argument that calls the next one; the last one
+    calls the first again.
+    """
+    first, argument = cycle[0]
+    chain = " -> ".join([procedure.name for procedure, _ in cycle] + [first.name])
+    diagnostics.error(
+        f"'{argument.name}' of '{first.name}' is computed from a producer that comes back to "
+        f"it: {chain}",
+        entity=argument,
+        note=(
+            "each call would make the next until the stack runs out; size one of them by "
+            "something that does not depend on the others"
+        ),
+    )
 
 
 def _is_called_from_fortran(consumer: Procedure, argument: Argument, project,

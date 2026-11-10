@@ -759,7 +759,9 @@ A generated producer validates its inputs, so calling it can fail. What you get 
 
 **Two modules may not consume each other's producers.** A generated wrapper that calls a producer
 in another module `use`s that module, so two modules sizing each other's arguments are a module
-cycle, which fpm stops on.
+cycle, which fpm stops on. **Nor may a producer come back to its consumer** through its own
+producers — one procedure sizing an argument by itself, or two sizing each other: each call would
+make the next until the stack ran out, so the generator refuses it, naming the chain.
 
 Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
 then the docs say where to get the value, and nothing is called for them. It names the producer the same
@@ -1461,6 +1463,7 @@ source and carries a note saying what to write instead.
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
 | an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |

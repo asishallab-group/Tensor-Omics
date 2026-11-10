@@ -341,7 +341,8 @@ The parts a source author does not need, and a generator maintainer does:
   array; an input the producer's binding derives (`ProducerInput.derived`) is resolved like any
   other and passed only by Fortran (`OutputFromPlan.binding_inputs` is what Python and R pass).
   Two modules may not consume each other's producers: the generated modules would `use` each
-  other, a cycle fpm stops on.
+  other, a cycle fpm stops on. A producer that comes back to its consumer through its own
+  producers is refused, naming the chain (`roles._check_producer_cycles`).
 - **A refusal of the binding's own is an input error without a code** (#221). Python raises
   `ToxArgumentError` (`emit.errors_python.ARGUMENT_EXCEPTION`), a `ToxInputError` whose `code`
   is None and which is a `TypeError` and a `ValueError` too, for every shape, type and value it
