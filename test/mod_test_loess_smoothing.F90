@@ -8,7 +8,8 @@ module mod_test_loess_smoothing
   ! the generated wrappers pack the offending argument's position into `ierr`, so the
   ! cases below compare the bare code rather than the packed one
   use tox_errors, only: ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH, ERR_EMPTY_INPUT, get_err_code
-  use tox_loess,  only: loess_fit_plain, loess_fit_robust
+  use tox_loess,  only: loess_fit_plain, loess_fit_robust, tox_loess_required_workspace
+  use tox_loess_impl, only: tox_loess_required_workspace_impl
   use f42_utils_impl
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
@@ -21,7 +22,7 @@ contains
   !> Get array of all available LOESS tests.
   function get_all_tests_loess_smoothing() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(20))
+    allocate(all_tests(21))
 
     all_tests(1) = test_case("test_loess_constant_input", test_loess_constant_input)
     all_tests(2) = test_case("test_loess_linear_trend", test_loess_linear_trend)
@@ -43,12 +44,27 @@ contains
     all_tests(18) = test_case("test_loess_degenerate_x_range_fallback", test_loess_degenerate_x_range_fallback)
     all_tests(19) = test_case("test_loess_insufficient_unique_x_fallback", test_loess_insufficient_unique_x_fallback)
     all_tests(20) = test_case("test_loess_many_points_low_variance_y", test_loess_many_points_low_variance_y)
+    all_tests(21) = test_case("test_loess_required_workspace_reports_ierr", test_loess_required_workspace_reports_ierr)
 
   end function get_all_tests_loess_smoothing
 
   ! ---------------------------------------------------------------------------
   ! TESTS
   ! ---------------------------------------------------------------------------
+
+  !> The workspace sizing routine is a generated wrapper now, which reports through a trailing
+  !| `ierr` like every entry point -- and sizes exactly what its implementation does.
+  subroutine test_loess_required_workspace_reports_ierr()
+    integer(int32) :: int_size, real_size, int_expected, real_expected, ierr
+
+    ierr = -1
+    call tox_loess_required_workspace(1_int32, 100_int32, int_size, real_size, .true._c_bool, ierr)
+    call tox_loess_required_workspace_impl(1_int32, 100_int32, int_expected, real_expected, .true._c_bool)
+
+    call assert_equal_int(get_err_code(ierr), 0_int32, "tox_loess_required_workspace: ierr")
+    call assert_equal_int(int_size, int_expected, "tox_loess_required_workspace: integer workspace")
+    call assert_equal_int(real_size, real_expected, "tox_loess_required_workspace: real workspace")
+  end subroutine test_loess_required_workspace_reports_ierr
 
   !> Constant input: y should remain constant everywhere.
   subroutine test_loess_constant_input()
