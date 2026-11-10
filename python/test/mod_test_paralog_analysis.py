@@ -17,6 +17,7 @@ from tensor_omics import (
     normalize_unit_length
 )
 from test_helpers import run_all_tests
+from tensor_omics import ToxInputError
 
 
 def _normalize_columns(matrix):
@@ -177,6 +178,21 @@ def test_detect_neofunctionalization():
                          [True, True],
                          [False, False]], dtype=bool, order="F")
     assert np.array_equal(neofunc, expected), "Case 2 output mismatch"
+
+
+
+def test_calc_work_arr_paralog_subsets_size_validates_even_with_nothing_to_size():
+    """A zero max_subset_size sizes nothing, but no genes is an error naming n_genes."""
+    mask = np.zeros(1, dtype=np.int32)
+    mask[0] = 1
+    sizes = calc_work_arr_paralog_subsets_size(0, 3, mask)
+    assert sizes["work_array_size"] == 0 and sizes["max_subset_size"] == 0, sizes
+    try:
+        calc_work_arr_paralog_subsets_size(0, 0, mask)
+    except ToxInputError as error:
+        assert error.argument == "n_genes", error.argument
+    else:
+        raise AssertionError("no genes was accepted")
 
 
 if __name__ == "__main__":
