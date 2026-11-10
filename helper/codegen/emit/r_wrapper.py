@@ -119,8 +119,8 @@ class RWrapperEmitter:
     def _r_value_of(self, consumer_arg: str, wrapper: CWrapper) -> str:
         """The R expression for a consumer argument, to feed an AUTO producer call.
 
-        A user input is just its name; a derived extent is not in scope as a variable, so
-        it is spelled out (`length(values)`), which is what the caller would compute anyway.
+        A user input is just its name; a derived extent or shape is not in scope as a variable,
+        so it is spelled out (`length(values)`), which is what the caller would compute anyway.
         """
         argument = wrapper.argument(consumer_arg)
         roles = argument.source.roles if argument and argument.source else None
@@ -130,6 +130,11 @@ class RWrapperEmitter:
             position = extent_provider(argument, wrapper)
             if position is not None:
                 return self._position(position)
+        if roles is not None and roles.is_inferable_shape_arg:
+            # not in scope either: the shim reads a shape off its array (`tox_shape_of`), as
+            # the dim attribute or, for a plain vector, the length, so the call does the same
+            owner = roles.shape_of.name
+            return f"if (is.null(dim({owner}))) length({owner}) else dim({owner})"
         if roles is not None and roles.is_mask_count:
             return _mask_count(roles.mask_count_of.name)
         return consumer_arg
