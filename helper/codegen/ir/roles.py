@@ -428,6 +428,10 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
+        if fortran_calls and _refines_a_read_only_input(argument, consumer, producer, inputs,
+                                                         diagnostics, conventions):
+            continue
+
         argument.roles.computed_from = OutputFromPlan(
             producer=producer,
             output=output,
@@ -507,6 +511,42 @@ def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: Diagnost
             "something that does not depend on the others"
         ),
     )
+
+
+def _refines_a_read_only_input(argument: Argument, consumer: Procedure, producer: Procedure,
+                               inputs: list[ProducerInput], diagnostics: DiagnosticBag,
+                               conventions: Conventions) -> bool:
+    """Refuse an `intent(inout)` producer input the Fortran call would hand an `intent(in)` dummy.
+
+    The generated wrapper calls the producer directly and passes the dummy that supplies the
+    input, which the producer then writes: Fortran refuses to compile that. Python and R adopt
+    the refined value instead (`inout_feedback`), so this is a refusal only where the Fortran
+    wrapper makes the call. True when something was refused.
+    """
+    plain = consumer.module.procedure(consumer.name[: -len(conventions.expert_suffix)])
+    refused = False
+    for supply in inputs:
+        if supply.argument is None:
+            continue
+        producer_input = producer.argument(supply.name)
+        if producer_input.intent is not Intent.INOUT:
+            continue
+        dummy = plain.argument(supply.argument)
+        if dummy is None or dummy.intent is not Intent.IN:
+            continue  # a local the wrapper owns, or a dummy it may write
+        diagnostics.error(
+            f"'{argument.name}' is computed from '{producer.name}', which refines its input "
+            f"'{supply.name}' in place, but '{supply.argument}' supplying it is intent(in)",
+            entity=argument,
+            note=(
+                f"the generated wrapper calls '{producer.name}' itself and would hand it "
+                f"'{supply.argument}' to write, which does not compile. Declare "
+                f"'{supply.argument}' intent(inout) on the implementation, so the refined value "
+                "reaches it and the caller, or supply the input by a constant in the table"
+            ),
+        )
+        refused = True
+    return refused
 
 
 def _is_called_from_fortran(consumer: Procedure, argument: Argument, project,

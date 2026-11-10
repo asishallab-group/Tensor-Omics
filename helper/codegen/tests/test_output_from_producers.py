@@ -425,6 +425,50 @@ class TestPurity:
             assert ("pure subroutine work_total(" in fortran(synthesis)) is pure
 
 
+class TestAnInputTheProducerRefines:
+    """An `intent(inout)` producer input -- a cap the producer lowers in place.
+
+    Where the generated Fortran calls the producer it hands it the dummy that supplies the
+    input, so that dummy has to be writable; an `intent(in)` one did not compile.
+    """
+
+    def capping(self):
+        return module("tox_hand", procedure(
+            "capped_size",
+            integer("n_items", doc="items"),
+            integer("cap", Intent.INOUT, doc="a cap it lowers"),
+            integer("sized", Intent.OUT, doc="the size"),
+            integer("ierr", Intent.OUT, doc="error"),
+        ))
+
+    def capped(self, cap_intent, sized_result=False):
+        size = integer("work_size", doc="size", directives=auto("sized", "capped_size", "tox_hand"))
+        sized = (real("res", Intent.OUT, "(work_size)", doc="the result") if sized_result
+                 else real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"))
+        return consumer("capped_impl", integer("n_items", doc="items"),
+                        integer("cap", cap_intent, doc="a cap"), size, sized)
+
+    def test_an_intent_in_dummy_supplying_it_is_refused(self):
+        _, bag = analysed(self.capping(), self.capped(Intent.IN))
+
+        [error] = [e for e in bag.errors if "refines its input" in e.message]
+        assert error.message == ("'work_size' is computed from 'capped_size', which refines its "
+                                 "input 'cap' in place, but 'cap' supplying it is intent(in)")
+        assert "Declare 'cap' intent(inout) on the implementation" in error.note
+
+    def test_an_intent_inout_dummy_is_passed_to_it(self):
+        synthesis, bag = analysed(self.capping(), self.capped(Intent.INOUT))
+
+        assert bag.errors == ()
+        assert "cap = cap" in call_of(body(fortran(synthesis), "capped"), "capped_size")
+
+    def test_the_bindings_adopt_the_refined_value_instead(self):
+        # nothing in Fortran calls it: Python and R take the producer's returned cap
+        _, bag = analysed(self.capping(), self.capped(Intent.IN, sized_result=True))
+
+        assert bag.errors == ()
+
+
 class TestACycle:
     """A producer that, through its producers, comes back to its consumer is refused.
 

@@ -754,6 +754,9 @@ A generated producer validates its inputs, so calling it can fail. What you get 
 
 `foo` calls the producer directly, so it passes every one of the producer's arguments:
 
+- **An input the producer refines in place** (`intent(inout)`, a cap it lowers) is written back
+  into the argument of yours that supplied it, so that argument must be `intent(inout)` too;
+  an `intent(in)` one is refused. Python and R adopt the refined value themselves.
 - **An output you do not take** goes into a local and is dropped — if it is a scalar. An array
   output nothing takes is refused, since a local for it would need the producer's own extents.
 - **An input the producer's binding derives** — `n` of `extent_size(n, x(n))`, read off `x` — is
@@ -1470,6 +1473,7 @@ source and carries a note saying what to write instead.
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
+| an `intent(in)` argument supplying an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls | the producer writes it, and Fortran will not hand an `intent(in)` dummy to something that does (Section 5.9) |
 | an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
