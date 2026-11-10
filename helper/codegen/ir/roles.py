@@ -631,6 +631,8 @@ def _missing_producer_note(directive, project, conventions: Conventions) -> str 
         generated = directive.module[: -len(suffix)]
         wrapper = project.procedure(generated, directive.procedure)
         if wrapper is not None:
+            # the plain-named one, even for `foo_expert`: that is what a producer names
+            wrapper = _plain_of_an_expert(wrapper, project, conventions) or wrapper
             return (f"'{wrapper.name}' is generated into '{generated}', not into "
                     f"'{directive.module}': name it there")
     return None

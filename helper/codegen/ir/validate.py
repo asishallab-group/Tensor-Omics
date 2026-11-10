@@ -390,26 +390,7 @@ def check_doc_links(project: Project, diagnostics: DiagnosticBag) -> None:
                 if where in reported:
                     continue
                 reported.add(where)
-                if _names_a_missing_producer(link, entity, modules):
-                    continue  # `roles` refused the DM_OUTPUT_FROM it comes from, and said why
                 _check_link(link, entity, modules, diagnostics)
-
-
-def _names_a_missing_producer(link, entity, modules) -> bool:
-    """Whether `link` is the one a `DM_OUTPUT_FROM` renders, naming a producer that does not exist.
-
-    The macro writes the directive's producer into the argument's documentation as a link, so
-    the one mistake would be reported twice -- once as a missing producer, with a note on where
-    it is, and once as a dangling link with none.
-    """
-    directive = getattr(getattr(entity, "directives", None), "output_from", None)
-    if directive is None or link.item is None:
-        return False
-    if (link.component.lower(), link.item.lower()) != (directive.module.lower(),
-                                                       directive.procedure.lower()):
-        return False
-    named = modules.get(link.component.lower())
-    return named is None or link.item.lower() not in named.public_names
 
 
 def _documented(module: Module):
