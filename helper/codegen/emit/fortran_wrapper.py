@@ -216,6 +216,8 @@ class FortranWrapperEmitter:
         # arguments are all real still spells `allow_nan=.true._c_bool`
         for procedure in module:
             kinds |= self._emitted_literal_kinds(procedure)
+        # and of the locals a producer's dropped outputs go into, which no argument declares
+        kinds |= self._unused_output_kinds(module)
 
         # A module that names a C kind depends on f42_safeguard, whose compile-time guards say
         # which kind is missing where the platform has none. The dependency is what puts
@@ -1028,11 +1030,12 @@ class FortranWrapperEmitter:
         dropped where nothing here takes one (`_unused_output_locals`), its ierr as ierr.
         Each call is checked before the next is made, since each starts by setting ierr ok.
         """
-        for group in self._producer_groups(foo, taken):
+        locals_ = self._unused_locals(foo, taken)
+        for index, group in enumerate(self._producer_groups(foo, taken)):
             plan = group[0].roles.computed_from
             producer = plan.producer
             produced = {a.roles.computed_from.output.name.lower(): a.name for a in group}
-            unused = {d.name.lower() for d in unused_outputs(group, self.conventions)}
+            unused = {d.name.lower(): name for (i, d, name) in locals_ if i == index}
             supplied = {pi.name.lower(): pi for pi in plan.inputs}
 
             actuals = []
@@ -1043,7 +1046,7 @@ class FortranWrapperEmitter:
                 elif lowered in produced:
                     actuals.append((dummy.name, produced[lowered]))
                 elif lowered in unused:
-                    actuals.append((dummy.name, self._unused_name(dummy.name)))
+                    actuals.append((dummy.name, unused[lowered]))
                 elif lowered in supplied:
                     supply = supplied[lowered]
                     value = (
@@ -1096,23 +1099,38 @@ class FortranWrapperEmitter:
             writer.line("return")
         writer.line("end if")
 
-    @staticmethod
-    def _unused_name(name: str) -> str:
-        return local_name(name, UNUSED_OUTPUT)
+    def _unused_locals(self, foo: Procedure, taken) -> list[tuple[int, Argument, str]]:
+        """The local each producer output the wrapper must pass and then drops goes into.
+
+        As `(producer call, output, local)`: one local per output, named `<output>_unused`, or
+        `<producer>_<output>_unused` where another producer's dropped output already has that
+        name -- the two may be of different types. Only scalars reach here; `roles` refuses any
+        other output nothing takes.
+        """
+        found = []
+        taken_names: set[str] = set()
+        for index, group in enumerate(self._producer_groups(foo, taken)):
+            producer = group[0].roles.computed_from.producer
+            for dummy in unused_outputs(group, self.conventions):
+                name = local_name(dummy.name, UNUSED_OUTPUT)
+                if name.lower() in taken_names:
+                    name = local_name(f"{producer.name}_{dummy.name}", UNUSED_OUTPUT)
+                taken_names.add(name.lower())
+                found.append((index, dummy, name))
+        return found
 
     def _unused_output_locals(self, writer: Writer, foo: Procedure, taken) -> None:
-        """A local for each producer output the wrapper must pass and then drops.
+        for _, dummy, name in self._unused_locals(foo, taken):
+            writer.line(f"{dummy.type} :: {name}")
 
-        Only scalars reach here; `roles` refuses any other output nothing takes.
-        """
-        declared: set[str] = set()
-        for group in self._producer_groups(foo, taken):
-            for dummy in unused_outputs(group, self.conventions):
-                name = self._unused_name(dummy.name)
-                if name.lower() in declared:
-                    continue
-                declared.add(name.lower())
-                writer.line(f"{dummy.type} :: {name}")
+    def _unused_output_kinds(self, module: Module) -> set[str]:
+        """The kinds of the locals `_unused_output_locals` declares, which `use` must import."""
+        return {
+            dummy.type.kind
+            for _, _, group in self._producer_calls(module)
+            for dummy in unused_outputs(group, self.conventions)
+            if dummy.type.kind
+        }
 
     def _actual(self, name: str, materialized) -> str:
         """The name a producer call passes: the materialised local where there is one."""

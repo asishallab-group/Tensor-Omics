@@ -747,6 +747,13 @@ class TestAGeneratedWrapperAsProducer:
             print(json.dumps(tox.fx_first_of_two([1.0, 2.0])))
         """) == 3.0 + 2
 
+    def test_outputs_nothing_takes_of_other_kinds_and_of_one_name(self, built):
+        # fx_two_sizes' integer `second_size` and fx_flagged_size's real one, and its c_bool flag:
+        # each dropped into a local of its own type, whose kind the module imports
+        assert run_python(built, """
+            print(json.dumps(tox.fx_both_firsts([1.0, 2.0])))
+        """) == 3.0 + 2 + 3
+
     def test_a_shape_the_bindings_read_off_an_array(self, built):
         # fx_vector_count takes `arr_shape`, which neither language asks of the caller
         assert run_python(built, """

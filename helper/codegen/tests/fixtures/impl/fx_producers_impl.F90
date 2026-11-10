@@ -8,11 +8,12 @@
 !| module never `use`s itself. Compiled and run by `test_end_to_end_impl.py`.
 module fx_producers_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     M_IMPLICIT_NONE
     private
 
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
-    public :: fx_vector_count_impl, fx_local_total_impl
+    public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
 
 contains
 
@@ -66,6 +67,23 @@ contains
         first_size = n_items
         second_size = 2_int32*n_items
     end subroutine fx_two_sizes_impl
+
+    !> summary: A size, a weight and a flag: two outputs of kinds an integer consumer never names
+    !| author: A Developer
+    !| Its `second_size` is a real, where `fx_two_sizes`' is an integer.
+    pure subroutine fx_flagged_size_impl(n_items, first_size, second_size, flag)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(out) :: first_size
+            !! `n_items` plus one
+        real(real64), intent(out) :: second_size
+            !! half of `n_items`
+        logical(c_bool), intent(out) :: flag
+            !! whether there are any
+        first_size = n_items + 1_int32
+        second_size = 0.5_real64*n_items
+        flag = n_items > 0
+    end subroutine fx_flagged_size_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer

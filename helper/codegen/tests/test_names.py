@@ -202,11 +202,12 @@ class TestTheFortranWrappers:
                 arguments = [a.name for a in spec.impl.arguments]
                 arguments += [a.name for a in module.procedure(procedure).arguments]
                 # and a producer output it passes a local for and drops (`UNUSED_OUTPUT`)
-                arguments += [
-                    d.name for a in spec.validating.arguments
-                    if a.roles is not None and a.roles.computed_from is not None
-                    for d in a.roles.computed_from.producer.arguments
-                ]
+                plans = [a.roles.computed_from for a in spec.validating.arguments
+                         if a.roles is not None and a.roles.computed_from is not None]
+                arguments += [d.name for plan in plans for d in plan.producer.arguments]
+                # `<producer>_<output>` where two producers' dropped outputs share a name
+                arguments += [f"{plan.producer.name}_{d.name}"
+                              for plan in plans for d in plan.producer.arguments]
                 for name in _FORTRAN_DECLARATION.findall(body):
                     if name.lower() in {a.lower() for a in arguments}:
                         continue

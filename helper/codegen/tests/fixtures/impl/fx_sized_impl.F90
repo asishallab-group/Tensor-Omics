@@ -13,7 +13,7 @@ module fx_sized_impl
     private
 
     public :: fx_fill_impl, fx_work_total_impl, fx_two_producers_impl, fx_extent_total_impl
-    public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl
+    public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl, fx_both_firsts_impl
 
 contains
 
@@ -137,6 +137,32 @@ contains
         tmp_buf = 1.0_real64
         total = sum(x) + sum(tmp_buf)
     end subroutine fx_first_of_two_impl
+
+    !> summary: Two work arrays sized by two producers, whose dropped outputs share a name
+    !| author: A Developer
+    !| Each producer's `second_size` goes unused -- an integer from one, a real from the other --
+    !| and so does `fx_flagged_size`'s `logical(c_bool)` flag.
+    pure subroutine fx_both_firsts_impl(n_items, x, a_size, tmp_a, b_size, tmp_b, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: a_size
+            !! size of the first scratch
+            !! DM_OUTPUT_FROM(first_size, fx_two_sizes, fx_producers, AUTO)
+        real(real64), dimension(a_size), intent(out) :: tmp_a
+            !! scratch
+        integer(int32), intent(in) :: b_size
+            !! size of the second scratch
+            !! DM_OUTPUT_FROM(first_size, fx_flagged_size, fx_producers, AUTO)
+        real(real64), dimension(b_size), intent(out) :: tmp_b
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the sizes of both scratches
+        tmp_a = 1.0_real64
+        tmp_b = 1.0_real64
+        total = sum(x) + sum(tmp_a) + sum(tmp_b)
+    end subroutine fx_both_firsts_impl
 
     !> summary: A result sized by a producer that takes the shape of an input
     !| author: A Developer

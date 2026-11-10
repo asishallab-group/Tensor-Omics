@@ -398,6 +398,62 @@ class TestAnOutputNothingTakes:
         assert "second = second_unused" in call_of(text, "two_sizes")
         assert "first = work_size" in call_of(text, "two_sizes")
 
+    def test_its_kind_is_imported_where_no_argument_has_it(self):
+        # an integer-only consumer drops a logical(c_bool) and a real64 output
+        from builders import logical
+
+        odd = producers(procedure(
+            "odd_outputs_impl",
+            integer("n_items", doc="items"),
+            integer("sized", Intent.OUT, doc="the size"),
+            logical("flag", Intent.OUT, kind="c_bool", doc="a flag"),
+            real("weight", Intent.OUT, doc="a weight"),
+            meta=IMPL, is_pure=True,
+        ))
+        cons = consumer(
+            "count_impl",
+            integer("n_items", doc="items"),
+            integer("work_size", doc="size", directives=auto("sized", "odd_outputs", "tox_prod")),
+            integer("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            integer("total", Intent.OUT, doc="the result"),
+        )
+        synthesis, bag = analysed(odd, cons)
+        text = fortran(synthesis)
+        header = text.split("contains", 1)[0]
+
+        assert bag.errors == ()
+        assert "logical(c_bool) :: flag_unused" in text and "real(real64) :: weight_unused" in text
+        assert "use, intrinsic :: iso_c_binding, only: c_bool" in header
+        assert "use, intrinsic :: iso_fortran_env, only: int32, real64" in header
+        assert "use f42_safeguard" in header  # a C kind: the safeguard comes first
+
+    def test_two_of_one_name_get_a_local_each(self):
+        # two_sizes' `second` is an integer, other_two's a real
+        other = producers(procedure(
+            "other_two_impl",
+            integer("n_items", doc="items"),
+            integer("first", Intent.OUT, doc="one size"),
+            real("second", Intent.OUT, doc="a real"),
+            meta=IMPL, is_pure=True,
+        ))
+        cons = consumer(
+            "both_impl",
+            integer("n_items", doc="items"),
+            integer("a_size", doc="size", directives=auto("first", "two_sizes", "tox_prod")),
+            real("tmp_a", Intent.OUT, "(a_size)", doc="scratch"),
+            integer("b_size", doc="size", directives=auto("first", "other_two", "tox_prod")),
+            real("tmp_b", Intent.OUT, "(b_size)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+        synthesis, bag = analysed(other, cons)
+        text = body(fortran(synthesis), "both")
+
+        assert bag.errors == ()
+        assert "integer(int32) :: second_unused" in text
+        assert "real(real64) :: other_two_second_unused" in text
+        assert "second = second_unused" in call_of(text, "two_sizes")
+        assert "second = other_two_second_unused" in call_of(text, "other_two")
+
     def test_an_array_is_refused(self):
         _, bag = analysed(producers(), work_consumer("sized_and_rows", output="sized", doc=table()))
 
