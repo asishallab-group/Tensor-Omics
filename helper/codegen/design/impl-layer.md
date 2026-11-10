@@ -404,9 +404,10 @@ implementation that *is* a prologue looks like a mistake and is not one: what th
 automates for an argument is still a published operation in its own right, and the only thing the
 conversion took away was the hand-written `validate_dimension_size` that the wrapper now emits.
 
-`tox_loess_required_workspace` and `calc_work_arr_paralog_subsets_size` were the two recommend
-routines left as hand-written exports, and they converted once a generated wrapper could be a
-`DM_OUTPUT_FROM` producer ("A generated wrapper as producer", below). The paralog one failed the
+`tox_loess_required_workspace` and `calc_work_arr_paralog_subsets_size`, two of the recommend
+routines left as hand-written exports, converted once a generated wrapper could be a
+`DM_OUTPUT_FROM` producer ("A generated wrapper as producer", below), by FES's decision: a
+recommend routine that `DM_OUTPUT_FROM` consumers name is generated, so they call its wrapper. The paralog one failed the
 test outright: it carried its own `set_ok` / `validate_*` / `is_err` block, with no `arg_pos=`
 at all, so its errors named nothing. A `DM_MIN(1_int32)` on `n_genes` and the existing
 `DM_MIN(0_int32)` on `max_subset_size` replace the block, and the wrapper names the argument. One
@@ -416,9 +417,13 @@ hand-written routine returned a size of zero. The overflow clamping and the "siz
 valid input are the implementation's and stay. The LOESS one validated nothing, so its wrapper
 adds only the trailing `ierr` every entry point has; what it bought is that both now sit in the
 generated modules beside their consumers -- `tox_loess` and `tox_paralog_analysis` -- and the
-LOESS consumers there call a producer generated into their own module. The published C, Python
-and R calls are unchanged; the Fortran entry points moved module, and `tensor_omics.tox_loess_impl`,
-which held only the LOESS routine, is gone.
+LOESS consumers there call a producer generated into their own module. What a caller sees
+changed only as FES approved: the C symbols and their argument lists, and the top-level Python
+and R names and parameters, are as they were; the Fortran entry points moved module, the LOESS
+one gaining the trailing `ierr`; the Python functions moved submodule (`tensor_omics.tox_loess`,
+`tensor_omics.tox_paralog_analysis`), and `tensor_omics.tox_loess_impl`, which held only the LOESS
+routine, is gone; and the paralog routine's errors now name their argument, with the validation
+order above.
 
 ### f42_kd_tree: the hand-written triple the layer was designed for
 
