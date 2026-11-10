@@ -637,3 +637,123 @@ class TestADeletedImplementationLeavesNothingBehind:
         out, impl_dir = regenerated
 
         assert _build(out, impl_dir).is_file()
+
+
+#: A producer's error as Python reports it: its class, its code's name, the argument and the
+#: message. None where the call returned, and then what it returned.
+_PY_PRODUCER_ERROR = """
+            def raised(call):
+                try:
+                    return ["returned", call()]
+                except tox.error_handling.ToxError as error:
+                    return [type(error).__name__, error.name, error.argument, str(error)]
+"""  # indented as the bodies below are, which `run_python` dedents together with it
+
+def r_raised(built: Path, call: str) -> list[str]:
+    """What `call` raises in R: the first class, the code's name, the argument, the message.
+
+    `["returned", <the value, space-separated>]` where it returns instead.
+    """
+    out = run_r(built, f"""
+        e <- tryCatch({{ v <- {call}; NULL }}, tox_error = function(e) e)
+        if (is.null(e)) cat("returned", paste(v, collapse = " "), sep = "|") else
+            cat(class(e)[1], e$name, e$argument, conditionMessage(e), sep = "|")
+    """)
+    return " ".join(out).split("|")
+
+
+class TestAGeneratedWrapperAsProducer:
+    """`DM_OUTPUT_FROM` naming an implementation's generated wrapper (`fx_producers_impl`).
+
+    The producer validates its inputs, so its error carries the position of its own argument. A
+    consumer that passed it through unchanged named the consumer's argument at that position --
+    `x` for a bad `scale` -- and a second producer's `set_ok` swallowed the first one's error.
+    """
+
+    def test_python_names_the_argument_a_fortran_called_producer_was_given(self, built):
+        # fx_work_total's wrapper calls fx_scaled_size itself, `scale` as its `factor`
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_work_total([1.0, 2.0], 0)),
+                              raised(lambda: tox.fx_work_total([1.0, 2.0], 3))]))
+        """)
+
+        assert out[0][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "scale"]
+        assert out[0][3].endswith("(argument 'scale')")
+        assert out[1] == ["returned", 9.0]
+
+    def test_r_names_the_argument_a_fortran_called_producer_was_given(self, built):
+        assert r_raised(built, "fx_work_total(c(1, 2), 0L)") == [
+            "tox_input_error", "ERR_INVALID_INPUT", "scale",
+            "invalid input arguments (argument 'scale')"]
+        assert r_raised(built, "fx_work_total(c(1, 2), 3L)") == ["returned", "9"]
+
+    def test_the_first_of_two_producers_to_fail_is_the_error(self, built):
+        # fx_capped_size refuses 7, then fx_scaled_size would succeed and reset ierr
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_two_producers([1.0], 7, 2)),
+                              raised(lambda: tox.fx_two_producers([1.0], 4, 2))]))
+        """)
+
+        assert out[0][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "n_count"]
+        assert out[1] == ["returned", 1.0 + 5 + 2]
+
+    def test_a_producer_in_the_consumer_s_own_module(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_local_total([1.0, 2.0], 2)),
+                              raised(lambda: tox.fx_local_total([1.0, 2.0], 0))]))
+        """)
+
+        assert out[0] == ["returned", 3.0 + 4]
+        assert out[1][2] == "scale"
+
+    def test_python_names_the_argument_a_binding_called_producer_was_given(self, built):
+        # fx_fill's result is sized by fx_scaled_size, which Python calls before fx_fill
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_fill([1.0, 2.0], 0)),
+                              raised(lambda: tox.fx_fill([], 2)),
+                              raised(lambda: list(tox.fx_fill([1.0, 2.0], 2)))]))
+        """)
+
+        assert out[0][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "scale"]
+        assert out[0][3].endswith("(argument 'scale')")
+        # the producer's `n_items` is the consumer's, which the caller wrote as `x`: the
+        # producer refuses it (DM_MIN) before fx_fill itself is called
+        assert out[1][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "x"]
+        assert out[1][3].endswith("(argument 'x', via 'n_items')")
+        assert out[2] == ["returned", [2.0, 2.0, 2.0, 2.0]]
+
+    def test_r_names_the_argument_a_binding_called_producer_was_given(self, built):
+        assert r_raised(built, "fx_fill(c(1, 2), 0L)") == [
+            "tox_input_error", "ERR_INVALID_INPUT", "scale",
+            "invalid input arguments (argument 'scale')"]
+        assert r_raised(built, "fx_fill(numeric(0), 2L)")[2:] == [
+            "x", "invalid input arguments (argument 'x', via 'n_items')"]
+        assert r_raised(built, "fx_fill(c(1, 2), 2L)") == ["returned", "2 2 2 2"]
+
+    def test_r_reports_the_first_of_two_producers_to_fail(self, built):
+        assert r_raised(built, "fx_two_producers(1, 7L, 2L)")[:3] == [
+            "tox_input_error", "ERR_INVALID_INPUT", "n_count"]
+
+    def test_an_extent_the_producer_calls_by_another_name(self, built):
+        # fx_extent_size(n, x(n)) for fx_extent_total(m, x(m)): the table row `n | m`
+        assert run_python(built, """
+            print(json.dumps(tox.fx_extent_total([1.0, 2.0, 3.0])))
+        """) == 6.0 + 4
+        assert run_r(built, "cat(fx_extent_total(c(1, 2, 3)))") == ["10"]
+
+    def test_an_output_nothing_takes(self, built):
+        # fx_two_sizes also outputs `second_size`, which fx_first_of_two has no use for
+        assert run_python(built, """
+            print(json.dumps(tox.fx_first_of_two([1.0, 2.0])))
+        """) == 3.0 + 2
+
+    def test_a_shape_the_bindings_read_off_an_array(self, built):
+        # fx_vector_count takes `arr_shape`, which neither language asks of the caller
+        assert run_python(built, """
+            print(json.dumps([list(map(int, tox.fx_status_per_vector(np.ones((2, 3, 4))))),
+                              list(map(int, tox.fx_status_per_vector(np.ones(3))))]))
+        """) == [[2] * 12, [3]]
+        assert run_r(built, """
+            cat(length(fx_status_per_vector(array(1, c(2, 3, 4)))),
+                fx_status_per_vector(c(1, 2, 3)))
+        """) == ["12", "3"]

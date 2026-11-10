@@ -87,6 +87,10 @@ class ProducerInput:
     argument: str | None = None
     #: The value, when the producer input is a constant the consumer has no argument for
     constant: object = None
+    #: Whether the producer's own wrapper derives it (an extent, a shape, a mask count, a
+    #: nested producer's value) and so leaves it out of what Python and R ask for. Only a
+    #: generated Fortran wrapper, which calls the producer directly, passes it.
+    derived: bool = False
 
     @property
     def is_constant(self) -> bool:
@@ -113,6 +117,15 @@ class OutputFromPlan:
     is_automatic: bool
 
     @property
+    def binding_inputs(self) -> tuple[ProducerInput, ...]:
+        """What Python and R pass when they call the producer: every input but the derived.
+
+        The producer's own binding works a derived input out from the arrays it is handed,
+        so it is not one of its parameters there. A Fortran call passes them all.
+        """
+        return tuple(supply for supply in self.inputs if not supply.derived)
+
+    @property
     def inout_feedback(self) -> tuple[ProducerInput, ...]:
         """The producer inputs it refines in place, that a consumer argument supplied.
 
@@ -123,7 +136,7 @@ class OutputFromPlan:
         with a stale figure. Constants are never fed back (nothing supplied them).
         """
         fed_back = []
-        for supply in self.inputs:
+        for supply in self.binding_inputs:
             if supply.argument is None:
                 continue
             producer_input = self.producer.argument(supply.name)
@@ -270,6 +283,10 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                          evaluator: ConstantEvaluator | None = None) -> None:
     """Attach an `OutputFromPlan` to every argument documented with `DM_OUTPUT_FROM`.
 
+    The producer is a published entry point: a hand-written `M_EXPORT_C` procedure, or the
+    generated wrapper of an implementation -- the plain-named one, in the generated module.
+    An implementation itself is not one; the error names the wrapper to spell instead.
+
     Each of the producer's inputs is supplied by the consumer argument of the same name.
     Where the two disagree, the argument documents the mapping in a table:
 
@@ -282,9 +299,14 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
     is always one-dimensional -- can be given a value outright.
 
     A producer input that is neither name-matched, nor mapped to an argument, nor a
-    constant is an error naming it. The producer may live in another module; the Python
-    emitter imports it where it is called, and R has every wrapper in one environment.
+    constant is an error naming it. An input the producer's binding derives (an extent read
+    off one of its arrays) is resolved the same way and marked derived: Python and R leave
+    it out of their call, and only a generated Fortran wrapper calling the producer passes
+    it -- so only there is one that resolves to nothing an error. The producer may live in
+    another module; the Python emitter imports it where it is called, and R has every
+    wrapper in one environment.
     """
+    called_here: dict[int, list[Argument]] = {}
     for argument in consumer.arguments:
         directive = argument.directives.output_from
         if directive is None:
@@ -304,10 +326,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"'{argument.name}' is computed from '{producer.name}', which is not "
                 f"exported, so there is no wrapper to call",
                 entity=argument,
-                note=(
-                    f"add 'category: {CONVENTIONS.c_binding_category}' to "
-                    f"'{producer.name}'"
-                ),
+                note=_not_exported_note(producer, project, conventions),
             )
             continue
 
@@ -336,6 +355,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
         if renames is None:
             continue
 
+        fortran_calls = _is_called_from_fortran(consumer, argument, project, conventions)
         inputs = []
         unmatched = []
         for producer_input in producer.arguments:
@@ -345,16 +365,16 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 continue
             if producer_input.name.lower() == "ierr":
                 continue
-            if producer_input.roles and producer_input.roles.is_derived:
-                # the producer's own wrapper derives this input (an extent read off one of
-                # its array arguments, a shape, a mask count, or a nested producer) and
-                # drops it from its signature, so the call must not -- and need not --
-                # supply it: the producer recomputes it from the array inputs it is passed
-                continue
+            # the producer's own wrapper derives this input (an extent read off one of its
+            # array arguments, a shape, a mask count, or a nested producer) and drops it from
+            # its signature, so Python and R must not supply it -- but a Fortran call of the
+            # producer has to, so it is resolved like any other input
+            derived = bool(producer_input.roles and producer_input.roles.is_derived)
             supplier = renames.get(producer_input.name.lower(), producer_input.name)
             match = consumer.argument(supplier)
             if match is not None:
-                inputs.append(ProducerInput(producer_input.name, argument=match.name))
+                inputs.append(ProducerInput(producer_input.name, argument=match.name,
+                                            derived=derived))
                 continue
             # not an argument of the consumer: a table may supply it as a constant, which
             # is how a producer input the consumer simply does not have gets a value
@@ -364,8 +384,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 except ConstantError:
                     pass
                 else:
-                    inputs.append(ProducerInput(producer_input.name, constant=value))
+                    inputs.append(ProducerInput(producer_input.name, constant=value,
+                                                derived=derived))
                     continue
+            if derived and not fortran_calls:
+                continue  # nothing that calls the producer here passes it
             unmatched.append(producer_input.name)
 
         if unmatched:
@@ -384,7 +407,112 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             inputs=tuple(inputs),
             is_automatic=directive.is_automatic,
         )
+        if fortran_calls:
+            called_here.setdefault(id(producer), []).append(argument)
 
+    for arguments in called_here.values():
+        _check_unused_outputs(arguments, diagnostics, conventions)
+
+
+def _is_called_from_fortran(consumer: Procedure, argument: Argument, project,
+                            conventions: Conventions) -> bool:
+    """Whether a generated Fortran wrapper calls the producer of `argument` itself.
+
+    It does where the allocating tier took the argument over: `consumer` is the expert half
+    of a generated pair, and the plain-named half beside it no longer has the argument.
+    Everywhere else the caller supplies the value, or Python and R compute it through the
+    producer's binding.
+    """
+    module = consumer.module
+    if module is None or project.module(module.name + conventions.impl_suffix) is None:
+        return False  # a hand-written module: nothing generated calls anything here
+    suffix = conventions.expert_suffix
+    if not consumer.name.lower().endswith(suffix):
+        return False
+    plain = module.procedure(consumer.name[: -len(suffix)])
+    return plain is not None and plain.argument(argument.name) is None
+
+
+def unused_outputs(arguments: list[Argument],
+                   conventions: Conventions = CONVENTIONS) -> list[Argument]:
+    """The outputs of the producer `arguments` are computed from that none of them takes.
+
+    `arguments` are a consumer's AUTO values from one producer, which one call fills. A
+    direct Fortran call must pass the rest of the producer's outputs all the same.
+    """
+    plan = arguments[0].roles.computed_from
+    used = {a.roles.computed_from.output.name.lower() for a in arguments}
+    error = conventions.error_arg.lower()
+    return [
+        dummy for dummy in plan.producer.arguments
+        if dummy.intent is Intent.OUT and dummy.name.lower() not in used | {error}
+    ]
+
+
+def fits_a_local(argument: Argument) -> bool:
+    """Whether a wrapper can declare a local of this output's type as it is spelled.
+
+    A scalar can, as long as nothing in its declaration names the producer's other
+    arguments: an array's extents do, and so does a string's length unless it is a literal.
+    """
+    length = argument.type.length
+    return not argument.is_array and (length is None or length.is_constant)
+
+
+def _check_unused_outputs(arguments: list[Argument], diagnostics: DiagnosticBag,
+                          conventions: Conventions) -> None:
+    """Refuse an output of a Fortran-called producer that nothing takes and no local can hold.
+
+    A direct call has to pass every output. One the consumer takes goes into the value it
+    computes; a scalar it does not take goes into a local and is dropped (`fits_a_local`).
+    An array cannot: its local would need the producer's extents, spelled in the consumer's
+    arguments.
+    """
+    producer = arguments[0].roles.computed_from.producer
+    for dummy in unused_outputs(arguments, conventions):
+        if fits_a_local(dummy):
+            continue
+        diagnostics.error(
+            f"'{arguments[0].name}' is computed from '{producer.name}', whose output "
+            f"'{dummy.name}' nothing here takes, and it is not a scalar the generated "
+            f"wrapper can drop",
+            entity=arguments[0],
+            note=(
+                "the generated wrapper calls the producer itself and must pass every output; "
+                "a scalar it does not need goes into a local, but an array (or a string whose "
+                "length is not a literal) would need the producer's own sizes, which nothing "
+                "here can spell"
+            ),
+        )
+
+
+def _not_exported_note(producer: Procedure, project, conventions: Conventions) -> str:
+    """What to name instead of a producer that is not exported.
+
+    An implementation never is, and marking it `M_EXPORT_C` is refused as well: what is
+    published is its generated wrapper, so that is what the directive names. A hand-written
+    procedure is exported by the marker.
+    """
+    suffix = conventions.impl_suffix
+    module = producer.module.name if producer.module is not None else ""
+    if not (module.lower().endswith(suffix) and producer.name.lower().endswith(suffix)):
+        return f"mark '{producer.name}' {conventions.export_marker} to export it"
+    generated, base = module[: -len(suffix)], producer.name[: -len(suffix)]
+    if project.procedure(generated, base) is not None:
+        return (f"an implementation is published as its generated wrapper: name '{base}' "
+                f"in '{generated}'")
+    per_mode = [
+        value.procedure_name
+        for argument in producer.arguments
+        if argument.roles is not None and argument.roles.mode is not None
+        and argument.roles.mode.is_split
+        for value in argument.roles.mode.values
+    ]
+    if per_mode:
+        names = ", ".join(f"'{name}'" for name in per_mode)
+        return (f"'{producer.name}' splits by mode, into one wrapper per mode: name the one "
+                f"you mean in '{generated}' ({names})")
+    return f"an implementation is published as its generated wrapper, in '{generated}'"
 
 
 def _looks_like_a_producer_input_table(table: DocTable, conventions: Conventions) -> bool:

@@ -19,7 +19,7 @@ import os as _os
 import numpy as _np
 
 from . import _contract as _contract
-from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code, ToxError as _ToxError, _consumer_error as _consumer_error
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -533,7 +533,10 @@ def read_tox_data_into(
     zip_filename_strlen = zip_filename.itemsize
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    _get_tox_data_dims_result = get_tox_data_dims(zip_filename=_zip_filename_raw)
+    try:
+        _get_tox_data_dims_result = get_tox_data_dims(zip_filename=_zip_filename_raw)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"zip_filename": 1}, _READ_TOX_DATA_INTO_ARGUMENTS) from None
     n_gene_ids = _get_tox_data_dims_result["n_gene_ids"]
     gene_id_len = _get_tox_data_dims_result["gene_id_len"]
     n_expression_rows = _get_tox_data_dims_result["n_expression_rows"]

@@ -33,8 +33,11 @@ from ..names import (
     PYTHON_LOAD_LIBRARY,
     PYTHON_NULLABLE,
     PYTHON_NUMPY as _NP,
+    PYTHON_CONSUMER_ERROR,
     PYTHON_PACKAGE_IMPORTS,
     PYTHON_PACKAGE_MODULES,
+    PYTHON_PRODUCER_IMPORTS,
+    PYTHON_TOX_ERROR,
     PYTHON_STDLIB_IMPORTS,
     PYTHON_THIRD_PARTY_IMPORTS,
 )
@@ -418,7 +421,10 @@ class PythonEmitter:
             for module_name, bound in group:
                 writer.line(f"import {module_name} as {bound}")
             writer.blank()
+        calls_producers = any(self._auto_plans(wrapper) for wrapper in module)
         for module_name, names in PYTHON_PACKAGE_IMPORTS:
+            if calls_producers and module_name == PYTHON_PRODUCER_IMPORTS[0]:
+                names = names + PYTHON_PRODUCER_IMPORTS[1]
             imported = ", ".join(f"{name} as {bound}" for name, bound in names)
             writer.line(f"from {module_name} import {imported}")
         writer.blank()
@@ -798,11 +804,8 @@ class PythonEmitter:
         original is kept aside first.
         """
         stashes: dict[str, str] = {}
-        for argument in wrapper:
-            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
-            if plan is None or not plan.is_automatic:
-                continue
-            for supply in plan.inputs:
+        for _, plan in self._auto_plans(wrapper):
+            for supply in plan.binding_inputs:
                 if supply.is_constant:
                     continue
                 name = supply.argument
@@ -827,6 +830,9 @@ class PythonEmitter:
         checking, so this just calls it. Its inputs -- the extents it reads -- are already
         derived (those that do not themselves come from a producer are), so it just passes
         them, taking the stashed pre-conversion value of any input preparation replaced.
+        What the producer's binding derives itself it is not passed.
+
+        Its error is raised again in this function's words (`_producer_call`).
 
         One call serves every argument it supplies. Producers are not cheap -- the one
         behind `read_tox_data_into` unpacks a zip archive -- so calling it once per
@@ -836,10 +842,7 @@ class PythonEmitter:
         calls: dict[tuple, str] = {}
         stashes = self._raw_stashes(wrapper)
         consumer_module = wrapper.procedure.module
-        for argument in wrapper:
-            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
-            if plan is None or not plan.is_automatic:
-                continue
+        for argument, plan in self._auto_plans(wrapper):
             producer = stripped_name(plan.producer)
             if plan.producer.module is not consumer_module:
                 # Imported here rather than at the top of the file: two modules may size
@@ -849,17 +852,19 @@ class PythonEmitter:
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
                 f"{supply.name}={self._producer_value(supply, stashes)}"
-                for supply in plan.inputs)
+                for supply in plan.binding_inputs)
             single = self._producer_returns_single(plan.producer)
             if single:
-                lines.line(f"{argument.name} = {producer}({call_args})")
+                self._producer_call(lines, wrapper, plan,
+                                    f"{argument.name} = {producer}({call_args})")
                 continue
 
             key = (producer, call_args)
             if key not in calls:
                 calls[key] = f"_{producer}_result" if len(calls) == 0 else \
                     f"_{producer}_result_{len(calls)}"
-                lines.line(f"{calls[key]} = {producer}({call_args})")
+                self._producer_call(lines, wrapper, plan,
+                                    f"{calls[key]} = {producer}({call_args})")
                 for supply in plan.inout_feedback:
                     # the producer refined a value we handed it (e.g. capped it); adopt it
                     lines.line(f'{supply.argument} = {calls[key]}["{supply.name}"]')
@@ -868,6 +873,43 @@ class PythonEmitter:
             writer.line("# work out what other procedures must supply, per DM_OUTPUT_FROM")
             writer.extend(lines)
             writer.blank()
+
+    @staticmethod
+    def _auto_plans(wrapper: CWrapper) -> list[tuple[CArgument, object]]:
+        """Each argument this function computes by calling a producer, with its plan."""
+        found = []
+        for argument in wrapper:
+            roles = argument.source.roles if argument.source else None
+            plan = roles.computed_from if roles is not None else None
+            if plan is not None and plan.is_automatic:
+                found.append((argument, plan))
+        return found
+
+    def _producer_call(self, lines: Writer, wrapper: CWrapper, plan, call: str) -> None:
+        """The producer call, its error raised again naming this function's argument.
+
+        The producer reports a bad input by its own parameter's name, which the caller of
+        this function never wrote: `supplied_by` maps it to the argument here that supplied
+        it, and nothing else to anything.
+        """
+        positions = {a.name.lower(): i for i, a in enumerate(wrapper.procedure.arguments, start=1)}
+        supplied_by = ", ".join(
+            f'"{supply.name}": {positions[supply.argument.lower()]}'
+            for supply in plan.binding_inputs
+            if supply.argument is not None and supply.argument.lower() in positions
+        )
+        tables = [f"_{wrapper.stripped_name.upper()}_ARGUMENTS"]
+        if any(sources_of(wrapper.procedure)):
+            tables.append(f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES")
+        lines.line("try:")
+        with lines.indent():
+            lines.line(call)
+        lines.line(f"except {PYTHON_TOX_ERROR} as {PYTHON_CAUGHT_ERROR}:")
+        with lines.indent():
+            lines.line(
+                f"raise {PYTHON_CONSUMER_ERROR}({PYTHON_CAUGHT_ERROR}, {{{supplied_by}}}, "
+                f"{', '.join(tables)}) from None"
+            )
 
     @staticmethod
     def _producer_returns_single(producer) -> bool:

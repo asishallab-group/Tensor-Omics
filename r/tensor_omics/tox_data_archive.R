@@ -157,7 +157,8 @@ get_tox_data_dims <- function(zip_filename) {
 #' @export
 read_tox_data_into <- function(zip_filename) {
     zip_filename <- .tox_as_string(zip_filename, "zip_filename")
-    .get_tox_data_dims_result <- get_tox_data_dims(zip_filename = zip_filename)
+    .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr")
+    .get_tox_data_dims_result <- tryCatch(get_tox_data_dims(zip_filename = zip_filename), tox_error = function(e) .tox_consumer_error(e, c(zip_filename = 1L), .arguments))
     n_gene_ids <- .get_tox_data_dims_result$n_gene_ids
     gene_id_len <- .get_tox_data_dims_result$gene_id_len
     n_expression_rows <- .get_tox_data_dims_result$n_expression_rows
@@ -171,7 +172,6 @@ read_tox_data_into <- function(zip_filename) {
     n_shift_vectors_cols <- .get_tox_data_dims_result$n_shift_vectors_cols
 
     .result <- .Call("read_tox_data_into_call", zip_filename, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols)
-    .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(

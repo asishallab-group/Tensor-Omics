@@ -1,18 +1,473 @@
-"""`DM_OUTPUT_FROM` producers, and what calling one takes.
+"""`DM_OUTPUT_FROM` naming a producer that is itself a generated wrapper.
 
-A producer input that is a shape the consumer's bindings read off its array.
+The producer is a published entry point: a hand-written `M_EXPORT_C` procedure, or the plain-named
+wrapper an implementation generates. A generated one validates its inputs, so it can fail, and
+reports the failure by its own argument's position; these tests pin what the consumer makes of
+that, and the rest of what calling one directly takes (a same-module producer, its outputs nobody
+takes, the extents its binding derives, its purity). The same cases are compiled and run through
+Python and R by `test_end_to_end_impl.py` (`fixtures/impl/fx_producers_impl.F90`).
 """
 
+import pytest
+
+from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
-from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+from codegen.emit.fortran_wrapper import FortranWrapperEmitter, wrapper_info
+from codegen.ir.directives import Directives, Minimum, OutputFrom, OutputFromMode
+from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse_project
 from codegen.ir.types import Intent
+from codegen.synthesize import synthesize_wrappers
 
-from builders import integer, module, procedure, project, real
+from builders import C_BINDING, integer, module, procedure, project, real
+
+#: What an implementation carries: no export, it is not published itself
+IMPL = Meta(summary="an implementation", author="AUTHOR")
 
 
 def auto(output, producer, producer_module):
     return Directives(output_from=OutputFrom(output, producer, producer_module, OutputFromMode.AUTO))
+
+
+def table(*rows):
+    lines = ["Where it comes from.", "| Producer input | Supplied by |", "|---|---|"]
+    return lines + [f"| {left} | {right} |" for left, right in rows]
+
+
+def producers(*extra, pure=True):
+    """`tox_prod_impl`: implementations whose generated wrappers in `tox_prod` are producers."""
+    return module(
+        "tox_prod_impl",
+        procedure(
+            "scaled_size_impl",
+            integer("n_items", doc="items", directives=Directives(minimum=Minimum("1_int32"))),
+            integer("factor", doc="factor", directives=Directives(minimum=Minimum("1_int32"))),
+            integer("scaled", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=pure,
+        ),
+        procedure(
+            "extent_size_impl",
+            integer("n", doc="values"),
+            real("x", Intent.IN, "(n)", doc="the values"),
+            integer("extent", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        ),
+        procedure(
+            "two_sizes_impl",
+            integer("n_items", doc="items"),
+            integer("first", Intent.OUT, doc="one size"),
+            integer("second", Intent.OUT, doc="another"),
+            meta=IMPL, is_pure=True,
+        ),
+        procedure(
+            "sized_and_rows_impl",
+            integer("n_items", doc="items"),
+            integer("sized", Intent.OUT, doc="the size"),
+            real("rows", Intent.OUT, "(n_items)", doc="an array output"),
+            meta=IMPL, is_pure=True,
+        ),
+        *extra,
+    )
+
+
+def split_producer(pure=True):
+    """`tox_split_impl`: an implementation split into one wrapper per mode, in `tox_split`."""
+    modes = [
+        "Which multiple.",
+        "| Mode | Value | Procedure |",
+        "|------|-------|-----------|",
+        "| double | [[tox_split_impl(module):MODE_DOUBLE(variable)]] | split_size_double |",
+        "| triple | [[tox_split_impl(module):MODE_TRIPLE(variable)]] | split_size_triple |",
+    ]
+    return module(
+        "tox_split_impl",
+        procedure(
+            "split_size_impl",
+            integer("n_items", doc="items"),
+            integer("size_mode", doc=modes),
+            integer("sized", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=pure,
+        ),
+    )
+
+
+def consumer(name, *arguments, module_name="tox_cons_impl"):
+    """An implementation module holding one consumer implementation."""
+    return module(module_name, procedure(name, *arguments, meta=IMPL, is_pure=True))
+
+
+def work_consumer(producer="scaled_size", producer_module="tox_prod", output="scaled",
+                  doc=table(("factor", "scale")), name="work_total_impl"):
+    """A consumer whose AUTO value sizes a work array: the generated wrapper calls the producer."""
+    return consumer(
+        name,
+        integer("n_items", doc="items"),
+        real("x", Intent.IN, "(n_items)", doc="values"),
+        integer("scale", doc="scale"),
+        integer("work_size", doc=doc, directives=auto(output, producer, producer_module)),
+        real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+        real("total", Intent.OUT, doc="the result"),
+    )
+
+
+def result_consumer(producer="scaled_size", output="scaled", doc=table(("factor", "scale"))):
+    """A consumer whose AUTO value sizes a result: Python and R call the producer's binding."""
+    return consumer(
+        "fill_impl",
+        integer("n_items", doc="items"),
+        real("x", Intent.IN, "(n_items)", doc="values"),
+        integer("scale", doc="scale"),
+        integer("out_size", doc=doc, directives=auto(output, producer, "tox_prod")),
+        real("filled", Intent.OUT, "(out_size)", doc="the result"),
+    )
+
+
+def analysed(*modules):
+    bag = DiagnosticBag()
+    synthesis = synthesize_wrappers(project(*modules), CONVENTIONS, bag)
+    analyse_project(synthesis.project, bag, CONVENTIONS)
+    return synthesis, bag
+
+
+def fortran(synthesis, module_name="tox_cons"):
+    emitter = FortranWrapperEmitter(project=synthesis.project, wrapper_info=wrapper_info(synthesis))
+    info = wrapper_info(synthesis)
+    return emitter.module(synthesis.project.module(module_name), info.get(module_name))
+
+
+def body(text, name):
+    start = text.index(f"subroutine {name}(")
+    return text[start:text.index(f"end subroutine {name}\n", start)]
+
+
+def call_of(text, callee):
+    start = text.index(f"call {callee}(&")
+    return text[start:text.index(")\n", start)]
+
+
+class TestTheProducerIsAPublishedEntryPoint:
+    """Rule 1: `foo`, the plain-named wrapper in the generated module -- never `foo_impl`."""
+
+    def test_the_generated_wrapper_is_the_producer(self):
+        synthesis, bag = analysed(producers(), work_consumer())
+
+        plan = synthesis.project.procedure("tox_cons", "work_total_expert") \
+            .argument("work_size").roles.computed_from
+        assert bag.errors == ()
+        assert (plan.producer.module.name, plan.producer.name) == ("tox_prod", "scaled_size")
+
+    def test_naming_the_implementation_is_refused_and_names_its_wrapper(self):
+        _, bag = analysed(producers(), work_consumer("scaled_size_impl", "tox_prod_impl"))
+
+        error = next(e for e in bag.errors if "not exported" in e.message)
+        assert "'scaled_size_impl'" in error.message
+        assert error.note == ("an implementation is published as its generated wrapper: name "
+                              "'scaled_size' in 'tox_prod'")
+
+    def test_a_mode_split_implementation_names_its_per_mode_wrappers(self):
+        cons = work_consumer("split_size_impl", "tox_split_impl", "sized", doc=table())
+        _, bag = analysed(split_producer(), cons)
+
+        error = next(e for e in bag.errors if "not exported" in e.message)
+        assert error.note == ("'split_size_impl' splits by mode, into one wrapper per mode: name "
+                              "the one you mean in 'tox_split' ('split_size_double', "
+                              "'split_size_triple')")
+
+    def test_a_per_mode_wrapper_is_a_producer(self):
+        cons = work_consumer("split_size_double", "tox_split", "sized", doc=table())
+        synthesis, bag = analysed(split_producer(), cons)
+
+        assert bag.errors == ()
+        assert "call split_size_double(&" in fortran(synthesis)
+
+    def test_a_hand_written_procedure_is_told_to_export_itself(self):
+        hand = module(
+            "tox_hand",
+            procedure("sizer", integer("n_items", doc="n"), integer("scaled", Intent.OUT, doc="s"),
+                      integer("ierr", Intent.OUT, doc="e"), meta=Meta()),
+        )
+        _, bag = analysed(hand, work_consumer("sizer", "tox_hand", doc=table(("n_items", "n_items"))))
+
+        error = next(e for e in bag.errors if "not exported" in e.message)
+        assert error.note == "mark 'sizer' M_EXPORT_C to export it"
+
+    def test_just_info_names_the_wrapper_too(self):
+        # documentation only, but the link it renders is what a reader follows
+        cons = consumer(
+            "info_impl",
+            integer("n_items", doc="items"),
+            integer("out_size", doc="size", directives=Directives(output_from=OutputFrom(
+                "scaled", "scaled_size_impl", "tox_prod_impl", OutputFromMode.JUST_INFO))),
+            real("ones", Intent.OUT, "(out_size)", doc="ones"),
+        )
+        _, bag = analysed(producers(), cons)
+
+        error = next(e for e in bag.errors if "not exported" in e.message)
+        assert "name 'scaled_size' in 'tox_prod'" in error.note
+
+
+class TestEachProducerCallIsChecked:
+    """Rule 2: `is_err` after each call, its position mapped to the dummy that supplied it."""
+
+    def two_producers(self):
+        return consumer(
+            "two_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("scale", doc="scale"),
+            integer("first_size", doc="size", directives=auto("first", "two_sizes", "tox_prod")),
+            real("tmp_first", Intent.OUT, "(first_size)", doc="scratch"),
+            integer("second_size", doc=table(("factor", "scale")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("tmp_second", Intent.OUT, "(second_size)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+
+    def test_the_first_producer_is_checked_before_the_second_is_called(self):
+        synthesis, bag = analysed(producers(), self.two_producers())
+        text = body(fortran(synthesis), "two")
+
+        assert bag.errors == ()
+        first, second = text.index("call two_sizes(&"), text.index("call scaled_size(&")
+        assert first < text.index("if (is_err(ierr)) then", first) < second
+        assert text.count("if (is_err(ierr)) then") == 2
+
+    def test_a_position_is_mapped_to_the_dummy_that_supplied_it(self):
+        # scaled_size(n_items, factor, ...) is passed two(n_items, x, scale, total, ierr)'s
+        # n_items (1 -> 1) and scale (2 -> 3)
+        synthesis, _ = analysed(producers(), self.two_producers())
+        text = body(fortran(synthesis), "two")
+        check = text[text.index("call scaled_size(&"):]
+        check = check[check.index("if (is_err(ierr)) then"):check.index("end if")]
+
+        assert "select case (get_err_arg_pos(ierr))" in check
+        assert "call map_err_arg_pos(ierr, 1_int32, 1_int32)" in check
+        assert "call map_err_arg_pos(ierr, 2_int32, 3_int32)" in check
+        assert "case default\n" in check and "call clear_err_arg_pos(ierr)" in check
+        assert check.rstrip().endswith("return")
+
+    def test_a_constant_supplies_nothing_to_map_so_the_position_is_cleared(self):
+        cons = work_consumer(doc=table(("factor", "2_int32")))
+        synthesis, bag = analysed(producers(), cons)
+        text = body(fortran(synthesis), "work_total")
+        check = text[text.index("call scaled_size(&"):]
+        check = check[check.index("if (is_err(ierr)) then"):check.index("end if")]
+
+        assert bag.errors == ()
+        assert "case (1_int32)" in check  # n_items is still a dummy
+        assert "case (2_int32)" not in check  # factor, the constant, falls to the default
+        assert "case default\n" in check
+
+    def test_the_helpers_are_imported(self):
+        synthesis, _ = analysed(producers(), work_consumer())
+        header = fortran(synthesis).split("contains", 1)[0]
+
+        for name in ("get_err_arg_pos", "map_err_arg_pos", "clear_err_arg_pos"):
+            assert name in header
+
+    def test_a_producer_without_ierr_is_not_checked(self):
+        hand = module(
+            "tox_hand",
+            procedure("sizer", integer("n_items", doc="n"), integer("scaled", Intent.OUT, doc="s")),
+        )
+        synthesis, bag = analysed(hand, work_consumer("sizer", "tox_hand", doc=table()))
+        text = body(fortran(synthesis), "work_total")
+
+        assert bag.errors == ()
+        after = text[text.index("call sizer(&"):text.index("M_ALLOCATE(tmp_buf")]
+        assert "is_err" not in after
+
+
+class TestTheBindingsNameTheirOwnArgument:
+    """Rule 3: Python and R raise a producer's error again, in the consumer's words."""
+
+    def binding(self):
+        from codegen.abi.c_abi import build_project
+
+        synthesis, bag = analysed(producers(), result_consumer())
+        binding = build_project(synthesis.project, bag)
+        assert bag.errors == (), bag.render()
+        return next(w for m in binding for w in m if w.stripped_name == "fill")
+
+    def test_python_maps_the_producer_s_arguments_to_its_own_positions(self):
+        from codegen.emit.python_ctypes import PythonEmitter
+
+        text = PythonEmitter().function(self.binding())
+        # fill(n_items, x, scale, out_size, filled, ierr): factor is supplied by scale (3rd)
+        assert "    out_size = scaled_size(n_items=n_items, factor=scale)\n" in text
+        assert ('raise _consumer_error(_error, {"n_items": 1, "factor": 3}, _FILL_ARGUMENTS, '
+                "_FILL_ARGUMENT_SOURCES) from None") in text
+        assert text.index("try:") < text.index("scaled_size(") < text.index("except _ToxError")
+
+    def test_r_maps_them_too(self):
+        from codegen.emit.r_wrapper import RWrapperEmitter
+
+        text = RWrapperEmitter().function(self.binding())
+        assert ("out_size <- tryCatch(scaled_size(n_items = length(x), factor = scale), "
+                "tox_error = function(e) .tox_consumer_error(e, c(n_items = 1L, factor = 3L), "
+                ".arguments, .sources))") in text
+        # what the producer's error is decoded against is set before the producer is called
+        assert text.index(".arguments <- c(") < text.index("tryCatch(")
+        assert text.count(".arguments <- c(") == 1
+
+
+class TestPurity:
+    """Rule 4: a generated producer is as pure as `_is_pure` emits it, asked recursively."""
+
+    def test_a_pure_generated_producer_leaves_its_consumer_pure(self):
+        synthesis, _ = analysed(producers(), work_consumer())
+
+        assert "pure subroutine work_total(" in fortran(synthesis)
+
+    def test_an_impure_generated_producer_makes_it_impure(self):
+        synthesis, _ = analysed(producers(pure=False), work_consumer())
+        text = fortran(synthesis)
+
+        assert "subroutine work_total(" in text
+        assert "pure subroutine work_total(" not in text
+
+    def test_a_producer_that_is_a_consumer_is_asked_in_turn(self):
+        # tox_prod's own work_total calls scaled_size; tox_cons's calls that one's wrapper
+        middle = procedure(
+            "middle_impl",
+            integer("n_items", doc="items"),
+            integer("scale", doc="scale"),
+            integer("work_size", doc=table(("factor", "scale")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            integer("middle_size", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        )
+        cons = work_consumer("middle", "tox_prod", "middle_size", doc=table())
+        for pure, expected in ((True, True), (False, False)):
+            synthesis, bag = analysed(producers(middle, pure=pure), cons)
+            assert bag.errors == (), bag.render()
+            assert ("pure subroutine work_total(" in fortran(synthesis)) is expected
+
+    def test_a_producer_that_reaches_back_to_its_consumer_ends(self):
+        # work_total sizes itself by its own wrapper: nothing proves that pure, and asking
+        # must not recurse until Python gives up
+        cons = work_consumer("work_total", "tox_cons", "total", doc=table())
+        synthesis, _ = analysed(producers(), cons)
+
+        text = fortran(synthesis)  # no RecursionError
+        assert "pure subroutine work_total(" not in text
+
+    def test_a_mode_split_producer_in_another_module_is_seen_through(self):
+        # its implementation is named by the mode table, not by the wrapper's name, so it is
+        # found only with the other module's wrapper info at hand
+        cons = work_consumer("split_size_double", "tox_split", "sized", doc=table())
+        for pure in (True, False):
+            synthesis, bag = analysed(split_producer(pure=pure), cons)
+            assert bag.errors == (), bag.render()
+            assert ("pure subroutine work_total(" in fortran(synthesis)) is pure
+
+
+class TestASameModuleProducer:
+    """Rule 5: a producer generated into the consumer's own module is not `use`d."""
+
+    def test_the_module_does_not_use_itself(self):
+        same = producers(procedure(
+            "local_total_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("scale", doc="scale"),
+            integer("work_size", doc=table(("factor", "scale")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+            meta=IMPL, is_pure=True,
+        ))
+        synthesis, bag = analysed(same)
+        text = fortran(synthesis, "tox_prod")
+
+        assert bag.errors == ()
+        assert "use tox_prod," not in text and "use tox_prod\n" not in text
+        assert "call scaled_size(&" in body(text, "local_total")
+
+
+class TestAnOutputNothingTakes:
+    """Rule 6: a scalar goes into a local; an array is refused."""
+
+    def test_a_scalar_is_passed_a_local(self):
+        synthesis, bag = analysed(producers(), work_consumer("two_sizes", output="first", doc=table()))
+        text = body(fortran(synthesis), "work_total")
+
+        assert bag.errors == ()
+        assert "integer(int32) :: second_unused" in text
+        assert "second = second_unused" in call_of(text, "two_sizes")
+        assert "first = work_size" in call_of(text, "two_sizes")
+
+    def test_an_array_is_refused(self):
+        _, bag = analysed(producers(), work_consumer("sized_and_rows", output="sized", doc=table()))
+
+        assert any("'rows'" in e.message and "nothing here takes" in e.message for e in bag.errors)
+
+    def test_an_array_the_bindings_receive_anyway_is_not(self):
+        # Python and R take every output the producer's binding returns; nothing is dropped
+        _, bag = analysed(producers(), result_consumer("sized_and_rows", "sized", doc=table()))
+
+        assert bag.errors == ()
+
+
+class TestADerivedProducerInput:
+    """Rule 7: an input the producer's binding derives resolves like any other.
+
+    Marked derived, so Python and R still leave it out; an error only where a generated
+    Fortran wrapper calls the producer, which has to pass it.
+    """
+
+    def extent_consumer(self, doc, sized_result=False):
+        size = integer("extent_size", doc=doc, directives=auto("extent", "extent_size", "tox_prod"))
+        sized = (real("res", Intent.OUT, "(extent_size)", doc="the result") if sized_result
+                 else real("tmp_buf", Intent.OUT, "(extent_size)", doc="scratch"))
+        return consumer(
+            "extent_total_impl",
+            integer("m", doc="values"),
+            real("x", Intent.IN, "(m)", doc="the values"),
+            size, sized,
+            real("total", Intent.OUT, doc="the result"),
+        )
+
+    def test_a_table_row_supplies_it(self):
+        synthesis, bag = analysed(producers(), self.extent_consumer(table(("n", "m"))))
+        plan = synthesis.project.procedure("tox_cons", "extent_total_expert") \
+            .argument("extent_size").roles.computed_from
+
+        assert bag.errors == ()
+        assert [(s.name, s.argument, s.derived) for s in plan.inputs] == [
+            ("n", "m", True), ("x", "x", False)]
+        assert [s.name for s in plan.binding_inputs] == ["x"]
+        assert "n = m" in call_of(body(fortran(synthesis), "extent_total"), "extent_size")
+
+    def test_without_a_row_it_is_an_error_where_fortran_calls_the_producer(self):
+        _, bag = analysed(producers(), self.extent_consumer(table()))
+
+        assert any("input(s) n have no argument of the same name" in e.message
+                   for e in bag.errors)
+
+    def test_without_a_row_the_bindings_need_nothing(self):
+        # the producer's binding reads its `n` off `x`, and nothing in Fortran calls it
+        synthesis, bag = analysed(producers(), self.extent_consumer(table(), sized_result=True))
+        plan = synthesis.project.procedure("tox_cons", "extent_total") \
+            .argument("extent_size").roles.computed_from
+
+        assert bag.errors == ()
+        assert [s.name for s in plan.binding_inputs] == ["x"]
+
+    def test_a_hand_written_consumer_needs_nothing_either(self):
+        hand = module("tox_hand", procedure(
+            "extent_total",
+            integer("m", doc="values"),
+            real("x", Intent.IN, "(m)", doc="the values"),
+            integer("extent_size", doc="size", directives=auto("extent", "extent_size", "tox_prod")),
+            real("tmp_buf", Intent.OUT, "(extent_size)", doc="scratch"),
+            integer("ierr", Intent.OUT, doc="error"),
+            meta=C_BINDING,
+        ))
+        _, bag = analysed(producers(), hand)
+
+        assert bag.errors == ()
 
 
 class TestAShapeTheBindingsReadOffAnArray:
