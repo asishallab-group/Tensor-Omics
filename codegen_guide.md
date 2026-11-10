@@ -176,7 +176,7 @@ each is addressed at a different caller.
 | `foo_expert` | a caller who wants control over what reaches the implementation | validates and calls `foo_impl` with what you supply. Allocates nothing, prepares nothing |
 
 A wrapper is **`pure` exactly when everything it calls is** — the implementation, the
-`DM_OUTPUT_FROM` producers and the prologue. `tox_errors`' validators and `f42_sort`'s
+`DM_OUTPUT_FROM` producers (a generated one by this same rule) and the prologue. `tox_errors`' validators and `f42_sort`'s
 `init_perm` / `sort_array_heapsort` already are, and `allocate(..., stat=)` is permitted in a
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
 nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
@@ -719,11 +719,49 @@ The size argument is an input to the implementation, `intent(in)`: an `intent(ou
 the implementation's result, which `foo` computes with the producer itself and then throws away,
 so it is refused.
 
-The producer must be exported (`M_EXPORT_C`), so that a wrapper exists to call; recommend
-routines therefore live in the implementation module, public, tagged — they are not
-implementations themselves and the `_impl` rules of Section 4 leave them alone. Use `JUST_INFO`
-instead of `AUTO` when the caller genuinely has to make the call themselves — then the docs say
-where to get the value, and nothing is called for them.
+**The producer is a published entry point**, so that there is something to call: a hand-written
+`M_EXPORT_C` procedure (a recommend routine in the implementation module, public, tagged — not an
+implementation itself, so the `_impl` rules of Section 4 leave it alone), or **the plain-named
+generated wrapper of an implementation**, named in its generated module:
+
+```fortran
+    !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+```
+
+for `fx_scaled_size_impl` in `fx_producers_impl` (`helper/codegen/tests/fixtures/impl/`). Name
+`foo`, never `foo_impl` — the implementation is not published, and the generator refuses it with
+a note naming `foo` and its module — and never `foo_expert`: the plain-named wrapper is the one
+that prepares what it needs itself. A mode-split implementation has no `foo`; name the per-mode
+wrapper you mean (Section 5.11), which the refusal lists.
+
+A generated producer validates its inputs, so calling it can fail. What you get then:
+
+- **The error names your argument.** The producer reports a bad input by the position of its own
+  argument; `foo` translates it to the position of the argument of yours that supplied that input
+  (by name or through the table), and Python and R, where they call the producer's binding
+  themselves, raise its error again the same way. An input nothing of the caller's supplied — a
+  constant from the table — names no argument; the error code is unchanged either way.
+- **Each producer is checked before the next is called**, so with two producers the first one's
+  error is the one reported.
+- **`foo` is as pure as everything it calls**, the generated producer included (it is asked the
+  same question in turn).
+- **A producer in your own module works**: it is in scope, and the module does not `use` itself.
+
+`foo` calls the producer directly, so it passes every one of the producer's arguments:
+
+- **An output you do not take** goes into a local and is dropped — if it is a scalar. An array
+  output nothing takes is refused, since a local for it would need the producer's own extents.
+- **An input the producer's binding derives** — `n` of `extent_size(n, x(n))`, read off `x` — is
+  resolved like any other input: by name, by a table row, or as a constant. Python and R leave it
+  out, as the producer's own binding does, so it is an error only where `foo` calls the producer
+  and nothing supplies it. For a consumer `c(m, x(m))` the row is `| n | m |`.
+
+**Two modules may not consume each other's producers.** A generated wrapper that calls a producer
+in another module `use`s that module, so two modules sizing each other's arguments are a module
+cycle, which fpm stops on.
+
+Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
+then the docs say where to get the value, and nothing is called for them.
 
 ### 5.10 A mode argument
 
@@ -1418,7 +1456,9 @@ source and carries a note saying what to write instead.
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |
 | a mode argument that is not a scalar integer | modes are compared against `MODE_*` parameters |
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
-| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |
+| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
+| an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
 | an implementation module in a file not named after it | generation reads the module name while the wrapper's path is mirrored from the file name — the module would be written into a file named for something else (Section 4) |
