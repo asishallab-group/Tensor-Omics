@@ -610,8 +610,8 @@ dropping the fixed directory they used to be scoped to:
   publishes an unvalidated twin beside it, under a name (`foo_impl`) a binding caller cannot
   tell apart from the validated `foo`. Support routines in the same module (the
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
-  implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
-  Python home of `tox_loess_required_workspace`, and holds no implementation at all
+  implementation module can itself show up in the bindings — `tox_paralog_analysis_impl.py` is
+  the Python home of `mask_chunk_count` and `mask_check_state`, and holds no implementation
 - an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
   `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
   (it calls the producer itself). Either way it would discard what the implementation computes;

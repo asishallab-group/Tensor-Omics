@@ -691,7 +691,7 @@ differently, or where the producer wants a constant, a table says so:
 ```fortran
 integer(int32), intent(in) :: int_workspace_size
     !! Length of integer workspace.
-    !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+    !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
     !!
     !! | Producer input        | Supplied by |
     !! |-----------------------|-------------|
@@ -708,7 +708,11 @@ integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
 call tox_loess_required_workspace(n_dim = 1_int32, max_neighborhood_size = n_families, &
                                   int_workspace_size = int_workspace_size, &
                                   real_workspace_size = real_workspace_size, &
-                                  save_factorization = .false.)
+                                  save_factorization = .false., ierr = ierr)
+if (is_err(ierr)) then
+    ! the producer's own error, its position mapped to the argument here that supplied it
+    ...
+end if
 M_ALLOCATE(tmp_int_workspace(int_workspace_size))
 ```
 
@@ -1155,9 +1159,8 @@ Because the procedure is not a numeric procedure of the pipeline:
   `f42_kd_tree` were all hand-written exports until someone asked what a wrapper around them
   would do, and the answer was "validate what they were validating by hand, and allocate and sort
   what their callers were allocating and sorting" — so all three are implementations now.
-- **inside an implementation module** — a recommend/sizing routine
-  (`tox_loess_required_workspace`, `calc_neighborhood_size`) or a utility a caller genuinely
-  needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
+- **inside an implementation module** — a recommend/sizing routine (`calc_neighborhood_size`)
+  or a utility a caller genuinely needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
   wrapper to call (Section 5.9). The test is the same one: a wrapper around `calc_neighborhood_size`
   would validate nothing and prepare nothing, so there is nothing to generate.
 
