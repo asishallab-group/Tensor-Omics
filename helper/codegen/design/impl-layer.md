@@ -793,8 +793,8 @@ What the consumer does with that:
 And what calling one directly takes:
 
 - **A same-module producer is not `use`d** -- the module would `use` itself, which does not
-  compile. This is the shape of `tox_loess` and `tox_paralog_analysis`, whose recommend routines
-  live beside their consumers.
+  compile. It is what an implementation module whose sizing routine is itself an implementation,
+  beside the consumers it sizes, generates.
 - **An output nothing takes** goes into a scalar local (`<output>_unused`) and is dropped. An
   array output is refused: a local for it would need the producer's extents, spelled in the
   consumer's arguments. Python and R take every output the producer's binding returns, so the
