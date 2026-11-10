@@ -304,6 +304,29 @@ class TestEachProducerCallIsChecked:
         for name in ("get_err_arg_pos", "map_err_arg_pos", "clear_err_arg_pos"):
             assert name in header
 
+    def test_one_producer_given_two_sets_of_inputs_is_called_once_for_each(self):
+        cons = consumer(
+            "twice_impl",
+            integer("n_items", doc="items"),
+            integer("scale_a", doc="scale"),
+            integer("scale_b", doc="scale"),
+            integer("size_a", doc=table(("factor", "scale_a")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("tmp_a", Intent.OUT, "(size_a)", doc="scratch"),
+            integer("size_b", doc=table(("factor", "scale_b")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("tmp_b", Intent.OUT, "(size_b)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+        synthesis, bag = analysed(producers(), cons)
+        text = body(fortran(synthesis), "twice")
+
+        assert bag.errors == ()
+        assert text.count("call scaled_size(&") == 2
+        first, second = text.split("call scaled_size(&")[1:]
+        assert "factor = scale_a" in first and "scaled = size_a" in first
+        assert "factor = scale_b" in second and "scaled = size_b" in second
+
     def test_a_producer_without_ierr_is_not_checked(self):
         hand = module(
             "tox_hand",

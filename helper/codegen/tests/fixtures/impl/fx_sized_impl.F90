@@ -14,6 +14,7 @@ module fx_sized_impl
 
     public :: fx_fill_impl, fx_work_total_impl, fx_two_producers_impl, fx_extent_total_impl
     public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl, fx_both_firsts_impl
+    public :: fx_two_scales_impl
 
 contains
 
@@ -163,6 +164,43 @@ contains
         tmp_b = 1.0_real64
         total = sum(x) + sum(tmp_a) + sum(tmp_b)
     end subroutine fx_both_firsts_impl
+
+    !> summary: Two work arrays sized by one producer, given a different input for each
+    !| author: A Developer
+    !| Two calls of `fx_scaled_size`, one per table, each into its own size.
+    pure subroutine fx_two_scales_impl(n_items, x, scale_a, scale_b, size_a, tmp_a, size_b, tmp_b, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: scale_a
+            !! slots of the first scratch per value
+        integer(int32), intent(in) :: scale_b
+            !! slots of the second scratch per value
+        integer(int32), intent(in) :: size_a
+            !! size of the first scratch
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | factor         | scale_a     |
+        real(real64), dimension(size_a), intent(out) :: tmp_a
+            !! scratch
+        integer(int32), intent(in) :: size_b
+            !! size of the second scratch
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | factor         | scale_b     |
+        real(real64), dimension(size_b), intent(out) :: tmp_b
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the first scratch's size, plus a thousand times the second's
+        tmp_a = 1.0_real64
+        tmp_b = 1000.0_real64
+        total = sum(x) + sum(tmp_a) + sum(tmp_b)
+    end subroutine fx_two_scales_impl
 
     !> summary: A result sized by a producer that takes the shape of an input
     !| author: A Developer

@@ -361,13 +361,17 @@ class FortranWrapperEmitter:
 
     @staticmethod
     def _producer_groups(foo: Procedure, taken) -> list[list[Argument]]:
-        """The taken-over AUTO arguments of `foo`, grouped by the producer that fills them."""
-        groups: dict[int, list[Argument]] = {}
+        """The taken-over AUTO arguments of `foo`, grouped by the producer call that fills them.
+
+        One call per producer and set of inputs (`OutputFromPlan.call`): a producer whose inputs
+        two arguments' tables supply differently is called once for each.
+        """
+        groups: dict[tuple, list[Argument]] = {}
         for argument in taken:
             if not is_computed(argument):
                 continue
             own = foo.argument(argument.name)
-            groups.setdefault(id(own.roles.computed_from.producer), []).append(own)
+            groups.setdefault(own.roles.computed_from.call, []).append(own)
         return list(groups.values())
 
     def _producer_error_imports(self, module: Module) -> set[str]:
@@ -1115,7 +1119,8 @@ class FortranWrapperEmitter:
 
         As `(producer call, output, local)`: one local per output, named `<output>_unused`, or
         `<producer>_<output>_unused` where another producer's dropped output already has that
-        name -- the two may be of different types. Only scalars reach here; `roles` refuses any
+        name -- the two may be of different types -- and `<producer>_<output>_<n>_unused` for the
+        same producer called again with other inputs. Only scalars reach here; `roles` refuses any
         other output nothing takes.
         """
         found = []
@@ -1126,6 +1131,10 @@ class FortranWrapperEmitter:
                 name = local_name(dummy.name, UNUSED_OUTPUT)
                 if name.lower() in taken_names:
                     name = local_name(f"{producer.name}_{dummy.name}", UNUSED_OUTPUT)
+                count = 1
+                while name.lower() in taken_names:  # the same producer, called again
+                    count += 1
+                    name = local_name(f"{producer.name}_{dummy.name}_{count}", UNUSED_OUTPUT)
                 taken_names.add(name.lower())
                 found.append((index, dummy, name))
         return found

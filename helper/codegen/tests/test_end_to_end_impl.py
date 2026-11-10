@@ -754,6 +754,13 @@ class TestAGeneratedWrapperAsProducer:
             print(json.dumps(tox.fx_both_firsts([1.0, 2.0])))
         """) == 3.0 + 2 + 3
 
+    def test_one_producer_given_two_inputs_is_called_twice(self, built):
+        # fx_scaled_size sizes tmp_a with scale_a and tmp_b with scale_b: two calls, two sizes
+        assert run_python(built, """
+            print(json.dumps(tox.fx_two_scales([1.0, 2.0], 1, 5)))
+        """) == 3.0 + 2 + 1000 * 10
+        assert run_r(built, "cat(fx_two_scales(c(1, 2), 1L, 5L))") == ["10005"]
+
     def test_a_shape_the_bindings_read_off_an_array(self, built):
         # fx_vector_count takes `arr_shape`, which neither language asks of the caller
         assert run_python(built, """

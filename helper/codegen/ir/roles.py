@@ -117,6 +117,16 @@ class OutputFromPlan:
     is_automatic: bool
 
     @property
+    def call(self) -> tuple:
+        """What makes two plans one producer call: the producer, and every input it is given.
+
+        One call fills every argument it outputs into -- but only arguments whose plans pass it
+        the same inputs. Two arguments a table supplies differently (`a | a1`, `a | a2`) are two
+        calls, each into its own argument. Python and R key their calls the same way.
+        """
+        return id(self.producer), self.inputs
+
+    @property
     def binding_inputs(self) -> tuple[ProducerInput, ...]:
         """What Python and R pass when they call the producer: every input but the derived.
 
@@ -307,7 +317,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
     another module; the Python emitter imports it where it is called, and R has every
     wrapper in one environment.
     """
-    called_here: dict[int, list[Argument]] = {}
+    called_here: dict[tuple, list[Argument]] = {}
     for argument in consumer.arguments:
         directive = argument.directives.output_from
         if directive is None:
@@ -425,7 +435,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             is_automatic=directive.is_automatic,
         )
         if fortran_calls:
-            called_here.setdefault(id(producer), []).append(argument)
+            called_here.setdefault(argument.roles.computed_from.call, []).append(argument)
 
     for arguments in called_here.values():
         _check_unused_outputs(arguments, diagnostics, conventions)
