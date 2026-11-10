@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_r import CONSUMER_ERROR
+from .producer_calls import auto_plans, returns_single, supplied_by
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
@@ -83,7 +84,7 @@ class RWrapperEmitter:
         """
         from ..abi.c_abi import stripped_name
 
-        plans = self._auto_plans(wrapper)
+        plans = auto_plans(wrapper)
         if not plans:
             return
         # what the producer's error is told this function's arguments are
@@ -96,7 +97,7 @@ class RWrapperEmitter:
                 for supply in plan.binding_inputs
             )
             call = f"{producer}({call_args})"
-            if self._producer_returns_single(plan.producer):
+            if returns_single(plan.producer):
                 writer.line(f"{argument.name} <- {self._producer_call(wrapper, plan, call, tables)}")
                 continue
 
@@ -112,32 +113,17 @@ class RWrapperEmitter:
         writer.blank()
 
     @staticmethod
-    def _auto_plans(wrapper: CWrapper) -> list:
-        """Each argument this function computes by calling a producer, with its plan."""
-        found = []
-        for argument in wrapper:
-            roles = argument.source.roles if argument.source else None
-            plan = roles.computed_from if roles else None
-            if plan is not None and plan.is_automatic:
-                found.append((argument, plan))
-        return found
-
-    @staticmethod
     def _producer_call(wrapper: CWrapper, plan, call: str, tables: list[str]) -> str:
         """The producer call, its error raised again naming this function's argument.
 
         `supplied_by` maps each producer argument this function supplied to the position of
         the argument that supplied it; the two tables are this function's own.
         """
-        positions = {a.name.lower(): i for i, a in enumerate(wrapper.procedure.arguments, start=1)}
-        supplied_by = ", ".join(
-            f"{supply.name} = {positions[supply.argument.lower()]}L"
-            for supply in plan.binding_inputs
-            if supply.argument is not None and supply.argument.lower() in positions
-        )
+        positions = ", ".join(f"{name} = {position}L"
+                              for name, position in supplied_by(plan, wrapper))
         names = ", ".join(t for t in tables if "=" not in t)
         return (f"tryCatch({call}, tox_error = function(e) "
-                f"{CONSUMER_ERROR}(e, c({supplied_by}), {names}))")
+                f"{CONSUMER_ERROR}(e, c({positions}), {names}))")
 
     def _producer_value(self, supply, wrapper: CWrapper) -> str:
         """What to pass for one producer input: an argument, or a constant outright."""
@@ -167,19 +153,6 @@ class RWrapperEmitter:
         if roles is not None and roles.is_mask_count:
             return _mask_count(roles.mask_count_of.name)
         return consumer_arg
-
-    @staticmethod
-    def _producer_returns_single(producer) -> bool:
-        outputs = [
-            a for a in producer.arguments
-            if a.intent and a.intent.is_output
-            and a.name.lower() != "ierr"
-            and not (a.roles and a.roles.is_temporary)
-        ]
-        if producer.result is not None:
-            outputs.append(producer.result)
-        return len(outputs) == 1
-        return writer.render()
 
     def _inputs(self, wrapper: CWrapper) -> list[CArgument]:
         """What the user supplies -- the R function's parameters.
@@ -359,7 +332,7 @@ class RWrapperEmitter:
         args = f"{prefix}, {inputs}" if inputs else prefix
         writer.line(f".result <- .Call({args})")
         # set before the producers are called where there are any, which report through them
-        tables = (self._error_table_names(wrapper) if self._auto_plans(wrapper)
+        tables = (self._error_table_names(wrapper) if auto_plans(wrapper)
                   else self._error_tables(writer, wrapper))
         writer.line(f".status <- check_err_code(.result$ierr, {', '.join(tables)})")
         writer.blank()

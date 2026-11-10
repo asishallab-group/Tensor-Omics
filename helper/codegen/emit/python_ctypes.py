@@ -44,6 +44,7 @@ from ..names import (
 from ..render import Writer
 from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
+from .producer_calls import auto_plans, returns_single, supplied_by
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -421,7 +422,7 @@ class PythonEmitter:
             for module_name, bound in group:
                 writer.line(f"import {module_name} as {bound}")
             writer.blank()
-        calls_producers = any(self._auto_plans(wrapper) for wrapper in module)
+        calls_producers = any(auto_plans(wrapper) for wrapper in module)
         for module_name, names in PYTHON_PACKAGE_IMPORTS:
             if calls_producers and module_name == PYTHON_PRODUCER_IMPORTS[0]:
                 names = names + PYTHON_PRODUCER_IMPORTS[1]
@@ -804,7 +805,7 @@ class PythonEmitter:
         original is kept aside first.
         """
         stashes: dict[str, str] = {}
-        for _, plan in self._auto_plans(wrapper):
+        for _, plan in auto_plans(wrapper):
             for supply in plan.binding_inputs:
                 if supply.is_constant:
                     continue
@@ -842,7 +843,7 @@ class PythonEmitter:
         calls: dict[tuple, str] = {}
         stashes = self._raw_stashes(wrapper)
         consumer_module = wrapper.procedure.module
-        for argument, plan in self._auto_plans(wrapper):
+        for argument, plan in auto_plans(wrapper):
             producer = stripped_name(plan.producer)
             if plan.producer.module is not consumer_module:
                 # Imported here rather than at the top of the file: two modules may size
@@ -853,7 +854,7 @@ class PythonEmitter:
             call_args = ", ".join(
                 f"{supply.name}={self._producer_value(supply, stashes)}"
                 for supply in plan.binding_inputs)
-            single = self._producer_returns_single(plan.producer)
+            single = returns_single(plan.producer)
             if single:
                 self._producer_call(lines, wrapper, plan,
                                     f"{argument.name} = {producer}({call_args})")
@@ -874,17 +875,6 @@ class PythonEmitter:
             writer.extend(lines)
             writer.blank()
 
-    @staticmethod
-    def _auto_plans(wrapper: CWrapper) -> list[tuple[CArgument, object]]:
-        """Each argument this function computes by calling a producer, with its plan."""
-        found = []
-        for argument in wrapper:
-            roles = argument.source.roles if argument.source else None
-            plan = roles.computed_from if roles is not None else None
-            if plan is not None and plan.is_automatic:
-                found.append((argument, plan))
-        return found
-
     def _producer_call(self, lines: Writer, wrapper: CWrapper, plan, call: str) -> None:
         """The producer call, its error raised again naming this function's argument.
 
@@ -892,12 +882,8 @@ class PythonEmitter:
         this function never wrote: `supplied_by` maps it to the argument here that supplied
         it, and nothing else to anything.
         """
-        positions = {a.name.lower(): i for i, a in enumerate(wrapper.procedure.arguments, start=1)}
-        supplied_by = ", ".join(
-            f'"{supply.name}": {positions[supply.argument.lower()]}'
-            for supply in plan.binding_inputs
-            if supply.argument is not None and supply.argument.lower() in positions
-        )
+        positions = ", ".join(f'"{name}": {position}'
+                              for name, position in supplied_by(plan, wrapper))
         tables = [f"_{wrapper.stripped_name.upper()}_ARGUMENTS"]
         if any(sources_of(wrapper.procedure)):
             tables.append(f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES")
@@ -907,22 +893,9 @@ class PythonEmitter:
         lines.line(f"except {PYTHON_TOX_ERROR} as {PYTHON_CAUGHT_ERROR}:")
         with lines.indent():
             lines.line(
-                f"raise {PYTHON_CONSUMER_ERROR}({PYTHON_CAUGHT_ERROR}, {{{supplied_by}}}, "
+                f"raise {PYTHON_CONSUMER_ERROR}({PYTHON_CAUGHT_ERROR}, {{{positions}}}, "
                 f"{', '.join(tables)}) from None"
             )
-
-    @staticmethod
-    def _producer_returns_single(producer) -> bool:
-        """Whether the producer's wrapper returns one value (not a dict of outputs)."""
-        outputs = [
-            a for a in producer.arguments
-            if a.intent and a.intent.is_output
-            and a.name.lower() != "ierr"
-            and not (a.roles and a.roles.is_temporary)
-        ]
-        if producer.result is not None:
-            outputs.append(producer.result)
-        return len(outputs) == 1
 
     def _derive_extents(self, writer: Writer, wrapper: CWrapper,
                         from_computed: bool) -> None:
