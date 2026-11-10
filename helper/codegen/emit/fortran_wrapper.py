@@ -378,8 +378,11 @@ class FortranWrapperEmitter:
             if not producer.has_error_argument:
                 continue
             names.add("clear_err_arg_pos")
-            if self._producer_positions(group, alloc):
-                names |= {"get_err_arg_pos", "map_err_arg_pos"}
+            positions = self._producer_positions(group, alloc)
+            if positions:
+                names.add("get_err_arg_pos")
+            if any(old != new for old, new in positions):
+                names.add("map_err_arg_pos")
         return names
 
     def _has_permutations(self, module: Module) -> bool:
@@ -1086,7 +1089,15 @@ class FortranWrapperEmitter:
         with writer.indent():
             if positions:
                 writer.line(f"select case (get_err_arg_pos({error}))")
+                # a position the dummy has here as well needs no rewriting, only keeping
+                same = [old for old, new in positions if old == new]
+                if same:
+                    writer.line(f"case ({', '.join(f'{old}_int32' for old in same)})")
+                    with writer.indent():
+                        writer.line("! the same position here")
                 for old, new in positions:
+                    if old == new:
+                        continue
                     writer.line(f"case ({old}_int32)")
                     with writer.indent():
                         writer.line(f"call map_err_arg_pos({error}, {old}_int32, {new}_int32)")

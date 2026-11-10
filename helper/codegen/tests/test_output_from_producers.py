@@ -278,7 +278,9 @@ class TestEachProducerCallIsChecked:
         check = check[check.index("if (is_err(ierr)) then"):check.index("end if")]
 
         assert "select case (get_err_arg_pos(ierr))" in check
-        assert "call map_err_arg_pos(ierr, 1_int32, 1_int32)" in check
+        # n_items keeps its position: kept, not rewritten -- the default would clear it
+        assert "case (1_int32)\n" in check
+        assert "map_err_arg_pos(ierr, 1_int32" not in check
         assert "call map_err_arg_pos(ierr, 2_int32, 3_int32)" in check
         assert "case default\n" in check and "call clear_err_arg_pos(ierr)" in check
         assert check.rstrip().endswith("return")
