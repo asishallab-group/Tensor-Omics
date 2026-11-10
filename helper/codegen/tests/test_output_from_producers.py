@@ -172,6 +172,31 @@ class TestTheProducerIsAPublishedEntryPoint:
         assert error.note == ("an implementation is published as its generated wrapper: name "
                               "'scaled_size' in 'tox_prod'")
 
+    def test_the_wrapper_with_the_implementation_module_is_refused_and_named_once(self):
+        # `scaled_size` in `tox_prod_impl`: the wrapper's name with the implementation's module.
+        # The macro also writes that pair into the argument's doc as a Ford link, which dangles;
+        # that is the same mistake, so it is not reported a second time
+        from codegen.ir.validate import validate_project
+
+        link = ["Size, produced by [[tox_prod_impl(module):scaled_size]]."]
+        cons = work_consumer("scaled_size", "tox_prod_impl", doc=link + table(("factor", "scale"))[1:])
+        synthesis, bag = analysed(producers(), cons)
+        validate_project(synthesis.project, bag)
+
+        error = next(e for e in bag.errors if "does not exist" in e.message)
+        assert error.note == ("'scaled_size' is generated into 'tox_prod', not into "
+                              "'tox_prod_impl': name it there")
+        assert not [e for e in bag.errors if "documentation links to" in e.message]
+
+    def test_an_unrelated_dangling_link_is_still_reported(self):
+        from codegen.ir.validate import validate_project
+
+        link = ["Size; see [[tox_prod_impl(module):no_such_thing]]."]
+        synthesis, bag = analysed(producers(), work_consumer(doc=link + table(("factor", "scale"))[1:]))
+        validate_project(synthesis.project, bag)
+
+        assert any("documentation links to 'no_such_thing'" in e.message for e in bag.errors)
+
     def test_the_expert_tier_is_refused_and_names_the_plain_one(self):
         # `middle` takes a work array over, so it has a `middle_expert` -- published, but not
         # what a producer call may name

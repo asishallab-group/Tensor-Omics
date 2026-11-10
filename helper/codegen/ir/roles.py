@@ -325,15 +325,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
 
         producer = project.procedure(directive.module, directive.procedure)
         if producer is None:
-            # an implementation, named with its generated module: say what that module has
-            implementation = project.procedure(directive.module + conventions.impl_suffix,
-                                               directive.procedure)
             diagnostics.error(
                 f"'{argument.name}' is computed from '{directive.procedure}' in "
                 f"'{directive.module}', which does not exist",
                 entity=argument,
-                note=(_not_exported_note(implementation, project, conventions)
-                      if implementation is not None else None),
+                note=_missing_producer_note(directive, project, conventions),
             )
             continue
 
@@ -619,6 +615,25 @@ def _check_unused_outputs(arguments: list[Argument], diagnostics: DiagnosticBag,
                 "here can spell"
             ),
         )
+
+
+def _missing_producer_note(directive, project, conventions: Conventions) -> str | None:
+    """Where the producer a directive names is, when it names the right thing in the wrong place.
+
+    The two mix-ups of an implementation and its wrapper: `foo_impl` with the generated module,
+    and `foo` with the implementation module.
+    """
+    suffix = conventions.impl_suffix
+    implementation = project.procedure(directive.module + suffix, directive.procedure)
+    if implementation is not None:
+        return _not_exported_note(implementation, project, conventions)
+    if directive.module.lower().endswith(suffix):
+        generated = directive.module[: -len(suffix)]
+        wrapper = project.procedure(generated, directive.procedure)
+        if wrapper is not None:
+            return (f"'{wrapper.name}' is generated into '{generated}', not into "
+                    f"'{directive.module}': name it there")
+    return None
 
 
 def _plain_of_an_expert(producer: Procedure, project, conventions: Conventions):
