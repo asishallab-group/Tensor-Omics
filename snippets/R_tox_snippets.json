@@ -521,6 +521,17 @@
       ")"
     ]
   },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "${1:result} <- tox_loess_required_workspace(",
+      "  n_dim = ${2:n_dim},",
+      "  max_neighborhood_size = ${3:max_neighborhood_size},",
+      "  save_factorization = ${4:save_factorization}",
+      ")"
+    ]
+  },
   "loess_fit_plain (call)": {
     "prefix": "tox:loess_fit_plain",
     "description": "Data too degenerate to fit is answered directly, by the observations themselves; see",
@@ -556,20 +567,9 @@
       ")"
     ]
   },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "${1:result} <- tox_loess_required_workspace(",
-      "  n_dim = ${2:n_dim},",
-      "  max_neighborhood_size = ${3:max_neighborhood_size},",
-      "  save_factorization = ${4:save_factorization}",
-      ")"
-    ]
-  },
   "normalize_unit_length (call)": {
     "prefix": "tox:normalize_unit_length",
-    "description": "normalize_unit_length",
+    "description": "Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other",
     "body": [
       "normalize_unit_length(",
       "  vector = ${1:vector}",
