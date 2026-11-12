@@ -27,6 +27,7 @@ from tensor_omics.error_handling import (
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
     ERR_SIZE_MISMATCH,
+    ToxError,
 )
 
 N_REPLICATES, N_GENES = 6, 10
@@ -82,7 +83,25 @@ def test_normalization_pipeline():
 
 def test_normalization_pipeline_rejects_reps_not_summing_to_the_replicates():
     assert_error(lambda: normalization_pipeline(_expr(), np.array([3, 2], dtype=np.int32)),
-                 "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_INVALID_INPUT)
+                 "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_SIZE_MISMATCH)
+    try:
+        normalization_pipeline(_expr(), np.array([3, 2], dtype=np.int32))
+    except ToxError as error:
+        # the message says what the hidden n_replicates had to equal, and blames the array
+        # it is read off
+        assert error.argument == "expr", error.argument
+        assert str(error).endswith(
+            "(argument 'expr', via 'n_replicates'); 'n_replicates' must equal sum(reps_per_tissue)"
+        ), str(error)
+
+
+def test_normalization_pipeline_checks_the_counts():
+    # a count below one is reps_per_tissue's own error, though [5, -3] sums to the two rows
+    assert_error(lambda: normalization_pipeline(_expr()[:2], np.array([5, -3], dtype=np.int32)),
+                 "reps_per_tissue [5, -3] has a negative count", ERR_INVALID_INPUT)
+    # no tissues: an empty input, not a mismatch
+    assert_error(lambda: normalization_pipeline(_expr(), np.array([], dtype=np.int32)),
+                 "reps_per_tissue is empty", ERR_EMPTY_INPUT)
 
 
 def test_normalize_by_std_dev():
