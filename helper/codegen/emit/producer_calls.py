@@ -9,18 +9,27 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, CWrapper
 from ..ir.entities import Procedure
-from ..ir.roles import OutputFromPlan
+from ..ir.roles import OutputFromPlan, supply_order
 
 
 def auto_plans(wrapper: CWrapper) -> list[tuple[CArgument, OutputFromPlan]]:
-    """Each argument the binding computes by calling a producer, with its plan."""
+    """Each argument the binding computes by calling a producer, with its plan.
+
+    In dependency order (`roles.supply_order`), as the Fortran wrapper calls them: an argument
+    whose producer is given another computed argument comes after it.
+    """
     found = []
     for argument in wrapper:
         roles = argument.source.roles if argument.source else None
         plan = roles.computed_from if roles is not None else None
         if plan is not None and plan.is_automatic:
             found.append((argument, plan))
-    return found
+    return supply_order([
+        ({argument.name.lower()},
+         {s.argument.lower() for s in plan.binding_inputs if s.argument is not None},
+         (argument, plan))
+        for argument, plan in found
+    ])
 
 
 def supplied_by(plan: OutputFromPlan, wrapper: CWrapper) -> list[tuple[str, int]]:

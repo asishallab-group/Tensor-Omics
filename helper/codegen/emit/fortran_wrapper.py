@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from ..config import CONVENTIONS, Conventions
 from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
-from ..ir.roles import unused_outputs
+from ..ir.roles import supply_order, unused_outputs
 from ..ir.types import BaseType
 from ..names import DEFAULT_VALUE, UNUSED_OUTPUT, local_name
 from ..render import Writer
@@ -365,7 +365,8 @@ class FortranWrapperEmitter:
         """The taken-over AUTO arguments of `foo`, grouped by the producer call that fills them.
 
         One call per producer and set of inputs (`OutputFromPlan.call`): a producer whose inputs
-        two arguments' tables supply differently is called once for each.
+        two arguments' tables supply differently is called once for each. In dependency order
+        (`roles.supply_order`): a call given another call's output runs after it.
         """
         groups: dict[tuple, list[Argument]] = {}
         for argument in taken:
@@ -373,7 +374,14 @@ class FortranWrapperEmitter:
                 continue
             own = foo.argument(argument.name)
             groups.setdefault(own.roles.computed_from.call, []).append(own)
-        return list(groups.values())
+        # a call given another's output runs after it, whatever the argument order
+        return supply_order([
+            ({a.name.lower() for a in group},
+             {s.argument.lower() for s in group[0].roles.computed_from.inputs
+              if s.argument is not None},
+             group)
+            for group in groups.values()
+        ])
 
     def _producer_error_imports(self, module: Module) -> set[str]:
         """What the error check after a producer call names (`_producer_error_check`)."""

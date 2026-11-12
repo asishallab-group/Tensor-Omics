@@ -455,13 +455,14 @@ class TestAnInputTheProducerRefines:
     """An `intent(inout)` producer input -- a cap the producer lowers in place.
 
     Where the generated Fortran calls the producer, it is passed through a required
-    `intent(inout)` argument of the consumer, and nothing else: that is what the call can write
-    and what carries the refined value back. Python and R adopt the value themselves.
+    `intent(inout)` argument of the consumer, or a value another producer computes there: that
+    is what the call can write and what carries the refined value on. Python and R adopt the
+    value themselves.
     """
 
     MESSAGE = ("'work_size' is computed from 'capped_size', which refines its input 'cap' in "
-               "place, so it must be passed through a required intent(inout) argument; it is "
-               "given {}")
+               "place, so it must be passed through a required intent(inout) argument or a "
+               "value another DM_OUTPUT_FROM computes here; it is given {}")
 
     def capping(self):
         return module("tox_hand", procedure(
@@ -491,13 +492,15 @@ class TestAnInputTheProducerRefines:
         assert error.note == (
             "the generated wrapper calls 'capped_size' itself, and writes 'cap' back through "
             "what supplies it: supply it by a required intent(inout) argument of the "
-            "implementation, which the refined value then reaches, and the caller with it")
+            "implementation, which the refined value then reaches, and the caller with it, or by "
+            "another argument a producer computes here, which every later use then sees refined")
 
     def test_an_intent_in_argument_is_refused(self):
         self.refused_as(self.capped(integer("cap", Intent.IN, doc="a cap")), "intent(in) 'cap'")
 
     def test_a_constant_is_refused(self):
-        self.refused_as(self.capped(doc=table(("cap", "5_int32"))), "the constant 5")
+        # as written in the table, not as evaluated
+        self.refused_as(self.capped(doc=table(("cap", "5_int32"))), "the constant 5_int32")
 
     def test_an_optional_with_a_default_is_refused(self):
         # its value reaches the call as a local, which would swallow the refined one
@@ -527,7 +530,80 @@ class TestAnInputTheProducerRefines:
         _, bag = analysed(self.capping(),
                           self.capped(integer("cap", Intent.IN, doc="a cap"), sized_result=True))
 
-        assert self.refusals(bag) == []
+        assert bag.errors == ()
+
+    def computed_cap(self, reversed_order=False, sized_result=False):
+        """`cap` is itself computed, by `base_size`; `capped_size` refines it in place."""
+        base = module("tox_base", procedure(
+            "base_size", integer("n_items", doc="items"),
+            integer("base", Intent.OUT, doc="a size"), integer("ierr", Intent.OUT, doc="error")))
+        size = "res" if sized_result else "tmp_buf"
+        intent = Intent.OUT
+        cap = [integer("cap", doc="computed", directives=auto("base", "base_size", "tox_base")),
+               real(f"{size}_cap", intent, "(cap)", doc="sized by the cap")]
+        work = [integer("work_size", doc=table(("cap", "cap")),
+                        directives=auto("sized", "capped_size", "tox_hand")),
+                real(size, intent, "(work_size)", doc="sized by the work size")]
+        arguments = (work + cap) if reversed_order else (cap + work)
+        return [self.capping(), base,
+                consumer("capped_impl", integer("n_items", doc="items"), *arguments)]
+
+    def test_a_value_the_wrapper_computes_is_passed_to_it(self):
+        synthesis, bag = analysed(*self.computed_cap())
+        text = body(fortran(synthesis), "capped")
+
+        assert bag.errors == ()
+        assert "cap = cap" in call_of(text, "capped_size")
+        # computed first, refined second, and allocated with the refined value only after both
+        assert text.index("call base_size(&") < text.index("call capped_size(&") \
+            < text.index("M_ALLOCATE(tmp_buf_cap(cap))")
+
+    def test_the_computing_call_comes_first_whatever_the_argument_order(self):
+        # `work_size` (refining `cap`) is declared before `cap`
+        synthesis, bag = analysed(*self.computed_cap(reversed_order=True))
+        text = body(fortran(synthesis), "capped")
+
+        assert bag.errors == ()
+        assert text.index("call base_size(&") < text.index("call capped_size(&")
+
+    def test_python_and_r_call_them_in_the_same_order(self):
+        from codegen.abi.c_abi import build_project
+        from codegen.emit.python_ctypes import PythonEmitter
+        from codegen.emit.r_wrapper import RWrapperEmitter
+
+        synthesis, bag = analysed(*self.computed_cap(reversed_order=True, sized_result=True))
+        binding = build_project(synthesis.project, bag)
+        assert bag.errors == (), bag.render()
+        wrapper = next(w for m in binding for w in m if w.stripped_name == "capped")
+        python, r = PythonEmitter().function(wrapper), RWrapperEmitter().function(wrapper)
+
+        assert python.index("base_size(") < python.index("capped_size(")
+        assert r.index("base_size(") < r.index("capped_size(")
+
+
+class TestASupplyCycle:
+    """Two AUTO arguments each given the other -- or one given itself -- have no call order."""
+
+    def test_two_given_each_other_are_refused(self):
+        base = module("tox_base", procedure(
+            "pair_size", integer("other", doc="the other size"),
+            integer("sized", Intent.OUT, doc="a size"), integer("ierr", Intent.OUT, doc="error")))
+        cons = consumer(
+            "cyclic_impl",
+            integer("first", doc=table(("other", "second")),
+                    directives=auto("sized", "pair_size", "tox_base")),
+            real("tmp_a", Intent.OUT, "(first)", doc="scratch"),
+            integer("second", doc=table(("other", "first")),
+                    directives=auto("sized", "pair_size", "tox_base")),
+            real("tmp_b", Intent.OUT, "(second)", doc="scratch"),
+        )
+        _, bag = analysed(base, cons)
+
+        assert sorted(e.message for e in bag.errors if "itself" in e.message) == [
+            "'first' is computed from a producer that is given, through its inputs, 'first' itself",
+            "'second' is computed from a producer that is given, through its inputs, 'second' "
+            "itself",
+        ]
 
 
 class TestACycle:

@@ -286,6 +286,9 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     for module in project:
         for procedure in module.exported_procedures:
             _resolve_output_from(procedure, project, diagnostics, conventions, evaluator)
+            # once per pair: the expert half carries every argument the plain half has
+            if module.procedure(procedure.name + conventions.expert_suffix) is None:
+                _check_supply_cycles(procedure, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
 
 
@@ -424,8 +427,8 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
-        if fortran_calls and _refines_a_read_only_input(argument, consumer, producer, inputs,
-                                                         diagnostics, conventions):
+        if fortran_calls and _refuses_a_refined_input(argument, consumer, producer, inputs,
+                                                      renames, diagnostics, conventions):
             continue
 
         argument.roles.computed_from = OutputFromPlan(
@@ -509,18 +512,20 @@ def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: Diagnost
     )
 
 
-def _refines_a_read_only_input(argument: Argument, consumer: Procedure, producer: Procedure,
-                               inputs: list[ProducerInput], diagnostics: DiagnosticBag,
-                               conventions: Conventions) -> bool:
-    """Refuse an `intent(inout)` producer input not supplied by a required `intent(inout)` dummy.
+def _refuses_a_refined_input(argument: Argument, consumer: Procedure, producer: Procedure,
+                             inputs: list[ProducerInput], renames: dict[str, str],
+                             diagnostics: DiagnosticBag, conventions: Conventions) -> bool:
+    """Refuse an `intent(inout)` producer input supplied by anything the call cannot write back.
 
     The rule, where the generated Fortran wrapper calls the producer itself: an input the
-    producer refines in place is passed through a required `intent(inout)` argument of the
-    consumer, and nothing else. That is what the call can write -- an `intent(in)` dummy or a
-    constant does not compile -- and what carries the refined value back to the caller, which
-    the local an optional is materialised into would swallow. Python and R adopt the refined
-    value themselves (`inout_feedback`), so where only they call the producer nothing is
-    refused. True when something was.
+    producer refines in place is supplied by a required `intent(inout)` argument of the consumer,
+    or by a value the wrapper computes itself -- another `DM_OUTPUT_FROM` argument it takes
+    over, a local it owns, which the producers are ordered around (`supply_order`). That is
+    what the call can write, and what carries the refined value on: to the caller, or to every
+    later use of the local. An `intent(in)` argument or a constant does not compile there, and
+    the local an optional is materialised into would swallow the refined value. Python and R
+    adopt the refined value themselves (`inout_feedback`), so where only they call the producer
+    nothing is refused. True when something was.
     """
     plain = consumer.module.procedure(consumer.name[: -len(conventions.expert_suffix)])
     refused = False
@@ -530,27 +535,93 @@ def _refines_a_read_only_input(argument: Argument, consumer: Procedure, producer
         dummy = plain.argument(supply.argument) if supply.argument is not None else None
         if dummy is not None and dummy.intent is Intent.INOUT and not dummy.optional:
             continue
+        if supply.argument is not None and dummy is None and _is_computed_here(
+                consumer.argument(supply.argument)):
+            continue  # a local of the wrapper's own, which an earlier producer call filled
         if supply.argument is None:
-            given = f"the constant {supply.constant!r}"
+            given = f"the constant {renames.get(supply.name.lower(), supply.constant)}"
         elif dummy is None:
-            given = f"'{supply.argument}', which the wrapper computes itself"
+            given = f"'{supply.argument}', a work array or other value the wrapper prepares"
         else:
             intent = f"intent({dummy.intent.value})" if dummy.intent else "no intent"
             given = f"{'optional ' if dummy.optional else ''}{intent} '{supply.argument}'"
         diagnostics.error(
             f"'{argument.name}' is computed from '{producer.name}', which refines its input "
             f"'{supply.name}' in place, so it must be passed through a required intent(inout) "
-            f"argument; it is given {given}",
+            f"argument or a value another DM_OUTPUT_FROM computes here; it is given {given}",
             entity=argument,
             note=(
                 f"the generated wrapper calls '{producer.name}' itself, and writes "
                 f"'{supply.name}' back through what supplies it: supply it by a required "
                 "intent(inout) argument of the implementation, which the refined value then "
-                "reaches, and the caller with it"
+                "reaches, and the caller with it, or by another argument a producer computes "
+                "here, which every later use then sees refined"
             ),
         )
         refused = True
     return refused
+
+
+def _is_computed_here(argument: Argument | None) -> bool:
+    """Whether `argument` is an AUTO `DM_OUTPUT_FROM` value, computed by calling a producer."""
+    directive = argument.directives.output_from if argument is not None else None
+    return directive is not None and directive.is_automatic
+
+
+def supply_order(entries: list[tuple[set[str], set[str], object]]) -> list[object]:
+    """Producer calls in an order where each runs after those whose outputs it is given.
+
+    `entries` is `(the arguments a call fills, the arguments it is given, the call)` in
+    argument order. A call reads another's output when one of its inputs is an argument the
+    other fills -- a size computed from a size, or a value an earlier producer computed and a
+    later one refines in place -- so the other has to run first, whatever the order the
+    arguments are declared in. Otherwise the argument order stands. A dependency cycle among a
+    consumer's arguments is refused (`_check_supply_cycles`); were one to reach here, the
+    remaining calls keep their argument order rather than hang.
+    """
+    remaining = list(entries)
+    ordered = []
+    while remaining:
+        for index, (fills, reads, call) in enumerate(remaining):
+            others = set().union(*(f for i, (f, _, _) in enumerate(remaining) if i != index))
+            if not (reads & others):
+                break
+        else:
+            index = 0
+        ordered.append(remaining.pop(index)[2])
+    return ordered
+
+
+def _check_supply_cycles(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
+    """Refuse AUTO arguments of one consumer that are computed, through their producers' inputs,
+    from each other -- or one from itself: no order of the calls gives each its input."""
+    reads: dict[str, set[str]] = {}
+    for argument in consumer.arguments:
+        plan = argument.roles.computed_from if argument.roles else None
+        if plan is None or not plan.is_automatic:
+            continue
+        reads[argument.name.lower()] = {s.argument.lower() for s in plan.inputs
+                                        if s.argument is not None}
+    computed = set(reads)
+    for name in reads:
+        reads[name] &= computed
+
+    def reaches(start: str, goal: str, seen: set[str]) -> bool:
+        for nxt in reads.get(start, ()):
+            if nxt == goal or (nxt not in seen and reaches(nxt, goal, seen | {nxt})):
+                return True
+        return False
+
+    for argument in consumer.arguments:
+        name = argument.name.lower()
+        if name in reads and reaches(name, name, {name}):
+            diagnostics.error(
+                f"'{argument.name}' is computed from a producer that is given, through its "
+                f"inputs, '{argument.name}' itself",
+                entity=argument,
+                note=("no order of the producer calls gives each its input; supply one of "
+                      "them by an argument of the caller's or a constant"),
+            )
 
 
 def _is_called_from_fortran(consumer: Procedure, argument: Argument, project,
