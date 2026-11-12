@@ -498,7 +498,7 @@ contains
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         real(real64), intent(out) :: median_ambient
             !! Ambient median density median_{i=1..N}(rho_i)
@@ -542,7 +542,7 @@ contains
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         integer(int32), dimension(n_vectors), intent(inout) :: tmp_perm
             !! Preallocated workspace array for sorting and percentiles
@@ -723,7 +723,7 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         real(real64), intent(in), optional :: alpha_mad
             !! Multiplier factor for MAD density compatibility threshold
@@ -732,7 +732,8 @@ contains
         logical(c_bool), dimension(n_vectors), intent(out) :: grown_mask
             !! Membership after the growth step.
         integer(int32), intent(out) :: ierr
-            !! Runtime status for the density contrast check.
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
         integer(int32), dimension(:, :), allocatable :: tmp_stack
         logical(c_bool), dimension(:), allocatable :: tmp_vicinity_mask
         logical(c_bool), dimension(:), allocatable :: tmp_surface_mask
@@ -818,7 +819,7 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         real(real64), intent(in), optional :: alpha_mad
             !! Multiplier factor for MAD density compatibility threshold
@@ -837,7 +838,8 @@ contains
         logical(c_bool), dimension(n_vectors), intent(out) :: grown_mask
             !! Membership after the growth step.
         integer(int32), intent(out) :: ierr
-            !! Runtime status for the density contrast check.
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -883,13 +885,15 @@ contains
             observables,&
             n_history,&
             n_observables,&
-            t_observables,&
             ierr&
         )
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         integer(int32), intent(in) :: n_history
-            !! Number of columns in the observable history.
+            !! Number of columns in the observable history. This is the history window: once
+            !! `current_iter` exceeds it, the columns shift left and the newest step is stored last.
+            !! Acceptance compares two consecutive steps, so at least two columns are required.
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_observables
             !! Number of observable rows, which must be exactly five.
             !! The minimum valid value is `5`.
@@ -897,7 +901,7 @@ contains
         logical(c_bool), dimension(n_vectors), intent(in) :: ensemble_mask
             !! Selection mask for active ensemble members
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         integer(int32), intent(in) :: candidate_count
             !! Number of candidates added in current growth step
@@ -906,10 +910,7 @@ contains
             !! Current growth iteration index (1-based)
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_observables, n_history), intent(inout) :: observables
-            !! 2D observable trajectory matrix where columns match iteration indices
-        integer(int32), intent(in), optional :: t_observables
-            !! History tracking depth (defaults to 10; <= 0 represents infinity / all)
-            !! The default value is `10_int32`.
+            !! Observable history, one column per growth iteration within the window
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -918,7 +919,7 @@ contains
         call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
         call validate_in_range_int(candidate_count, ierr, arg_pos=4_int32, min=0_int32)
         call validate_in_range_int(current_iter, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_dimension_size(n_history, ierr, arg_pos=7_int32)
+        call validate_in_range_int(n_history, ierr, arg_pos=7_int32, min=2_int32)
         call validate_in_range_int(n_observables, ierr, arg_pos=8_int32, min=5, max=5)
         call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=2_int32, min=1.0_real64)
         call validate_all_in_range_real(observables, n_observables * n_history, ierr, arg_pos=6_int32)
@@ -933,8 +934,7 @@ contains
             current_iter = current_iter,&
             observables = observables,&
             n_history = n_history,&
-            n_observables = n_observables,&
-            t_observables = t_observables&
+            n_observables = n_observables&
         )
     end subroutine compute_ensemble_observable
 
@@ -949,14 +949,15 @@ contains
             ierr&
         )
         integer(int32), intent(in) :: n_history
-            !! Number of columns in the observable history.
-            !! The minimum valid value is `0_int32`.
+            !! Number of columns in the observable history, the same window the history was written with.
+            !! Acceptance compares two consecutive steps, so at least two columns are required.
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_observables
             !! Number of observable rows, which must be exactly five.
             !! The minimum valid value is `5`.
             !! The maximum valid value is `5`.
         real(real64), dimension(n_observables, n_history), intent(in) :: observables
-            !! 2D observables trajectory matrix [5 x window_capacity]
+            !! Observable history written by [[tox_stc(module):compute_ensemble_observable]]
         integer(int32), intent(in) :: current_iter
             !! Current growth iteration index (1-based)
             !! The minimum valid value is `1_int32`.
@@ -971,7 +972,7 @@ contains
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
-        call validate_in_range_int(n_history, ierr, arg_pos=2_int32, min=0_int32)
+        call validate_in_range_int(n_history, ierr, arg_pos=2_int32, min=2_int32)
         call validate_in_range_int(n_observables, ierr, arg_pos=3_int32, min=5, max=5)
         call validate_in_range_int(current_iter, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_real(alpha_accept, ierr, arg_pos=5_int32, min=0.0_real64)
@@ -1015,7 +1016,7 @@ contains
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         integer(int32), intent(in) :: n_seeds
-            !! Total number of precalculated seed vectors the seed-selection routine.
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
@@ -1029,10 +1030,10 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Precalculated density labels for ambient vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Array of starting seed vector indices the seed-selection routine.
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), intent(in) :: r
@@ -1047,8 +1048,9 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.5_real64`.
         integer(int32), intent(in) :: t_observables
-            !! History window in iterations. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `1_int32`.
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_tiles
             !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
             !! The minimum valid value is `1_int32`.
@@ -1058,11 +1060,13 @@ contains
             !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
             !! 3: first step rejected, 4: no candidates.
         real(real64), intent(out) :: mad_ambient
-            !! Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         integer(int32), intent(out) :: n_ensembles
             !! Total count of extracted raw ensembles (equals n_seeds)
         integer(int32), intent(out) :: ierr
-            !! Runtime status for the radius selection and density contrast checks.
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
         integer(int32), dimension(:, :, :), allocatable :: tmp_stack
         logical(c_bool), dimension(:, :), allocatable :: tmp_vicinity_mask
         logical(c_bool), dimension(:, :), allocatable :: tmp_surface_mask
@@ -1080,7 +1084,7 @@ contains
         call validate_in_range_real(r, ierr, arg_pos=9_int32, min=0.0_real64)
         call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
         call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=1_int32)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
         call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
@@ -1095,7 +1099,7 @@ contains
         M_ALLOCATE(tmp_surface_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_perm(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_observables(5, min(t_observables,n_vectors), min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_growth_radii(n_seeds))
 
@@ -1165,12 +1169,13 @@ contains
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         integer(int32), intent(in) :: n_seeds
-            !! Total number of precalculated seed vectors the seed-selection routine.
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_vectors`.
         integer(int32), intent(in) :: t_observables
-            !! History window in iterations. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `1_int32`.
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_tiles
             !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
             !! The minimum valid value is `1_int32`.
@@ -1185,10 +1190,10 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Precalculated density labels for ambient vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Array of starting seed vector indices the seed-selection routine.
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), intent(in) :: r
@@ -1212,8 +1217,9 @@ contains
             !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
         real(real64), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_abs_diff
             !! Workspace array for deviation calculations per tile
-        real(real64), dimension(5, min(t_observables,n_vectors), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
-            !! Workspace matrix for storing observable history per tile
+        real(real64), dimension(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
+            !! Observable history per tile. Growth adds at least one member per iteration, so more than
+            !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
         logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
             !! Workspace holding accepted seed ensemble membership per tile
         real(real64), dimension(n_seeds), intent(out) :: tmp_growth_radii
@@ -1224,11 +1230,13 @@ contains
             !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
             !! 3: first step rejected, 4: no candidates.
         real(real64), intent(out) :: mad_ambient
-            !! Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         integer(int32), intent(out) :: n_ensembles
             !! Total count of extracted raw ensembles (equals n_seeds)
         integer(int32), intent(out) :: ierr
-            !! Runtime status for the radius selection and density contrast checks.
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -1238,7 +1246,7 @@ contains
         call validate_in_range_real(r, ierr, arg_pos=9_int32, min=0.0_real64)
         call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
         call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=1_int32)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
         call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
@@ -1306,7 +1314,7 @@ contains
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         integer(int32), intent(in) :: n_seeds
-            !! Total number of precalculated seed vectors the seed-selection routine.
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
@@ -1320,10 +1328,10 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Precalculated density labels for ambient vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Array of starting seed vector indices the seed-selection routine.
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_seeds), intent(in) :: seed_radii
@@ -1338,8 +1346,9 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.5_real64`.
         integer(int32), intent(in) :: t_observables
-            !! History window in iterations. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `1_int32`.
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_tiles
             !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
             !! The minimum valid value is `1_int32`.
@@ -1349,11 +1358,13 @@ contains
             !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
             !! 3: first step rejected, 4: no candidates.
         real(real64), intent(out) :: mad_ambient
-            !! Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         integer(int32), intent(out) :: n_ensembles
             !! Total count of extracted raw ensembles (equals n_seeds)
         integer(int32), intent(out) :: ierr
-            !! Runtime status for the radius selection and density contrast checks.
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
         integer(int32), dimension(:, :, :), allocatable :: tmp_stack
         logical(c_bool), dimension(:, :), allocatable :: tmp_vicinity_mask
         logical(c_bool), dimension(:, :), allocatable :: tmp_surface_mask
@@ -1370,7 +1381,7 @@ contains
         call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
         call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
         call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=1_int32)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
         call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
@@ -1386,7 +1397,7 @@ contains
         M_ALLOCATE(tmp_surface_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_perm(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_observables(5, min(t_observables,n_vectors), min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_growth_radii(n_seeds))
 
@@ -1456,12 +1467,13 @@ contains
         integer(int32), intent(in) :: n_vectors
             !! Number of vectors
         integer(int32), intent(in) :: n_seeds
-            !! Total number of precalculated seed vectors the seed-selection routine.
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_vectors`.
         integer(int32), intent(in) :: t_observables
-            !! History window in iterations. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `1_int32`.
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_tiles
             !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
             !! The minimum valid value is `1_int32`.
@@ -1476,10 +1488,10 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Precalculated density labels for ambient vectors the density-label routine.
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
             !! The minimum valid value is `1.0_real64`.
         integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Array of starting seed vector indices the seed-selection routine.
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors`.
         real(real64), dimension(n_seeds), intent(in) :: seed_radii
@@ -1503,8 +1515,9 @@ contains
             !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
         real(real64), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_abs_diff
             !! Workspace array for deviation calculations per tile
-        real(real64), dimension(5, min(t_observables,n_vectors), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
-            !! Workspace matrix for storing observable history per tile
+        real(real64), dimension(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
+            !! Observable history per tile. Growth adds at least one member per iteration, so more than
+            !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
         logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
             !! Workspace holding accepted seed ensemble membership per tile
         real(real64), dimension(n_seeds), intent(out) :: tmp_growth_radii
@@ -1515,11 +1528,13 @@ contains
             !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
             !! 3: first step rejected, 4: no candidates.
         real(real64), intent(out) :: mad_ambient
-            !! Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         integer(int32), intent(out) :: n_ensembles
             !! Total count of extracted raw ensembles (equals n_seeds)
         integer(int32), intent(out) :: ierr
-            !! Runtime status for the radius selection and density contrast checks.
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -1528,7 +1543,7 @@ contains
         call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
         call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
         call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=1_int32)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
         call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)

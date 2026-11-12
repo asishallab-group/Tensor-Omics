@@ -119,7 +119,7 @@ identify_ensemble_seeds <- function(vectors, density_labels, dimension_order, kd
 #' Generated from the Fortran procedure \code{tox_stc::compute_ambient_density_stats}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param density_labels a numeric vector. Density labels for all vectors the density-label routine.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
 #'   The minimum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{median_ambient}{a numeric scalar. Ambient median density median_{i=1..N}(rho_i)}
@@ -177,7 +177,7 @@ merge_ensembles <- function(raw_masks, min_overlap_coefficient = 0.9) {
 #' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors`.
-#' @param density_labels a numeric vector. Density labels for all vectors the density-label routine.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
 #'   The minimum valid value is `1.0`.
 #' @param alpha_mad a numeric scalar. Multiplier factor for MAD density compatibility threshold
 #'   The minimum valid value is `0.0`.
@@ -215,30 +215,27 @@ grow_ensemble <- function(vectors, ensemble_mask, r, dimension_order, kd_indices
 #' are the ones an error message reports.
 #'
 #' @param ensemble_mask a logical vector. Selection mask for active ensemble members
-#' @param density_labels a numeric vector. Density labels for all vectors the density-label routine.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
 #'   The minimum valid value is `1.0`.
 #' @param candidate_count a integer scalar. Number of candidates added in current growth step
 #'   The minimum valid value is `0`.
 #' @param current_iter a integer scalar. Current growth iteration index (1-based)
 #'   The minimum valid value is `1`.
-#' @param observables a numeric matrix. 2D observable trajectory matrix where columns match iteration indices
-#' @param t_observables a integer scalar. History tracking depth (defaults to 10; <= 0 represents infinity / all)
-#'   The default value is `10`.
-#' @return a numeric matrix. 2D observable trajectory matrix where columns match iteration indices
+#' @param observables a numeric matrix. Observable history, one column per growth iteration within the window
+#' @return a numeric matrix. Observable history, one column per growth iteration within the window
 #' @export
-compute_ensemble_observable <- function(ensemble_mask, density_labels, candidate_count, current_iter, observables, t_observables = 10L) {
+compute_ensemble_observable <- function(ensemble_mask, density_labels, candidate_count, current_iter, observables) {
     ensemble_mask <- .tox_as_logical_vector(ensemble_mask, "ensemble_mask")
     density_labels <- .tox_as_double_vector(density_labels, "density_labels")
     candidate_count <- .tox_as_integer_scalar(candidate_count, "candidate_count")
     current_iter <- .tox_as_integer_scalar(current_iter, "current_iter")
     observables <- .tox_as_double_matrix(observables, "observables")
-    t_observables <- .tox_as_integer_scalar(t_observables, "t_observables")
     if (length(density_labels) != length(ensemble_mask))
         .tox_shape_error("density_labels", 1L, length(density_labels), "'ensemble_mask' implies n_vectors == ", length(ensemble_mask), "n_vectors")
 
-    .result <- .Call("compute_ensemble_observable_call", ensemble_mask, density_labels, candidate_count, current_iter, observables, t_observables)
-    .arguments <- c("ensemble_mask", "density_labels", "n_vectors", "candidate_count", "current_iter", "observables", "n_history", "n_observables", "t_observables", "ierr")
-    .sources <- c(NA_character_, NA_character_, "ensemble_mask", NA_character_, NA_character_, NA_character_, "observables", "observables", NA_character_, NA_character_)
+    .result <- .Call("compute_ensemble_observable_call", ensemble_mask, density_labels, candidate_count, current_iter, observables)
+    .arguments <- c("ensemble_mask", "density_labels", "n_vectors", "candidate_count", "current_iter", "observables", "n_history", "n_observables", "ierr")
+    .sources <- c(NA_character_, NA_character_, "ensemble_mask", NA_character_, NA_character_, NA_character_, "observables", "observables", NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$observables
@@ -249,7 +246,7 @@ compute_ensemble_observable <- function(ensemble_mask, density_labels, candidate
 #' Generated from the Fortran procedure \code{tox_stc::accept_ensemble}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param observables a numeric matrix. 2D observables trajectory matrix [5 x window_capacity]
+#' @param observables a numeric matrix. Observable history written by \code{\link{compute_ensemble_observable}}
 #' @param current_iter a integer scalar. Current growth iteration index (1-based)
 #'   The minimum valid value is `1`.
 #' @param alpha_accept a numeric scalar. Optional log2 fold change acceptance threshold (defaults to 0.5)
@@ -281,9 +278,9 @@ accept_ensemble <- function(observables, current_iter, alpha_accept = 0.5) {
 #' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors`.
-#' @param density_labels a numeric vector. Precalculated density labels for ambient vectors the density-label routine.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
 #'   The minimum valid value is `1.0`.
-#' @param seed_indices a integer vector. Array of starting seed vector indices the seed-selection routine.
+#' @param seed_indices a integer vector. Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors`.
 #' @param r a numeric scalar. Uniform growth radius for every seed.
@@ -294,15 +291,17 @@ accept_ensemble <- function(observables, current_iter, alpha_accept = 0.5) {
 #' @param alpha_accept a numeric scalar. Acceptance log2 fold-change threshold
 #'   The minimum valid value is `0.0`.
 #'   The default value is `0.5`.
-#' @param t_observables a integer scalar. History window in iterations. Pass n_vectors to retain the full history.
-#'   The minimum valid value is `1`.
+#' @param t_observables a integer scalar. History window in iterations, at least two because acceptance compares two consecutive
+#'   steps. Pass n_vectors to retain the full history.
+#'   The minimum valid value is `2`.
 #' @param n_tiles a integer scalar. Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
 #'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{ensemble_matrix}{a logical matrix. Output matrix storing unmerged grown ensemble masks}
 #'   \item{stop_reasons}{a integer vector. Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
 #'     3: first step rejected, 4: no candidates.}
-#'   \item{mad_ambient}{a numeric scalar. Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.}
+#'   \item{mad_ambient}{a numeric scalar. Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+#'     Zero when there are no seeds; otherwise positive on success, because a zero value is an error.}
 #'   \item{n_ensembles}{a integer scalar. Total count of extracted raw ensembles (equals n_seeds)}
 #' @export
 obtain_ensembles_global_radius <- function(vectors, dimension_order, kd_indices, density_labels, seed_indices, r, alpha_mad = 0.5, alpha_accept = 0.5, t_observables, n_tiles) {
@@ -348,9 +347,9 @@ obtain_ensembles_global_radius <- function(vectors, dimension_order, kd_indices,
 #' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors`.
-#' @param density_labels a numeric vector. Precalculated density labels for ambient vectors the density-label routine.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
 #'   The minimum valid value is `1.0`.
-#' @param seed_indices a integer vector. Array of starting seed vector indices the seed-selection routine.
+#' @param seed_indices a integer vector. Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors`.
 #' @param seed_radii a numeric vector. Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
@@ -361,15 +360,17 @@ obtain_ensembles_global_radius <- function(vectors, dimension_order, kd_indices,
 #' @param alpha_accept a numeric scalar. Acceptance log2 fold-change threshold
 #'   The minimum valid value is `0.0`.
 #'   The default value is `0.5`.
-#' @param t_observables a integer scalar. History window in iterations. Pass n_vectors to retain the full history.
-#'   The minimum valid value is `1`.
+#' @param t_observables a integer scalar. History window in iterations, at least two because acceptance compares two consecutive
+#'   steps. Pass n_vectors to retain the full history.
+#'   The minimum valid value is `2`.
 #' @param n_tiles a integer scalar. Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
 #'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{ensemble_matrix}{a logical matrix. Output matrix storing unmerged grown ensemble masks}
 #'   \item{stop_reasons}{a integer vector. Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
 #'     3: first step rejected, 4: no candidates.}
-#'   \item{mad_ambient}{a numeric scalar. Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.}
+#'   \item{mad_ambient}{a numeric scalar. Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+#'     Zero when there are no seeds; otherwise positive on success, because a zero value is an error.}
 #'   \item{n_ensembles}{a integer scalar. Total count of extracted raw ensembles (equals n_seeds)}
 #' @export
 obtain_ensembles_seed_radius <- function(vectors, dimension_order, kd_indices, density_labels, seed_indices, seed_radii, alpha_mad = 0.5, alpha_accept = 0.5, t_observables, n_tiles) {

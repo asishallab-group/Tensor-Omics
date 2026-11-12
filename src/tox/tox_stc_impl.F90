@@ -305,7 +305,7 @@ contains
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         !! DM_MIN(1.0_real64)
         integer(int32), intent(inout) :: tmp_perm(n_vectors)
         !! Preallocated workspace array for sorting and percentiles
@@ -358,7 +358,7 @@ contains
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         real(real64), intent(in) :: alpha_mad
         !! Multiplier factor for MAD density compatibility threshold
         real(real64), intent(in) :: mad_ambient
@@ -409,7 +409,7 @@ contains
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         real(real64), intent(in) :: alpha_mad
         !! Multiplier factor for MAD density compatibility threshold
         real(real64), intent(in) :: mad_ambient
@@ -497,37 +497,28 @@ contains
     end subroutine build_ensemble_trial_helper
 
     !> Update the five observables in the history window.
+    !| The window is the column count of `observables`, the same width `accept_ensemble_helper` reads.
     pure subroutine compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
-                                                       candidate_count, current_iter, observables, &
-                                                       t_observables)
+                                                       candidate_count, current_iter, observables)
 
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
         logical(c_bool), intent(in) :: ensemble_mask(n_vectors)
         !! Selection mask for active ensemble members
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         integer(int32), intent(in) :: candidate_count
         !! Number of candidates added in current growth step
         integer(int32), intent(in) :: current_iter
         !! Current growth iteration index (1-based)
         real(real64), intent(inout) :: observables(:, :)
-        !! 2D observable trajectory matrix where columns match iteration indices
-        integer(int32), intent(in), optional :: t_observables
-        !! History tracking depth (defaults to 10; <= 0 represents infinity / all)
+        !! Observable history; its column count is the history window
 
-        integer(int32) :: i_vec, active_count, actual_t_obs, max_cols, zero_count
+        integer(int32) :: i_vec, active_count, max_cols, zero_count
         real(real64)   :: sum_arithmetic, sum_reciprocal, rho_arith, rho_harm
         real(real64)   :: obs_1, obs_2, obs_3, obs_4, obs_5
 
         max_cols = size(observables, dim=2, kind=int32)
-
-        M_DEFAULT_VAL(t_observables, actual_t_obs, 10_int32)
-        if (actual_t_obs <= 0_int32) then
-            actual_t_obs = max_cols
-        else
-            actual_t_obs = min(actual_t_obs, max_cols)
-        end if
 
         active_count = count(ensemble_mask)
 
@@ -584,31 +575,32 @@ contains
         obs_5 = real(candidate_count, real64)
 
         ! Store scalar observables matching iteration index and history window
-        if (current_iter <= actual_t_obs) then
+        if (current_iter <= max_cols) then
             observables(1, current_iter) = obs_1
             observables(2, current_iter) = obs_2
             observables(3, current_iter) = obs_3
             observables(4, current_iter) = obs_4
             observables(5, current_iter) = obs_5
         else
-            observables(:, 1:actual_t_obs - 1_int32) = observables(:, 2:actual_t_obs)
-            observables(1, actual_t_obs) = obs_1
-            observables(2, actual_t_obs) = obs_2
-            observables(3, actual_t_obs) = obs_3
-            observables(4, actual_t_obs) = obs_4
-            observables(5, actual_t_obs) = obs_5
+            observables(:, 1:max_cols - 1_int32) = observables(:, 2:max_cols)
+            observables(1, max_cols) = obs_1
+            observables(2, max_cols) = obs_2
+            observables(3, max_cols) = obs_3
+            observables(4, max_cols) = obs_4
+            observables(5, max_cols) = obs_5
         end if
 
     end subroutine compute_ensemble_observable_helper
 
     !> Apply the log fold-change acceptance rule.
+    !| Every caller passes a history of at least two columns, so two consecutive steps always exist.
     pure subroutine accept_ensemble_helper(observables, current_iter, alpha_accept, &
                                            is_accepted)
 
         integer(int32), intent(in) :: current_iter
         !! Current growth iteration index (1-based)
         real(real64), intent(in) :: observables(:, :)
-        !! 2D observables trajectory matrix [5 x window_capacity]
+        !! Observable history [5 x window], at least two columns wide
         real(real64), intent(in), optional :: alpha_accept
         !! Optional log2 fold change acceptance threshold (defaults to 0.5)
         logical(c_bool), intent(out) :: is_accepted
@@ -637,12 +629,6 @@ contains
             col_prev = max_cols - 1_int32
         end if
 
-        ! Safety check for minimal matrix width
-        if (col_prev < 1_int32) then
-            is_accepted = .true.
-            return
-        end if
-
         ! Evaluate log2 fold change of Density Heterogeneity H_rho (Row 3)
         h_prev = observables(3, col_prev)
         h_curr = observables(3, col_curr)
@@ -665,18 +651,17 @@ contains
     !> Grow independent seed ensembles in parallel tiles.
     pure subroutine obtain_ensembles_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                             kd_indices, density_labels, seed_indices, n_seeds, &
-                                            seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles, &
+                                            seed_radii, alpha_mad, mad_ambient, alpha_accept, n_tiles, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                             tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                            ensemble_matrix, stop_reasons, &
-                                            mad_ambient, n_ensembles)
+                                            ensemble_matrix, stop_reasons, n_ensembles)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
         integer(int32), intent(in) :: n_seeds
-        !! Total number of precalculated seed vectors the seed-selection routine.
+        !! Number of seed vectors, from `identify_ensemble_seeds`.
         real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
         !! Input data matrix (n_dimensions x n_vectors)
         integer(int32), intent(in) :: dimension_order(n_dimensions)
@@ -684,17 +669,17 @@ contains
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Precalculated density labels for ambient vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         integer(int32), intent(in) :: seed_indices(n_seeds)
-        !! Array of starting seed vector indices the seed-selection routine.
+        !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
         real(real64), intent(in) :: seed_radii(n_seeds)
         !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
         real(real64), intent(in) :: alpha_mad
         !! MAD multiplier for density compatibility threshold
+        real(real64), intent(in) :: mad_ambient
+        !! Positive ambient MAD of the density labels, computed once by the caller
         real(real64), intent(in) :: alpha_accept
         !! Acceptance log2 fold-change threshold
-        integer(int32), intent(in) :: t_observables
-        !! History tracking depth for observables
         integer(int32), intent(in) :: n_tiles
         !! Number of concurrently processed seed tiles, `n_tiles >= 1`. Tiles beyond `n_seeds` receive an empty seed range and stay idle.
         integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_tiles)
@@ -708,7 +693,7 @@ contains
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors, n_tiles)
         !! Workspace array for deviation calculations per tile
         real(real64), intent(inout) :: tmp_observables(:, :, :)
-        !! Workspace matrix for storing observable history per tile
+        !! Observable history per tile; its column count is the history window
         logical(c_bool), intent(inout) :: tmp_current_mask(n_vectors, n_tiles)
         !! Workspace holding accepted seed ensemble membership per tile
         logical(c_bool), intent(out) :: ensemble_matrix(n_vectors, n_seeds)
@@ -716,20 +701,12 @@ contains
         integer(int32), intent(out) :: stop_reasons(n_seeds)
         !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
         !! 3: first step rejected, 4: no candidates.
-        real(real64), intent(out) :: mad_ambient
-        !! Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
         integer(int32), intent(out) :: n_ensembles
         !! Total count of extracted raw ensembles (equals n_seeds)
 
         integer(int32) :: i_tile, i_seed, seed_start, seed_end, tile_base, tile_rem
-        real(real64) :: median_ambient
 
         ensemble_matrix = .false.
-
-        ! Calculating the ambient density statistics.
-        call compute_ambient_density_stats_impl(density_labels, n_vectors, &
-                                                  tmp_perm(:, 1), tmp_abs_diff(:, 1), &
-                                                  median_ambient, mad_ambient)
 
         ! Distribute seeds evenly across tiles, with the first tile_rem tiles receiving one extra seed.
         tile_base = n_seeds/n_tiles
@@ -739,7 +716,7 @@ contains
         do concurrent(i_tile=1:n_tiles) &
             shared(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
                    density_labels, seed_indices, n_seeds, seed_radii, alpha_mad, mad_ambient, alpha_accept, &
-                   t_observables, tile_base, tile_rem, tmp_stack, tmp_vicinity_mask, &
+                   tile_base, tile_rem, tmp_stack, tmp_vicinity_mask, &
                    tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
                    tmp_current_mask, ensemble_matrix, stop_reasons) &
             local(i_seed, seed_start, seed_end)
@@ -757,7 +734,7 @@ contains
 
                 call grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                              kd_indices, density_labels, seed_indices(i_seed), &
-                                             seed_radii(i_seed), alpha_mad, mad_ambient, alpha_accept, t_observables, &
+                                             seed_radii(i_seed), alpha_mad, mad_ambient, alpha_accept, &
                                              tmp_stack(:, :, i_tile), tmp_vicinity_mask(:, i_tile), &
                                              tmp_surface_mask(:, i_tile), tmp_perm(:, i_tile), &
                                              tmp_abs_diff(:, i_tile), tmp_observables(:, :, i_tile), &
@@ -775,7 +752,7 @@ contains
     !> Grow one seed and record why it stopped.
     pure subroutine grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                             kd_indices, density_labels, seed_idx, &
-                                            r, alpha_mad, mad_ambient, alpha_accept, t_observables, &
+                                            r, alpha_mad, mad_ambient, alpha_accept, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, &
                                             tmp_perm, tmp_abs_diff, tmp_observables, &
                                             current_mask, out_mask, stop_reason)
@@ -791,7 +768,7 @@ contains
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Precalculated density labels for ambient vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         integer(int32), intent(in) :: seed_idx
         !! Index of starting seed vector
         real(real64), intent(in) :: r
@@ -802,8 +779,6 @@ contains
         !! Ambient MAD precalculated via the ambient density statistics routine.
         real(real64), intent(in) :: alpha_accept
         !! Acceptance log2 fold-change threshold
-        integer(int32), intent(in) :: t_observables
-        !! History tracking depth for observables
         integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
         !! Workspace stack for a single tree traversal
         logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors)
@@ -815,7 +790,7 @@ contains
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors)
         !! Workspace array holding the active member densities
         real(real64), intent(inout) :: tmp_observables(:, :)
-        !! Workspace matrix for storing observable history
+        !! Observable history, at least two columns; its column count is the history window
         logical(c_bool), intent(inout) :: current_mask(n_vectors)
         !! Accepted ensemble membership; modified only after a trial passes acceptance
         logical(c_bool), intent(out) :: out_mask(n_vectors)
@@ -836,8 +811,7 @@ contains
         iter = 1_int32
         call compute_ensemble_observable_helper(current_mask, density_labels, &
                                                 n_vectors, 0_int32, iter, &
-                                                tmp_observables, &
-                                                t_observables)
+                                                tmp_observables)
 
         is_growing = .true.
         do while (is_growing)
@@ -872,8 +846,7 @@ contains
 
             call compute_ensemble_observable_helper(out_mask, density_labels, &
                                                     n_vectors, candidate_count, iter, &
-                                                    tmp_observables, &
-                                                    t_observables)
+                                                    tmp_observables)
 
             call accept_ensemble_helper(tmp_observables, iter, &
                                         alpha_accept, is_accepted)
@@ -1061,7 +1034,7 @@ contains
         !! DM_MIN(1_int32)
         !! DM_MAX(n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         !! DM_MIN(1.0_real64)
         real(real64), intent(in), optional :: alpha_mad
         !! Multiplier factor for MAD density compatibility threshold
@@ -1081,7 +1054,8 @@ contains
         logical(c_bool), intent(out) :: grown_mask(n_vectors)
         !! Membership after the growth step.
         integer(int32), intent(out) :: ierr
-        !! Runtime status for the density contrast check.
+        !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+        !! half the labels are equal), which leaves no density tolerance for growth.
 
         real(real64) :: actual_alpha_mad, median_ambient, mad_ambient
 
@@ -1102,15 +1076,14 @@ contains
     !> summary: Update the five ensemble observables for a growth iteration.
     !| AUTHOR_SALIH_ALBAYRAK
     pure subroutine compute_ensemble_observable_impl(ensemble_mask, density_labels, n_vectors, &
-                                                       candidate_count, current_iter, observables, n_history, n_observables, &
-                                                       t_observables)
+                                                       candidate_count, current_iter, observables, n_history, n_observables)
 
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
         logical(c_bool), intent(in) :: ensemble_mask(n_vectors)
         !! Selection mask for active ensemble members
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         !! DM_MIN(1.0_real64)
         integer(int32), intent(in) :: candidate_count
         !! Number of candidates added in current growth step
@@ -1119,19 +1092,19 @@ contains
         !! Current growth iteration index (1-based)
         !! DM_MIN(1_int32)
         integer(int32), intent(in) :: n_history
-        !! Number of columns in the observable history.
+        !! Number of columns in the observable history. This is the history window: once
+        !! `current_iter` exceeds it, the columns shift left and the newest step is stored last.
+        !! Acceptance compares two consecutive steps, so at least two columns are required.
+        !! DM_MIN(2_int32)
         integer(int32), intent(in) :: n_observables
         !! Number of observable rows, which must be exactly five.
         !! DM_MIN(CM_OBSERVABLE_COUNT)
         !! DM_MAX(CM_OBSERVABLE_COUNT)
         real(real64), intent(inout) :: observables(n_observables, n_history)
-        !! 2D observable trajectory matrix where columns match iteration indices
-        integer(int32), intent(in), optional :: t_observables
-        !! History tracking depth (defaults to 10; <= 0 represents infinity / all)
-        !! DM_DEFAULT(10_int32)
+        !! Observable history, one column per growth iteration within the window
 
         call compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
-                                                candidate_count, current_iter, observables, t_observables)
+                                                candidate_count, current_iter, observables)
     end subroutine compute_ensemble_observable_impl
 
     !> summary: Test whether the change in ensemble observables permits a growth step.
@@ -1143,14 +1116,15 @@ contains
         !! Current growth iteration index (1-based)
         !! DM_MIN(1_int32)
         integer(int32), intent(in) :: n_history
-        !! Number of columns in the observable history.
-        !! DM_MIN(0_int32)
+        !! Number of columns in the observable history, the same window the history was written with.
+        !! Acceptance compares two consecutive steps, so at least two columns are required.
+        !! DM_MIN(2_int32)
         integer(int32), intent(in) :: n_observables
         !! Number of observable rows, which must be exactly five.
         !! DM_MIN(CM_OBSERVABLE_COUNT)
         !! DM_MAX(CM_OBSERVABLE_COUNT)
         real(real64), intent(in) :: observables(n_observables, n_history)
-        !! 2D observables trajectory matrix [5 x window_capacity]
+        !! Observable history written by [[tox_stc(module):compute_ensemble_observable]]
         real(real64), intent(in), optional :: alpha_accept
         !! Optional log2 fold change acceptance threshold (defaults to 0.5)
         !! DM_MIN(0.0_real64)
@@ -1176,7 +1150,7 @@ contains
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
         integer(int32), intent(in) :: n_seeds
-        !! Total number of precalculated seed vectors the seed-selection routine.
+        !! Number of seed vectors, from `identify_ensemble_seeds`.
         !! DM_MIN(0_int32)
         !! DM_MAX(n_vectors)
         real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
@@ -1190,10 +1164,10 @@ contains
         !! DM_MIN(1_int32)
         !! DM_MAX(n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
-        !! Precalculated density labels for ambient vectors the density-label routine.
+        !! Density labels for all vectors, from `calculate_labels_as_density`.
         !! DM_MIN(1.0_real64)
         integer(int32), intent(in) :: seed_indices(n_seeds)
-        !! Array of starting seed vector indices the seed-selection routine.
+        !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
         !! DM_MIN(1_int32)
         !! DM_MAX(n_vectors)
         integer(int32), intent(in) :: growth_mode
@@ -1220,8 +1194,9 @@ contains
         !! DM_MIN(0.0_real64)
         !! DM_DEFAULT(0.5_real64)
         integer(int32), intent(in) :: t_observables
-        !! History window in iterations. Pass n_vectors to retain the full history.
-        !! DM_MIN(1_int32)
+        !! History window in iterations, at least two because acceptance compares two consecutive
+        !! steps. Pass n_vectors to retain the full history.
+        !! DM_MIN(2_int32)
         integer(int32), intent(in) :: n_tiles
         !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
         !! DM_MIN(1_int32)
@@ -1236,9 +1211,10 @@ contains
         !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
         real(real64), intent(out) :: tmp_abs_diff(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Workspace array for deviation calculations per tile
-        real(real64), intent(out) :: tmp_observables(CM_OBSERVABLE_COUNT, min(t_observables, n_vectors), &
+        real(real64), intent(out) :: tmp_observables(CM_OBSERVABLE_COUNT, max(2_int32, min(t_observables, n_vectors)), &
                                                      min(n_tiles, max(1_int32, n_seeds)))
-        !! Workspace matrix for storing observable history per tile
+        !! Observable history per tile. Growth adds at least one member per iteration, so more than
+        !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
         logical(c_bool), intent(out) :: tmp_current_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Workspace holding accepted seed ensemble membership per tile
         logical(c_bool), intent(out) :: ensemble_matrix(n_vectors, n_seeds)
@@ -1247,14 +1223,16 @@ contains
         !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
         !! 3: first step rejected, 4: no candidates.
         real(real64), intent(out) :: mad_ambient
-        !! Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+        !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+        !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         integer(int32), intent(out) :: n_ensembles
         !! Total count of extracted raw ensembles (equals n_seeds)
 
         real(real64), intent(out) :: tmp_growth_radii(n_seeds)
         !! Growth radius in seed order, shared by both modes.
         integer(int32), intent(out) :: ierr
-        !! Runtime status for the radius selection and density contrast checks.
+        !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+        !! half the labels are equal), which leaves no density tolerance for growth.
 
         real(real64) :: actual_alpha_mad, actual_alpha_accept, median_ambient
         integer(int32) :: active_tiles
@@ -1295,10 +1273,10 @@ contains
         M_DEFAULT_VAL(alpha_accept, actual_alpha_accept, 0.5_real64)
         active_tiles = min(n_tiles, n_seeds)
         call obtain_ensembles_helper(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, density_labels, &
-                                     seed_indices, n_seeds, tmp_growth_radii, actual_alpha_mad, actual_alpha_accept, &
-                                     t_observables, active_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, &
+                                     seed_indices, n_seeds, tmp_growth_radii, actual_alpha_mad, mad_ambient, &
+                                     actual_alpha_accept, active_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, &
                                      tmp_perm, tmp_abs_diff, tmp_observables, tmp_current_mask, ensemble_matrix, &
-                                     stop_reasons, mad_ambient, n_ensembles)
+                                     stop_reasons, n_ensembles)
     end subroutine obtain_ensembles_impl
 
 end module tox_stc_impl

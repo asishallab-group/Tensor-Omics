@@ -12,7 +12,7 @@ void identify_ensemble_seeds_c(const double*, const int*, const int*, const doub
 void compute_ambient_density_stats_c(const double*, const int*, double*, double*, int*);
 void merge_ensembles_c(const unsigned char*, const int*, const int*, const double*, unsigned char*, int*, int*);
 void grow_ensemble_c(const double*, const int*, const int*, const unsigned char*, const double*, const int*, const int*, const double*, const double*, unsigned char*, int*);
-void compute_ensemble_observable_c(const unsigned char*, const double*, const int*, const int*, const int*, double*, const int*, const int*, const int*, int*);
+void compute_ensemble_observable_c(const unsigned char*, const double*, const int*, const int*, const int*, double*, const int*, const int*, int*);
 void accept_ensemble_c(const double*, const int*, const int*, const int*, const double*, unsigned char*, int*);
 void obtain_ensembles_global_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*, int*);
 void obtain_ensembles_seed_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*, int*);
@@ -270,7 +270,7 @@ SEXP grow_ensemble_call(SEXP vectors, SEXP ensemble_mask, SEXP r, SEXP dimension
     return _out;
 }
 
-SEXP compute_ensemble_observable_call(SEXP ensemble_mask, SEXP density_labels, SEXP candidate_count, SEXP current_iter, SEXP observables, SEXP t_observables) {
+SEXP compute_ensemble_observable_call(SEXP ensemble_mask, SEXP density_labels, SEXP candidate_count, SEXP current_iter, SEXP observables) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_vectors = (int) Rf_length(ensemble_mask);
@@ -280,7 +280,6 @@ SEXP compute_ensemble_observable_call(SEXP ensemble_mask, SEXP density_labels, S
     // scalar inputs, pulled from their length-1 vectors
     int _v_candidate_count = Rf_asInteger(candidate_count);
     int _v_current_iter = Rf_asInteger(current_iter);
-    int _v_t_observables = Rf_asInteger(t_observables);
 
     // copy what is modified in place, so the caller's stays intact
     SEXP _out_observables = PROTECT(Rf_duplicate(observables)); _nprot++;
@@ -300,7 +299,6 @@ SEXP compute_ensemble_observable_call(SEXP ensemble_mask, SEXP density_labels, S
         REAL(_out_observables),
         &n_history,
         &n_observables,
-        &_v_t_observables,
         &ierr
     );
 

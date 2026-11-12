@@ -26,7 +26,7 @@ contains
 
     function get_all_tests_shatter_cluster_data() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(67))
+        allocate (all_tests(69))
         all_tests(1) = test_case("test_density_radius_basic", test_density_radius_basic)
         all_tests(2) = test_case("test_density_labels_basic", test_density_labels_basic)
         all_tests(3) = test_case("test_density_radius_invalid_quantile", test_density_radius_invalid_quantile)
@@ -55,7 +55,7 @@ contains
         all_tests(26) = test_case("test_grow_ensemble_mask_states", test_grow_ensemble_mask_states)
         all_tests(27) = test_case("test_compute_ensemble_observable_basic", test_compute_ensemble_observable_basic)
         all_tests(28) = test_case("test_compute_ensemble_observable_sliding_window", test_compute_ensemble_observable_sliding_window)
-        all_tests(29) = test_case("test_compute_ensemble_observable_infinite_history", test_compute_ensemble_observable_infinite_history)
+        all_tests(29) = test_case("test_compute_ensemble_observable_history_width", test_compute_ensemble_observable_history_width)
         all_tests(30) = test_case("test_compute_ensemble_observable_empty_and_zero", test_compute_ensemble_observable_empty_and_zero)
         all_tests(31) = test_case("test_compute_ensemble_observable_plain", test_compute_ensemble_observable_plain)
         all_tests(32) = test_case("test_compute_ensemble_observable_invalid_inputs", test_compute_ensemble_observable_invalid_inputs)
@@ -108,6 +108,8 @@ contains
         all_tests(66) = test_case("test_identify_ensemble_seeds_radii_percentile", &
                                   test_identify_ensemble_seeds_radii_percentile)
         all_tests(67) = test_case("test_obtain_ensembles_per_seed_radii", test_obtain_ensembles_per_seed_radii)
+        all_tests(68) = test_case("test_observable_window_rejects_after_shift", test_observable_window_rejects_after_shift)
+        all_tests(69) = test_case("test_history_requires_two_columns", test_history_requires_two_columns)
     end function get_all_tests_shatter_cluster_data
 
     subroutine test_density_radius_basic()
@@ -491,7 +493,7 @@ contains
 
     subroutine test_growth_commit_reference()
         integer(int32), parameter :: n_dims = 2_int32, n_vecs = 9_int32
-        integer(int32), parameter :: windows(4) = [1_int32, 2_int32, 3_int32, 0_int32]
+        integer(int32), parameter :: windows(3) = [2_int32, 3_int32, 0_int32]
         integer(int32), parameter :: seeds(3) = [1_int32, 4_int32, 7_int32]
         real(real64), parameter :: thresholds(4) = [0.0_real64, 0.1_real64, 0.5_real64, 10.0_real64]
         real(real64), parameter :: mad_factors(3) = [0.0_real64, 1.0_real64, 100.0_real64]
@@ -534,7 +536,7 @@ contains
 
                         call grow_single_seed_helper(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
                             densities, seeds(i_seed), 0.5_real64, mad_factors(i_factor), &
-                            mad_ambient, thresholds(i_threshold), windows(i_window), &
+                            mad_ambient, thresholds(i_threshold), &
                             tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                             history, current_mask, result_mask, stop_reason)
                         reference_mask = .false.
@@ -542,7 +544,7 @@ contains
                         reference_history = 0.0_real64
                         i_iter = 1_int32
                         call compute_ensemble_observable_helper(reference_mask, densities, n_vecs, &
-                            0_int32, i_iter, reference_history, windows(i_window))
+                            0_int32, i_iter, reference_history)
                         do
                             previous_mask = reference_mask
                             n_members = 0_int32
@@ -583,7 +585,7 @@ contains
                             end if
                             i_iter = i_iter + 1_int32
                             call compute_ensemble_observable_helper(reference_mask, densities, n_vecs, &
-                                n_candidates, i_iter, reference_history, windows(i_window))
+                                n_candidates, i_iter, reference_history)
                             call accept_ensemble_helper(reference_history, i_iter, thresholds(i_threshold), accepted)
                             if (.not. accepted) then
                                 reference_mask = previous_mask
@@ -624,7 +626,7 @@ contains
                                    tmp_workspace, tmp_values, tmp_perm, tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "commit history: build tree")
         call grow_single_seed_helper(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
-                                     1_int32, 0.5_real64, 100.0_real64, 1.0_real64, 0.1_real64, 3_int32, &
+                                     1_int32, 0.5_real64, 100.0_real64, 1.0_real64, 0.1_real64, &
                                      tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                                      history, current_mask, result_mask, stop_reason)
         call assert_equal_int(stop_reason, STC_STOP_REJECT_AFTER_ACCEPT, "commit history: late rejection")
@@ -656,7 +658,7 @@ contains
         tmp_surface = .true.
         current_mask = .true.
         call grow_single_seed_helper(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
-                                     1_int32, 1.0_real64, 4.0_real64, 1.0_real64, 10.0_real64, 0_int32, &
+                                     1_int32, 1.0_real64, 4.0_real64, 1.0_real64, 10.0_real64, &
                                      tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                                      history, current_mask, result_mask, stop_reason)
         call assert_equal_int(stop_reason, STC_STOP_FIXED_POINT, "incremental surface: reaches fixed point")
@@ -1330,7 +1332,7 @@ contains
         observables = 0.0_real64
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 2_int32, 1_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 10_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_int(ierr, ERR_OK, "basic observable ierr control")
         call assert_equal_real(observables(1, 1), 7.5_real64, 1.0e-10_real64, "rho_arith metric check")
@@ -1351,25 +1353,25 @@ contains
 
         ensemble_mask = [.true., .true., .false., .false.]
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 2_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         ensemble_mask = [.true., .true., .true., .false.]
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, 2_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 2_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_real(observables(1, 1), 7.5_real64, 1.0e-10_real64, "col 1 has iter 1")
         call assert_equal_real(observables(1, 2), 11.666666666666666_real64, 1.0e-10_real64, "col 2 has iter 2")
 
         ensemble_mask = [.true., .true., .true., .true.]
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, 3_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 2_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_int(ierr, ERR_OK, "sliding window ierr control")
         call assert_equal_real(observables(1, 1), 11.666666666666666_real64, 1.0e-10_real64, "col 1 shifted to iter 2")
         call assert_equal_real(observables(1, 2), 9.25_real64, 1.0e-10_real64, "col 2 updated to iter 3")
     end subroutine test_compute_ensemble_observable_sliding_window
 
-    subroutine test_compute_ensemble_observable_infinite_history()
+    subroutine test_compute_ensemble_observable_history_width()
         integer(int32), parameter :: n_vecs = 3_int32
         real(real64) :: density_labels(n_vecs), observables(5, 3)
         logical(c_bool) :: ensemble_mask(n_vecs)
@@ -1380,15 +1382,113 @@ contains
         observables = 0.0_real64
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 0_int32, ierr)
-        call assert_equal_int(ierr, ERR_OK, "infinite history (0) ierr check")
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
+        call assert_equal_int(ierr, ERR_OK, "history width: iter 1 ierr check")
         call assert_equal_real(observables(4, 1), 1.0_real64, 1.0e-10_real64, "iter 1 stored in col 1")
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 2_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), -1_int32, ierr)
-        call assert_equal_int(ierr, ERR_OK, "infinite history (-1) ierr check")
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
+        call assert_equal_int(ierr, ERR_OK, "history width: iter 2 ierr check")
         call assert_equal_real(observables(4, 2), 1.0_real64, 1.0e-10_real64, "iter 2 stored in col 2")
-    end subroutine test_compute_ensemble_observable_infinite_history
+    end subroutine test_compute_ensemble_observable_history_width
+
+    !> Regression: the observable writer and the acceptance reader share one window, the history width.
+    !| Before, the writer wrapped at `t_observables` (default 10) while the reader wrapped at the width,
+    !| so a history wider than 10 compared never-written zero columns and accepted every later step.
+    subroutine test_observable_window_rejects_after_shift()
+        integer(int32), parameter :: n_vecs = 4_int32
+        real(real64) :: density_labels(n_vecs), narrow(5, 3), wide(5, 12)
+        logical(c_bool) :: ensemble_mask(n_vecs), is_accepted
+        integer(int32) :: ierr, i_iter
+
+        ! H_rho stays 1 for the first three members and jumps to 7/3 when the fourth joins.
+        density_labels = [1.0_real64, 1.0_real64, 1.0_real64, 9.0_real64]
+        narrow = 0.0_real64
+        wide = 0.0_real64
+
+        do i_iter = 1, 4
+            ensemble_mask = .false.
+            ensemble_mask(1:i_iter) = .true.
+            call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, i_iter, narrow, &
+                size(narrow, 2, kind=int32), size(narrow, 1, kind=int32), ierr)
+            call assert_equal_int(ierr, ERR_OK, "window regression: narrow update")
+            call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, i_iter, wide, &
+                size(wide, 2, kind=int32), size(wide, 1, kind=int32), ierr)
+            call assert_equal_int(ierr, ERR_OK, "window regression: wide update")
+        end do
+
+        ! Iteration 4 is past the 3-column window, so the history has shifted.
+        call accept_ensemble(narrow, size(narrow, 2, kind=int32), size(narrow, 1, kind=int32), &
+            4_int32, 0.5_real64, is_accepted, ierr)
+        call assert_equal_int(ierr, ERR_OK, "window regression: narrow accept ierr")
+        call assert_false(logical(is_accepted), "shifted window still compares the last two steps")
+
+        call accept_ensemble(wide, size(wide, 2, kind=int32), size(wide, 1, kind=int32), &
+            4_int32, 0.5_real64, is_accepted, ierr)
+        call assert_equal_int(ierr, ERR_OK, "window regression: wide accept ierr")
+        call assert_false(logical(is_accepted), "unshifted window compares the same two steps")
+
+        ! A history wider than the old default window of 10 keeps writing where acceptance reads.
+        wide = 0.0_real64
+        density_labels = [1.0_real64, 1.0_real64, 1.0_real64, 1.0_real64]
+        do i_iter = 1, 10
+            ensemble_mask = .true.
+            call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, i_iter, wide, &
+                size(wide, 2, kind=int32), size(wide, 1, kind=int32), ierr)
+        end do
+        density_labels(4) = 9.0_real64
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, 11_int32, wide, &
+            size(wide, 2, kind=int32), size(wide, 1, kind=int32), ierr)
+        call accept_ensemble(wide, size(wide, 2, kind=int32), size(wide, 1, kind=int32), &
+            11_int32, 0.5_real64, is_accepted, ierr)
+        call assert_equal_int(ierr, ERR_OK, "window regression: iteration 11 ierr")
+        call assert_false(logical(is_accepted), "iteration 11 is compared against iteration 10, not an empty column")
+    end subroutine test_observable_window_rejects_after_shift
+
+    !> Acceptance compares two consecutive steps, so every entry point requires a history of two columns.
+    subroutine test_history_requires_two_columns()
+        integer(int32), parameter :: n_dims = 2_int32, n_vecs = 4_int32, n_seeds = 2_int32
+        real(real64) :: density_labels(n_vecs), single(5, 1), vectors(n_dims, n_vecs), tmp_val_buf(n_vecs)
+        real(real64) :: mad_ambient
+        logical(c_bool) :: ensemble_mask(n_vecs), is_accepted, ensemble_matrix(n_vecs, n_seeds)
+        integer(int32) :: ierr, n_ensembles, seed_indices(n_seeds), stop_reasons(n_seeds)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
+
+        density_labels = [6.0_real64, 6.0_real64, 4.0_real64, 4.0_real64]
+        ensemble_mask = [.true., .false., .false., .false.]
+        single = 0.0_real64
+
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, single, &
+            size(single, 2, kind=int32), size(single, 1, kind=int32), ierr)
+        call assert_true(ierr /= ERR_OK, "a one-column history is rejected by the observable update")
+
+        call accept_ensemble(single, size(single, 2, kind=int32), size(single, 1, kind=int32), &
+            2_int32, 0.5_real64, is_accepted, ierr)
+        call assert_true(ierr /= ERR_OK, "a one-column history is rejected by acceptance")
+
+        vectors(:, 1) = [0.0_real64, 0.0_real64]
+        vectors(:, 2) = [0.0_real64, 0.2_real64]
+        vectors(:, 3) = [10.0_real64, 10.0_real64]
+        vectors(:, 4) = [10.0_real64, 10.2_real64]
+        dimension_order = [1_int32, 2_int32]
+        seed_indices = [1_int32, 3_int32]
+        call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_rec_stack, ierr)
+        call assert_equal_int(ierr, ERR_OK, "two columns: tree construction check")
+
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=1_int32, n_tiles=1_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            n_ensembles=n_ensembles, ierr=ierr)
+        call assert_true(ierr /= ERR_OK, "a one-iteration history window is rejected by growth")
+
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=2_int32, n_tiles=1_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            n_ensembles=n_ensembles, ierr=ierr)
+        call assert_equal_int(ierr, ERR_OK, "a two-iteration history window is accepted")
+    end subroutine test_history_requires_two_columns
 
     subroutine test_compute_ensemble_observable_empty_and_zero()
         integer(int32), parameter :: n_vecs = 3_int32
@@ -1402,7 +1502,7 @@ contains
         ensemble_mask = [.false., .false., .false.]
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 5_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_equal_int(ierr, ERR_OK, "empty ensemble ierr check")
         call assert_equal_real(observables(1, 1), 0.0_real64, 1.0e-10_real64, "empty ensemble outputs zeros")
 
@@ -1410,14 +1510,14 @@ contains
         ensemble_mask = [.true., .true., .false.]
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 2_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 5_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_true(ierr /= ERR_OK, "zero density labels must be rejected")
 
         density_labels = [1.0_real64, 1.0_real64, 10.0_real64]
         ensemble_mask = [.true., .true., .false.]
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 2_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 5_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_equal_int(ierr, ERR_OK, "unit density labels are accepted")
         call assert_equal_real(observables(1, 2), 1.0_real64, 1.0e-10_real64, "rho_arith is 1.0")
         call assert_equal_real(observables(2, 2), 1.0_real64, 1.0e-10_real64, "rho_harm is 1.0")
@@ -1437,7 +1537,7 @@ contains
 
         observables = 0.0_real64
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 5_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_int(ierr, ERR_OK, "observable history update succeeds")
         call assert_equal_real(observables(1, 1), 10.0_real64, 1.0e-10_real64, "arithmetic mean check")
@@ -1454,11 +1554,11 @@ contains
         observables = 0.0_real64
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, -1_int32, 1_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 5_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_true(ierr /= ERR_OK, "negative candidate_count must fail")
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 0_int32, observables, &
-            size(observables, 2, kind=int32), size(observables, 1, kind=int32), 5_int32, ierr)
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_true(ierr /= ERR_OK, "current_iter <= 0 must fail")
     end subroutine test_compute_ensemble_observable_invalid_inputs
 
@@ -2295,7 +2395,7 @@ contains
         call assert_true(ierr /= ERR_OK, "ensemble acceptance rejects a four-row matrix")
 
         call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, correct_rows, &
-            size(correct_rows, 2, kind=int32), size(correct_rows, 1, kind=int32), 6_int32, ierr)
+            size(correct_rows, 2, kind=int32), size(correct_rows, 1, kind=int32), ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "compute_ensemble_observable must accept a 5-row matrix")
 

@@ -134,13 +134,12 @@ _lib.compute_ensemble_observable_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_ENSEMBLE_OBSERVABLE_ARGUMENTS = ("ensemble_mask", "density_labels", "n_vectors", "candidate_count", "current_iter", "observables", "n_history", "n_observables", "t_observables", "ierr",)
+_COMPUTE_ENSEMBLE_OBSERVABLE_ARGUMENTS = ("ensemble_mask", "density_labels", "n_vectors", "candidate_count", "current_iter", "observables", "n_history", "n_observables", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_ENSEMBLE_OBSERVABLE_ARGUMENT_SOURCES = (None, None, "ensemble_mask", None, None, None, "observables", "observables", None, None,)
+_COMPUTE_ENSEMBLE_OBSERVABLE_ARGUMENT_SOURCES = (None, None, "ensemble_mask", None, None, None, "observables", "observables", None,)
 
 _lib.accept_ensemble_c.restype = None
 _lib.accept_ensemble_c.argtypes = (
@@ -488,7 +487,7 @@ def compute_ambient_density_stats(
     Parameters
     ----------
     density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Density labels for all vectors the density-label routine.
+        Density labels for all vectors, from `calculate_labels_as_density`.
         The minimum valid value is `1.0`.
 
     Returns
@@ -635,7 +634,7 @@ def grow_ensemble(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors`.
     density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Density labels for all vectors the density-label routine.
+        Density labels for all vectors, from `calculate_labels_as_density`.
         The minimum valid value is `1.0`.
     alpha_mad : float, optional, default 0.5
         Multiplier factor for MAD density compatibility threshold
@@ -715,7 +714,6 @@ def compute_ensemble_observable(
         candidate_count,
         current_iter,
         observables,
-        t_observables=10,
 ):
     r"""Update the five ensemble observables for a growth iteration.
 
@@ -724,7 +722,7 @@ def compute_ensemble_observable(
     ensemble_mask : np.ndarray[np.bool_] of shape (n_vectors,)
         Selection mask for active ensemble members
     density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Density labels for all vectors the density-label routine.
+        Density labels for all vectors, from `calculate_labels_as_density`.
         The minimum valid value is `1.0`.
     candidate_count : int
         Number of candidates added in current growth step
@@ -733,10 +731,7 @@ def compute_ensemble_observable(
         Current growth iteration index (1-based)
         The minimum valid value is `1`.
     observables : np.ndarray[np.float64] of shape (n_observables, n_history,), column-major (order='F'), modified in place
-        2D observable trajectory matrix where columns match iteration indices
-    t_observables : int, optional, default 10
-        History tracking depth (defaults to 10; <= 0 represents infinity / all)
-        The default value is `10`.
+        Observable history, one column per growth iteration within the window
 
     Returns
     -------
@@ -766,7 +761,6 @@ def compute_ensemble_observable(
         raise _ToxArgumentError(f"'observables' must have 2 dimensions, but has {observables.ndim}", argument="observables")
     if not observables.flags.f_contiguous:
         raise _ToxArgumentError("'observables' is modified in place, so it must already be column-major (order='F')", argument="observables")
-    t_observables = _contract.integer(t_observables, "t_observables")
 
     # what the inputs already say, rather than asking for it again
     n_vectors = ensemble_mask.shape[0]
@@ -789,7 +783,6 @@ def compute_ensemble_observable(
         observables,
         _ctypes.byref(_ctypes.c_int(n_history)),
         _ctypes.byref(_ctypes.c_int(n_observables)),
-        _ctypes.byref(_ctypes.c_int(t_observables)),
         _ctypes.byref(ierr),
     )
 
@@ -807,7 +800,7 @@ def accept_ensemble(
     Parameters
     ----------
     observables : np.ndarray[np.float64] of shape (n_observables, n_history,), column-major (order='F')
-        2D observables trajectory matrix [5 x window_capacity]
+        Observable history written by :func:`tensor_omics.compute_ensemble_observable`
     current_iter : int
         Current growth iteration index (1-based)
         The minimum valid value is `1`.
@@ -888,10 +881,10 @@ def obtain_ensembles_global_radius(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors`.
     density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Precalculated density labels for ambient vectors the density-label routine.
+        Density labels for all vectors, from `calculate_labels_as_density`.
         The minimum valid value is `1.0`.
     seed_indices : np.ndarray[np.int32] of shape (n_seeds,)
-        Array of starting seed vector indices the seed-selection routine.
+        Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors`.
     r : float
@@ -906,8 +899,9 @@ def obtain_ensembles_global_radius(
         The minimum valid value is `0.0`.
         The default value is `0.5`.
     t_observables : int
-        History window in iterations. Pass n_vectors to retain the full history.
-        The minimum valid value is `1`.
+        History window in iterations, at least two because acceptance compares two consecutive
+        steps. Pass n_vectors to retain the full history.
+        The minimum valid value is `2`.
     n_tiles : int
         Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
         The minimum valid value is `1`.
@@ -925,7 +919,8 @@ def obtain_ensembles_global_radius(
             3: first step rejected, 4: no candidates.
             A result is a value; call `.copy()` to obtain a modifiable array.
         mad_ambient : float
-            Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+            Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         n_ensembles : int
             Total count of extracted raw ensembles (equals n_seeds)
 
@@ -1035,10 +1030,10 @@ def obtain_ensembles_seed_radius(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors`.
     density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Precalculated density labels for ambient vectors the density-label routine.
+        Density labels for all vectors, from `calculate_labels_as_density`.
         The minimum valid value is `1.0`.
     seed_indices : np.ndarray[np.int32] of shape (n_seeds,)
-        Array of starting seed vector indices the seed-selection routine.
+        Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors`.
     seed_radii : np.ndarray[np.float64] of shape (n_seeds,)
@@ -1053,8 +1048,9 @@ def obtain_ensembles_seed_radius(
         The minimum valid value is `0.0`.
         The default value is `0.5`.
     t_observables : int
-        History window in iterations. Pass n_vectors to retain the full history.
-        The minimum valid value is `1`.
+        History window in iterations, at least two because acceptance compares two consecutive
+        steps. Pass n_vectors to retain the full history.
+        The minimum valid value is `2`.
     n_tiles : int
         Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
         The minimum valid value is `1`.
@@ -1072,7 +1068,8 @@ def obtain_ensembles_seed_radius(
             3: first step rejected, 4: no candidates.
             A result is a value; call `.copy()` to obtain a modifiable array.
         mad_ambient : float
-            Ambient MAD of density labels; zero makes alpha_mad ineffective by allowing only exactly equal densities.
+            Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
         n_ensembles : int
             Total count of extracted raw ensembles (equals n_seeds)
 

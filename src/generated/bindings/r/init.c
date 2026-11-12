@@ -162,7 +162,7 @@ SEXP identify_ensemble_seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_ambient_density_stats_call(SEXP);
 SEXP merge_ensembles_call(SEXP, SEXP);
 SEXP grow_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP compute_ensemble_observable_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP compute_ensemble_observable_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP accept_ensemble_call(SEXP, SEXP, SEXP);
 SEXP obtain_ensembles_global_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP obtain_ensembles_seed_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -284,7 +284,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_ambient_density_stats_call", (DL_FUNC) &compute_ambient_density_stats_call, 1},
     {"merge_ensembles_call", (DL_FUNC) &merge_ensembles_call, 2},
     {"grow_ensemble_call", (DL_FUNC) &grow_ensemble_call, 7},
-    {"compute_ensemble_observable_call", (DL_FUNC) &compute_ensemble_observable_call, 6},
+    {"compute_ensemble_observable_call", (DL_FUNC) &compute_ensemble_observable_call, 5},
     {"accept_ensemble_call", (DL_FUNC) &accept_ensemble_call, 3},
     {"obtain_ensembles_global_radius_call", (DL_FUNC) &obtain_ensembles_global_radius_call, 10},
     {"obtain_ensembles_seed_radius_call", (DL_FUNC) &obtain_ensembles_seed_radius_call, 10},

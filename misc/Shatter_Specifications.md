@@ -33,7 +33,10 @@ the seed radii in the same order as the seed indices before calling the growth r
 The single-step growth routine takes an input membership mask and returns the grown mask.
 
 Both growth calls take the observable history window and number of work tiles.
-Use a history window of 10 for the benchmark setting. The Fortran and C expert
+The window must be at least 2, because acceptance compares two consecutive growth steps.
+Use a history window of 10 for the benchmark setting. In the standalone
+`compute_ensemble_observable` / `accept_ensemble` pair the window is the history matrix's
+column count, so both calls always read and write the same columns. The Fortran and C expert
 entry points accept caller-managed workspaces. Fortran callers provide the result
 buffers, including the observable history matrix and merged membership buffer.
 
@@ -148,23 +151,26 @@ instead of only the members added in the previous step.
 
 # Per-seed growth radius
 
-Growth no longer shares one scalar radius across all seeds. `identify_ensemble_seeds_helper`
-already computes, for each selected seed, the chosen percentile (`coverage_quant`, default
-`CM_SEEDING_COVERAGE_PERCENTILE = 0.5`) of that seed's `k_seeding` nearest-neighbor distances, and
-uses it to mark the region the seed covers. That same value is now also returned, in
-`seed_radii(N)` -- one shared real array indexed by *vector* index, holding the radius at each
-seed's own index and `0` everywhere else. Indexing by vector rather than by selection rank keeps
-it order-independent: a caller that builds `seed_indices` in any order maps through it as
-`seed_radii(seed_indices)`.
+Growth can use one radius per seed instead of one radius shared by all seeds. `identify_ensemble_seeds`
+already computes, for each selected seed, the chosen percentile (`coverage_quant`, default `0.5`)
+of that seed's `k_seeding` nearest-neighbor distances, and uses it to mark the region the seed
+covers. It also returns that value in `seed_radii(N)` -- one real array indexed by *vector* index,
+holding the radius at each seed's own index and `0` everywhere else. Indexing by vector rather
+than by selection rank keeps it order-independent: a caller that builds `seed_indices` in any
+order gathers the growth radii as `seed_radii(seed_indices)`.
 
-`obtain_ensembles_alloc` takes that array as the optional `seed_radii(S)`, aligned with
-`seed_indices`, and it takes precedence over the uniform `r`. Below the allocating layer the array
-is the only contract: `obtain_ensembles` and `obtain_ensembles_helper` take `seed_radii(S)` instead
-of a scalar, and `grow_single_seed_helper` -- which already grows exactly one seed -- receives
-`seed_radii(i_seed)` as its `r`. So seed $i$ and every later expansion of the ensemble around it
-query the K-D tree at the radius fitted to seed $i$'s own neighborhood. When `seed_radii` is absent
-the allocating layer broadcasts the scalar `r` (or the computed density radius) into the array, so
-the previous uniform-radius behavior is exactly what a constant array produces.
+The growth mode is chosen by entry point, not by a runtime flag. `growth_mode` on
+`obtain_ensembles_impl` has a procedure column, so the generator emits one entry point per mode
+and fixes the mode inside each:
+
+- `obtain_ensembles_global_radius` takes the scalar `r` and grows every seed at that radius.
+- `obtain_ensembles_seed_radius` takes `seed_radii(S)`, aligned with `seed_indices`, and grows
+  seed $i$ -- and every later expansion of its ensemble -- at `seed_radii(i)`.
+
+Each entry point requires its own radius argument and does not have the other's, so neither can
+be called with the wrong one. Inside the implementation both modes fill the same per-seed array
+(`tmp_growth_radii(S)`, the scalar broadcast in global mode) and grow identically from there, so
+the global mode is exactly the constant-array case of the per-seed one.
 
 Cost: $8S$ bytes, and nothing else -- no extra queries, since the radii fall out of work seeding
 already does.
@@ -175,7 +181,7 @@ already does.
   simultaneously too coarse for the former and too tight for the latter.
 - Growth is no longer symmetric: seed $i$ reaches point $p$ at $r_i$ while seed $j$ does not reach
   it at $r_j < |p - x_j|$. Membership therefore depends on which seed a region is grown from, and
-  the reconciliation stage (`merge_ensembles_helper`) is what puts the asymmetric raw ensembles
+  the reconciliation stage (`merge_ensembles`) is what puts the asymmetric raw ensembles
   back together.
 - A seed sitting in a sparse pocket inside an otherwise dense region gets a large radius and can
   overshoot into neighboring structure; the density-compatibility test (`alpha_mad`) is the only
@@ -183,5 +189,5 @@ already does.
 - The radii are estimated from `k_seeding` neighbors only, so they are noisy for small
   `k_seeding` -- the percentile choice trades that noise against how aggressively the radius
   tracks the local scale.
-- A single global `r` is no longer a meaningful knob to tune or report: growth behavior is now a
-  function of `k_seeding` and `coverage_quant` instead.
+- With `obtain_ensembles_seed_radius`, a single global `r` is no longer a meaningful knob to tune
+  or report: growth behavior is a function of `k_seeding` and `coverage_quant` instead.
