@@ -11,7 +11,7 @@ import os as _os
 import numpy as _np
 
 from . import _contract as _contract
-from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code, ToxError as _ToxError, _consumer_error as _consumer_error
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -75,7 +75,10 @@ def deserialize_logical_helper(
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
     from .f42_serde_arrays_utils import get_array_metadata
-    _get_array_metadata_result = get_array_metadata(filename=_filename_raw, dims_out_capacity=5)
+    try:
+        _get_array_metadata_result = get_array_metadata(filename=_filename_raw, dims_out_capacity=5)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"filename": 4}, _DESERIALIZE_LOGICAL_HELPER_ARGUMENTS, _DESERIALIZE_LOGICAL_HELPER_ARGUMENT_SOURCES) from None
     arr_shape = _get_array_metadata_result["dims_out"]
 
     # what the inputs already say, rather than asking for it again

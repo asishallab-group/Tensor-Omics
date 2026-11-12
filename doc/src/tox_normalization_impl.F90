@@ -76,11 +76,9 @@ contains
 
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
-        ! DM_MIN and DM_MAX of one expression say "equal to" until the generator has DM_EQUALS (#203)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! DM_MIN(sum(reps_per_tissue))
-            !! DM_MAX(sum(reps_per_tissue))
+            !! Number of replicates per gene, the rows of `expr`
+            !! DM_EQUALS(sum(reps_per_tissue))
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
@@ -88,6 +86,7 @@ contains
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+            !! DM_MIN(1_int32)
         real(real64), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
 
@@ -107,7 +106,7 @@ contains
         ! genes that carry no variance are dropped from it, never added to it.
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -118,7 +117,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -253,7 +252,7 @@ contains
         ! genes that carry no variance are dropped from it, never added to it.
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -264,7 +263,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|

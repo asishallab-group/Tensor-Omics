@@ -13,7 +13,7 @@ runs:
     - name: Install Python and Pip
       shell: bash
       run: |
-        pacman -Sy --needed --noconfirm python python-pip
+        pacman -Syu --needed --noconfirm python python-pip
         pacman -Scc --noconfirm
 
     - name: Set up Python environment
