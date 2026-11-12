@@ -2266,6 +2266,365 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "tox_stc (use)": {
+    "prefix": "tox:stc.use",
+    "description": "use tox_stc, only: ...",
+    "body": [
+      "use tox_stc, only: ${1|calculate_density_radius,calculate_labels_as_density,identify_ensemble_seeds,compute_ambient_density_stats,obtain_ensembles_global_radius,obtain_ensembles_seed_radius,merge_ensembles,grow_ensemble,compute_ensemble_observable,accept_ensemble|}"
+    ]
+  },
+  "calculate_density_radius (call)": {
+    "prefix": "tox:calculate_density_radius",
+    "description": "calculate_density_radius",
+    "body": [
+      "call calculate_density_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    mean_to_other_vecs_dist_quant=${4:mean_to_other_vecs_dist_quant}, &",
+      "    radius=${5:radius}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "calculate_density_radius (call, checked)": {
+    "prefix": "tox:calculate_density_radius.checked",
+    "description": "calculate_density_radius (with error check)",
+    "body": [
+      "call calculate_density_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    mean_to_other_vecs_dist_quant=${4:mean_to_other_vecs_dist_quant}, &",
+      "    radius=${5:radius}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "calculate_labels_as_density (call)": {
+    "prefix": "tox:calculate_labels_as_density",
+    "description": "calculate_labels_as_density",
+    "body": [
+      "call calculate_labels_as_density( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    r=${4:r}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    kd_indices=${6:kd_indices}, &",
+      "    n_tiles=${7:n_tiles}, &",
+      "    label_densities=${8:label_densities}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "calculate_labels_as_density (call, checked)": {
+    "prefix": "tox:calculate_labels_as_density.checked",
+    "description": "calculate_labels_as_density (with error check)",
+    "body": [
+      "call calculate_labels_as_density( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    r=${4:r}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    kd_indices=${6:kd_indices}, &",
+      "    n_tiles=${7:n_tiles}, &",
+      "    label_densities=${8:label_densities}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "identify_ensemble_seeds (call)": {
+    "prefix": "tox:identify_ensemble_seeds",
+    "description": "identify_ensemble_seeds",
+    "body": [
+      "call identify_ensemble_seeds( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    density_labels=${4:density_labels}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    kd_indices=${6:kd_indices}, &",
+      "    k_seeding=${7:k_seeding}, &",
+      "    sorted_perm=${8:sorted_perm}, &",
+      "    n_seeds=${9:n_seeds}, &",
+      "    seed_mask=${10:seed_mask}, &",
+      "    seed_radii=${11:seed_radii}, &",
+      "    coverage_quant=${12:coverage_quant}, &",
+      "    ierr=${13:ierr})"
+    ]
+  },
+  "identify_ensemble_seeds (call, checked)": {
+    "prefix": "tox:identify_ensemble_seeds.checked",
+    "description": "identify_ensemble_seeds (with error check)",
+    "body": [
+      "call identify_ensemble_seeds( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    density_labels=${4:density_labels}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    kd_indices=${6:kd_indices}, &",
+      "    k_seeding=${7:k_seeding}, &",
+      "    sorted_perm=${8:sorted_perm}, &",
+      "    n_seeds=${9:n_seeds}, &",
+      "    seed_mask=${10:seed_mask}, &",
+      "    seed_radii=${11:seed_radii}, &",
+      "    coverage_quant=${12:coverage_quant}, &",
+      "    ierr=${13:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_ambient_density_stats (call)": {
+    "prefix": "tox:compute_ambient_density_stats",
+    "description": "compute_ambient_density_stats",
+    "body": [
+      "call compute_ambient_density_stats( &",
+      "    density_labels=${1:density_labels}, &",
+      "    n_vectors=${2:n_vectors}, &",
+      "    median_ambient=${3:median_ambient}, &",
+      "    mad_ambient=${4:mad_ambient}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "compute_ambient_density_stats (call, checked)": {
+    "prefix": "tox:compute_ambient_density_stats.checked",
+    "description": "compute_ambient_density_stats (with error check)",
+    "body": [
+      "call compute_ambient_density_stats( &",
+      "    density_labels=${1:density_labels}, &",
+      "    n_vectors=${2:n_vectors}, &",
+      "    median_ambient=${3:median_ambient}, &",
+      "    mad_ambient=${4:mad_ambient}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "obtain_ensembles_global_radius (call)": {
+    "prefix": "tox:obtain_ensembles_global_radius",
+    "description": "obtain_ensembles_global_radius",
+    "body": [
+      "call obtain_ensembles_global_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    dimension_order=${4:dimension_order}, &",
+      "    kd_indices=${5:kd_indices}, &",
+      "    density_labels=${6:density_labels}, &",
+      "    seed_indices=${7:seed_indices}, &",
+      "    n_seeds=${8:n_seeds}, &",
+      "    r=${9:r}, &",
+      "    alpha_mad=${10:alpha_mad}, &",
+      "    alpha_accept=${11:alpha_accept}, &",
+      "    t_observables=${12:t_observables}, &",
+      "    n_tiles=${13:n_tiles}, &",
+      "    ensemble_matrix=${14:ensemble_matrix}, &",
+      "    stop_reasons=${15:stop_reasons}, &",
+      "    mad_ambient=${16:mad_ambient}, &",
+      "    ierr=${17:ierr})"
+    ]
+  },
+  "obtain_ensembles_global_radius (call, checked)": {
+    "prefix": "tox:obtain_ensembles_global_radius.checked",
+    "description": "obtain_ensembles_global_radius (with error check)",
+    "body": [
+      "call obtain_ensembles_global_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    dimension_order=${4:dimension_order}, &",
+      "    kd_indices=${5:kd_indices}, &",
+      "    density_labels=${6:density_labels}, &",
+      "    seed_indices=${7:seed_indices}, &",
+      "    n_seeds=${8:n_seeds}, &",
+      "    r=${9:r}, &",
+      "    alpha_mad=${10:alpha_mad}, &",
+      "    alpha_accept=${11:alpha_accept}, &",
+      "    t_observables=${12:t_observables}, &",
+      "    n_tiles=${13:n_tiles}, &",
+      "    ensemble_matrix=${14:ensemble_matrix}, &",
+      "    stop_reasons=${15:stop_reasons}, &",
+      "    mad_ambient=${16:mad_ambient}, &",
+      "    ierr=${17:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "obtain_ensembles_seed_radius (call)": {
+    "prefix": "tox:obtain_ensembles_seed_radius",
+    "description": "obtain_ensembles_seed_radius",
+    "body": [
+      "call obtain_ensembles_seed_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    dimension_order=${4:dimension_order}, &",
+      "    kd_indices=${5:kd_indices}, &",
+      "    density_labels=${6:density_labels}, &",
+      "    seed_indices=${7:seed_indices}, &",
+      "    n_seeds=${8:n_seeds}, &",
+      "    seed_radii=${9:seed_radii}, &",
+      "    alpha_mad=${10:alpha_mad}, &",
+      "    alpha_accept=${11:alpha_accept}, &",
+      "    t_observables=${12:t_observables}, &",
+      "    n_tiles=${13:n_tiles}, &",
+      "    ensemble_matrix=${14:ensemble_matrix}, &",
+      "    stop_reasons=${15:stop_reasons}, &",
+      "    mad_ambient=${16:mad_ambient}, &",
+      "    ierr=${17:ierr})"
+    ]
+  },
+  "obtain_ensembles_seed_radius (call, checked)": {
+    "prefix": "tox:obtain_ensembles_seed_radius.checked",
+    "description": "obtain_ensembles_seed_radius (with error check)",
+    "body": [
+      "call obtain_ensembles_seed_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    dimension_order=${4:dimension_order}, &",
+      "    kd_indices=${5:kd_indices}, &",
+      "    density_labels=${6:density_labels}, &",
+      "    seed_indices=${7:seed_indices}, &",
+      "    n_seeds=${8:n_seeds}, &",
+      "    seed_radii=${9:seed_radii}, &",
+      "    alpha_mad=${10:alpha_mad}, &",
+      "    alpha_accept=${11:alpha_accept}, &",
+      "    t_observables=${12:t_observables}, &",
+      "    n_tiles=${13:n_tiles}, &",
+      "    ensemble_matrix=${14:ensemble_matrix}, &",
+      "    stop_reasons=${15:stop_reasons}, &",
+      "    mad_ambient=${16:mad_ambient}, &",
+      "    ierr=${17:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "merge_ensembles (call)": {
+    "prefix": "tox:merge_ensembles",
+    "description": "merge_ensembles",
+    "body": [
+      "call merge_ensembles( &",
+      "    raw_masks=${1:raw_masks}, &",
+      "    n_vectors=${2:n_vectors}, &",
+      "    n_seeds=${3:n_seeds}, &",
+      "    min_overlap_coefficient=${4:min_overlap_coefficient}, &",
+      "    merged_masks=${5:merged_masks}, &",
+      "    n_ensembles=${6:n_ensembles}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "merge_ensembles (call, checked)": {
+    "prefix": "tox:merge_ensembles.checked",
+    "description": "merge_ensembles (with error check)",
+    "body": [
+      "call merge_ensembles( &",
+      "    raw_masks=${1:raw_masks}, &",
+      "    n_vectors=${2:n_vectors}, &",
+      "    n_seeds=${3:n_seeds}, &",
+      "    min_overlap_coefficient=${4:min_overlap_coefficient}, &",
+      "    merged_masks=${5:merged_masks}, &",
+      "    n_ensembles=${6:n_ensembles}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "grow_ensemble (call)": {
+    "prefix": "tox:grow_ensemble",
+    "description": "grow_ensemble",
+    "body": [
+      "call grow_ensemble( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    ensemble_mask=${4:ensemble_mask}, &",
+      "    r=${5:r}, &",
+      "    dimension_order=${6:dimension_order}, &",
+      "    kd_indices=${7:kd_indices}, &",
+      "    density_labels=${8:density_labels}, &",
+      "    alpha_mad=${9:alpha_mad}, &",
+      "    grown_mask=${10:grown_mask}, &",
+      "    ierr=${11:ierr})"
+    ]
+  },
+  "grow_ensemble (call, checked)": {
+    "prefix": "tox:grow_ensemble.checked",
+    "description": "grow_ensemble (with error check)",
+    "body": [
+      "call grow_ensemble( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    ensemble_mask=${4:ensemble_mask}, &",
+      "    r=${5:r}, &",
+      "    dimension_order=${6:dimension_order}, &",
+      "    kd_indices=${7:kd_indices}, &",
+      "    density_labels=${8:density_labels}, &",
+      "    alpha_mad=${9:alpha_mad}, &",
+      "    grown_mask=${10:grown_mask}, &",
+      "    ierr=${11:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_ensemble_observable (call)": {
+    "prefix": "tox:compute_ensemble_observable",
+    "description": "compute_ensemble_observable",
+    "body": [
+      "call compute_ensemble_observable( &",
+      "    ensemble_mask=${1:ensemble_mask}, &",
+      "    density_labels=${2:density_labels}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    candidate_count=${4:candidate_count}, &",
+      "    current_iter=${5:current_iter}, &",
+      "    observables=${6:observables}, &",
+      "    n_history=${7:n_history}, &",
+      "    n_observables=${8:n_observables}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "compute_ensemble_observable (call, checked)": {
+    "prefix": "tox:compute_ensemble_observable.checked",
+    "description": "compute_ensemble_observable (with error check)",
+    "body": [
+      "call compute_ensemble_observable( &",
+      "    ensemble_mask=${1:ensemble_mask}, &",
+      "    density_labels=${2:density_labels}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    candidate_count=${4:candidate_count}, &",
+      "    current_iter=${5:current_iter}, &",
+      "    observables=${6:observables}, &",
+      "    n_history=${7:n_history}, &",
+      "    n_observables=${8:n_observables}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "accept_ensemble (call)": {
+    "prefix": "tox:accept_ensemble",
+    "description": "accept_ensemble",
+    "body": [
+      "call accept_ensemble( &",
+      "    observables=${1:observables}, &",
+      "    n_history=${2:n_history}, &",
+      "    n_observables=${3:n_observables}, &",
+      "    current_iter=${4:current_iter}, &",
+      "    alpha_accept=${5:alpha_accept}, &",
+      "    is_accepted=${6:is_accepted}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "accept_ensemble (call, checked)": {
+    "prefix": "tox:accept_ensemble.checked",
+    "description": "accept_ensemble (with error check)",
+    "body": [
+      "call accept_ensemble( &",
+      "    observables=${1:observables}, &",
+      "    n_history=${2:n_history}, &",
+      "    n_observables=${3:n_observables}, &",
+      "    current_iter=${4:current_iter}, &",
+      "    alpha_accept=${5:alpha_accept}, &",
+      "    is_accepted=${6:is_accepted}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "tox_tissue_versatility (use)": {
     "prefix": "tox:tissue_versatility.use",
     "description": "use tox_tissue_versatility, only: ...",

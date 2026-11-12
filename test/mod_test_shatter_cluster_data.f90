@@ -5,32 +5,19 @@ module mod_test_shatter_cluster_data
     use, intrinsic :: iso_c_binding, only: c_bool
     use asserts
     use test_suite, only: test_case
-    use tox_errors, only: ERR_OK
+    use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, get_err_arg_pos
     use f42_kd_tree, only: build_kd_index_expert
     use f42_kd_tree_impl, only: KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
-    use tox_shatter_cluster_data, only: calculate_density_radius, &
-                                        calculate_labels_as_density, &
-                                        calculate_density_radius_alloc, &
-                                        calculate_labels_as_density_alloc, &
-                                        identify_ensemble_seeds, &
-                                        identify_ensemble_seeds_alloc, &
-                                        grow_ensemble, &
-                                        grow_ensemble_alloc, &
-                                        grow_single_seed_helper, &
-                                        compute_ensemble_observable_helper, &
-                                        compute_ensemble_observable, &
-                                        compute_ensemble_observable_alloc, &
-                                        accept_ensemble, &
-                                        accept_ensemble_helper, &
-                                        obtain_ensembles_alloc, &
-                                        obtain_ensembles, &
-                                        compute_ambient_density_stats_helper, &
-                                        STC_STOP_FIXED_POINT, &
-                                        STC_STOP_REJECT_AFTER_ACCEPT, &
-                                        STC_STOP_NEVER_ACCEPTED, &
-                                        STC_STOP_NO_CANDIDATES, &
-                                        merge_ensembles_alloc, &
-                                        merge_ensembles
+    use tox_stc, only: calculate_density_radius, calculate_density_radius_expert, &
+                       calculate_labels_as_density, calculate_labels_as_density_expert, &
+                       identify_ensemble_seeds, identify_ensemble_seeds_expert, &
+                       grow_ensemble, grow_ensemble_expert, compute_ensemble_observable, accept_ensemble, &
+                       obtain_ensembles_global_radius, obtain_ensembles_seed_radius, &
+                       obtain_ensembles_seed_radius_expert, merge_ensembles, merge_ensembles_expert
+    use tox_stc_impl, only: grow_ensemble_impl, obtain_ensembles_impl, MODE_GLOBAL_RADIUS, grow_single_seed_helper, compute_ensemble_observable_helper, accept_ensemble_helper, &
+                            compute_ambient_density_stats_helper => compute_ambient_density_stats_impl, &
+                            STC_STOP_FIXED_POINT, STC_STOP_REJECT_AFTER_ACCEPT, &
+                            STC_STOP_NEVER_ACCEPTED, STC_STOP_NO_CANDIDATES
 
     implicit none
     public
@@ -39,7 +26,7 @@ contains
 
     function get_all_tests_shatter_cluster_data() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(64))
+        allocate (all_tests(70))
         all_tests(1) = test_case("test_density_radius_basic", test_density_radius_basic)
         all_tests(2) = test_case("test_density_labels_basic", test_density_labels_basic)
         all_tests(3) = test_case("test_density_radius_invalid_quantile", test_density_radius_invalid_quantile)
@@ -49,28 +36,28 @@ contains
         all_tests(7) = test_case("test_density_labels_small_radius", test_density_labels_small_radius)
         all_tests(8) = test_case("test_density_labels_single_vector", test_density_labels_single_vector)
         all_tests(9) = test_case("test_density_labels_identical_vectors", test_density_labels_identical_vectors)
-        all_tests(10) = test_case("test_density_radius_alloc", test_density_radius_alloc)
-        all_tests(11) = test_case("test_density_labels_alloc", test_density_labels_alloc)
+        all_tests(10) = test_case("test_density_radius_plain", test_density_radius_plain)
+        all_tests(11) = test_case("test_density_labels_plain", test_density_labels_plain)
         all_tests(12) = test_case("test_identify_ensemble_seeds_basic", test_identify_ensemble_seeds_basic)
         all_tests(13) = test_case("test_identify_ensemble_seeds_k_seeding_effect", test_identify_ensemble_seeds_k_seeding_effect)
         all_tests(14) = test_case("test_identify_ensemble_seeds_invalid_k_seeding", test_identify_ensemble_seeds_invalid_k_seeding)
-        all_tests(15) = test_case("test_identify_ensemble_seeds_alloc", test_identify_ensemble_seeds_alloc)
+        all_tests(15) = test_case("test_identify_ensemble_seeds_plain", test_identify_ensemble_seeds_plain)
         all_tests(16) = test_case("test_identify_ensemble_seeds_single_vector_invalid", test_identify_ensemble_seeds_single_vector_invalid)
         all_tests(17) = test_case("test_identify_ensemble_seeds_invalid_inputs", test_identify_ensemble_seeds_invalid_inputs)
         all_tests(18) = test_case("test_identify_ensemble_seeds_identical_vectors", test_identify_ensemble_seeds_identical_vectors)
         all_tests(19) = test_case("test_grow_ensemble_basic", test_grow_ensemble_basic)
         all_tests(20) = test_case("test_grow_ensemble_no_growth", test_grow_ensemble_no_growth)
         all_tests(21) = test_case("test_grow_ensemble_invalid_inputs", test_grow_ensemble_invalid_inputs)
-        all_tests(22) = test_case("test_grow_ensemble_alloc", test_grow_ensemble_alloc)
+        all_tests(22) = test_case("test_grow_ensemble_plain", test_grow_ensemble_plain)
         all_tests(23) = test_case("test_grow_ensemble_multistep", test_grow_ensemble_multistep)
         all_tests(24) = test_case("test_grow_ensemble_alpha_sensitivity", test_grow_ensemble_alpha_sensitivity)
         all_tests(25) = test_case("test_grow_ensemble_zero_mad", test_grow_ensemble_zero_mad)
         all_tests(26) = test_case("test_grow_ensemble_mask_states", test_grow_ensemble_mask_states)
         all_tests(27) = test_case("test_compute_ensemble_observable_basic", test_compute_ensemble_observable_basic)
         all_tests(28) = test_case("test_compute_ensemble_observable_sliding_window", test_compute_ensemble_observable_sliding_window)
-        all_tests(29) = test_case("test_compute_ensemble_observable_infinite_history", test_compute_ensemble_observable_infinite_history)
+        all_tests(29) = test_case("test_compute_ensemble_observable_history_width", test_compute_ensemble_observable_history_width)
         all_tests(30) = test_case("test_compute_ensemble_observable_empty_and_zero", test_compute_ensemble_observable_empty_and_zero)
-        all_tests(31) = test_case("test_compute_ensemble_observable_alloc", test_compute_ensemble_observable_alloc)
+        all_tests(31) = test_case("test_compute_ensemble_observable_plain", test_compute_ensemble_observable_plain)
         all_tests(32) = test_case("test_compute_ensemble_observable_invalid_inputs", test_compute_ensemble_observable_invalid_inputs)
         all_tests(33) = test_case("test_accept_ensemble_default", test_accept_ensemble_default)
         all_tests(34) = test_case("test_accept_ensemble_alpha_sensitivity", test_accept_ensemble_alpha_sensitivity)
@@ -98,10 +85,10 @@ contains
                                   test_obtain_ensembles_layer_n_tiles_agreement)
         all_tests(52) = test_case("test_grow_ensemble_rejects_negative_density_labels", &
                                   test_grow_ensemble_rejects_negative_density_labels)
-        all_tests(53) = test_case("test_observable_row_count_validation", &
-                                  test_observable_row_count_validation)
-        all_tests(54) = test_case("test_obtain_ensembles_rejects_bad_observable_rows", &
-                                  test_obtain_ensembles_rejects_bad_observable_rows)
+        all_tests(53) = test_case("test_observable_history_matrix", &
+                                  test_observable_history_matrix)
+        all_tests(54) = test_case("test_obtain_ensembles_rejects_invalid_history", &
+                                  test_obtain_ensembles_rejects_invalid_history)
         all_tests(55) = test_case("test_obtain_ensembles_stop_reasons", &
                                   test_obtain_ensembles_stop_reasons)
         all_tests(56) = test_case("test_obtain_ensembles_observable_window_match", &
@@ -117,6 +104,13 @@ contains
         all_tests(62) = test_case("test_growth_commit_reference", test_growth_commit_reference)
         all_tests(63) = test_case("test_growth_commit_rejected_history", test_growth_commit_rejected_history)
         all_tests(64) = test_case("test_growth_incremental_surface", test_growth_incremental_surface)
+        all_tests(65) = test_case("test_identify_ensemble_seeds_radii", test_identify_ensemble_seeds_radii)
+        all_tests(66) = test_case("test_identify_ensemble_seeds_radii_percentile", &
+                                  test_identify_ensemble_seeds_radii_percentile)
+        all_tests(67) = test_case("test_obtain_ensembles_per_seed_radii", test_obtain_ensembles_per_seed_radii)
+        all_tests(68) = test_case("test_observable_window_rejects_after_shift", test_observable_window_rejects_after_shift)
+        all_tests(69) = test_case("test_history_requires_two_columns", test_history_requires_two_columns)
+        all_tests(70) = test_case("test_zero_mad_error_positions", test_zero_mad_error_positions)
     end function get_all_tests_shatter_cluster_data
 
     subroutine test_density_radius_basic()
@@ -130,9 +124,8 @@ contains
             vectors(:, i_setup) = [real(i_setup, real64), real(i_setup, real64)]
         end do
 
-        call calculate_density_radius(vectors, n_dims, n_vecs, &
-                                      tmp_mean_vec, tmp_distances, tmp_perm, &
-                                      radius, 0.50_real64, ierr)
+        call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            0.50_real64, radius, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "test_density_radius_basic: ierr success control check")
         call assert_equal_real(radius, 3.5355339059327378_real64, 1.0e-12_real64, &
@@ -167,8 +160,8 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: tree construction check")
 
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, 0.5_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: ierr execution check")
 
         do i_chk = 1, 6
@@ -193,14 +186,12 @@ contains
             vectors(:, i_setup) = [real(i_setup, real64), real(i_setup, real64)]
         end do
 
-        call calculate_density_radius(vectors, n_dims, n_vecs, &
-                                      tmp_mean_vec, tmp_distances, tmp_perm, &
-                                      radius, -0.1_real64, ierr)
+        call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            -0.1_real64, radius, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_radius_invalid_quantile: Negative quantile must fail")
 
-        call calculate_density_radius(vectors, n_dims, n_vecs, &
-                                      tmp_mean_vec, tmp_distances, tmp_perm, &
-                                      radius, 1.1_real64, ierr)
+        call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            1.1_real64, radius, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_radius_invalid_quantile: Quantile > 1.0 must fail")
     end subroutine test_density_radius_invalid_quantile
 
@@ -217,8 +208,8 @@ contains
         dimension_order = [1_int32, 2_int32]
         kd_indices = [1_int32, 2_int32, 3_int32]
 
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, -1.0_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, -1.0_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_labels_invalid_r: Negative search radius must fail")
     end subroutine test_density_labels_invalid_r
 
@@ -235,13 +226,13 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         kd_indices = [1_int32, 0_int32, 3_int32]
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, 0.5_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_labels_invalid_kd_indices: Zero index must fail")
 
         kd_indices = [1_int32, 2_int32, 4_int32]
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, 0.5_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_labels_invalid_kd_indices: Out of bounds index must fail")
     end subroutine test_density_labels_invalid_kd_indices
 
@@ -257,14 +248,12 @@ contains
             vectors(:, i_setup) = [real(i_setup, real64), real(i_setup, real64)]
         end do
 
-        call calculate_density_radius(vectors, n_dims, n_vecs, &
-                                      tmp_mean_vec, tmp_distances, tmp_perm, &
-                                      radius_default, ierr=ierr)
+        call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            radius=radius_default, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_radius_default_quantile: default call check")
 
-        call calculate_density_radius(vectors, n_dims, n_vecs, &
-                                      tmp_mean_vec, tmp_distances, tmp_perm, &
-                                      radius_explicit, 0.15_real64, ierr)
+        call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            0.15_real64, radius_explicit, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_radius_default_quantile: explicit call check")
 
         call assert_equal_real(radius_default, radius_explicit, 1.0e-12_real64, &
@@ -299,8 +288,8 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_small_radius: tree construction check")
 
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.05_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, 0.05_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_small_radius: ierr execution check")
 
         do i_chk = 1, 10
@@ -326,8 +315,8 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_single_vector: tree build check")
 
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, 0.5_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_single_vector: execution check")
 
         call assert_equal_real(label_densities(1), 1.0_real64, 0.0_real64, &
@@ -354,8 +343,8 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_identical_vectors: tree build check")
 
-        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.1_real64, &
-                                         dimension_order, kd_indices, size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
+        call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, 0.1_real64, dimension_order, kd_indices, &
+            size(tmp_stack, 3, kind=int32), tmp_stack, label_densities, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_identical_vectors: execution check")
 
         do i_chk = 1, n_vecs
@@ -364,7 +353,7 @@ contains
         end do
     end subroutine test_density_labels_identical_vectors
 
-    subroutine test_density_radius_alloc()
+    subroutine test_density_radius_plain()
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 10_int32
 
@@ -375,15 +364,14 @@ contains
             vectors(:, i_setup) = [real(i_setup, real64), real(i_setup, real64)]
         end do
 
-        call calculate_density_radius_alloc(vectors, n_dims, n_vecs, &
-                                            radius, 0.50_real64, ierr)
+        call calculate_density_radius(vectors, n_dims, n_vecs, 0.50_real64, radius, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "test_density_radius_alloc: ierr success check")
+        call assert_equal_int(ierr, ERR_OK, "test_density_radius_plain: ierr success check")
         call assert_equal_real(radius, 3.5355339059327378_real64, 1.0e-12_real64, &
-                               "test_density_radius_alloc: analytical radius check")
-    end subroutine test_density_radius_alloc
+                               "test_density_radius_plain: analytical radius check")
+    end subroutine test_density_radius_plain
 
-    subroutine test_density_labels_alloc()
+    subroutine test_density_labels_plain()
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 10_int32
 
@@ -409,22 +397,22 @@ contains
         call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_density_labels_alloc: tree build check")
+        call assert_equal_int(ierr, ERR_OK, "test_density_labels_plain: tree build check")
 
-        call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, 0.5_real64, &
-                                               dimension_order, kd_indices, label_densities, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_density_labels_alloc: execution check")
+        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, dimension_order, kd_indices, &
+            min(8_int32, n_vecs), label_densities, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_density_labels_plain: execution check")
 
         do i_chk = 1, 6
-            write (assert_msg, '(A,I0)') "test_density_labels_alloc: dense cluster check at index: ", i_chk
+            write (assert_msg, '(A,I0)') "test_density_labels_plain: dense cluster check at index: ", i_chk
             call assert_equal_real(label_densities(i_chk), 6.0_real64, 0.0_real64, assert_msg)
         end do
 
         do i_chk = 7, 10
-            write (assert_msg, '(A,I0)') "test_density_labels_alloc: isolated points check at index: ", i_chk
+            write (assert_msg, '(A,I0)') "test_density_labels_plain: isolated points check at index: ", i_chk
             call assert_equal_real(label_densities(i_chk), 1.0_real64, 0.0_real64, assert_msg)
         end do
-    end subroutine test_density_labels_alloc
+    end subroutine test_density_labels_plain
 
     subroutine test_density_labels_tiles()
         integer(int32), parameter :: n_dims = 2_int32, n_vecs = 11_int32
@@ -454,8 +442,8 @@ contains
                 end do
             end do
 
-            call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, radii(i_radius), &
-                                                   dimension_order, kd_indices, labels, ierr=ierr)
+            call calculate_labels_as_density(vectors, n_dims, n_vecs, radii(i_radius), dimension_order, kd_indices, &
+                min(8_int32, n_vecs), labels, ierr)
             call assert_equal_int(ierr, ERR_OK, "density tiles: default allocation")
             call assert_true(all(labels == expected), "density tiles: default matches all-pairs counts")
 
@@ -464,8 +452,8 @@ contains
                 allocate (tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_tiles))
                 tmp_stack = -99_int32
                 labels = -1.0_real64
-                call calculate_labels_as_density(vectors, n_dims, n_vecs, radii(i_radius), &
-                                                 dimension_order, kd_indices, n_tiles, tmp_stack, labels, ierr)
+                call calculate_labels_as_density_expert(vectors, n_dims, n_vecs, radii(i_radius), dimension_order, &
+                    kd_indices, n_tiles, tmp_stack, labels, ierr)
                 call assert_equal_int(ierr, ERR_OK, "density tiles: explicit workspace")
                 call assert_true(all(labels == expected), "density tiles: explicit matches all-pairs counts")
                 if (n_tiles > n_vecs) then
@@ -475,15 +463,15 @@ contains
                 deallocate (tmp_stack)
 
                 labels = -1.0_real64
-                call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, radii(i_radius), &
-                                                       dimension_order, kd_indices, labels, n_tiles, ierr)
+                call calculate_labels_as_density(vectors, n_dims, n_vecs, radii(i_radius), dimension_order, kd_indices, &
+                    n_tiles, labels, ierr)
                 call assert_equal_int(ierr, ERR_OK, "density tiles: requested allocation")
                 call assert_true(all(labels == expected), "density tiles: allocation matches all-pairs counts")
             end do
         end do
 
-        call calculate_labels_as_density_alloc(vectors(:, 1:1), n_dims, 1_int32, 0.0_real64, &
-                                               dimension_order, [1_int32], labels(1:1), huge(1_int32), ierr)
+        call calculate_labels_as_density(vectors(:, 1:1), n_dims, 1_int32, 0.0_real64, dimension_order, [1_int32], &
+            huge(1_int32), labels(1:1), ierr)
         call assert_equal_int(ierr, ERR_OK, "density tiles: allocation clamps excess tiles")
         call assert_equal_real(labels(1), 1.0_real64, 0.0_real64, "density tiles: singleton allocation")
     end subroutine test_density_labels_tiles
@@ -495,18 +483,18 @@ contains
 
         vectors = 0.0_real64
         do n_tiles = -1_int32, 0_int32
-            call calculate_labels_as_density_alloc(vectors, 1_int32, 1_int32, 0.0_real64, &
-                                                   [1_int32], [1_int32], labels, n_tiles, ierr)
+            call calculate_labels_as_density(vectors, 1_int32, 1_int32, 0.0_real64, [1_int32], [1_int32], n_tiles, &
+                labels, ierr)
             call assert_true(ierr /= ERR_OK, "density tiles: allocating entry rejects nonpositive tiles")
-            call calculate_labels_as_density(vectors, 1_int32, 1_int32, 0.0_real64, &
-                                             [1_int32], [1_int32], n_tiles, tmp_stack, labels, ierr)
+            call calculate_labels_as_density_expert(vectors, 1_int32, 1_int32, 0.0_real64, [1_int32], [1_int32], &
+                n_tiles, tmp_stack, labels, ierr)
             call assert_true(ierr /= ERR_OK, "density tiles: validated entry rejects nonpositive tiles")
         end do
     end subroutine test_density_labels_invalid_tiles
 
     subroutine test_growth_commit_reference()
         integer(int32), parameter :: n_dims = 2_int32, n_vecs = 9_int32
-        integer(int32), parameter :: windows(4) = [1_int32, 2_int32, 3_int32, 0_int32]
+        integer(int32), parameter :: windows(3) = [2_int32, 3_int32, 0_int32]
         integer(int32), parameter :: seeds(3) = [1_int32, 4_int32, 7_int32]
         real(real64), parameter :: thresholds(4) = [0.0_real64, 0.1_real64, 0.5_real64, 10.0_real64]
         real(real64), parameter :: mad_factors(3) = [0.0_real64, 1.0_real64, 100.0_real64]
@@ -548,16 +536,16 @@ contains
                     do i_seed = 1, size(seeds)
 
                         call grow_single_seed_helper(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                                     densities, seeds(i_seed), 0.5_real64, mad_factors(i_factor), &
-                                                     mad_ambient, thresholds(i_threshold), windows(i_window), &
-                                                     tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
-                                                     history, current_mask, result_mask, stop_reason)
+                            densities, seeds(i_seed), 0.5_real64, mad_factors(i_factor), &
+                            mad_ambient, thresholds(i_threshold), &
+                            tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
+                            history, current_mask, result_mask, stop_reason)
                         reference_mask = .false.
                         reference_mask(seeds(i_seed)) = .true.
                         reference_history = 0.0_real64
                         i_iter = 1_int32
                         call compute_ensemble_observable_helper(reference_mask, densities, n_vecs, &
-                                                                0_int32, i_iter, reference_history, windows(i_window))
+                            0_int32, i_iter, reference_history)
                         do
                             previous_mask = reference_mask
                             n_members = 0_int32
@@ -598,7 +586,7 @@ contains
                             end if
                             i_iter = i_iter + 1_int32
                             call compute_ensemble_observable_helper(reference_mask, densities, n_vecs, &
-                                                                    n_candidates, i_iter, reference_history, windows(i_window))
+                                n_candidates, i_iter, reference_history)
                             call accept_ensemble_helper(reference_history, i_iter, thresholds(i_threshold), accepted)
                             if (.not. accepted) then
                                 reference_mask = previous_mask
@@ -639,7 +627,7 @@ contains
                                    tmp_workspace, tmp_values, tmp_perm, tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "commit history: build tree")
         call grow_single_seed_helper(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
-                                     1_int32, 0.5_real64, 100.0_real64, 1.0_real64, 0.1_real64, 3_int32, &
+                                     1_int32, 0.5_real64, 100.0_real64, 1.0_real64, 0.1_real64, &
                                      tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                                      history, current_mask, result_mask, stop_reason)
         call assert_equal_int(stop_reason, STC_STOP_REJECT_AFTER_ACCEPT, "commit history: late rejection")
@@ -671,7 +659,7 @@ contains
         tmp_surface = .true.
         current_mask = .true.
         call grow_single_seed_helper(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
-                                     1_int32, 1.0_real64, 4.0_real64, 1.0_real64, 10.0_real64, 0_int32, &
+                                     1_int32, 1.0_real64, 4.0_real64, 1.0_real64, 10.0_real64, &
                                      tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                                      history, current_mask, result_mask, stop_reason)
         call assert_equal_int(stop_reason, STC_STOP_FIXED_POINT, "incremental surface: reaches fixed point")
@@ -698,6 +686,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs)
         logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [1.0_real64, 0.0_real64]
@@ -715,11 +704,9 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_basic: tree build")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_basic: execution")
         call assert_true(all(sorted_perm == [1_int32, 2_int32, 3_int32, &
@@ -757,6 +744,7 @@ contains
         integer(int32) :: tmp_rec_stack(3, n_vecs)
         logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs)
         logical(c_bool) :: seed_mask_small(n_vecs), seed_mask_large(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [1.0_real64, 0.0_real64]
@@ -774,11 +762,9 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_effect: tree build")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 1_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds_small, seed_mask_small, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            1_int32, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds_small, seed_mask_small, seed_radii, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "test_identify_ensemble_seeds_k_seeding_effect: k=1 execution")
         call assert_equal_int(n_seeds_small, 4_int32, &
@@ -792,11 +778,9 @@ contains
         call assert_true(logical(seed_mask_small(6)), &
                          "test_identify_ensemble_seeds_k_seeding_effect: k=1 uncovered second-region tail")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 3_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds_large, seed_mask_large, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            3_int32, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds_large, seed_mask_large, seed_radii, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "test_identify_ensemble_seeds_k_seeding_effect: k=3 execution")
         call assert_equal_int(n_seeds_large, 2_int32, &
@@ -817,6 +801,7 @@ contains
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
         logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [1.0_real64, 0.0_real64]
@@ -827,24 +812,20 @@ contains
         dimension_order = [1_int32, 2_int32]
         kd_indices = [1_int32, 2_int32, 3_int32, 4_int32]
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 0_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            0_int32, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
         call assert_true(ierr /= ERR_OK, &
                          "test_identify_ensemble_seeds_invalid_k_seeding: k=0 must fail")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, n_vecs, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            n_vecs, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
         call assert_true(ierr /= ERR_OK, &
                          "test_identify_ensemble_seeds_invalid_k_seeding: k>=n_vectors must fail")
     end subroutine test_identify_ensemble_seeds_invalid_k_seeding
 
-    subroutine test_identify_ensemble_seeds_alloc()
+    subroutine test_identify_ensemble_seeds_plain()
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 6_int32
         integer(int32), parameter :: k_seeding = 3_int32
@@ -854,6 +835,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), n_seeds, ierr
         logical(c_bool) :: seed_mask(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [1.0_real64, 0.0_real64]
@@ -869,28 +851,27 @@ contains
         call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc: tree build")
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_plain: tree build")
 
-        call identify_ensemble_seeds_alloc(vectors, n_dims, n_vecs, density_labels, &
-                                           dimension_order, kd_indices, k_seeding, &
-                                           sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, sorted_perm, n_seeds, seed_mask, seed_radii, ierr=ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc: execution")
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_plain: execution")
         call assert_equal_int(n_seeds, 2_int32, &
-                              "test_identify_ensemble_seeds_alloc: expected two seeds")
+                              "test_identify_ensemble_seeds_plain: expected two seeds")
         call assert_true(logical(seed_mask(1)), &
-                         "test_identify_ensemble_seeds_alloc: first-region density centre is seed")
+                         "test_identify_ensemble_seeds_plain: first-region density centre is seed")
         call assert_true(logical(seed_mask(4)), &
-                         "test_identify_ensemble_seeds_alloc: second-region density centre is seed")
+                         "test_identify_ensemble_seeds_plain: second-region density centre is seed")
         call assert_false(logical(seed_mask(2)), &
-                          "test_identify_ensemble_seeds_alloc: covered first-region point is skipped")
+                          "test_identify_ensemble_seeds_plain: covered first-region point is skipped")
         call assert_false(logical(seed_mask(3)), &
-                          "test_identify_ensemble_seeds_alloc: covered first-region point is skipped")
+                          "test_identify_ensemble_seeds_plain: covered first-region point is skipped")
         call assert_false(logical(seed_mask(5)), &
-                          "test_identify_ensemble_seeds_alloc: covered second-region point is skipped")
+                          "test_identify_ensemble_seeds_plain: covered second-region point is skipped")
         call assert_false(logical(seed_mask(6)), &
-                          "test_identify_ensemble_seeds_alloc: covered second-region point is skipped")
-    end subroutine test_identify_ensemble_seeds_alloc
+                          "test_identify_ensemble_seeds_plain: covered second-region point is skipped")
+    end subroutine test_identify_ensemble_seeds_plain
 
     subroutine test_identify_ensemble_seeds_single_vector_invalid()
         integer(int32), parameter :: n_dims = 2_int32
@@ -900,17 +881,16 @@ contains
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
         logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         density_labels = [1.0_real64]
         dimension_order = [1_int32, 2_int32]
         kd_indices = [1_int32]
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 1_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            1_int32, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
 
         call assert_true(ierr /= ERR_OK, &
                          "test_identify_ensemble_seeds_single_vector_invalid: nearest neighbors require n_vectors>=2")
@@ -925,6 +905,7 @@ contains
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
         logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [1.0_real64, 0.0_real64]
@@ -935,33 +916,27 @@ contains
         dimension_order = [1_int32, 2_int32]
         kd_indices = [1_int32, 2_int32, 3_int32, 4_int32]
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
         call assert_true(ierr /= ERR_OK, &
                          "test_identify_ensemble_seeds_invalid_inputs: negative density must fail")
 
         density_labels = [4.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
         kd_indices = [0_int32, 2_int32, 3_int32, 4_int32]
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
         call assert_true(ierr /= ERR_OK, &
                          "test_identify_ensemble_seeds_invalid_inputs: invalid kd index must fail")
 
         kd_indices = [1_int32, 2_int32, 3_int32, 4_int32]
         dimension_order = [0_int32, 2_int32]
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
         call assert_true(ierr /= ERR_OK, &
                          "test_identify_ensemble_seeds_invalid_inputs: invalid dimension order must fail")
     end subroutine test_identify_ensemble_seeds_invalid_inputs
@@ -978,6 +953,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs)
         logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
 
         vectors = 5.0_real64
         density_labels = [1.0_real64, 4.0_real64, 3.0_real64, 2.0_real64]
@@ -989,11 +965,9 @@ contains
         call assert_equal_int(ierr, ERR_OK, &
                               "test_identify_ensemble_seeds_identical_vectors: tree build")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "test_identify_ensemble_seeds_identical_vectors: execution")
@@ -1022,7 +996,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1038,9 +1012,10 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_basic: tree construction check")
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
 
         call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_basic: execution ierr check")
         call assert_true(logical(ensemble_mask(1)), "test_grow_ensemble_basic: vector 1 must remain a member")
@@ -1058,7 +1033,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1072,9 +1047,10 @@ contains
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
 
         call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_no_growth: execute ierr success")
         call assert_true(logical(ensemble_mask(1)), "test_grow_ensemble_no_growth: vector 1 stays member")
@@ -1089,7 +1065,7 @@ contains
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_abs_diff(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64), tmp_perm(n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1100,18 +1076,20 @@ contains
         dimension_order = [1_int32, 2_int32]
         kd_indices = [1_int32, 2_int32, 3_int32]
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, -0.1_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, -0.1_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, "test_grow_ensemble_invalid_inputs: negative r must fail")
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.5_real64, &
-                           dimension_order, kd_indices, density_labels, -1.0_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.5_real64, dimension_order, kd_indices, &
+            density_labels, -1.0_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, "test_grow_ensemble_invalid_inputs: negative alpha_mad must fail")
     end subroutine test_grow_ensemble_invalid_inputs
 
-    subroutine test_grow_ensemble_alloc()
+    subroutine test_grow_ensemble_plain()
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 6_int32
 
@@ -1120,6 +1098,8 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs)
+        logical(c_bool) :: grown_mask(n_vecs)
+        real(real64) :: density_radius
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1135,40 +1115,43 @@ contains
         call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_alloc: build tree check")
+        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_plain: build tree check")
+
+        call calculate_density_radius(vectors, n_dims, n_vecs, radius=density_radius, ierr=ierr)
+        call assert_equal_int(ierr, ERR_OK, "density radius calculation")
 
         ensemble_mask = .false.
         ensemble_mask(1) = .true.
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, alpha_mad=0.5_real64, ierr=ierr)
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
 
-        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_alloc: explicit r and alpha_mad ierr check")
+        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_plain: explicit r and alpha_mad ierr check")
         call assert_true(logical(ensemble_mask(1)), "Case 1: vector 1 is active")
         call assert_true(logical(ensemble_mask(2)), "Case 1: vector 2 is successfully added")
         call assert_false(logical(ensemble_mask(3)), "Case 1: vector 3 is too far away")
 
         ensemble_mask = .false.
         ensemble_mask(1) = .true.
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 alpha_mad=0.5_real64, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_alloc: omitted r ierr check")
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, density_radius, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
+        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_plain: computed radius ierr check")
 
         ensemble_mask = .false.
         ensemble_mask(1) = .true.
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_alloc: omitted alpha_mad ierr check")
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, grown_mask=grown_mask, ierr=ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
+        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_plain: omitted alpha_mad ierr check")
 
         ensemble_mask = .false.
         ensemble_mask(1) = .true.
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_alloc: fully default call ierr check")
-    end subroutine test_grow_ensemble_alloc
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, density_radius, dimension_order, kd_indices, &
+            density_labels, grown_mask=grown_mask, ierr=ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
+        call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_plain: computed radius and default MAD ierr check")
+    end subroutine test_grow_ensemble_plain
 
     subroutine test_grow_ensemble_multistep()
         integer(int32), parameter :: n_dims = 2_int32
@@ -1179,6 +1162,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs)
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1197,15 +1181,15 @@ contains
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
 
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, alpha_mad=0.5_real64, ierr=ierr)
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(logical(ensemble_mask(2)), "step 1: vector 2 absorbed")
         call assert_false(logical(ensemble_mask(3)), "step 1: vector 3 not yet reachable")
 
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, alpha_mad=0.5_real64, ierr=ierr)
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(logical(ensemble_mask(3)), "step 2: vector 3 pulled in by vector 2 surface")
     end subroutine test_grow_ensemble_multistep
 
@@ -1218,7 +1202,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1232,16 +1216,18 @@ contains
                                    tmp_rec_stack, ierr)
 
         ensemble_mask = [.true., .false., .false.]
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.25_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.25_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_equal_int(ierr, ERR_OK, "alpha 0.25 test ierr control")
         call assert_false(logical(ensemble_mask(2)), "alpha 0.25 should reject vector 2")
 
         ensemble_mask = [.true., .false., .false.]
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 1.00_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 1.00_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_equal_int(ierr, ERR_OK, "alpha 1.00 test ierr control")
         call assert_true(logical(ensemble_mask(2)), "alpha 1.00 should accept vector 2")
     end subroutine test_grow_ensemble_alpha_sensitivity
@@ -1255,7 +1241,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1269,32 +1255,31 @@ contains
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
 
         call assert_true(ierr /= ERR_OK, &
                          "test_grow_ensemble_zero_mad: zero ambient MAD must be rejected")
 
         ensemble_mask = [.true., .false., .false.]
 
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, alpha_mad=0.5_real64, ierr=ierr)
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, &
                          "test_grow_ensemble_zero_mad: allocating wrapper rejects a zero ambient MAD")
 
         density_labels = [10.0_real64, 6.0_real64, 2.0_real64]
         ensemble_mask = [.true., .false., .false.]
-        mad_ambient = -1.0_real64
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
 
         call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_zero_mad: spread densities accepted")
-        call assert_true(mad_ambient > 0.0_real64, &
-                         "test_grow_ensemble_zero_mad: spread densities give a non-zero ambient MAD")
         call assert_true(logical(ensemble_mask(1)), "test_grow_ensemble_zero_mad: vector 1 active")
     end subroutine test_grow_ensemble_zero_mad
 
@@ -1307,7 +1292,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -1321,16 +1306,18 @@ contains
                                    tmp_rec_stack, ierr)
 
         ensemble_mask = [.false., .false., .false.]
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_equal_int(ierr, ERR_OK, "empty mask check ierr control")
         call assert_false(logical(any(ensemble_mask)), "empty mask should stay empty")
 
         ensemble_mask = [.true., .true., .true.]
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_equal_int(ierr, ERR_OK, "full mask check ierr control")
         call assert_true(logical(all(ensemble_mask)), "full mask should stay full")
     end subroutine test_grow_ensemble_mask_states
@@ -1345,9 +1332,8 @@ contains
         ensemble_mask = [.true., .true., .false.]
         observables = 0.0_real64
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         candidate_count=2_int32, current_iter=1_int32, &
-                                         observables=observables, t_observables=10_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 2_int32, 1_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_int(ierr, ERR_OK, "basic observable ierr control")
         call assert_equal_real(observables(1, 1), 7.5_real64, 1.0e-10_real64, "rho_arith metric check")
@@ -1367,29 +1353,26 @@ contains
         observables = 0.0_real64
 
         ensemble_mask = [.true., .true., .false., .false.]
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 1_int32, observables, &
-                                         t_observables=2_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         ensemble_mask = [.true., .true., .true., .false.]
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         1_int32, 2_int32, observables, &
-                                         t_observables=2_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, 2_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_real(observables(1, 1), 7.5_real64, 1.0e-10_real64, "col 1 has iter 1")
         call assert_equal_real(observables(1, 2), 11.666666666666666_real64, 1.0e-10_real64, "col 2 has iter 2")
 
         ensemble_mask = [.true., .true., .true., .true.]
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         1_int32, 3_int32, observables, &
-                                         t_observables=2_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, 3_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
         call assert_equal_int(ierr, ERR_OK, "sliding window ierr control")
         call assert_equal_real(observables(1, 1), 11.666666666666666_real64, 1.0e-10_real64, "col 1 shifted to iter 2")
         call assert_equal_real(observables(1, 2), 9.25_real64, 1.0e-10_real64, "col 2 updated to iter 3")
     end subroutine test_compute_ensemble_observable_sliding_window
 
-    subroutine test_compute_ensemble_observable_infinite_history()
+    subroutine test_compute_ensemble_observable_history_width()
         integer(int32), parameter :: n_vecs = 3_int32
         real(real64) :: density_labels(n_vecs), observables(5, 3)
         logical(c_bool) :: ensemble_mask(n_vecs)
@@ -1399,18 +1382,152 @@ contains
         ensemble_mask = [.true., .false., .false.]
         observables = 0.0_real64
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 1_int32, observables, &
-                                         t_observables=0_int32, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "infinite history (0) ierr check")
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
+        call assert_equal_int(ierr, ERR_OK, "history width: iter 1 ierr check")
         call assert_equal_real(observables(4, 1), 1.0_real64, 1.0e-10_real64, "iter 1 stored in col 1")
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 2_int32, observables, &
-                                         t_observables=-1_int32, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "infinite history (-1) ierr check")
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 2_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
+        call assert_equal_int(ierr, ERR_OK, "history width: iter 2 ierr check")
         call assert_equal_real(observables(4, 2), 1.0_real64, 1.0e-10_real64, "iter 2 stored in col 2")
-    end subroutine test_compute_ensemble_observable_infinite_history
+    end subroutine test_compute_ensemble_observable_history_width
+
+    !> Regression: the observable writer and the acceptance reader share one window, the history width.
+    !| Before, the writer wrapped at `t_observables` (default 10) while the reader wrapped at the width,
+    !| so a history wider than 10 compared never-written zero columns and accepted every later step.
+    subroutine test_observable_window_rejects_after_shift()
+        integer(int32), parameter :: n_vecs = 4_int32
+        real(real64) :: density_labels(n_vecs), narrow(5, 3), wide(5, 12)
+        logical(c_bool) :: ensemble_mask(n_vecs), is_accepted
+        integer(int32) :: ierr, i_iter
+
+        ! H_rho stays 1 for the first three members and jumps to 7/3 when the fourth joins.
+        density_labels = [1.0_real64, 1.0_real64, 1.0_real64, 9.0_real64]
+        narrow = 0.0_real64
+        wide = 0.0_real64
+
+        do i_iter = 1, 4
+            ensemble_mask = .false.
+            ensemble_mask(1:i_iter) = .true.
+            call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, i_iter, narrow, &
+                size(narrow, 2, kind=int32), size(narrow, 1, kind=int32), ierr)
+            call assert_equal_int(ierr, ERR_OK, "window regression: narrow update")
+            call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, i_iter, wide, &
+                size(wide, 2, kind=int32), size(wide, 1, kind=int32), ierr)
+            call assert_equal_int(ierr, ERR_OK, "window regression: wide update")
+        end do
+
+        ! Iteration 4 is past the 3-column window, so the history has shifted.
+        call accept_ensemble(narrow, size(narrow, 2, kind=int32), size(narrow, 1, kind=int32), &
+            4_int32, 0.5_real64, is_accepted, ierr)
+        call assert_equal_int(ierr, ERR_OK, "window regression: narrow accept ierr")
+        call assert_false(logical(is_accepted), "shifted window still compares the last two steps")
+
+        call accept_ensemble(wide, size(wide, 2, kind=int32), size(wide, 1, kind=int32), &
+            4_int32, 0.5_real64, is_accepted, ierr)
+        call assert_equal_int(ierr, ERR_OK, "window regression: wide accept ierr")
+        call assert_false(logical(is_accepted), "unshifted window compares the same two steps")
+
+        ! A history wider than the old default window of 10 keeps writing where acceptance reads.
+        wide = 0.0_real64
+        density_labels = [1.0_real64, 1.0_real64, 1.0_real64, 1.0_real64]
+        do i_iter = 1, 10
+            ensemble_mask = .true.
+            call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, i_iter, wide, &
+                size(wide, 2, kind=int32), size(wide, 1, kind=int32), ierr)
+        end do
+        density_labels(4) = 9.0_real64
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 1_int32, 11_int32, wide, &
+            size(wide, 2, kind=int32), size(wide, 1, kind=int32), ierr)
+        call accept_ensemble(wide, size(wide, 2, kind=int32), size(wide, 1, kind=int32), &
+            11_int32, 0.5_real64, is_accepted, ierr)
+        call assert_equal_int(ierr, ERR_OK, "window regression: iteration 11 ierr")
+        call assert_false(logical(is_accepted), "iteration 11 is compared against iteration 10, not an empty column")
+    end subroutine test_observable_window_rejects_after_shift
+
+    !> A zero ambient MAD is reported against `density_labels`: at its own position by a direct call
+    !| to the implementation, and with the position cleared by the generated entry points.
+    subroutine test_zero_mad_error_positions()
+        integer(int32), parameter :: n_dims = 1_int32, n_vecs = 3_int32, n_seeds = 1_int32
+        real(real64) :: vectors(n_dims, n_vecs), labels(n_vecs), abs_diff(n_vecs, 1), obs(5, 2, 1), mad
+        integer(int32) :: dims(n_dims), kd(n_vecs), seeds(n_seeds), stack(3, 64, 1), perm(n_vecs, 1)
+        integer(int32) :: stops(n_seeds), ierr
+        logical(c_bool) :: mask(n_vecs), grown(n_vecs), vicinity(n_vecs, 1), surface(n_vecs, 1)
+        logical(c_bool) :: current(n_vecs, 1), ensembles(n_vecs, n_seeds)
+
+        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64]
+        labels = 5.0_real64
+        dims = 1_int32
+        kd = [1_int32, 2_int32, 3_int32]
+        seeds = 1_int32
+        mask = [.true., .false., .false.]
+
+        call grow_ensemble_impl(vectors, n_dims, n_vecs, mask, 1.0_real64, dims, kd, labels, &
+            0.5_real64, stack(:, :, 1), vicinity(:, 1), surface(:, 1), perm(:, 1), abs_diff(:, 1), grown, ierr)
+        call assert_equal_int(get_err_arg_pos(ierr), 8_int32, "direct growth names density_labels argument")
+
+        call obtain_ensembles_impl(vectors, n_dims, n_vecs, dims, kd, labels, seeds, n_seeds, &
+            MODE_GLOBAL_RADIUS, r=1.0_real64, t_observables=2_int32, n_tiles=1_int32, tmp_stack=stack, &
+            tmp_vicinity_mask=vicinity, tmp_surface_mask=surface, tmp_perm=perm, tmp_abs_diff=abs_diff, &
+            tmp_observables=obs, tmp_current_mask=current, ensemble_matrix=ensembles, stop_reasons=stops, &
+            mad_ambient=mad, ierr=ierr)
+        call assert_equal_int(get_err_arg_pos(ierr), 6_int32, "direct ensemble growth names density_labels argument")
+
+        call grow_ensemble(vectors, n_dims, n_vecs, mask, 1.0_real64, dims, kd, labels, &
+            0.5_real64, grown, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "generated growth clears implementation argument positions")
+
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dims, kd, labels, seeds, n_seeds, &
+            1.0_real64, t_observables=2_int32, n_tiles=1_int32, ensemble_matrix=ensembles, &
+            stop_reasons=stops, mad_ambient=mad, ierr=ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "generated ensembles clear implementation argument positions")
+    end subroutine test_zero_mad_error_positions
+
+    !> Acceptance compares two consecutive steps, so every entry point requires a history of two columns.
+    subroutine test_history_requires_two_columns()
+        integer(int32), parameter :: n_dims = 2_int32, n_vecs = 4_int32, n_seeds = 2_int32
+        real(real64) :: density_labels(n_vecs), single(5, 1), vectors(n_dims, n_vecs), tmp_val_buf(n_vecs)
+        real(real64) :: mad_ambient
+        logical(c_bool) :: ensemble_mask(n_vecs), is_accepted, ensemble_matrix(n_vecs, n_seeds)
+        integer(int32) :: ierr, n_ensembles, seed_indices(n_seeds), stop_reasons(n_seeds)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
+
+        density_labels = [6.0_real64, 6.0_real64, 4.0_real64, 4.0_real64]
+        ensemble_mask = [.true., .false., .false., .false.]
+        single = 0.0_real64
+
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, single, &
+            size(single, 2, kind=int32), size(single, 1, kind=int32), ierr)
+        call assert_true(ierr /= ERR_OK, "a one-column history is rejected by the observable update")
+
+        call accept_ensemble(single, size(single, 2, kind=int32), size(single, 1, kind=int32), &
+            2_int32, 0.5_real64, is_accepted, ierr)
+        call assert_true(ierr /= ERR_OK, "a one-column history is rejected by acceptance")
+
+        vectors(:, 1) = [0.0_real64, 0.0_real64]
+        vectors(:, 2) = [0.0_real64, 0.2_real64]
+        vectors(:, 3) = [10.0_real64, 10.0_real64]
+        vectors(:, 4) = [10.0_real64, 10.2_real64]
+        dimension_order = [1_int32, 2_int32]
+        seed_indices = [1_int32, 3_int32]
+        call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_rec_stack, ierr)
+        call assert_equal_int(ierr, ERR_OK, "two columns: tree construction check")
+
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=1_int32, n_tiles=1_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
+        call assert_true(ierr /= ERR_OK, "a one-iteration history window is rejected by growth")
+
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=2_int32, n_tiles=1_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
+        call assert_equal_int(ierr, ERR_OK, "a two-iteration history window is accepted")
+    end subroutine test_history_requires_two_columns
 
     subroutine test_compute_ensemble_observable_empty_and_zero()
         integer(int32), parameter :: n_vecs = 3_int32
@@ -1423,26 +1540,23 @@ contains
         density_labels = [10.0_real64, 5.0_real64, 2.0_real64]
         ensemble_mask = [.false., .false., .false.]
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 1_int32, observables, &
-                                         t_observables=5_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_equal_int(ierr, ERR_OK, "empty ensemble ierr check")
         call assert_equal_real(observables(1, 1), 0.0_real64, 1.0e-10_real64, "empty ensemble outputs zeros")
 
         density_labels = [0.0_real64, 0.0_real64, 10.0_real64]
         ensemble_mask = [.true., .true., .false.]
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 2_int32, observables, &
-                                         t_observables=5_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 2_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_true(ierr /= ERR_OK, "zero density labels must be rejected")
 
         density_labels = [1.0_real64, 1.0_real64, 10.0_real64]
         ensemble_mask = [.true., .true., .false.]
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 2_int32, observables, &
-                                         t_observables=5_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 2_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_equal_int(ierr, ERR_OK, "unit density labels are accepted")
         call assert_equal_real(observables(1, 2), 1.0_real64, 1.0e-10_real64, "rho_arith is 1.0")
         call assert_equal_real(observables(2, 2), 1.0_real64, 1.0e-10_real64, "rho_harm is 1.0")
@@ -1450,26 +1564,23 @@ contains
                                "H_rho is 1.0 for a genuinely homogeneous ensemble")
     end subroutine test_compute_ensemble_observable_empty_and_zero
 
-    subroutine test_compute_ensemble_observable_alloc()
+    subroutine test_compute_ensemble_observable_plain()
         integer(int32), parameter :: n_vecs = 3_int32
         real(real64) :: density_labels(n_vecs)
-        real(real64), allocatable :: observables(:, :)
+        real(real64) :: observables(5, 5)
         logical(c_bool) :: ensemble_mask(n_vecs)
         integer(int32) :: ierr
 
         density_labels = [10.0_real64, 10.0_real64, 10.0_real64]
         ensemble_mask = [.true., .true., .false.]
 
-        call compute_ensemble_observable_alloc(ensemble_mask, density_labels, n_vecs, &
-                                               0_int32, 1_int32, observables, &
-                                               t_observables=5_int32, ierr=ierr)
+        observables = 0.0_real64
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "alloc wrapper ierr check")
-        call assert_true(allocated(observables), "observables matrix auto-allocated")
-        call assert_equal_int(size(observables, 1), 5_int32, "observables rows = 5")
-        call assert_equal_int(size(observables, 2), 5_int32, "observables cols = 5")
+        call assert_equal_int(ierr, ERR_OK, "observable history update succeeds")
         call assert_equal_real(observables(1, 1), 10.0_real64, 1.0e-10_real64, "arithmetic mean check")
-    end subroutine test_compute_ensemble_observable_alloc
+    end subroutine test_compute_ensemble_observable_plain
 
     subroutine test_compute_ensemble_observable_invalid_inputs()
         integer(int32), parameter :: n_vecs = 3_int32
@@ -1481,14 +1592,12 @@ contains
         ensemble_mask = [.true., .false., .false.]
         observables = 0.0_real64
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         candidate_count=-1_int32, current_iter=1_int32, &
-                                         observables=observables, t_observables=5_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, -1_int32, 1_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_true(ierr /= ERR_OK, "negative candidate_count must fail")
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         candidate_count=0_int32, current_iter=0_int32, &
-                                         observables=observables, t_observables=5_int32, ierr=ierr)
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 0_int32, observables, &
+            size(observables, 2, kind=int32), size(observables, 1, kind=int32), ierr)
         call assert_true(ierr /= ERR_OK, "current_iter <= 0 must fail")
     end subroutine test_compute_ensemble_observable_invalid_inputs
 
@@ -1501,12 +1610,14 @@ contains
         observables(3, 1) = 1.0_real64
         observables(3, 2) = 1.2_real64
 
-        call accept_ensemble(observables, 2_int32, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, is_accepted=is_accepted, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, "accept_ensemble default ierr control")
         call assert_true(logical(is_accepted), "log2 fold change 0.263 < default 0.5 should be accepted")
 
         observables(3, 3) = 1.8_real64
-        call accept_ensemble(observables, 3_int32, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            3_int32, is_accepted=is_accepted, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, "accept_ensemble rejection ierr control")
         call assert_false(logical(is_accepted), "log2 fold change 0.585 >= default 0.5 should be rejected")
     end subroutine test_accept_ensemble_default
@@ -1520,19 +1631,24 @@ contains
         observables(3, 1) = 1.0_real64
         observables(3, 2) = 1.5_real64
 
-        call accept_ensemble(observables, 2_int32, alpha_accept=0.2_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, 0.2_real64, is_accepted, ierr)
         call assert_false(logical(is_accepted), "alpha 0.2 rejects 0.585 change")
 
-        call accept_ensemble(observables, 2_int32, alpha_accept=0.4_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, 0.4_real64, is_accepted, ierr)
         call assert_false(logical(is_accepted), "alpha 0.4 rejects 0.585 change")
 
-        call accept_ensemble(observables, 2_int32, alpha_accept=0.8_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, 0.8_real64, is_accepted, ierr)
         call assert_true(logical(is_accepted), "alpha 0.8 accepts 0.585 change")
 
-        call accept_ensemble(observables, 2_int32, alpha_accept=1.0_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, 1.0_real64, is_accepted, ierr)
         call assert_true(logical(is_accepted), "alpha 1.0 accepts 0.585 change")
 
-        call accept_ensemble(observables, 2_int32, alpha_accept=1.5_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, 1.5_real64, is_accepted, ierr)
         call assert_true(logical(is_accepted), "alpha 1.5 accepts 0.585 change")
     end subroutine test_accept_ensemble_alpha_sensitivity
 
@@ -1543,12 +1659,14 @@ contains
 
         observables = 0.0_real64
 
-        call accept_ensemble(observables, 1_int32, alpha_accept=0.5_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            1_int32, 0.5_real64, is_accepted, ierr)
         call assert_true(logical(is_accepted), "iter 1 must always be accepted")
 
         observables(3, 1) = 1.0_real64
         observables(3, 2) = 1.1_real64
-        call accept_ensemble(observables, 3_int32, alpha_accept=0.5_real64, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            3_int32, 0.5_real64, is_accepted, ierr)
         call assert_true(logical(is_accepted), "sliding window check accepts smooth step")
     end subroutine test_accept_ensemble_boundary_and_window
 
@@ -1559,11 +1677,12 @@ contains
 
         observables = 1.0_real64
 
-        call accept_ensemble(observables, current_iter=0_int32, is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            0_int32, is_accepted=is_accepted, ierr=ierr)
         call assert_true(ierr /= ERR_OK, "current_iter <= 0 must fail")
 
-        call accept_ensemble(observables, current_iter=2_int32, alpha_accept=-0.1_real64, &
-                             is_accepted=is_accepted, ierr=ierr)
+        call accept_ensemble(observables, size(observables, 2, kind=int32), size(observables, 1, kind=int32), &
+            2_int32, -0.1_real64, is_accepted, ierr)
         call assert_true(ierr /= ERR_OK, "negative alpha_accept must fail")
     end subroutine test_accept_ensemble_invalid_inputs
 
@@ -1604,7 +1723,10 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, n_raw, n_merged
         integer(int32) :: seed_indices(n_seeds)
-        logical(c_bool), allocatable :: raw_matrix(:, :), merged_matrix(:, :)
+        logical(c_bool), allocatable :: raw_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -1625,15 +1747,15 @@ contains
 
         allocate (raw_matrix(n_vecs, n_seeds))
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=raw_matrix, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles execution check")
 
-        call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_merged, ierr=ierr)
+        call merge_ensembles(raw_matrix, n_vecs, n_raw, 0.0_real64, merged_matrix, n_merged, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles execution check")
         call assert_equal_int(n_merged, 2_int32, "expected 2 distinct merged clusters")
@@ -1655,6 +1777,8 @@ contains
         integer(int32) :: tmp_rec_stack(3, n_vecs)
         integer(int32) :: seed_indices(n_seeds), ierr, n_ensembles
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.1_real64]
@@ -1669,10 +1793,10 @@ contains
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "unmerged obtain_ensembles execution check")
         call assert_equal_int(n_ensembles, n_seeds, &
@@ -1694,6 +1818,8 @@ contains
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
         integer(int32) :: seed_indices(1), ierr, n_ensembles
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors = 0.0_real64
         density_labels = 1.0_real64
@@ -1701,10 +1827,10 @@ contains
         kd_indices = [1_int32, 2_int32, 3_int32]
         seed_indices = [1_int32]
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "zero seeds execution check")
         call assert_equal_int(n_ensembles, 0_int32, "n_ensembles must equal 0")
@@ -1725,6 +1851,8 @@ contains
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
         integer(int32) :: seed_indices(n_seeds), ierr, n_ensembles
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors = 0.0_real64
         density_labels = 1.0_real64
@@ -1734,19 +1862,19 @@ contains
 
         seed_indices(1) = 4_int32
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_true(ierr /= ERR_OK, "seed_indices out of bounds must fail")
 
         seed_indices(1) = 1_int32
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=-0.5_real64, ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, -0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_true(ierr /= ERR_OK, "negative r must fail")
 
@@ -1765,8 +1893,11 @@ contains
         integer(int32) :: tmp_rec_stack(3, n_vecs)
         integer(int32) :: ierr, n_raw, n_merged, i_vec
         integer(int32) :: seed_indices(n_seeds)
-        logical(c_bool), allocatable :: raw_matrix(:, :), merged_matrix(:, :)
+        logical(c_bool), allocatable :: raw_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, n_seeds)
         character(len=128) :: assert_msg
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         do i_vec = 1, 150
             angle = real(i_vec, real64)*0.15_real64
@@ -1802,25 +1933,22 @@ contains
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
 
-        call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, 0.5_real64, &
-                                               dimension_order, kd_indices, &
-                                               density_labels, ierr=ierr)
+        call calculate_labels_as_density(vectors, n_dims, n_vecs, 0.5_real64, dimension_order, kd_indices, &
+            min(8_int32, n_vecs), density_labels, ierr)
 
         seed_indices = [15_int32, 165_int32, 315_int32]
 
         allocate (raw_matrix(n_vecs, n_seeds))
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=raw_matrix, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles 500 execution check")
 
-        call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, &
-                                   min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, &
-                                   n_ensembles=n_merged, ierr=ierr)
+        call merge_ensembles(raw_matrix, n_vecs, n_raw, 0.0_real64, merged_matrix, n_merged, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles 500 execution check")
         call assert_equal_int(n_merged, 3_int32, &
@@ -1840,7 +1968,7 @@ contains
         integer(int32), parameter :: n_seeds = 4_int32
 
         logical(c_bool) :: raw_masks(n_vectors, n_seeds)
-        logical(c_bool), allocatable :: merged_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vectors, n_seeds)
         integer(int32) :: n_ensembles
         integer(int32) :: ierr
 
@@ -1856,10 +1984,7 @@ contains
         raw_masks(4, 4) = .true.
         raw_masks(5, 4) = .true.
 
-        call merge_ensembles_alloc(raw_masks, n_vectors, n_seeds, &
-                                   min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, &
-                                   n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vectors, n_seeds, 0.0_real64, merged_matrix, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "singleton filtering: merge execution")
@@ -1882,19 +2007,17 @@ contains
         integer(int32), parameter :: n_seeds = 3_int32
 
         logical(c_bool) :: raw_masks(n_vecs, n_seeds)
-        logical(c_bool), allocatable :: merged_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, n_seeds)
         integer(int32) :: n_ensembles, ierr
 
         raw_masks(:, 1) = [.true., .true., .false., .false., .false.]
         raw_masks(:, 2) = [.false., .true., .true., .false., .false.]
         raw_masks(:, 3) = [.false., .false., .false., .true., .true.]
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 0.0_real64, merged_matrix, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles_basic ierr check")
         call assert_equal_int(n_ensembles, 2_int32, "masks 1 & 2 merge into 1, leaving 2 unique clusters")
-        call assert_equal_int(size(merged_matrix, 2), 2_int32, "output matrix has 2 columns")
 
         call assert_true(logical(merged_matrix(1, 1)), "merged 1 contains elem 1")
         call assert_true(logical(merged_matrix(2, 1)), "merged 1 contains elem 2")
@@ -1906,14 +2029,12 @@ contains
         integer(int32), parameter :: n_vecs = 4_int32
 
         logical(c_bool) :: raw_masks(n_vecs, 0)
-        logical(c_bool), allocatable :: merged_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, 0)
         integer(int32) :: n_ensembles, ierr
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, 0_int32, min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, 0_int32, 0.0_real64, merged_matrix, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles_zero_seeds ierr check")
-        call assert_true(allocated(merged_matrix), "merged_matrix allocated for 0 seeds")
         call assert_equal_int(n_ensembles, 0_int32, "n_ensembles is 0")
         call assert_equal_int(size(merged_matrix, 2), 0_int32, "columns count is 0")
     end subroutine test_merge_ensembles_zero_seeds
@@ -1923,14 +2044,13 @@ contains
         integer(int32), parameter :: n_seeds = 2_int32
 
         logical(c_bool) :: raw_masks(n_vecs, n_seeds)
-        logical(c_bool), allocatable :: merged_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, n_seeds)
         integer(int32) :: n_ensembles, ierr
 
         raw_masks(:, 1) = [.true., .true., .false., .false.]
         raw_masks(:, 2) = [.false., .false., .true., .true.]
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 0.0_real64, merged_matrix, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles_no_overlap ierr check")
         call assert_equal_int(n_ensembles, 2_int32, "disjoint masks do not merge")
@@ -1941,17 +2061,15 @@ contains
         integer(int32), parameter :: n_seeds = 2_int32
 
         logical(c_bool) :: raw_masks(n_vecs, n_seeds)
-        logical(c_bool), allocatable :: merged_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, n_seeds)
         integer(int32) :: n_ensembles, ierr
 
         raw_masks = .true.
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=-0.1_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, -0.1_real64, merged_matrix, n_ensembles, ierr)
         call assert_true(ierr /= ERR_OK, "min_overlap_coefficient < 0 must fail")
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=1.1_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 1.1_real64, merged_matrix, n_ensembles, ierr)
         call assert_true(ierr /= ERR_OK, "min_overlap_coefficient > 1 must fail")
     end subroutine test_merge_ensembles_invalid_inputs
 
@@ -1962,7 +2080,7 @@ contains
 
         logical(c_bool) :: raw_masks(n_vecs, n_seeds)
         logical(c_bool) :: chain_masks(n_vecs, n_chain)
-        logical(c_bool), allocatable :: merged_matrix(:, :)
+        logical(c_bool) :: merged_matrix(n_vecs, n_chain)
         integer(int32) :: n_ensembles, ierr
 
         raw_masks = .false.
@@ -1970,18 +2088,15 @@ contains
         raw_masks(1, 2) = .true.; raw_masks(2, 2) = .true.; raw_masks(4, 2) = .true.
         raw_masks(3, 3) = .true.; raw_masks(4, 3) = .true.; raw_masks(5, 3) = .true.
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 0.0_real64, merged_matrix, n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, "transitivity regimes: threshold 1 execution check")
         call assert_equal_int(n_ensembles, 1_int32, "threshold 1 merges all three ensembles")
         call assert_equal_int(count(merged_matrix(:, 1)), n_vecs, &
                               "threshold 1 union covers every vector")
-        deallocate (merged_matrix)
 
         ! OC(E1,E2) = 2/3, OC(E1,E3) = OC(E2,E3) = 1/3. A threshold between the two keeps E3 out, and --
         ! unlike an absolute count on growing masks -- the E1/E2 union cannot pull it back in afterwards.
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.6_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 0.6_real64, merged_matrix, n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, "overlap coefficient regimes: threshold 0.6 execution check")
         call assert_equal_int(n_ensembles, 2_int32, &
                               "threshold 0.6 merges E1 and E2 but leaves E3 separate")
@@ -1989,15 +2104,12 @@ contains
                               "threshold 0.6 merges E1 and E2 into four vectors")
         call assert_equal_int(count(merged_matrix(:, 2)), 3_int32, &
                               "threshold 0.6 leaves E3 at its own three vectors")
-        deallocate (merged_matrix)
 
         ! An Overlap Coefficient of 1 demands full containment of the smaller ensemble in the larger.
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=1.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 1.0_real64, merged_matrix, n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, "overlap coefficient regimes: threshold 1.0 execution check")
         call assert_equal_int(n_ensembles, 3_int32, &
                               "threshold 1.0 merges nothing here, no ensemble contains another")
-        deallocate (merged_matrix)
 
         chain_masks = .false.
         chain_masks(1, 1) = .true.; chain_masks(2, 1) = .true.
@@ -2005,8 +2117,7 @@ contains
         chain_masks(3, 3) = .true.; chain_masks(4, 3) = .true.
         chain_masks(4, 4) = .true.; chain_masks(5, 4) = .true.
 
-        call merge_ensembles_alloc(chain_masks, n_vecs, n_chain, min_overlap_coefficient=0.0_real64, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call merge_ensembles(chain_masks, n_vecs, n_chain, 0.0_real64, merged_matrix, n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, "transitivity regimes: chain execution check")
         call assert_equal_int(n_ensembles, 1_int32, "a chain of overlaps collapses to one ensemble")
         call assert_equal_int(count(merged_matrix(:, 1)), n_vecs, &
@@ -2033,8 +2144,8 @@ contains
         tmp_active_flag = .false.
         tmp_parent = 0_int32
 
-        call merge_ensembles(raw_masks, n_vecs, n_seeds, 0.0_real64, &
-                             merged_masks, tmp_active_flag, tmp_parent, n_ensembles, ierr)
+        call merge_ensembles_expert(raw_masks, n_vecs, n_seeds, 0.0_real64, merged_masks, tmp_active_flag, &
+            tmp_parent, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "clear unused columns: execution check")
         call assert_equal_int(n_ensembles, 2_int32, "two ensembles survive the merge")
@@ -2060,6 +2171,8 @@ contains
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, n_ensembles
         integer(int32) :: seed_indices(n_seeds), i_vec, i_tiles
         logical(c_bool) :: reference_matrix(n_vecs, n_seeds), tiled_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -2086,11 +2199,10 @@ contains
 
         seed_indices = [1_int32, 4_int32, 7_int32, 9_int32, 11_int32]
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, n_tiles=1_int32, &
-                                    ensemble_matrix=reference_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=1_int32, &
+            ensemble_matrix=reference_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(reference_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "tile invariance: serial reference run check")
         call assert_equal_int(n_ensembles, n_seeds, "tile invariance: reference ensemble count")
@@ -2098,11 +2210,10 @@ contains
         do i_tiles = 2, 7
             tiled_matrix = .false.
 
-            call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                        density_labels, seed_indices, n_seeds, &
-                                        r=0.5_real64, n_tiles=i_tiles, &
-                                        ensemble_matrix=tiled_matrix, &
-                                        n_ensembles=n_ensembles, ierr=ierr)
+            call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+                seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=i_tiles, &
+                ensemble_matrix=tiled_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+            if (ierr == ERR_OK) n_ensembles = size(tiled_matrix, dim=2, kind=int32)
 
             call assert_equal_int(ierr, ERR_OK, "tile invariance: tiled run execution check")
             call assert_equal_int(n_ensembles, n_seeds, "tile invariance: tiled ensemble count")
@@ -2130,6 +2241,8 @@ contains
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, n_ensembles
         integer(int32) :: seed_indices(n_seeds)
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -2144,25 +2257,22 @@ contains
                                    tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                                    tmp_rec_stack, ierr)
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, n_tiles=0_int32, &
-                                    ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=0_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, "n_tiles = 0 must fail")
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, n_tiles=-3_int32, &
-                                    ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=-3_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, "negative n_tiles must fail")
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, n_tiles=64_int32, &
-                                    ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=64_int32, &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "n_tiles above n_seeds must be accepted, not rejected")
         call assert_equal_int(n_ensembles, n_seeds, "surplus-tile run still grows every seed")
 
@@ -2185,7 +2295,7 @@ contains
         integer(int32) :: tmp_stack(3, 64, n_tiles), tmp_perm(n_vecs, n_tiles)
         logical(c_bool) :: tmp_vicinity_mask(n_vecs, n_tiles), tmp_surface_mask(n_vecs, n_tiles)
         real(real64) :: tmp_abs_diff(n_vecs, n_tiles)
-        real(real64) :: tmp_observables(5, t_obs, n_tiles)
+        real(real64) :: tmp_observables(5, min(t_obs, n_vecs), n_tiles)
         logical(c_bool) :: tmp_current_mask(n_vecs, n_tiles)
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds), alloc_matrix(n_vecs, n_seeds)
         integer(int32) :: stop_reasons(n_seeds)
@@ -2208,23 +2318,20 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "layer agreement: tree construction check")
 
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+        call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+            density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
+            t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
+            tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "layer agreement: preallocated layer must accept n_tiles > n_seeds")
         call assert_equal_int(n_ensembles, n_seeds, "layer agreement: every seed grown")
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, alpha_mad=0.5_real64, &
-                                    alpha_accept=0.5_real64, t_observables=t_obs, &
-                                    n_tiles=n_tiles, ensemble_matrix=alloc_matrix, &
-                                    n_ensembles=n_ensembles_alloc, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, alloc_matrix, stop_reasons, &
+            mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles_alloc = size(alloc_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "layer agreement: allocating layer must accept n_tiles > n_seeds")
@@ -2247,7 +2354,7 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical(c_bool) :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs), tmp_surface_mask(n_vecs)
-        real(real64) :: mad_ambient
+        logical(c_bool) :: grown_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.5_real64]
@@ -2264,54 +2371,56 @@ contains
         density_labels = [5.0_real64, 5.0_real64, -1.0_real64, 5.0_real64]
         ensemble_mask = [.true., .false., .false., .false.]
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, &
                          "grow_ensemble must reject negative density labels")
 
         ensemble_mask = [.true., .false., .false., .false.]
 
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, alpha_mad=0.5_real64, ierr=ierr)
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, &
                          "grow_ensemble_alloc must reject negative density labels")
 
         density_labels = [5.0_real64, 5.0_real64, 0.0_real64, 5.0_real64]
         ensemble_mask = [.true., .false., .false., .false.]
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, &
                          "grow_ensemble must reject a zero density label")
 
         ensemble_mask = [.true., .false., .false., .false.]
 
-        call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
-                                 dimension_order, kd_indices, density_labels, &
-                                 r=0.6_real64, alpha_mad=0.5_real64, ierr=ierr)
+        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_true(ierr /= ERR_OK, &
                          "grow_ensemble_alloc must reject a zero density label")
 
         density_labels = [5.0_real64, 8.0_real64, 1.0_real64, 5.0_real64]
         ensemble_mask = [.true., .false., .false., .false.]
 
-        call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
-                           dimension_order, kd_indices, density_labels, 0.5_real64, &
-                           tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, mad_ambient, ierr)
+        call grow_ensemble_expert(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, dimension_order, kd_indices, &
+            density_labels, 0.5_real64, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            grown_mask, ierr)
+        if (ierr == ERR_OK) ensemble_mask = grown_mask
         call assert_equal_int(ierr, ERR_OK, &
                               "grow_ensemble must accept a unit density label")
     end subroutine test_grow_ensemble_rejects_negative_density_labels
 
-    subroutine test_observable_row_count_validation()
+    subroutine test_observable_history_matrix()
         integer(int32), parameter :: n_vecs = 3_int32
 
         logical(c_bool) :: ensemble_mask(n_vecs)
         real(real64) :: density_labels(n_vecs)
         real(real64) :: too_few_rows(4, 6), correct_rows(5, 6)
-        real(real64), allocatable :: alloc_too_few(:, :)
         logical(c_bool) :: is_accepted
         integer(int32) :: ierr
 
@@ -2320,46 +2429,25 @@ contains
         too_few_rows = 0.0_real64
         correct_rows = 0.0_real64
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 1_int32, too_few_rows, &
-                                         t_observables=6_int32, ierr=ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "compute_ensemble_observable must reject a matrix with too few rows")
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, &
+                                         too_few_rows, 6_int32, 4_int32, ierr=ierr)
+        call assert_true(ierr /= ERR_OK, "observable update rejects a four-row matrix")
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, &
-                                         0_int32, 1_int32, correct_rows, &
-                                         t_observables=6_int32, ierr=ierr)
+        call accept_ensemble(too_few_rows, 6_int32, 4_int32, 2_int32, is_accepted=is_accepted, ierr=ierr)
+        call assert_true(ierr /= ERR_OK, "ensemble acceptance rejects a four-row matrix")
+
+        call compute_ensemble_observable(ensemble_mask, density_labels, n_vecs, 0_int32, 1_int32, correct_rows, &
+            size(correct_rows, 2, kind=int32), size(correct_rows, 1, kind=int32), ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "compute_ensemble_observable must accept a 5-row matrix")
 
-        allocate (alloc_too_few(4, 6))
-        alloc_too_few = 0.0_real64
-
-        call compute_ensemble_observable_alloc(ensemble_mask, density_labels, n_vecs, &
-                                               0_int32, 1_int32, alloc_too_few, &
-                                               t_observables=6_int32, ierr=ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "compute_ensemble_observable_alloc must reject a preallocated undersized matrix")
-        deallocate (alloc_too_few)
-
-        call compute_ensemble_observable_alloc(ensemble_mask, density_labels, n_vecs, &
-                                               0_int32, 1_int32, alloc_too_few, &
-                                               t_observables=6_int32, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, &
-                              "compute_ensemble_observable_alloc must still self-allocate")
-        call assert_equal_int(size(alloc_too_few, dim=1, kind=int32), 5_int32, &
-                              "self-allocated observable matrix has 5 rows")
-
-        call accept_ensemble(too_few_rows, 2_int32, 0.5_real64, is_accepted, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "accept_ensemble must reject a matrix with too few rows")
-
-        call accept_ensemble(correct_rows, 2_int32, 0.5_real64, is_accepted, ierr)
+        call accept_ensemble(correct_rows, size(correct_rows, 2, kind=int32), size(correct_rows, 1, kind=int32), &
+            2_int32, 0.5_real64, is_accepted, ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "accept_ensemble must accept a 5-row matrix")
-    end subroutine test_observable_row_count_validation
+    end subroutine test_observable_history_matrix
 
-    subroutine test_obtain_ensembles_rejects_bad_observable_rows()
+    subroutine test_obtain_ensembles_rejects_invalid_history()
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 4_int32
         integer(int32), parameter :: n_seeds = 2_int32
@@ -2375,8 +2463,7 @@ contains
         integer(int32) :: tmp_stack(3, 64, n_tiles), tmp_perm(n_vecs, n_tiles)
         logical(c_bool) :: tmp_vicinity_mask(n_vecs, n_tiles), tmp_surface_mask(n_vecs, n_tiles)
         real(real64) :: tmp_abs_diff(n_vecs, n_tiles)
-        real(real64) :: bad_observables(4, t_obs, n_tiles)
-        real(real64) :: good_observables(5, t_obs, n_tiles)
+        real(real64) :: good_observables(5, min(t_obs, n_vecs), n_tiles)
         logical(c_bool) :: tmp_current_mask(n_vecs, n_tiles)
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
         integer(int32) :: stop_reasons(n_seeds)
@@ -2390,7 +2477,6 @@ contains
         density_labels = [6.0_real64, 6.0_real64, 4.0_real64, 4.0_real64]
         dimension_order = [1_int32, 2_int32]
         seed_indices = [1_int32, 3_int32]
-        bad_observables = 0.0_real64
         good_observables = 0.0_real64
 
         call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
@@ -2398,25 +2484,23 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "observable rows: tree construction check")
 
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, bad_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+        call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+            density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
+            0_int32, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, &
-                         "obtain_ensembles must reject an undersized observable workspace")
+                         "obtain_ensembles must reject a nonpositive history window")
 
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, good_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+        call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+            density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
+            t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
                               "obtain_ensembles must accept a correctly sized observable workspace")
         call assert_equal_int(n_ensembles, n_seeds, "every seed still grown")
-    end subroutine test_obtain_ensembles_rejects_bad_observable_rows
+    end subroutine test_obtain_ensembles_rejects_invalid_history
 
     subroutine test_obtain_ensembles_stop_reasons()
         integer(int32), parameter :: n_dims = 2_int32
@@ -2429,6 +2513,7 @@ contains
         integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, n_raw
         integer(int32) :: seed_indices(n_seeds), stop_reasons(n_seeds)
         logical(c_bool) :: raw_matrix(n_vecs, n_seeds)
+        real(real64) :: mad_ambient
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.4_real64]
@@ -2451,11 +2536,11 @@ contains
         seed_indices = [1_int32, 5_int32]
         stop_reasons = 0_int32
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=raw_matrix, &
-                                    stop_reasons=stop_reasons, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "stop reasons: execution check")
 
@@ -2474,12 +2559,11 @@ contains
 
         stop_reasons = 0_int32
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, alpha_accept=0.0_real64, &
-                                    ensemble_matrix=raw_matrix, &
-                                    stop_reasons=stop_reasons, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, alpha_accept=0.0_real64, t_observables=10_int32, &
+            n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, &
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "stop reasons: zero alpha_accept execution check")
         call assert_equal_int(stop_reasons(1), STC_STOP_NEVER_ACCEPTED, &
@@ -2490,10 +2574,11 @@ contains
         call assert_equal_int(stop_reasons(2), STC_STOP_NO_CANDIDATES, &
                               "isolated seed still reports no candidates under zero alpha_accept")
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=raw_matrix, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "stop reasons: omitting the argument still works")
     end subroutine test_obtain_ensembles_stop_reasons
 
@@ -2514,9 +2599,8 @@ contains
         logical(c_bool) :: tmp_vicinity_mask(n_vecs, n_tiles), tmp_surface_mask(n_vecs, n_tiles)
         real(real64) :: tmp_abs_diff(n_vecs, n_tiles)
         real(real64) :: mad_ambient
-        real(real64) :: wide_observables(5, t_obs + 4_int32, n_tiles)
-        real(real64) :: exact_observables(5, t_obs, n_tiles)
-        real(real64) :: narrow_observables(5, t_obs - 2_int32, n_tiles)
+        real(real64) :: exact_observables(5, min(t_obs, n_vecs), n_tiles)
+        real(real64) :: narrow_observables(5, 2, n_tiles)
         logical(c_bool) :: tmp_current_mask(n_vecs, n_tiles)
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
 
@@ -2528,7 +2612,6 @@ contains
         density_labels = [6.0_real64, 6.0_real64, 4.0_real64, 4.0_real64]
         dimension_order = [1_int32, 2_int32]
         seed_indices = [1_int32, 3_int32]
-        wide_observables = 0.0_real64
         exact_observables = 0.0_real64
         narrow_observables = 0.0_real64
 
@@ -2537,46 +2620,26 @@ contains
                                    tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "observable window: tree construction check")
 
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, wide_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "observable matrix wider than t_observables must be rejected")
-
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, exact_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+        call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+            density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
+            t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            exact_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
-                              "observable matrix matching t_observables must be accepted")
+                              "workspace matches the history capped by the input size")
 
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, narrow_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+        call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+            density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
+            2_int32, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
+            narrow_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
-                              "observable matrix narrower than t_observables must be accepted")
+                              "two-column observable history is accepted")
 
-        call obtain_ensembles(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                              density_labels, seed_indices, n_seeds, &
-                              0.5_real64, 0.5_real64, 0.5_real64, 0_int32, n_tiles, &
-                              tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                              tmp_abs_diff, wide_observables, tmp_current_mask, &
-                              ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
-        call assert_equal_int(ierr, ERR_OK, &
-                              "t_observables <= 0 accepts any observable width")
-
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=ensemble_matrix, &
-                                    n_ensembles=n_ensembles, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
                               "allocating wrapper still works when n_vectors < t_observables")
     end subroutine test_obtain_ensembles_observable_window_match
@@ -2595,6 +2658,7 @@ contains
         logical(c_bool) :: raw_matrix(n_vecs, n_seeds), quarter_matrix(n_vecs, n_seeds)
         logical(c_bool) :: full_matrix(n_vecs, n_seeds)
         integer(int32) :: i_vec
+        integer(int32) :: stop_reasons(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -2614,19 +2678,19 @@ contains
         density_labels = [10.0_real64, 10.0_real64, 10.0_real64, 10.0_real64, &
                           1.0_real64, 1.0_real64]
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, alpha_mad=0.25_real64, &
-                                    ensemble_matrix=quarter_matrix, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, 0.25_real64, t_observables=10_int32, &
+            n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=quarter_matrix, stop_reasons=stop_reasons, &
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(quarter_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, &
                          "a degenerate ambient MAD must be rejected, not clustered under")
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, alpha_mad=1.0_real64, &
-                                    ensemble_matrix=full_matrix, &
-                                    n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, 1.0_real64, t_observables=10_int32, &
+            n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=full_matrix, stop_reasons=stop_reasons, &
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(full_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, &
                          "a degenerate ambient MAD is rejected for every alpha_mad")
 
@@ -2634,21 +2698,23 @@ contains
                           1.0_real64, 1.0_real64]
         mad_ambient = -1.0_real64
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=raw_matrix, &
-                                    mad_ambient=mad_ambient, n_ensembles=n_raw, ierr=ierr)
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "spread densities execution check")
         call assert_true(mad_ambient > 0.0_real64, &
                          "spread density labels give a non-zero ambient MAD")
         call assert_true(count(raw_matrix(:, 1)) > 1_int32, &
                          "growth proceeds once the threshold can separate")
 
-        call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seeds, &
-                                    r=0.5_real64, ensemble_matrix=raw_matrix, &
-                                    n_ensembles=n_raw, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "omitting mad_ambient still works")
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
+            ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
+        call assert_equal_int(ierr, ERR_OK, "growth succeeds with the same explicit MAD output")
     end subroutine test_obtain_ensembles_reports_degenerate_mad
 
     subroutine test_compute_ambient_density_stats()
@@ -2675,5 +2741,176 @@ contains
                                "density labels stay unmodified")
 
     end subroutine test_compute_ambient_density_stats
+
+    !> Every selected seed carries a positive locally fitted radius; non-seeds carry none.
+    subroutine test_identify_ensemble_seeds_radii()
+        integer(int32), parameter :: n_dims = 2_int32
+        integer(int32), parameter :: n_vecs = 6_int32
+        integer(int32), parameter :: k_seeding = 1_int32
+
+        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
+        real(real64) :: tmp_distances(n_vecs), seed_radii(n_vecs)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr, i_vec
+        integer(int32) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH)
+        logical(c_bool) :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+
+        ! A dense triple around the origin and a sparse triple far away and widely spaced.
+        vectors(:, 1) = [0.0_real64, 0.0_real64]
+        vectors(:, 2) = [0.1_real64, 0.0_real64]
+        vectors(:, 3) = [0.2_real64, 0.0_real64]
+        vectors(:, 4) = [50.0_real64, 0.0_real64]
+        vectors(:, 5) = [55.0_real64, 0.0_real64]
+        vectors(:, 6) = [60.0_real64, 0.0_real64]
+
+        density_labels = [9.0_real64, 8.0_real64, 7.0_real64, &
+                          6.0_real64, 5.0_real64, 4.0_real64]
+        dimension_order = [1_int32, 2_int32]
+
+        call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_rec_stack, ierr)
+
+        call identify_ensemble_seeds_expert(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, tmp_perm, tmp_distances, tmp_stack, tmp_visited_mask, tmp_newly_covered_mask, sorted_perm, &
+            n_seeds, seed_mask, seed_radii, ierr=ierr)
+
+        call assert_equal_int(ierr, ERR_OK, "seed radii: execution")
+
+        do i_vec = 1, n_vecs
+            if (seed_mask(i_vec)) then
+                call assert_true(seed_radii(i_vec) > 0.0_real64, &
+                                 "seed radii: every seed has a positive growth radius")
+            else
+                call assert_equal_real(seed_radii(i_vec), 0.0_real64, 0.0_real64, &
+                                       "seed radii: non-seeds carry no radius")
+            end if
+        end do
+
+        ! The dense region's seed must be fitted tighter than the sparse region's seed.
+        call assert_true(logical(seed_mask(1)) .and. logical(seed_mask(4)), &
+                         "seed radii: one seed per region")
+        call assert_true(seed_radii(1) < seed_radii(4), &
+                         "seed radii: dense region grows tighter than sparse region")
+
+    end subroutine test_identify_ensemble_seeds_radii
+
+    !> The radius is the requested percentile of the k nearest-neighbor distances.
+    subroutine test_identify_ensemble_seeds_radii_percentile()
+        integer(int32), parameter :: n_dims = 1_int32
+        integer(int32), parameter :: n_vecs = 4_int32
+        integer(int32), parameter :: k_seeding = 3_int32
+
+        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
+        real(real64) :: seed_radii(n_vecs)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: sorted_perm(n_vecs), n_seeds, ierr
+        logical(c_bool) :: seed_mask(n_vecs)
+
+        ! Neighbor distances of vector 1 are 1, 2 and 4.
+        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 4.0_real64]
+        density_labels = [9.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
+        dimension_order = [1_int32]
+
+        call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_rec_stack, ierr)
+
+        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, sorted_perm, n_seeds, seed_mask, seed_radii, ierr=ierr)
+        call assert_equal_int(ierr, ERR_OK, "seed radii percentile: median execution")
+        call assert_equal_real(seed_radii(1), 2.0_real64, 1.0e-12_real64, &
+                               "seed radii percentile: default is the median neighbor distance")
+
+        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, sorted_perm, n_seeds, seed_mask, seed_radii, 1.0_real64, ierr)
+        call assert_equal_int(ierr, ERR_OK, "seed radii percentile: max execution")
+        call assert_equal_real(seed_radii(1), 4.0_real64, 1.0e-12_real64, &
+                               "seed radii percentile: p=1 is the farthest of the k neighbors")
+
+        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, dimension_order, kd_indices, &
+            k_seeding, sorted_perm, n_seeds, seed_mask, seed_radii, 1.5_real64, ierr)
+        call assert_true(ierr /= ERR_OK, &
+                         "seed radii percentile: a quantile outside [0,1] must fail")
+
+    end subroutine test_identify_ensemble_seeds_radii_percentile
+
+    !> Per-seed radii let one seed grow where a uniform radius large enough to do so
+    !! would have merged the dense region into a single blob.
+    subroutine test_obtain_ensembles_per_seed_radii()
+        integer(int32), parameter :: n_dims = 1_int32
+        integer(int32), parameter :: n_vecs = 6_int32
+        integer(int32), parameter :: n_seeds = 2_int32
+
+        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
+        real(real64) :: per_seed_radii(n_seeds)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: seed_indices(n_seeds), ierr, n_ensembles
+        logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds), generated_matrix(n_vecs, n_seeds)
+        integer(int32) :: stop_reasons(n_seeds), generated_stops(n_seeds), generated_count
+        real(real64) :: mad_ambient, generated_mad
+
+        ! Dense cluster 1..3 spaced 0.1 apart, sparse cluster 4..6 spaced 5 apart.
+        vectors(1, :) = [0.0_real64, 0.1_real64, 0.2_real64, &
+                         50.0_real64, 55.0_real64, 60.0_real64]
+        density_labels = [8.0_real64, 8.0_real64, 8.0_real64, &
+                          4.0_real64, 4.0_real64, 4.0_real64]
+        dimension_order = [1_int32]
+        seed_indices = [1_int32, 4_int32]
+
+        call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_rec_stack, ierr)
+
+        ! A uniform radius tight enough for the dense cluster leaves the sparse seed isolated.
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, 0.15_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
+
+        call assert_equal_int(ierr, ERR_OK, "per-seed radii: uniform radius execution")
+        call assert_equal_int(count(ensemble_matrix(:, 2)), 1_int32, &
+                              "per-seed radii: uniform tight radius strands the sparse seed")
+
+
+        call obtain_ensembles_seed_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+                                            density_labels, seed_indices, n_seeds, seed_radii=spread(0.15_real64, 1, n_seeds), &
+                                            t_observables=10_int32, n_tiles=2_int32, ensemble_matrix=generated_matrix, &
+                                            stop_reasons=generated_stops, mad_ambient=generated_mad, ierr=ierr)
+        if (ierr == ERR_OK) generated_count = size(generated_matrix, dim=2, kind=int32)
+        call assert_equal_int(ierr, ERR_OK, "equal per-seed radius execution")
+        call assert_equal_int(generated_count, n_ensembles, "equal per-seed radius ensemble count")
+        call assert_true(all(generated_matrix .eqv. ensemble_matrix), "equal per-seed radius ensemble membership")
+        call assert_true(all(generated_stops == stop_reasons), "equal per-seed radius stop reasons")
+        call assert_true(generated_mad == mad_ambient, "equal per-seed radius ambient MAD")
+
+        ! The same run with a locally fitted radius per seed grows both ensembles.
+        per_seed_radii = [0.15_real64, 5.5_real64]
+
+        call obtain_ensembles_seed_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, per_seed_radii, t_observables=10_int32, &
+            n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, &
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
+
+        call assert_equal_int(ierr, ERR_OK, "per-seed radii: per-seed radius execution")
+        call assert_equal_int(count(ensemble_matrix(:, 1)), 3_int32, &
+                              "per-seed radii: dense ensemble still grows tightly")
+        call assert_true(count(ensemble_matrix(:, 2)) > 1_int32, &
+                         "per-seed radii: sparse ensemble grows at its own scale")
+
+
+        ! A negative radius is rejected rather than silently clamped.
+        per_seed_radii = [0.15_real64, -1.0_real64]
+
+        call obtain_ensembles_seed_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
+            seed_indices, n_seeds, per_seed_radii, t_observables=10_int32, &
+            n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, &
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
+
+        call assert_true(ierr /= ERR_OK, "per-seed radii: negative radius must fail")
+
+    end subroutine test_obtain_ensembles_per_seed_radii
 
 end module mod_test_shatter_cluster_data

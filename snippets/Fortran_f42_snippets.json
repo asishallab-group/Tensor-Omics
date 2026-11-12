@@ -93,7 +93,7 @@
     "prefix": "f42:kd_tree.use",
     "description": "use f42_kd_tree, only: ...",
     "body": [
-      "use f42_kd_tree, only: ${1|build_kd_index,build_spherical_kd|}"
+      "use f42_kd_tree, only: ${1|build_kd_index,build_spherical_kd,vicinity_vectors,vicinity_vectors_count|}"
     ]
   },
   "build_kd_index (call)": {
@@ -147,6 +147,72 @@
       "    kd_indices=${4:kd_indices}, &",
       "    dimension_order=${5:dimension_order}, &",
       "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "vicinity_vectors (call)": {
+    "prefix": "f42:vicinity_vectors",
+    "description": "vicinity_vectors",
+    "body": [
+      "call vicinity_vectors( &",
+      "    query_point=${1:query_point}, &",
+      "    points=${2:points}, &",
+      "    n_dimensions=${3:n_dimensions}, &",
+      "    n_points=${4:n_points}, &",
+      "    r=${5:r}, &",
+      "    dimension_order=${6:dimension_order}, &",
+      "    kd_indices=${7:kd_indices}, &",
+      "    vicinity_mask=${8:vicinity_mask}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "vicinity_vectors (call, checked)": {
+    "prefix": "f42:vicinity_vectors.checked",
+    "description": "vicinity_vectors (with error check)",
+    "body": [
+      "call vicinity_vectors( &",
+      "    query_point=${1:query_point}, &",
+      "    points=${2:points}, &",
+      "    n_dimensions=${3:n_dimensions}, &",
+      "    n_points=${4:n_points}, &",
+      "    r=${5:r}, &",
+      "    dimension_order=${6:dimension_order}, &",
+      "    kd_indices=${7:kd_indices}, &",
+      "    vicinity_mask=${8:vicinity_mask}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "vicinity_vectors_count (call)": {
+    "prefix": "f42:vicinity_vectors_count",
+    "description": "vicinity_vectors_count",
+    "body": [
+      "call vicinity_vectors_count( &",
+      "    query_point=${1:query_point}, &",
+      "    points=${2:points}, &",
+      "    n_dimensions=${3:n_dimensions}, &",
+      "    n_points=${4:n_points}, &",
+      "    r=${5:r}, &",
+      "    dimension_order=${6:dimension_order}, &",
+      "    kd_indices=${7:kd_indices}, &",
+      "    n_neighbors=${8:n_neighbors}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "vicinity_vectors_count (call, checked)": {
+    "prefix": "f42:vicinity_vectors_count.checked",
+    "description": "vicinity_vectors_count (with error check)",
+    "body": [
+      "call vicinity_vectors_count( &",
+      "    query_point=${1:query_point}, &",
+      "    points=${2:points}, &",
+      "    n_dimensions=${3:n_dimensions}, &",
+      "    n_points=${4:n_points}, &",
+      "    r=${5:r}, &",
+      "    dimension_order=${6:dimension_order}, &",
+      "    kd_indices=${7:kd_indices}, &",
+      "    n_neighbors=${8:n_neighbors}, &",
+      "    ierr=${9:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

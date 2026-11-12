@@ -57,6 +57,12 @@
 #define M_GENE_TO_FAM_SENTINEL 0_int32
 #define M_GENE_TO_FAM_DOC(GENES_TARGET_ARG) Index mapping -> each index `i` holds the family index for the corresponding gene in `GENES_TARGET_ARG`, using `M_GENE_TO_FAM_SENTINEL` for unassigned genes
 
+! Extents of a k-d tree traversal stack, `tmp_stack(M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH)`:
+! each entry holds a subtree's index range and depth. Shared by f42_kd_tree_impl and every
+! implementation that hands a traversal stack to it, so the two cannot disagree on its shape.
+#define M_KD_STACK_ENTRY_SIZE 3
+#define M_KD_TRAVERSAL_STACK_DEPTH 64
+
 ! not using is_err here, as our error code encoding might lead to unexpected behavior. The ISO standard defines success value as zero.
 #define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); close(unit); return; end if
 
