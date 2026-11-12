@@ -286,8 +286,9 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     for module in project:
         for procedure in module.exported_procedures:
             _resolve_output_from(procedure, project, diagnostics, conventions, evaluator)
-            # once per pair: the expert half carries every argument the plain half has
-            if module.procedure(procedure.name + conventions.expert_suffix) is None:
+            # once per generated pair: its expert half carries every argument the plain half has
+            expert = module.procedure(procedure.name + conventions.expert_suffix)
+            if expert is None or _plain_of_an_expert(expert, project, conventions) is not procedure:
                 _check_refined_values(procedure, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
 

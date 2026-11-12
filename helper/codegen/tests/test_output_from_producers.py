@@ -608,6 +608,25 @@ class TestARefinedValueFeedsOneCall:
 
             assert len(self.refusals(bag)) == 1 and self.refusals(bag)[0].endswith(f"{verb} it too")
 
+    def test_a_hand_written_consumer_beside_its_own_expert_named_procedure_is_checked(self):
+        # `refining` and an unrelated hand-written `refining_expert`: not a generated pair, so
+        # nothing else checks `refining`'s arguments
+        def hand(binding_name):
+            return procedure(binding_name, integer("n_items", doc="items"),
+                             integer("total", Intent.OUT, doc="a total"),
+                             integer("ierr", Intent.OUT, doc="error"))
+        reader = ("s0", "plain_size", "sized", [("base", "cap")])
+        arguments = [integer("n_items", doc="items"), integer("cap", Intent.INOUT, doc="a cap")]
+        for name, producer, output, rows in (self.REFINER, reader):
+            arguments.append(integer(name, doc=table(*rows),
+                                     directives=auto(output, producer, "tox_hand")))
+            arguments.append(real("res_" + name, Intent.OUT, f"({name})", doc="sized"))
+        arguments.append(integer("ierr", Intent.OUT, doc="error"))
+        cons = module("tox_cons", procedure("refining", *arguments), hand("refining_expert"))
+        _, bag = analysed(self.producers(), cons)
+
+        assert len(self.refusals(bag)) == 1
+
     def test_one_call_filling_two_outputs_from_it_is_one_call(self):
         for binding in (False, True):
             _, bag = analysed(self.producers(), self.consumer_of(
