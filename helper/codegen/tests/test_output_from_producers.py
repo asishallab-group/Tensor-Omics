@@ -469,14 +469,13 @@ class TestAnInputTheProducerRefines:
     """An `intent(inout)` producer input -- a cap the producer lowers in place.
 
     Where the generated Fortran calls the producer, it is passed through a required
-    `intent(inout)` argument of the consumer, or a value another producer computes there: that
-    is what the call can write and what carries the refined value on. Python and R adopt the
-    value themselves.
+    `intent(inout)` argument of the consumer: that is what the call can write and what carries
+    the refined value on. Python and R adopt the value themselves.
     """
 
     MESSAGE = ("'work_size' is computed from 'capped_size', which refines its input 'cap' in "
-               "place, so it must be passed through a required intent(inout) argument or a "
-               "value another DM_OUTPUT_FROM computes here; it is given {}")
+               "place, so it must be passed through a required intent(inout) argument; it is "
+               "given {}")
 
     def capping(self):
         return module("tox_hand", procedure(
@@ -506,8 +505,7 @@ class TestAnInputTheProducerRefines:
         assert error.note == (
             "the generated wrapper calls 'capped_size' itself, and writes 'cap' back through "
             "what supplies it: supply it by a required intent(inout) argument of the "
-            "implementation, which the refined value then reaches, and the caller with it, or by "
-            "another argument a producer computes here, which the implementation then sees refined")
+            "implementation, which the refined value then reaches, and the caller with it")
 
     def test_an_intent_in_argument_is_refused(self):
         self.refused_as(self.capped(integer("cap", Intent.IN, doc="a cap")), "intent(in) 'cap'")
@@ -545,54 +543,6 @@ class TestAnInputTheProducerRefines:
                           self.capped(integer("cap", Intent.IN, doc="a cap"), sized_result=True))
 
         assert bag.errors == ()
-
-    def computed_cap(self, reversed_order=False, sized_result=False):
-        """`cap` is itself computed, by `base_size`; `capped_size` refines it in place."""
-        base = module("tox_base", procedure(
-            "base_size", integer("n_items", doc="items"),
-            integer("base", Intent.OUT, doc="a size"), integer("ierr", Intent.OUT, doc="error")))
-        size = "res" if sized_result else "tmp_buf"
-        intent = Intent.OUT
-        cap = [integer("cap", doc="computed", directives=auto("base", "base_size", "tox_base")),
-               real(f"{size}_cap", intent, "(cap)", doc="sized by the cap")]
-        work = [integer("work_size", doc=table(("cap", "cap")),
-                        directives=auto("sized", "capped_size", "tox_hand")),
-                real(size, intent, "(work_size)", doc="sized by the work size")]
-        arguments = (work + cap) if reversed_order else (cap + work)
-        return [self.capping(), base,
-                consumer("capped_impl", integer("n_items", doc="items"), *arguments)]
-
-    def test_a_value_the_wrapper_computes_is_passed_to_it(self):
-        synthesis, bag = analysed(*self.computed_cap())
-        text = body(fortran(synthesis), "capped")
-
-        assert bag.errors == ()
-        assert "cap = cap" in call_of(text, "capped_size")
-        # computed first, refined second, and allocated with the refined value only after both
-        assert text.index("call base_size(&") < text.index("call capped_size(&") \
-            < text.index("M_ALLOCATE(tmp_buf_cap(cap))")
-
-    def test_the_computing_call_comes_first_whatever_the_argument_order(self):
-        # `work_size` (refining `cap`) is declared before `cap`
-        synthesis, bag = analysed(*self.computed_cap(reversed_order=True))
-        text = body(fortran(synthesis), "capped")
-
-        assert bag.errors == ()
-        assert text.index("call base_size(&") < text.index("call capped_size(&")
-
-    def test_python_and_r_call_them_in_the_same_order(self):
-        from codegen.abi.c_abi import build_project
-        from codegen.emit.python_ctypes import PythonEmitter
-        from codegen.emit.r_wrapper import RWrapperEmitter
-
-        synthesis, bag = analysed(*self.computed_cap(reversed_order=True, sized_result=True))
-        binding = build_project(synthesis.project, bag)
-        assert bag.errors == (), bag.render()
-        wrapper = next(w for m in binding for w in m if w.stripped_name == "capped")
-        python, r = PythonEmitter().function(wrapper), RWrapperEmitter().function(wrapper)
-
-        assert python.index("base_size(") < python.index("capped_size(")
-        assert r.index("base_size(") < r.index("capped_size(")
 
 
 class TestARefinedValueFeedsOneCall:
@@ -667,58 +617,71 @@ class TestARefinedValueFeedsOneCall:
             assert bag.errors == ()
 
 
-class TestASupplyCycle:
-    """Two AUTO arguments each given the other -- or one given itself -- have no call order.
+class TestChainingIsRefused:
+    """A producer input supplied by another AUTO value of the consumer: one producer feeding
+    another. Rejected (`design/impl-layer.md`, "Rejected -- chaining producers"), on either
+    route, a value given back to its own producer included."""
 
-    Reported once per cycle, naming its chain.
-    """
-
-    def pair(self):
-        return module("tox_base", procedure(
-            "pair_size", integer("other", doc="the other size"),
-            integer("sized", Intent.OUT, doc="a size"), integer("ierr", Intent.OUT, doc="error")))
-
-    def cycles(self, bag):
-        return [e for e in bag.errors if "through its inputs" in e.message]
-
-    def test_two_given_each_other_are_refused_once(self):
-        cons = consumer(
-            "cyclic_impl",
-            integer("first", doc=table(("other", "second")),
-                    directives=auto("sized", "pair_size", "tox_base")),
-            real("tmp_a", Intent.OUT, "(first)", doc="scratch"),
-            integer("second", doc=table(("other", "first")),
-                    directives=auto("sized", "pair_size", "tox_base")),
-            real("tmp_b", Intent.OUT, "(second)", doc="scratch"),
+    def sizes(self):
+        return module("tox_base",
+            procedure("base_size", integer("n_items", doc="items"),
+                      integer("base", Intent.OUT, doc="a size"),
+                      integer("ierr", Intent.OUT, doc="error")),
+            procedure("plus_size", integer("other", doc="a size"),
+                      integer("plus", Intent.OUT, doc="a size"),
+                      integer("ierr", Intent.OUT, doc="error")),
         )
-        _, bag = analysed(self.pair(), cons)
 
-        [error] = self.cycles(bag)
-        assert error.message == ("'first' is computed from a producer given, through its inputs, "
-                                 "'first' itself: first -> second -> first")
-        assert "a required intent(inout) one where the producer refines it in place" in error.note
+    def consumer_of(self, *sized, binding=False):
+        arguments = [integer("n_items", doc="items")]
+        for name, producer, output, rows in sized:
+            arguments.append(integer(name, doc=table(*rows),
+                                     directives=auto(output, producer, "tox_base")))
+            arguments.append(real(("res_" if binding else "tmp_") + name, Intent.OUT, f"({name})",
+                                  doc="sized"))
+        return consumer("chained_impl", *arguments)
 
-    def test_one_given_itself_is_refused(self):
-        cons = consumer(
-            "selfish_impl",
-            integer("first", doc=table(("other", "first")),
-                    directives=auto("sized", "pair_size", "tox_base")),
-            real("tmp_a", Intent.OUT, "(first)", doc="scratch"),
-        )
-        _, bag = analysed(self.pair(), cons)
+    def chained(self, bag):
+        return [(e.message, e.note) for e in bag.errors if "a producer computes here" in e.message]
 
-        [error] = self.cycles(bag)
-        assert error.message == ("'first' is computed from a producer given, through its inputs, "
-                                 "'first' itself: first -> first")
+    def test_one_fed_by_another_is_refused_on_either_route_in_either_order(self):
+        base = ("s0", "base_size", "base", [])
+        plus = ("s1", "plus_size", "plus", [("other", "s0")])
+        for binding in (False, True):
+            for sized in ((base, plus), (plus, base)):
+                _, bag = analysed(self.sizes(), self.consumer_of(*sized, binding=binding))
 
-    def test_the_emitters_assert_there_is_none(self):
-        from codegen.ir.roles import call_order, supply_order
+                [(message, note)] = self.chained(bag)
+                assert message == ("'s1' is computed from 'plus_size', whose input 'other' would "
+                                   "be 's0', which a producer computes here too")
+                assert note == ("producers do not feed each other: size for an upper bound "
+                                "instead (the sizing formulas are monotone, so a buffer sized for "
+                                "the bound fits), or take the value as an argument of the caller's")
 
-        entries = [({"a"}, {"b"}, "a"), ({"b"}, {"a"}, "b"), ({"c"}, set(), "c")]
-        ordered, cycles = call_order(entries)
-        assert (ordered, cycles) == (["c"], [["a", "b"]])
-        with pytest.raises(AssertionError):
-            supply_order(entries)
+    def test_a_refined_input_is_told_to_be_a_required_intent_inout_argument(self):
+        sizes = module("tox_base",
+            procedure("base_size", integer("n_items", doc="items"),
+                      integer("base", Intent.OUT, doc="a size"),
+                      integer("ierr", Intent.OUT, doc="error")),
+            procedure("capped_size", integer("cap", Intent.INOUT, doc="a cap it lowers"),
+                      integer("sized", Intent.OUT, doc="a size"),
+                      integer("ierr", Intent.OUT, doc="error")))
+        cons = self.consumer_of(("s0", "base_size", "base", []),
+                                ("s1", "capped_size", "sized", [("cap", "s0")]))
+        _, bag = analysed(sizes, cons)
+
+        [(_, note)] = self.chained(bag)
+        assert note.endswith(" -- a required intent(inout) one, since the producer refines it "
+                             "in place")
+
+    def test_one_given_what_it_fills_is_refused(self):
+        _, bag = analysed(self.sizes(),
+                          self.consumer_of(("s1", "plus_size", "plus", [("other", "s1")])))
+
+        [(message, _)] = self.chained(bag)
+        assert message == ("'s1' is computed from 'plus_size', whose input 'other' would be "
+                           "'s1', which a producer computes here too")
+
 
 class TestACycle:
     """A producer that, through its producers, comes back to its consumer is refused.

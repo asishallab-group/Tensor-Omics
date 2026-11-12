@@ -821,11 +821,10 @@ And what calling one directly takes:
   producer through different producer-input rows (`a | a1`, `a | a2`) are two calls. Grouping by
   the producer alone made them one call, which wrote the second size and never the first.
 - **An input the producer refines in place is passed through a required `intent(inout)`
-  argument, or a value `foo` computes itself** -- another `DM_OUTPUT_FROM` argument it takes
-  over, a local it owns (FES 2026-11-12). The call writes it back through whatever supplies it:
-  an `intent(in)` dummy or a constant does not compile, and the local an optional is
-  materialised into would swallow the refined value. Those are refused with one message, whose
-  note names the two remedies. Where only Python and R call the producer they adopt the value
+  argument**, and nothing else. The call writes it back through whatever supplies it: an
+  `intent(in)` dummy or a constant does not compile, and the local an optional is materialised
+  into would swallow the refined value. Those are refused with one message, whose note names the
+  one remedy. Where only Python and R call the producer they adopt the value
   themselves (`inout_feedback`), so the rule applies only where `foo` makes the call.
 - **A refined value feeds that one producer call** (FES 2026-11-12), on either route: no other
   producer call may read it, and no second one refine it. Which value another reader saw --
@@ -835,12 +834,13 @@ And what calling one directly takes:
   allocations and the implementation call, which come after every producer call, see it
   refined. `_check_refined_values` refuses the rest, naming the value, the refining producer
   and the other reader.
-- **Calls run in dependency order** (`roles.call_order`), in the Fortran wrapper and in Python
-  and R: a producer given another's output runs after it, so a value computed by one and refined
-  by the next is computed first. It used to follow the argument order, which got it right only
-  where the computing argument was declared first. Two arguments each given the other, or one
-  given itself, have no order: the same walk returns the cycle, which `_check_supply_cycles`
-  refuses once, naming its chain, and the emitters assert none reached them (`supply_order`).
+- **Producers do not feed each other** (FES 2026-11-12, "Rejected -- chaining producers"
+  above stands). A producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
+  consumer -- or by the value it computes itself -- is refused on either route
+  (`roles._refuses_chaining`), with the recorded alternative as its note: size for an upper
+  bound, or take the value as an argument of the caller's. So no producer call reads another's
+  output, and the calls run in argument order, which no longer matters. An attempt at ordering
+  them by their dependencies, with the cycles that brought, went again on that decision.
 - **A same-module producer is not `use`d** -- the module would `use` itself, which does not
   compile. It is what an implementation module whose sizing routine is itself an implementation,
   beside the consumers it sizes, generates.
