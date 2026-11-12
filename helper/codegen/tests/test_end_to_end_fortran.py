@@ -143,6 +143,22 @@ end program probe
 """
 
 
+#: The probe for `fx_extents_impl`'s extent that must equal a sum (#203)
+_EQUALS_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use fx_extents, only: grouped_rows
+    use tox_errors, only: get_err_code, get_err_arg_pos
+    implicit none
+    real(real64) :: values(4) = [1.0_real64, 2.0_real64, 4.0_real64, 8.0_real64]
+    real(real64) :: sums(3)
+    integer(int32) :: ierr
+
+{body}
+end program probe
+"""
+
+
 def run_fortran(built: Path, tmp_path: Path, body: str, probe: str = _PROBE) -> list[str]:
     """Compile a probe around `body`, link it against `built`, return its output words."""
     source = tmp_path / "probe.F90"
@@ -266,6 +282,32 @@ class TestExtentForms:
 
         assert out == ["0", "6.00", "60.00"]
         assert (built / "fx_shapes_c.o").exists()
+
+
+class TestAnExtentThatMustEqual:
+    """#203: `n_rows` must equal `sum(group_sizes)`, and keeps its dimension check."""
+
+    def test_each_input_is_blamed_for_its_own_fault(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            call grouped_rows(3_int32, 2_int32, [2_int32, 1_int32], values, sums, ierr)
+            print '(i0, 2(1x, f6.2))', ierr, sums(1:2)
+            call grouped_rows(4_int32, 2_int32, [2_int32, 1_int32], values, sums, ierr)
+            print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)
+            call grouped_rows(0_int32, 2_int32, [2_int32, 1_int32], values, sums, ierr)
+            print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)
+            call grouped_rows(2_int32, 0_int32, [2_int32, 1_int32], values, sums, ierr)
+            print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)
+            call grouped_rows(2_int32, 2_int32, [5_int32, -3_int32], values, sums, ierr)
+            print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)
+        """, probe=_EQUALS_PROBE)
+
+        assert out == [
+            "0", "3.00", "4.00",
+            "206", "1",     # a plain mismatch, at n_rows
+            "202", "1",     # n_rows = 0 is empty, not a mismatch
+            "202", "2",     # n_groups = 0: the comparison runs after it, so not a mismatch either
+            "201", "3",     # [5, -3] sums to n_rows, and the count is refused
+        ]
 
 
 class TestPurity:

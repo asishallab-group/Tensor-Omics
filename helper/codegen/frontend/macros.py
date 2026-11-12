@@ -217,6 +217,7 @@ class DocMacroNames:
     minimum: str = "DM_MIN"
     maximum: str = "DM_MAX"
     sentinel: str = "DM_SENTINEL"
+    equals: str = "DM_EQUALS"
     allow_nan: str = "DM_ALLOW_NAN"
     allow_infinite: str = "DM_ALLOW_INFINITE"
 
@@ -230,6 +231,7 @@ class DocMacroNames:
             self.minimum,
             self.maximum,
             self.sentinel,
+            self.equals,
             self.allow_nan,
             self.allow_infinite,
         )

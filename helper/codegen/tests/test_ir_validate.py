@@ -993,6 +993,63 @@ class TestAPrologueFeedingARecommendRoutine:
         ), messages(bag)
 
 
+    def test_a_derived_producer_input_the_prologue_writes_is_rejected_too(self, bag):
+        # extent_size(n, x(n)) derives `n` in its own binding, but the Fortran wrapper calls it
+        # directly, above the prologue, and passes the `budget` the table maps `n` to
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode, Prologue
+        from codegen.ir.entities import Meta
+        from codegen.ir.roles import analyse_project
+        from codegen.synthesize import synthesize_wrappers
+
+        impl = Meta(summary="an implementation", author="AUTHOR")
+        producers = b.module("tox_prod_impl", b.procedure(
+            "extent_size_impl",
+            b.integer("n", Intent.IN, doc="values"),
+            b.real("x", Intent.IN, "(n)", doc="the values"),
+            b.integer("extent", Intent.OUT, doc="the size"),
+            meta=impl,
+        ))
+        consumer = b.module(
+            "tox_demo_impl",
+            b.procedure(
+                "guard",
+                b.integer("m", Intent.IN, doc="length"),
+                b.integer("budget", Intent.OUT, doc="decided here -- too late for extent_size"),
+                b.logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+                b.ierr(),
+                meta=Meta(summary="Guard", author="AUTHOR"),
+            ),
+            b.procedure(
+                "crunch_impl",
+                b.integer("m", Intent.IN, doc="length"),
+                b.real("x", Intent.IN, "(m)", doc="the data"),
+                b.integer("budget", Intent.INOUT, doc="how much room to plan for"),
+                b.integer("wsize", Intent.IN, doc=[
+                    "Work size.", "| Producer input | Supplied by |", "|---|---|",
+                    "| n | budget |"],
+                    directives=Directives(output_from=OutputFrom(
+                        "extent", "extent_size", "tox_prod", OutputFromMode.AUTO))),
+                b.real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+                b.real("result", Intent.OUT, "(m)", doc="the answer"),
+                meta=impl,
+                directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+            ),
+        )
+        project = synthesize_wrappers(b.project(producers, consumer),
+                                      diagnostics=DiagnosticBag()).project
+        analyse_project(project, DiagnosticBag())
+        plan = project.procedure("tox_demo", "crunch_expert").argument("wsize").roles.computed_from
+        assert [(s.name, s.argument, s.derived) for s in plan.inputs][0] == ("n", "budget", True)
+
+        validate_project(project, bag)
+
+        assert any(
+            "'extent_size' is passed 'budget', which the prologue only fills afterwards"
+            == d.message
+            for d in bag.errors
+        ), messages(bag)
+
+
 class TestPrologueAndTheModeSplit:
     """A prologue is declared once and runs in every wrapper, so it may only name what
     every wrapper has -- which is all of the implementation's arguments unless it splits per mode."""

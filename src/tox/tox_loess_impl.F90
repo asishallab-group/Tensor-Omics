@@ -243,12 +243,11 @@ contains
     ! ============================================================
     ! Recommend workspace sizes based on Netlib exact formulas
     ! ============================================================
-    !> M_EXPORT_C
-    !| summary: Recommend workspace sizes based on Netlib exact formulas
+    !> summary: Recommend workspace sizes based on Netlib exact formulas
     !| AUTHOR_VIVIAN_BASS
     !| Computes the required sizes for integer and real workspace arrays.
     !| These sizes depend on the dimensionality of the data and the maximum neighborhood size.
-    subroutine tox_loess_required_workspace(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization)
+    subroutine tox_loess_required_workspace_impl(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization)
         ! max_neighborhood_size is the maximum neighborhood size (usually n_train).
         ! save_factorization indicates if matrix factorizations are saved.
         integer(int32), intent(in) :: n_dim
@@ -275,7 +274,7 @@ contains
             real_workspace_size = real_workspace_size + (n_dim + 1) * max_neighborhood_size
         end if
         real_workspace_size = max(CM_MIN_REAL_WORKSPACE_SIZE, real_workspace_size)
-    end subroutine tox_loess_required_workspace
+    end subroutine tox_loess_required_workspace_impl
 
     ! ============================================================
     ! Plain LOESS fitting
@@ -297,7 +296,7 @@ contains
             !! Maximum neighborhood size
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !! DM_MIN(CM_MIN_INT_WORKSPACE_SIZE)
             !!
             !! | Producer input    | Supplied by |
@@ -305,7 +304,7 @@ contains
             !! |       n_dim       |   1_int32   |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !! DM_MIN(CM_MIN_REAL_WORKSPACE_SIZE)
             !!
             !! | Producer input    | Supplied by |
@@ -407,7 +406,7 @@ contains
             !! DM_DEFAULT(CM_DEFAULT_LOESS_ITERS)
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !! DM_MIN(CM_MIN_INT_WORKSPACE_SIZE)
             !!
             !! | Producer input    | Supplied by |
@@ -415,7 +414,7 @@ contains
             !! |       n_dim       |   1_int32   |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !! DM_MIN(CM_MIN_REAL_WORKSPACE_SIZE)
             !!
             !! | Producer input    | Supplied by |

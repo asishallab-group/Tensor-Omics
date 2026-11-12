@@ -22,9 +22,14 @@ def source_of(argument: Argument) -> str | None:
     if roles is None:
         return None
     if roles.extent_of:
-        # an extent may size several arrays; they are checked against each other before the
-        # call, so by the time Fortran can complain they agree and naming the first is true
-        return roles.extent_of[0].name
+        # An extent may size several arrays; they are checked against each other before the
+        # call, so by the time Fortran can complain they agree and naming the first is true.
+        # Only an array the caller passed, though: blaming an output names something they
+        # never wrote. An extent sizing outputs alone is the caller's own argument -- unless
+        # it is also a mask's count, which the mask below names.
+        readable = roles.readable_owners
+        if readable:
+            return readable[0].name
     if roles.shape_of is not None:
         return roles.shape_of.name
     if roles.mask_count_of is not None:
@@ -53,4 +58,22 @@ def shapes_of(wrapper, language: str) -> list[str | None]:
         render(declared_shape(checked[argument.name.lower()]), language)
         if argument.name.lower() in checked else None
         for argument in wrapper.procedure.arguments
+    ]
+
+
+
+def equalities_of(procedure: Procedure, language: str) -> list[str | None]:
+    """The `DM_EQUALS` expression of each argument that has one, positionally, else None.
+
+    The wrapper reports a mismatch as `ERR_SIZE_MISMATCH` at the argument, and a code carries
+    no text, so the binding states what it had to equal: `'n_replicates' must equal
+    sum(reps_per_tissue)`. As the author wrote it, with its literals written the way
+    `language` writes them.
+    """
+    from .doc_literals import render
+
+    return [
+        render(argument.directives.equals.expression, language)
+        if argument.directives.equals is not None else None
+        for argument in procedure.arguments
     ]
