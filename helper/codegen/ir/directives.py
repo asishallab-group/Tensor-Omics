@@ -142,6 +142,19 @@ class Sentinel:
 
 
 @dataclass(frozen=True)
+class Equals:
+    """`DM_EQUALS(EXPR)` -- an integer that must equal what `expression` computes.
+
+    For a size another argument fixes: `n_replicates` must be `sum(reps_per_tissue)`. The
+    wrapper reports a mismatch as `ERR_SIZE_MISMATCH` at the argument. `expression` is Fortran
+    source, evaluated where the constants it refers to are known.
+    """
+
+    expression: str
+    line_number: int | None = None
+
+
+@dataclass(frozen=True)
 class AllowNan:
     """`DM_ALLOW_NAN` -- opt a real argument out of the default NaN rejection."""
 
@@ -164,6 +177,7 @@ Directive = (
     | Minimum
     | Maximum
     | Sentinel
+    | Equals
     | AllowNan
     | AllowInfinite
 )
@@ -181,6 +195,7 @@ class Directives:
     minimum: Minimum | None = None
     maximum: Maximum | None = None
     sentinel: Sentinel | None = None
+    equals: Equals | None = None
     allow_nan: AllowNan | None = None
     allow_infinite: AllowInfinite | None = None
 
@@ -195,6 +210,7 @@ class Directives:
             self.minimum,
             self.maximum,
             self.sentinel,
+            self.equals,
             self.allow_nan,
             self.allow_infinite,
         )
@@ -215,7 +231,10 @@ class Directives:
 
     @property
     def has_range(self) -> bool:
-        """A `DM_MIN`/`DM_MAX`/`DM_SENTINEL` bound was documented."""
+        """A `DM_MIN`/`DM_MAX`/`DM_SENTINEL` bound was documented.
+
+        Not `DM_EQUALS`: a range replaces an extent's dimension check, an equality comes on top.
+        """
         return (
             self.minimum is not None
             or self.maximum is not None
@@ -253,6 +272,7 @@ class DirectivePatterns:
     minimum: re.Pattern
     maximum: re.Pattern
     sentinel: re.Pattern
+    equals: re.Pattern
     allow_nan: re.Pattern
     allow_infinite: re.Pattern
 
@@ -278,6 +298,7 @@ class DirectivePatterns:
             "minimum": f"DM_MIN({_group('expression')})",
             "maximum": f"DM_MAX({_group('expression')})",
             "sentinel": f"DM_SENTINEL({_group('expression')})",
+            "equals": f"DM_EQUALS({_group('expression')})",
             "allow_nan": "DM_ALLOW_NAN",
             "allow_infinite": "DM_ALLOW_INFINITE",
         }
@@ -352,6 +373,9 @@ class DirectiveParser:
         if (match := self.patterns.sentinel.search(text)) is not None:
             yield "sentinel", Sentinel(match.group("expression").strip(), number)
 
+        if (match := self.patterns.equals.search(text)) is not None:
+            yield "equals", Equals(match.group("expression").strip(), number)
+
         if self.patterns.allow_nan.search(text) is not None:
             yield "allow_nan", AllowNan(number)
 
@@ -378,6 +402,7 @@ _MACRO_NAMES = {
     "minimum": "DM_MIN",
     "maximum": "DM_MAX",
     "sentinel": "DM_SENTINEL",
+    "equals": "DM_EQUALS",
     "allow_nan": "DM_ALLOW_NAN",
     "allow_infinite": "DM_ALLOW_INFINITE",
 }

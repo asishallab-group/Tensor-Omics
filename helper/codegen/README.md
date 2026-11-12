@@ -258,7 +258,7 @@ the wrappers, and the export path, where you write the whole procedure and mark 
 | work arrays, permutations, recommend sizing | guide Sections 5.7–5.9 |
 | modes, per-mode procedures | guide Sections 5.10–5.12 |
 | prologues, runtime errors, split families | guide Sections 5.13–5.15 |
-| a parallel loop (an OpenMP root) | guide Section 5.17; which loops qualify and how their data is laid out: the coding guide's section "Parallelisation: OpenMP" ([`misc/Fortran_Coding_Guides.pdf`](../../misc/Fortran_Coding_Guides.pdf)) |
+| a parallel loop (an OpenMP root) | guide Section 5.18; which loops qualify and how their data is laid out: the coding guide's section "Parallelisation: OpenMP" ([`misc/Fortran_Coding_Guides.pdf`](../../misc/Fortran_Coding_Guides.pdf)) |
 | exporting a hand-written procedure | guide Section 6 |
 | every `DM_` macro, with its contract in a comment | [`src/macros.h`](../../src/macros.h) |
 
@@ -328,7 +328,7 @@ The parts a source author does not need, and a generator maintainer does:
 - **A dummy is referred to by its declared spelling.** Fortran is case-insensitive, so
   `integer :: N` sizes `x(n)`; Python and the R shim are not, and saw two variables, one never
   defined. The frontend rewrites every reference to a dummy -- in extents, character lengths,
-  `DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE` and the `DM_MIN`/`DM_MAX`/`DM_SENTINEL`
+  `DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE` and the `DM_MIN`/`DM_MAX`/`DM_SENTINEL`/`DM_EQUALS`
   expressions -- to the declared spelling once (`ford_frontend._use_declared_spellings`), so
   every emitter can compare names exactly. The declared names are never changed: they are the
   published API, mixed case included (`neighbor_mask_S1`, `omics_field_RAP_projection`).
@@ -354,6 +354,21 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **A producer is a published entry point**: an `M_EXPORT_C` procedure, or an implementation's
+  plain-named generated wrapper `foo`, named in its generated module (`ir.roles`). Naming
+  `foo_impl` is refused with a note naming `foo` and its module, or for a mode split the per-mode
+  wrappers; so is `foo_expert`, with a note naming `foo`. A generated producer validates, so its error carries its own argument's position:
+  the generated `foo` that calls it checks `ierr` after each producer call and maps the position
+  to the dummy that supplied that input, else clears it (`emit.fortran_wrapper`), and Python and
+  R re-raise a producer's error from their own call through `_consumer_error` /
+  `.tox_consumer_error`, naming the argument the caller passed, else none. Its purity is derived
+  by the same `_is_pure`, recursively, with a visited set. A same-module producer is not
+  `use`d; an output nothing takes gets a local if it is a scalar and is refused if it is an
+  array; an input the producer's binding derives (`ProducerInput.derived`) is resolved like any
+  other and passed only by Fortran (`OutputFromPlan.binding_inputs` is what Python and R pass).
+  Two modules may not consume each other's producers: the generated modules would `use` each
+  other, a cycle fpm stops on. A producer that comes back to its consumer through its own
+  producers is refused, naming the chain (`roles._check_producer_cycles`).
 - **A refusal of the binding's own is an input error without a code** (#221). Python raises
   `ToxArgumentError` (`emit.errors_python.ARGUMENT_EXCEPTION`), a `ToxInputError` whose `code`
   is None and which is a `TypeError` and a `ValueError` too, for every shape, type and value it
@@ -423,6 +438,17 @@ The parts a source author does not need, and a generator maintainer does:
   (`error_arguments.shapes_of`), so the error says what the array must be: `Array size mismatch
   (argument 'expr'); 'expr' is declared with shape (sum(reps_per_tissue), n_genes)`. Docs keep showing the declared extents (`CArgument.declared_extents`), a
   module constant by its name.
+- **An integer that must equal another size says so with `DM_EQUALS(EXPR)`** (#203):
+  `n_replicates` beside `reps_per_tissue`. The generated Fortran wrapper emits
+  `if (n_replicates /= (sum(reps_per_tissue))) call set_err_once(ierr, ERR_SIZE_MISMATCH, ...)`
+  after the other scalar checks and before the arrays, under the one return; an extent keeps its
+  dimension check beside it, so an empty input is still `ERR_EMPTY_INPUT`. It is a value check,
+  under `NO_INPUT_VALIDATION`, and the C wrapper adds none. Nothing is widened: an int32 sum
+  that wraps is not caught. The binding passes `EXPR` to `check_err_code` (`error_arguments.equalities_of`):
+  `Array size mismatch (argument 'expr', via 'n_replicates'); 'n_replicates' must equal
+  sum(reps_per_tissue)`; and where the extent is read off an array, the "Must equal" sentence goes
+  onto that array's parameter doc (`doc_contract.equality_notes`), since the extent has none, its
+  axis counted from 0 in Python and from 1 in R.
 - **A function is published as a subroutine, its result right before `ierr`** (#221 B1). Both
   Fortran tiers of a function implementation are subroutines taking the result as an
   `intent(out)` argument of the result's own name, before the implementation's own `ierr` where
@@ -579,6 +605,8 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   with a count** — the count is derived from the mask before the call, in every layer
 - a **`DM_RESULT_SIZE_IS` naming an `intent(in)` count** — the bindings read the count back after
   the call; a size the caller chooses sizes the result directly
+- a **`DM_EQUALS` on anything but a required `intent(in)` scalar integer** (`validate._check_equals`) —
+  the wrapper compares the value the caller passed before the call
 - a **module constant sizing an argument that the generator cannot evaluate to an integer** — Python and R
   allocate and pad with its value, so the generator has to know it
 - an **input axis computed from arguments that the C wrapper cannot evaluate** (`c_abi._can_check`):
@@ -613,8 +641,9 @@ dropping the fixed directory they used to be scoped to:
   publishes an unvalidated twin beside it, under a name (`foo_impl`) a binding caller cannot
   tell apart from the validated `foo`. Support routines in the same module (the
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
-  implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
-  Python home of `tox_loess_required_workspace`, and holds no implementation at all
+  implementation module can itself show up in the bindings — `tox_paralog_analysis_impl.py` is
+  the Python home of `mask_chunk_count`, `mask_check_state` and
+  `calc_work_arr_paralog_subsets_size`, and holds no implementation
 - an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
   `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
   (it calls the producer itself). Either way it would discard what the implementation computes;
