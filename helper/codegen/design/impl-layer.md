@@ -406,9 +406,11 @@ conversion took away was the hand-written `validate_dimension_size` that the wra
 
 `tox_loess_required_workspace` and `calc_work_arr_paralog_subsets_size`, two of the recommend
 routines left as hand-written exports, converted once a generated wrapper could be a
-`DM_OUTPUT_FROM` producer ("A generated wrapper as producer", below), by FES's decision: a
-recommend routine that `DM_OUTPUT_FROM` consumers name is generated, so they call its wrapper.
-The paralog one failed the test outright: it carried its own `set_ok` / `validate_*` /
+`DM_OUTPUT_FROM` producer ("A generated wrapper as producer", below), by FES's decision on those
+two (2026-11-10). It is not a rule: a producer only has to be exported, by `M_EXPORT_C` or as an
+implementation's generated wrapper (FES 2026-11-12), and the test above -- would a wrapper
+validate or prepare anything -- still decides between them. The paralog one failed the test
+outright: it carried its own `set_ok` / `validate_*` /
 `is_err` block, with no `arg_pos=` at all, so its errors named nothing. A `DM_MIN(1_int32)` on
 `n_genes` and the existing `DM_MIN(0_int32)` on `max_subset_size` replace the block, and the
 wrapper names the argument. One behaviour changed, accepted by FES: the wrapper validates before

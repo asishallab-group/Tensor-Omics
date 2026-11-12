@@ -1175,12 +1175,13 @@ Because the procedure is not a numeric procedure of the pipeline:
   `f42_kd_tree` were all hand-written exports until someone asked what a wrapper around them
   would do, and the answer was "validate what they were validating by hand, and allocate and sort
   what their callers were allocating and sorting" — so all three are implementations now.
-- **inside an implementation module** — a utility a caller genuinely needs (`mask_chunk_count`),
-  or a recommend/sizing routine (`calc_neighborhood_size`) that no `DM_OUTPUT_FROM` names: a
-  wrapper around either would validate nothing and prepare nothing, so there is nothing to
-  generate. A recommend routine that `DM_OUTPUT_FROM` consumers name is an implementation
-  instead, so its consumers call the generated wrapper — `tox_loess_required_workspace` passed
-  the "nothing to generate" test and was converted for that reason (Section 5.9).
+- **inside an implementation module** — a recommend/sizing routine (`calc_neighborhood_size`) or
+  a utility a caller genuinely needs (`mask_chunk_count`): a wrapper around either would validate
+  nothing and prepare nothing, so there is nothing to generate. Being a `DM_OUTPUT_FROM` producer
+  does not change that: a producer only has to be exported, by `M_EXPORT_C` or as an
+  implementation's generated wrapper (Section 5.9), and the same test decides which.
+  `tox_loess_required_workspace` and `calc_work_arr_paralog_subsets_size` were converted by
+  FES's decision on those two (2026-11-10), not by a rule.
 
 If your procedure is a numeric procedure of the pipeline, take Part I instead. "It was easier to
 export it directly" is how an unvalidated API gets shipped.
