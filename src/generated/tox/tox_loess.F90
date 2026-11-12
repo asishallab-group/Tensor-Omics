@@ -18,21 +18,57 @@
 !| Generated from [[tox_loess_impl(module)]]; do not edit -- regenerate instead.
 module tox_loess
     use f42_safeguard
-    use tox_loess_impl, only: EPS_LOESS, loess_fit_plain_impl, loess_fit_robust_impl, tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS, loess_fit_plain_impl, loess_fit_robust_impl, tox_loess_required_workspace_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
-    use tox_errors, only: validate_in_range_real
+    use tox_errors, only: get_err_arg_pos, map_err_arg_pos, set_err, validate_all_in_range_real
+    use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
+    public :: tox_loess_required_workspace
     public :: loess_fit_plain
     public :: loess_fit_plain_expert
     public :: loess_fit_robust
     public :: loess_fit_robust_expert
 
 contains
+
+    !> summary: Validates its inputs, then calls [[tox_loess_impl(module):tox_loess_required_workspace_impl]].
+    !| Computes the required sizes for integer and real workspace arrays.
+    !| These sizes depend on the dimensionality of the data and the maximum neighborhood size.
+    subroutine tox_loess_required_workspace(&
+            n_dim,&
+            max_neighborhood_size,&
+            int_workspace_size,&
+            real_workspace_size,&
+            save_factorization,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dim
+            !! Dimensionality of the data
+        integer(int32), intent(in) :: max_neighborhood_size
+            !! Maximum neighborhood size
+        integer(int32), intent(out) :: int_workspace_size
+            !! Required size of the integer workspace array
+        integer(int32), intent(out) :: real_workspace_size
+            !! Required size of the real workspace array
+        logical(c_bool), intent(in) :: save_factorization
+            !! Save matrix factorization flag
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+
+        call tox_loess_required_workspace_impl(&
+            n_dim = n_dim,&
+            max_neighborhood_size = max_neighborhood_size,&
+            int_workspace_size = int_workspace_size,&
+            real_workspace_size = real_workspace_size,&
+            save_factorization = save_factorization&
+        )
+    end subroutine tox_loess_required_workspace
 
     !> summary: Validates its inputs, prepares what [[tox_loess_impl(module):loess_fit_plain_impl]] needs, then calls it. The entry point to reach for first; see [[tox_loess(module):loess_fit_plain_expert]] to prepare it yourself.
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
@@ -109,8 +145,20 @@ contains
             max_neighborhood_size = max_neighborhood_size,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = save_factorization_value&
+            save_factorization = save_factorization_value,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                call map_err_arg_pos(ierr, 2_int32, 8_int32)
+            case (5_int32)
+                call map_err_arg_pos(ierr, 5_int32, 10_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_int_workspace(int_workspace_size))
         M_ALLOCATE(tmp_real_workspace(real_workspace_size))
         M_ALLOCATE(tmp_hat_diag(n))
@@ -165,7 +213,7 @@ contains
             !! Total number of data points
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -173,7 +221,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -339,8 +387,20 @@ contains
             max_neighborhood_size = max_neighborhood_size,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = save_factorization_value&
+            save_factorization = save_factorization_value,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                call map_err_arg_pos(ierr, 2_int32, 8_int32)
+            case (5_int32)
+                call map_err_arg_pos(ierr, 5_int32, 10_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_int_workspace(int_workspace_size))
         M_ALLOCATE(tmp_real_workspace(real_workspace_size))
         M_ALLOCATE(tmp_hat_diag(n))
@@ -413,7 +473,7 @@ contains
             !! Total number of data points
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -421,7 +481,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |

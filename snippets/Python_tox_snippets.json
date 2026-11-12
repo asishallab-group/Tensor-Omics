@@ -634,7 +634,18 @@
     "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
     "body": [
       "from tensor_omics.tox_loess import (",
-      "    ${1|loess_fit_plain,loess_fit_robust|},",
+      "    ${1|tox_loess_required_workspace,loess_fit_plain,loess_fit_robust|},",
+      ")"
+    ]
+  },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "${1:result} = tox_loess_required_workspace(",
+      "    n_dim=${2:n_dim},",
+      "    max_neighborhood_size=${3:max_neighborhood_size},",
+      "    save_factorization=${4:save_factorization},",
       ")"
     ]
   },
@@ -673,26 +684,6 @@
       ")"
     ]
   },
-  "tox_loess_impl (import)": {
-    "prefix": "tox:loess_impl.setup",
-    "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
-    "body": [
-      "from tensor_omics.tox_loess_impl import (",
-      "    ${1|tox_loess_required_workspace|},",
-      ")"
-    ]
-  },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "${1:result} = tox_loess_required_workspace(",
-      "    n_dim=${2:n_dim},",
-      "    max_neighborhood_size=${3:max_neighborhood_size},",
-      "    save_factorization=${4:save_factorization},",
-      ")"
-    ]
-  },
   "tox_normalization (import)": {
     "prefix": "tox:normalization.setup",
     "description": "Import a function from Normalization of expression data: putting samples on a comparable scale before anything",
@@ -704,7 +695,7 @@
   },
   "normalize_unit_length (call)": {
     "prefix": "tox:normalize_unit_length",
-    "description": "normalize_unit_length",
+    "description": "Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other",
     "body": [
       "normalize_unit_length(",
       "    vector=${1:vector},",

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
-from .doc_contract import string_input_notes
+from .doc_contract import equality_notes, string_input_notes
 from .doc_links import render_spans as _spans
 from .doc_literals import is_ford_block_tag, render as _render, render_mode_default
 from ..ir.types import BaseType, Intent
@@ -149,7 +149,7 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
         _description(description, argument.doc, emitter, argument.mode_default)
         if description:
             writer.block(description.render())
-        for note in string_input_notes(argument):
+        for note in string_input_notes(argument) + equality_notes(argument, "python"):
             writer.line(note)
 
 

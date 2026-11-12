@@ -151,6 +151,13 @@
 ! real datum. Passed through to the validator's `sentinel=` argument.
 #define DM_SENTINEL(EXPR) The value `EXPR` is additionally accepted.
 
+! An integer that must equal what other arguments fix: `n_replicates` is the number of rows
+! of `expr`, and `reps_per_tissue` must add up to it. The generated wrapper compares the two
+! after the scalar checks, reporting `ERR_SIZE_MISMATCH` at the argument; an extent keeps its
+! dimension check beside it. `EXPR` is Fortran source, as for `DM_MIN`. Only on a required
+! `intent(in)` scalar integer.
+#define DM_EQUALS(EXPR) Must equal `EXPR`.
+
 ! Finiteness is the framework's default contract: the generated validation rejects NaN and
 ! infinity for every real argument. These opt one argument out of that rejection, each
 ! failure mode separately, so an argument that legitimately carries NaN (say a masked-out

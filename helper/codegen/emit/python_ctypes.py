@@ -33,14 +33,18 @@ from ..names import (
     PYTHON_LOAD_LIBRARY,
     PYTHON_NULLABLE,
     PYTHON_NUMPY as _NP,
+    PYTHON_CONSUMER_ERROR,
     PYTHON_PACKAGE_IMPORTS,
     PYTHON_PACKAGE_MODULES,
+    PYTHON_PRODUCER_IMPORTS,
+    PYTHON_TOX_ERROR,
     PYTHON_STDLIB_IMPORTS,
     PYTHON_THIRD_PARTY_IMPORTS,
 )
 from ..render import Writer
-from .error_arguments import shapes_of, sources_of
+from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
+from .producer_calls import auto_plans, returns_single, supplied_by
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -418,7 +422,10 @@ class PythonEmitter:
             for module_name, bound in group:
                 writer.line(f"import {module_name} as {bound}")
             writer.blank()
+        calls_producers = any(auto_plans(wrapper) for wrapper in module)
         for module_name, names in PYTHON_PACKAGE_IMPORTS:
+            if calls_producers and module_name == PYTHON_PRODUCER_IMPORTS[0]:
+                names = names + PYTHON_PRODUCER_IMPORTS[1]
             imported = ", ".join(f"{name} as {bound}" for name, bound in names)
             writer.line(f"from {module_name} import {imported}")
         writer.blank()
@@ -465,6 +472,15 @@ class PythonEmitter:
             writer.line("#: For an array the C wrapper compares with its declaration, that shape")
             writer.line(
                 f"_{wrapper.stripped_name.upper()}_ARGUMENT_SHAPES = "
+                f"({rendered}{',' if rendered else ''})"
+            )
+        # and what a `DM_EQUALS` argument had to equal, which its error states
+        equalities = equalities_of(wrapper.procedure, "python")
+        if any(equalities):
+            rendered = ", ".join(f'"{e}"' if e else "None" for e in equalities)
+            writer.line("#: For an argument with a DM_EQUALS, what it must equal")
+            writer.line(
+                f"_{wrapper.stripped_name.upper()}_ARGUMENT_EQUALS = "
                 f"({rendered}{',' if rendered else ''})"
             )
         return writer.render()
@@ -789,11 +805,8 @@ class PythonEmitter:
         original is kept aside first.
         """
         stashes: dict[str, str] = {}
-        for argument in wrapper:
-            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
-            if plan is None or not plan.is_automatic:
-                continue
-            for supply in plan.inputs:
+        for _, plan in auto_plans(wrapper):
+            for supply in plan.binding_inputs:
                 if supply.is_constant:
                     continue
                 name = supply.argument
@@ -818,6 +831,9 @@ class PythonEmitter:
         checking, so this just calls it. Its inputs -- the extents it reads -- are already
         derived (those that do not themselves come from a producer are), so it just passes
         them, taking the stashed pre-conversion value of any input preparation replaced.
+        What the producer's binding derives itself it is not passed.
+
+        Its error is raised again in this function's words (`_producer_call`).
 
         One call serves every argument it supplies. Producers are not cheap -- the one
         behind `read_tox_data_into` unpacks a zip archive -- so calling it once per
@@ -827,10 +843,7 @@ class PythonEmitter:
         calls: dict[tuple, str] = {}
         stashes = self._raw_stashes(wrapper)
         consumer_module = wrapper.procedure.module
-        for argument in wrapper:
-            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
-            if plan is None or not plan.is_automatic:
-                continue
+        for argument, plan in auto_plans(wrapper):
             producer = stripped_name(plan.producer)
             if plan.producer.module is not consumer_module:
                 # Imported here rather than at the top of the file: two modules may size
@@ -840,17 +853,19 @@ class PythonEmitter:
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
                 f"{supply.name}={self._producer_value(supply, stashes)}"
-                for supply in plan.inputs)
-            single = self._producer_returns_single(plan.producer)
+                for supply in plan.binding_inputs)
+            single = returns_single(plan.producer)
             if single:
-                lines.line(f"{argument.name} = {producer}({call_args})")
+                self._producer_call(lines, wrapper, plan,
+                                    f"{argument.name} = {producer}({call_args})")
                 continue
 
             key = (producer, call_args)
             if key not in calls:
                 calls[key] = f"_{producer}_result" if len(calls) == 0 else \
                     f"_{producer}_result_{len(calls)}"
-                lines.line(f"{calls[key]} = {producer}({call_args})")
+                self._producer_call(lines, wrapper, plan,
+                                    f"{calls[key]} = {producer}({call_args})")
                 for supply in plan.inout_feedback:
                     # the producer refined a value we handed it (e.g. capped it); adopt it
                     lines.line(f'{supply.argument} = {calls[key]}["{supply.name}"]')
@@ -860,18 +875,27 @@ class PythonEmitter:
             writer.extend(lines)
             writer.blank()
 
-    @staticmethod
-    def _producer_returns_single(producer) -> bool:
-        """Whether the producer's wrapper returns one value (not a dict of outputs)."""
-        outputs = [
-            a for a in producer.arguments
-            if a.intent and a.intent.is_output
-            and a.name.lower() != "ierr"
-            and not (a.roles and a.roles.is_temporary)
-        ]
-        if producer.result is not None:
-            outputs.append(producer.result)
-        return len(outputs) == 1
+    def _producer_call(self, lines: Writer, wrapper: CWrapper, plan, call: str) -> None:
+        """The producer call, its error raised again naming this function's argument.
+
+        The producer reports a bad input by its own parameter's name, which the caller of
+        this function never wrote: `supplied_by` maps it to the argument here that supplied
+        it, and nothing else to anything.
+        """
+        positions = ", ".join(f'"{name}": {position}'
+                              for name, position in supplied_by(plan, wrapper))
+        tables = [f"_{wrapper.stripped_name.upper()}_ARGUMENTS"]
+        if any(sources_of(wrapper.procedure)):
+            tables.append(f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES")
+        lines.line("try:")
+        with lines.indent():
+            lines.line(call)
+        lines.line(f"except {PYTHON_TOX_ERROR} as {PYTHON_CAUGHT_ERROR}:")
+        with lines.indent():
+            lines.line(
+                f"raise {PYTHON_CONSUMER_ERROR}({PYTHON_CAUGHT_ERROR}, {{{positions}}}, "
+                f"{', '.join(tables)}) from None"
+            )
 
     def _derive_extents(self, writer: Writer, wrapper: CWrapper,
                         from_computed: bool) -> None:
@@ -1122,6 +1146,8 @@ class PythonEmitter:
             tables.append(f"{prefix}_ARGUMENT_SOURCES")
         if any(shapes_of(wrapper, "python")):
             tables.append(f"shapes={prefix}_ARGUMENT_SHAPES")
+        if any(equalities_of(wrapper.procedure, "python")):
+            tables.append(f"equals={prefix}_ARGUMENT_EQUALS")
         writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {', '.join(tables)})")
         writer.blank()
 
