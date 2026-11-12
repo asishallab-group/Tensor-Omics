@@ -27,7 +27,7 @@ from ..abi.model import CBinding
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
 from .fortran_c import FortranCEmitter
-from .fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+from .fortran_wrapper import FortranWrapperEmitter, wrapper_info
 
 #: Fortran's own words where they are followed by `(` or name a type, which are syntax and not
 #: a use of a name: `intent(in)` does not call anything called `intent`
@@ -71,14 +71,9 @@ def check_wrapper_names(binding: CBinding, synthesis, macros, diagnostics: Diagn
                    diagnostics, reported)
 
     project = synthesis.project
-    emitter = FortranWrapperEmitter(conventions, macros_header=macros_header, project=project)
-    info: dict[str, dict[str, WrapperInfo]] = {}
-    for spec in synthesis.specs:
-        for wrapper in (spec.validating, spec.allocating):
-            if wrapper is not None:
-                info.setdefault(spec.module_name, {})[wrapper.name.lower()] = WrapperInfo(
-                    spec.impl.name, spec.mode_fix
-                )
+    info = wrapper_info(synthesis)
+    emitter = FortranWrapperEmitter(conventions, macros_header=macros_header, project=project,
+                                    wrapper_info=info)
     for module in project:
         if module.name not in synthesis.generated_names or not module.procedures:
             continue

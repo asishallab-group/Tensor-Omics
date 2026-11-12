@@ -106,7 +106,7 @@ contains
         ! genes that carry no variance are dropped from it, never added to it.
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -117,7 +117,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -252,7 +252,7 @@ contains
         ! genes that carry no variance are dropped from it, never added to it.
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -263,7 +263,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|

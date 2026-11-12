@@ -156,6 +156,11 @@ can.
 
 A generated wrapper is emitted `pure` exactly when the implementation it calls is pure, and
 so is everything the wrapper adds around it: the `DM_OUTPUT_FROM` producers and the prologue.
+A producer that is itself a generated wrapper is built impure in the IR -- synthesis cannot know
+yet -- so it is asked the same question in turn, recursively, with the wrappers already being
+asked in a visited set: a chain that comes back to one of them is not proven pure, and ends
+instead of recursing until Python gives up. Without that, every consumer of a generated
+producer was silently impure.
 Nothing else needs checking — every validator in `tox_errors`, `set_ok`, `is_err`,
 `clear_err_arg_pos`, `set_err`, `set_err_once`, `init_perm` and all four
 `sort_array_heapsort` specifics are `pure` or `elemental` already, and `allocate(..., stat=)`
@@ -398,6 +403,20 @@ followed by `sort_array_heapsort` — exactly what the emitter writes into an al
 implementation that *is* a prologue looks like a mistake and is not one: what the convention
 automates for an argument is still a published operation in its own right, and the only thing the
 conversion took away was the hand-written `validate_dimension_size` that the wrapper now emits.
+
+`tox_loess_required_workspace`, one of the recommend routines left as hand-written exports,
+converted once a generated wrapper could be a `DM_OUTPUT_FROM` producer ("A generated wrapper
+as producer", below), by FES's decision on it (2026-11-10). It is not a rule: a producer only has
+to be exported, by `M_EXPORT_C` or as an implementation's generated wrapper (FES 2026-11-12),
+and the test above -- would a wrapper validate or prepare anything -- still decides between
+them. It validated nothing, so its wrapper adds only the trailing `ierr` every entry point has;
+what it bought is that it now sits in the generated module beside its consumers, `tox_loess`,
+whose LOESS wrappers call a producer generated into their own module. What a caller sees changed
+only as FES approved: the C symbol and its argument list, and the top-level Python and R name and
+parameters, are as they were; the Fortran entry point moved to `tox_loess` and gained the
+trailing `ierr`; and `tensor_omics.tox_loess_impl`, which held only this routine, is gone (the
+function is in `tensor_omics.tox_loess`). `calc_work_arr_paralog_subsets_size` converts in its
+own branch (#207), not here.
 
 ### f42_kd_tree: the hand-written triple the layer was designed for
 
@@ -752,6 +771,97 @@ and sliced at the call: `compute_family_scaling_impl` sizes for `n_families` and
 over-allocated is the fraction of points the fit drops; what is bought is that `foo` stays a
 flat sequence of calls and allocations. Should a case appear where the bound is genuinely far
 from the truth, the topological version is the answer — not before.
+
+### A generated wrapper as producer
+
+A producer is a **published entry point**: a hand-written `M_EXPORT_C` recommend routine, or
+an implementation's plain-named generated wrapper, named in its generated module --
+`DM_OUTPUT_FROM(n_out, foo, tox_x, AUTO)` for `foo_impl` in `tox_x_impl`. Synthesis puts the
+wrappers into the project before the output-from pass, so the wrapper resolves like any export,
+and every emitter reads its name, module, arguments and outputs off the plan with nothing to
+translate. `foo_impl` itself is refused (it is not exported, and exporting it is refused too),
+with a note naming `foo` and its module -- or, for a mode split, which has no `foo`, the per-mode
+wrappers -- and so it is when spelled with the generated module, where it does not exist.
+`foo_expert` is refused too, with a note naming `foo`: it is published, so it resolves, but it
+leaves its work arrays to the caller, and nothing downstream catches it -- where Fortran calls
+it, a missing work-array actual or an unrelated refusal; where Python or R does, an
+`ImportError` or "could not find function" at run time, since only `foo` reaches them.
+
+A generated producer validates its inputs, so a call of one can fail, and it reports the failure
+by **its own** argument position -- which none of the hand-written recommend routines sets.
+What the consumer does with that:
+
+- **`foo` checks `ierr` after each producer call.** Each producer starts with `set_ok`, so one
+  check after all of them reported the last producer's outcome and swallowed every earlier error.
+- **The position is translated, else cleared.** A producer input that one of `foo`'s dummies
+  supplied, passed straight through, is mapped to that dummy's position
+  (`select case (get_err_arg_pos(ierr))` + `map_err_arg_pos`); anything else -- a constant, a
+  value `foo` computed -- is cleared (`clear_err_arg_pos`), as an implementation's own position
+  is. Passed through unchanged, `fx_work_total(x, 0)` (`tests/fixtures/impl/fx_sized_impl.F90`)
+  blamed `x` for a bad `scale`.
+- **Python and R do the same on their own call.** Where the value sizes a result, the binding
+  calls the producer's binding itself, and re-raises its error through `_consumer_error` /
+  `.tox_consumer_error`: re-decoded by `check_err_code` against the consumer's argument tables,
+  at the position of the consumer argument that supplied it, or none.
+
+And what calling one directly takes:
+
+- **One call per distinct set of inputs.** One call fills every argument it outputs into, but
+  only arguments whose plans give it the same inputs (`OutputFromPlan.call`): two sizes from one
+  producer through different producer-input rows (`a | a1`, `a | a2`) are two calls. Grouping by
+  the producer alone made them one call, which wrote the second size and never the first.
+  Two arguments taking the same output of one call -- the same producer, given the same inputs
+  -- would hold one value, and the Fortran wrapper wrote only one of them (on main too):
+  `_check_repeated_outputs` refuses that on either route, with a note to use the first alone.
+- **An input the producer refines in place is passed through a required `intent(inout)`
+  argument**, and nothing else. The call writes it back through whatever supplies it: an
+  `intent(in)` dummy or a constant does not compile, and the local an optional is materialised
+  into would swallow the refined value. Those are refused with one message, whose note names the
+  one remedy. Where only Python and R call the producer they adopt the value
+  themselves (`inout_feedback`), so the rule applies only where `foo` makes the call.
+- **A refined value feeds that one producer call** (FES 2026-11-12), on either route: no other
+  producer call may read it, and no second one refine it. Which value another reader saw --
+  before or after the refinement -- depended on the call order, and silently: a size computed
+  from the value, declared before the computing and refining arguments, read the unrefined one
+  in all three languages. One call filling several outputs from it is one call, and the
+  allocations and the implementation call, which come after every producer call, see it
+  refined. `_check_refined_values` refuses the rest, naming the value, the refining producer
+  and the other reader.
+- **Producers do not feed each other** (FES 2026-11-12, "Rejected -- chaining producers"
+  above stands). A producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
+  consumer -- or by the value it computes itself -- is refused on either route
+  (`roles._refuses_chaining`), with the recorded alternative as its note: size for an upper
+  bound, or take the value as an argument of the caller's. So no producer call reads another's
+  output, and the calls run in argument order, which no longer matters. An attempt at ordering
+  them by their dependencies, with the cycles that brought, went again on that decision.
+- **A same-module producer is not `use`d** -- the module would `use` itself, which does not
+  compile. It is what an implementation module whose sizing routine is itself an implementation,
+  beside the consumers it sizes, generates.
+- **An output nothing takes** goes into a scalar local (`<output>_unused`) and is dropped. An
+  array output is refused: a local for it would need the producer's extents, spelled in the
+  consumer's arguments. Python and R take every output the producer's binding returns, so the
+  refusal applies only where `foo` makes the call.
+- **A derived producer input** -- one the producer's binding works out itself, an extent read
+  off one of its arrays -- is resolved like any other: by name, by a table row, as a constant,
+  else the "no argument of the same name" error. The plan marks it derived
+  (`ProducerInput.derived`), so Python and R still leave it out (`binding_inputs`), and the error
+  applies only where `foo` calls the producer: a hand-written consumer's producer is called by
+  Python and R alone, which never pass it. The resolution used to skip derived inputs before it
+  read the table, so a row `n | m` was validated and then dropped, and `foo` found `n` by name
+  or not at all.
+- **A producer may not come back to its consumer.** A procedure sizing an argument by itself,
+  or two sizing each other, recursed at run time until the stack ran out -- in Fortran, and in
+  Python and R through the bindings. `roles._check_producer_cycles` refuses the cycle over the
+  graph of producers (a generated pair is one node), naming the chain.
+- **Two modules may not consume each other's producers.** Generated modules now `use` generated
+  modules, so a pair sizing each other's arguments is a module cycle, which fpm stops on. Stated
+  rather than diagnosed: fpm already refuses it, by name.
+
+**Rejected -- naming the implementation, and translating `foo_impl` into its `foo`.** It
+generates byte-identical bindings, but it is a rule that rewrites what the author wrote, and it
+has no answer for a mode split, which has no `foo` to translate into; picking one per-mode
+wrapper from a table row would be a rule that silently selects a procedure. Naming the wrapper
+leaves nothing to translate: the author names what is called.
 
 ### The prologue is the allocating tier's sugar, and has no scope
 

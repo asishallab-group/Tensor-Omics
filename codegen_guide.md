@@ -176,7 +176,7 @@ each is addressed at a different caller.
 | `foo_expert` | a caller who wants control over what reaches the implementation | validates and calls `foo_impl` with what you supply. Allocates nothing, prepares nothing |
 
 A wrapper is **`pure` exactly when everything it calls is** — the implementation, the
-`DM_OUTPUT_FROM` producers and the prologue. `tox_errors`' validators and `f42_sort`'s
+`DM_OUTPUT_FROM` producers (a generated one by this same rule) and the prologue. `tox_errors`' validators and `f42_sort`'s
 `init_perm` / `sort_array_heapsort` already are, and `allocate(..., stat=)` is permitted in a
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
 nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
@@ -691,7 +691,7 @@ differently, or where the producer wants a constant, a table says so:
 ```fortran
 integer(int32), intent(in) :: int_workspace_size
     !! Length of integer workspace.
-    !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+    !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
     !!
     !! | Producer input        | Supplied by |
     !! |-----------------------|-------------|
@@ -708,7 +708,11 @@ integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
 call tox_loess_required_workspace(n_dim = 1_int32, max_neighborhood_size = n_families, &
                                   int_workspace_size = int_workspace_size, &
                                   real_workspace_size = real_workspace_size, &
-                                  save_factorization = .false.)
+                                  save_factorization = .false., ierr = ierr)
+if (is_err(ierr)) then
+    ! the producer's own error, its position mapped to the argument here that supplied it
+    ...
+end if
 M_ALLOCATE(tmp_int_workspace(int_workspace_size))
 ```
 
@@ -719,11 +723,72 @@ The size argument is an input to the implementation, `intent(in)`: an `intent(ou
 the implementation's result, which `foo` computes with the producer itself and then throws away,
 so it is refused.
 
-The producer must be exported (`M_EXPORT_C`), so that a wrapper exists to call; recommend
-routines therefore live in the implementation module, public, tagged — they are not
-implementations themselves and the `_impl` rules of Section 4 leave them alone. Use `JUST_INFO`
-instead of `AUTO` when the caller genuinely has to make the call themselves — then the docs say
-where to get the value, and nothing is called for them.
+**The producer is a published entry point**, so that there is something to call: a hand-written
+`M_EXPORT_C` procedure (a recommend routine in the implementation module, public, tagged — not an
+implementation itself, so the `_impl` rules of Section 4 leave it alone), or **the plain-named
+generated wrapper of an implementation**, named in its generated module:
+
+```fortran
+    !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+```
+
+for `fx_scaled_size_impl` in `fx_producers_impl` (`helper/codegen/tests/fixtures/impl/`). Name
+`foo`, never `foo_impl` — the implementation is not published, and the generator refuses it with
+a note naming `foo` and its module — and never `foo_expert`: the plain-named wrapper is the one
+that prepares what it needs itself, and the generator refuses the expert tier with a note naming
+`foo`. A mode-split implementation has no `foo`; name the per-mode
+wrapper you mean (Section 5.11), which the refusal lists.
+
+A generated producer validates its inputs, so calling it can fail. What you get then:
+
+- **The error names your argument.** The producer reports a bad input by the position of its own
+  argument; `foo` translates it to the position of the argument of yours that supplied that input
+  (by name or through the table), and Python and R, where they call the producer's binding
+  themselves, raise its error again the same way. An input nothing of the caller's supplied — a
+  constant from the table — names no argument; the error code is unchanged either way.
+- **Each producer is checked before the next is called**, so with two producers the first one's
+  error is the one reported.
+- **`foo` is as pure as everything it calls**, the generated producer included (it is asked the
+  same question in turn).
+- **A producer in your own module works**: it is in scope, and the module does not `use` itself.
+
+`foo` calls the producer directly — once for each distinct set of inputs: two sizes from one
+producer through different table rows are two calls, each into its own size. Two arguments
+taking the *same* output with the same inputs would be one call holding one value, and are
+refused: use one argument. It passes every one of the producer's arguments:
+
+- **An input the producer refines in place** (`intent(inout)`, a cap it lowers) is written back
+  through whatever supplies it, so it must be supplied by a **required `intent(inout)`** argument
+  of yours — what the call can write, and what carries the refined value back to your caller.
+  Anything else is refused: an `intent(in)` argument, a constant from the table, an optional
+  argument (with or without `DM_DEFAULT`). Where only Python and R call the producer, they adopt
+  the refined value themselves, and nothing is refused.
+- **A refined value feeds that one producer call.** No other producer call may read it, and no
+  second one refine it — in `foo`, Python and R alike; one call filling several outputs from it
+  is one call. The allocations and your implementation see it refined. Where another producer
+  needs the same quantity, give it its own argument for it.
+- **Producers do not feed each other.** A producer input supplied by another `DM_OUTPUT_FROM`
+  value of yours — or by the very value it computes — is refused, in `foo`, Python and R alike:
+  chaining producers is rejected (`helper/codegen/design/impl-layer.md`). Size for an upper bound
+  the caller passes instead (the sizing formulas are monotone), or take the value as an argument
+  of the caller's.
+- **An output you do not take** goes into a local and is dropped — if it is a scalar. An array
+  output nothing takes is refused, since a local for it would need the producer's own extents.
+- **An input the producer's binding derives** — `n` of `extent_size(n, x(n))`, read off `x` — is
+  resolved like any other input: by name, by a table row, or as a constant. Python and R leave it
+  out, as the producer's own binding does, so it is an error only where `foo` calls the producer
+  and nothing supplies it. For a consumer `c(m, x(m))` the row is `| n | m |`.
+
+**Two modules may not consume each other's producers.** A generated wrapper that calls a producer
+in another module `use`s that module, so two modules sizing each other's arguments are a module
+cycle, which fpm stops on. **Nor may a producer come back to its consumer** through its own
+producers — one procedure sizing an argument by itself, or two sizing each other: each call would
+make the next until the stack ran out, so the generator refuses it, naming the chain.
+
+Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
+then the docs say where to get the value, and nothing is called for them. It names the producer the same
+way, so the link the docs render, in Ford as in Python and R, is to the published wrapper a
+reader can call, never to the implementation behind it.
 
 ### 5.10 A mode argument
 
@@ -919,6 +984,8 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
   `intent(in)` dummy to something that writes it
 - a value the prologue produces that the allocations, the permutation sorts or the recommend
   calls *above* it read — the name resolves either way, so it would compile and compute rubbish.
+  A recommend call reads every producer input it passes, including one the producer's own
+  binding derives, such as an extent (Section 5.9).
   (A permutation the prologue itself builds is not sorted above it, so rewriting that one's
   `<base>` is fine.)
 
@@ -1110,11 +1177,13 @@ Because the procedure is not a numeric procedure of the pipeline:
   `f42_kd_tree` were all hand-written exports until someone asked what a wrapper around them
   would do, and the answer was "validate what they were validating by hand, and allocate and sort
   what their callers were allocating and sorting" — so all three are implementations now.
-- **inside an implementation module** — a recommend/sizing routine
-  (`tox_loess_required_workspace`, `calc_neighborhood_size`) or a utility a caller genuinely
-  needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
-  wrapper to call (Section 5.9). The test is the same one: a wrapper around `calc_neighborhood_size`
-  would validate nothing and prepare nothing, so there is nothing to generate.
+- **inside an implementation module** — a recommend/sizing routine (`calc_neighborhood_size`) or
+  a utility a caller genuinely needs (`mask_chunk_count`): a wrapper around either would validate
+  nothing and prepare nothing, so there is nothing to generate. Being a `DM_OUTPUT_FROM` producer
+  does not change that: a producer only has to be exported, by `M_EXPORT_C` or as an
+  implementation's generated wrapper (Section 5.9), and the same test decides which.
+  `tox_loess_required_workspace` was converted on purpose, not by a rule; see
+  `helper/codegen/design/impl-layer.md`.
 
 If your procedure is a numeric procedure of the pipeline, take Part I instead. "It was easier to
 export it directly" is how an unvalidated API gets shipped.
@@ -1418,7 +1487,15 @@ source and carries a note saying what to write instead.
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |
 | a mode argument that is not a scalar integer | modes are compared against `MODE_*` parameters |
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
-| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |
+| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
+| an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls, supplied by anything but a required `intent(inout)` argument (an `intent(in)` argument, a constant, an optional) | the producer writes it back through what supplies it: an `intent(in)` argument or a constant does not compile, and the local an optional goes through would swallow the refined value (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer input supplied by another `DM_OUTPUT_FROM` value of the consumer, or by the value it computes itself | chaining producers is rejected: size for an upper bound, or take the value as an argument of the caller's (Section 5.9) |
+| a value a `DM_OUTPUT_FROM` producer refines in place (its `intent(inout)` input) that another producer call reads or refines too | what the other call saw would depend on the call order; a refined value feeds that one call (Section 5.9) |
+| two arguments taking the same output of one `DM_OUTPUT_FROM` producer, given the same inputs | one call fills both with one value; use one argument (Section 5.9) |
+| an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
 | an implementation module in a file not named after it | generation reads the module name while the wrapper's path is mirrored from the file name — the module would be written into a file named for something else (Section 4) |

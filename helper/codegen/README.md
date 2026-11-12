@@ -328,6 +328,21 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **A producer is a published entry point**: an `M_EXPORT_C` procedure, or an implementation's
+  plain-named generated wrapper `foo`, named in its generated module (`ir.roles`). Naming
+  `foo_impl` is refused with a note naming `foo` and its module, or for a mode split the per-mode
+  wrappers; so is `foo_expert`, with a note naming `foo`. A generated producer validates, so its error carries its own argument's position:
+  the generated `foo` that calls it checks `ierr` after each producer call and maps the position
+  to the dummy that supplied that input, else clears it (`emit.fortran_wrapper`), and Python and
+  R re-raise a producer's error from their own call through `_consumer_error` /
+  `.tox_consumer_error`, naming the argument the caller passed, else none. Its purity is derived
+  by the same `_is_pure`, recursively, with a visited set. A same-module producer is not
+  `use`d; an output nothing takes gets a local if it is a scalar and is refused if it is an
+  array; an input the producer's binding derives (`ProducerInput.derived`) is resolved like any
+  other and passed only by Fortran (`OutputFromPlan.binding_inputs` is what Python and R pass).
+  Two modules may not consume each other's producers: the generated modules would `use` each
+  other, a cycle fpm stops on. A producer that comes back to its consumer through its own
+  producers is refused, naming the chain (`roles._check_producer_cycles`).
 - **A refusal of the binding's own is an input error without a code** (#221). Python raises
   `ToxArgumentError` (`emit.errors_python.ARGUMENT_EXCEPTION`), a `ToxInputError` whose `code`
   is None and which is a `TypeError` and a `ValueError` too, for every shape, type and value it
@@ -595,8 +610,9 @@ dropping the fixed directory they used to be scoped to:
   publishes an unvalidated twin beside it, under a name (`foo_impl`) a binding caller cannot
   tell apart from the validated `foo`. Support routines in the same module (the
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
-  implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
-  Python home of `tox_loess_required_workspace`, and holds no implementation at all
+  implementation module can itself show up in the bindings — `tox_paralog_analysis_impl.py` is
+  the Python home of `mask_chunk_count`, `mask_check_state` and
+  `calc_work_arr_paralog_subsets_size`, and holds no implementation
 - an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
   `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
   (it calls the producer itself). Either way it would discard what the implementation computes;

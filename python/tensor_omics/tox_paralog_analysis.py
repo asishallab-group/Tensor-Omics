@@ -23,7 +23,7 @@ import os as _os
 import numpy as _np
 
 from . import _contract as _contract
-from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code, ToxError as _ToxError, _consumer_error as _consumer_error
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -292,7 +292,10 @@ def detect_dosage_effect(
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
     from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
-    _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    try:
+        _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_mask": 5}, _DETECT_DOSAGE_EFFECT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES) from None
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 
@@ -412,7 +415,10 @@ def detect_subfunctionalization(
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
     from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
-    _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    try:
+        _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_mask": 5}, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES) from None
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 
