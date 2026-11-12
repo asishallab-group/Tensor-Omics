@@ -54,7 +54,9 @@ _lib.normalization_pipeline_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZATION_PIPELINE_ARGUMENTS = ("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "log_transformed_expr", None, None, None, None,)
+_NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "reps_per_tissue", None, None, None, None,)
+#: For an argument with a DM_EQUALS, what it must equal
+_NORMALIZATION_PIPELINE_ARGUMENT_EQUALS = (None, "sum(reps_per_tissue)", None, None, None, None, None, None, None, None,)
 
 _lib.normalize_by_std_dev_c.restype = None
 _lib.normalize_by_std_dev_c.argtypes = (
@@ -222,9 +224,11 @@ def normalization_pipeline(
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
+        `n_replicates`, its axis 0, must equal `sum(reps_per_tissue)`.
     reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
         e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+        The minimum valid value is `1`.
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
@@ -287,7 +291,7 @@ def normalization_pipeline(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS, _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS, _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES, equals=_NORMALIZATION_PIPELINE_ARGUMENT_EQUALS)
 
     # a result is a value: modify a copy, not this
     log_transformed_expr.flags.writeable = False

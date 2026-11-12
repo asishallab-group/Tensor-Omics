@@ -175,11 +175,9 @@ from .tox_get_outliers import (
     detect_outliers,
 )
 from .tox_loess import (
+    tox_loess_required_workspace,
     loess_fit_plain,
     loess_fit_robust,
-)
-from .tox_loess_impl import (
-    tox_loess_required_workspace,
 )
 from .tox_normalization import (
     normalize_unit_length,

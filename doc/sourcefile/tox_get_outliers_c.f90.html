@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 4.3% of total for source files.">817 statements</a>
+                 title=" 4.2% of total for source files.">817 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -368,7 +368,7 @@
 <a id="ln-198" name="ln-198" href="#ln-198"></a><span class="w">            </span><span class="c">!! Total number of gene families</span>
 <a id="ln-199" name="ln-199" href="#ln-199"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">int_workspace_size</span>
 <a id="ln-200" name="ln-200" href="#ln-200"></a><span class="w">            </span><span class="c">!! Length of integer workspace.</span>
-<a id="ln-201" name="ln-201" href="#ln-201"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].</span>
+<a id="ln-201" name="ln-201" href="#ln-201"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].</span>
 <a id="ln-202" name="ln-202" href="#ln-202"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-203" name="ln-203" href="#ln-203"></a><span class="w">            </span><span class="c">!! | Producer input        | Supplied by |</span>
 <a id="ln-204" name="ln-204" href="#ln-204"></a><span class="w">            </span><span class="c">!! |-----------------------|-------------|</span>
@@ -377,7 +377,7 @@
 <a id="ln-207" name="ln-207" href="#ln-207"></a><span class="w">            </span><span class="c">!! | save_factorization    | .false.     |</span>
 <a id="ln-208" name="ln-208" href="#ln-208"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">real_workspace_size</span>
 <a id="ln-209" name="ln-209" href="#ln-209"></a><span class="w">            </span><span class="c">!! Length of real workspace.</span>
-<a id="ln-210" name="ln-210" href="#ln-210"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].</span>
+<a id="ln-210" name="ln-210" href="#ln-210"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].</span>
 <a id="ln-211" name="ln-211" href="#ln-211"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-212" name="ln-212" href="#ln-212"></a><span class="w">            </span><span class="c">!! | Producer input        | Supplied by |</span>
 <a id="ln-213" name="ln-213" href="#ln-213"></a><span class="w">            </span><span class="c">!! |-----------------------|-------------|</span>
@@ -876,7 +876,7 @@
 <a id="ln-706" name="ln-706" href="#ln-706"></a><span class="w">            </span><span class="c">!! Total number of gene families</span>
 <a id="ln-707" name="ln-707" href="#ln-707"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">int_workspace_size</span>
 <a id="ln-708" name="ln-708" href="#ln-708"></a><span class="w">            </span><span class="c">!! Length of integer workspace.</span>
-<a id="ln-709" name="ln-709" href="#ln-709"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].</span>
+<a id="ln-709" name="ln-709" href="#ln-709"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].</span>
 <a id="ln-710" name="ln-710" href="#ln-710"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-711" name="ln-711" href="#ln-711"></a><span class="w">            </span><span class="c">!! | Producer input        | Supplied by |</span>
 <a id="ln-712" name="ln-712" href="#ln-712"></a><span class="w">            </span><span class="c">!! |-----------------------|-------------|</span>
@@ -885,7 +885,7 @@
 <a id="ln-715" name="ln-715" href="#ln-715"></a><span class="w">            </span><span class="c">!! | save_factorization    | .false.     |</span>
 <a id="ln-716" name="ln-716" href="#ln-716"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">real_workspace_size</span>
 <a id="ln-717" name="ln-717" href="#ln-717"></a><span class="w">            </span><span class="c">!! Length of real workspace.</span>
-<a id="ln-718" name="ln-718" href="#ln-718"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].</span>
+<a id="ln-718" name="ln-718" href="#ln-718"></a><span class="w">            </span><span class="c">!! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].</span>
 <a id="ln-719" name="ln-719" href="#ln-719"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-720" name="ln-720" href="#ln-720"></a><span class="w">            </span><span class="c">!! | Producer input        | Supplied by |</span>
 <a id="ln-721" name="ln-721" href="#ln-721"></a><span class="w">            </span><span class="c">!! |-----------------------|-------------|</span>
@@ -1058,7 +1058,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-06 13:05 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>

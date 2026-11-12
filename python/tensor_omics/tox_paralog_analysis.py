@@ -23,7 +23,7 @@ import os as _os
 import numpy as _np
 
 from . import _contract as _contract
-from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code, ToxError as _ToxError, _consumer_error as _consumer_error
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -66,7 +66,7 @@ _lib.detect_dosage_effect_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_DOSAGE_EFFECT_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "max_angle", "gain_gamma", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, "work_arr_paralog_subsets", None, None, None,)
+_DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, None, None, None, None,)
 
 _lib.detect_subfunctionalization_c.restype = None
 _lib.detect_subfunctionalization_c.argtypes = (
@@ -89,7 +89,7 @@ _lib.detect_subfunctionalization_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, "work_arr_paralog_subsets", None, None, None, None,)
+_DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_mask", None, None, None, None, None, None, None, None,)
 
 _lib.filter_paralogs_by_pattern_dosage_effect_c.restype = None
 _lib.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
@@ -106,7 +106,7 @@ _lib.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENTS = ("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "gene_angles", "masks", None, None, "masks", None,)
+_FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "gene_angles", None, None, None, None, None,)
 
 _lib.filter_paralogs_by_pattern_subfunctionalization_c.restype = None
 _lib.filter_paralogs_by_pattern_subfunctionalization_c.argtypes = (
@@ -123,7 +123,7 @@ _lib.filter_paralogs_by_pattern_subfunctionalization_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS = ("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", "masks", None, None, "masks", None,)
+_FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", None, None, None, None, None,)
 
 _lib.calc_work_arr_paralog_subsets_size_c.restype = None
 _lib.calc_work_arr_paralog_subsets_size_c.argtypes = (
@@ -306,7 +306,10 @@ def detect_dosage_effect(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    try:
+        _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_mask": 5}, _DETECT_DOSAGE_EFFECT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES) from None
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 
@@ -425,7 +428,10 @@ def detect_subfunctionalization(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    try:
+        _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_mask": 5}, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES) from None
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 

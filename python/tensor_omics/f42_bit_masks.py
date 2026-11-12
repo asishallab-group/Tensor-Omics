@@ -80,7 +80,7 @@ _lib.bit_mask_from_logical_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _BIT_MASK_FROM_LOGICAL_ARGUMENTS = ("n_bits", "n_words", "flags", "bit_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES = ("flags", "bit_mask", None, None, None,)
+_BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES = ("flags", None, None, None, None,)
 
 _lib.bit_mask_to_logical_c.restype = None
 _lib.bit_mask_to_logical_c.argtypes = (
@@ -94,7 +94,7 @@ _lib.bit_mask_to_logical_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _BIT_MASK_TO_LOGICAL_ARGUMENTS = ("n_bits", "n_words", "bit_mask", "flags", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES = ("flags", "bit_mask", None, None, None,)
+_BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES = (None, "bit_mask", None, None, None,)
 
 _lib.bit_masks_from_logical_2D_c.restype = None
 _lib.bit_masks_from_logical_2D_c.argtypes = (
@@ -109,7 +109,7 @@ _lib.bit_masks_from_logical_2D_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENTS = ("n_bits", "n_masks", "n_words", "flags", "bit_masks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES = ("flags", "flags", "bit_masks", None, None, None,)
+_BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES = ("flags", "flags", None, None, None, None,)
 
 _lib.bit_masks_to_logical_2D_c.restype = None
 _lib.bit_masks_to_logical_2D_c.argtypes = (
@@ -124,7 +124,7 @@ _lib.bit_masks_to_logical_2D_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _BIT_MASKS_TO_LOGICAL_2D_ARGUMENTS = ("n_bits", "n_masks", "n_words", "bit_masks", "flags", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES = ("flags", "bit_masks", "bit_masks", None, None, None,)
+_BIT_MASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES = (None, "bit_masks", "bit_masks", None, None, None,)
 
 def bit_mask_n_words(
         n_bits,

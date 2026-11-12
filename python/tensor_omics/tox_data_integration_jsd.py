@@ -86,7 +86,7 @@ _lib.build_residual_histograms_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, "counts", None, None, None, None, None,)
+_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, None, None, None, None, None, None,)
 
 _lib.compute_divergence_per_reference_point_c.restype = None
 _lib.compute_divergence_per_reference_point_c.argtypes = (

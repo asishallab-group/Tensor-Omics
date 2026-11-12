@@ -63,7 +63,7 @@ bit_mask_from_logical <- function(n_words, flags) {
     flags <- .tox_as_logical_vector(flags, "flags")
     .result <- .Call("bit_mask_from_logical_call", n_words, flags)
     .arguments <- c("n_bits", "n_words", "flags", "bit_mask", "ierr")
-    .sources <- c("flags", "bit_mask", NA_character_, NA_character_, NA_character_)
+    .sources <- c("flags", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$bit_mask
@@ -84,7 +84,7 @@ bit_mask_to_logical <- function(n_bits, bit_mask) {
     bit_mask <- .tox_as_integer_vector(bit_mask, "bit_mask")
     .result <- .Call("bit_mask_to_logical_call", n_bits, bit_mask)
     .arguments <- c("n_bits", "n_words", "bit_mask", "flags", "ierr")
-    .sources <- c("flags", "bit_mask", NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "bit_mask", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$flags
@@ -106,7 +106,7 @@ bit_masks_from_logical_2D <- function(n_words, flags) {
     flags <- .tox_as_logical_matrix(flags, "flags")
     .result <- .Call("bit_masks_from_logical_2D_call", n_words, flags)
     .arguments <- c("n_bits", "n_masks", "n_words", "flags", "bit_masks", "ierr")
-    .sources <- c("flags", "flags", "bit_masks", NA_character_, NA_character_, NA_character_)
+    .sources <- c("flags", "flags", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$bit_masks
@@ -127,7 +127,7 @@ bit_masks_to_logical_2D <- function(n_bits, bit_masks) {
     bit_masks <- .tox_as_integer_matrix(bit_masks, "bit_masks")
     .result <- .Call("bit_masks_to_logical_2D_call", n_bits, bit_masks)
     .arguments <- c("n_bits", "n_masks", "n_words", "bit_masks", "flags", "ierr")
-    .sources <- c("flags", "bit_masks", "bit_masks", NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "bit_masks", "bit_masks", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$flags
