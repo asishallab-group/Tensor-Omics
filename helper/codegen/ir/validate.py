@@ -791,6 +791,7 @@ class _Validator:
         self._check_extent(argument)
         self._check_mask_count(argument)
         self._check_result_size(argument)
+        self._check_equals(argument)
         self._check_lower_bounds(argument)
         self._check_error_argument(argument)
 
@@ -1208,6 +1209,29 @@ class _Validator:
                 "DM_RESULT_SIZE_IS names the count the procedure fills in, as an output. A "
                 f"size the caller chooses sizes the result directly: declare it "
                 f"'{argument.name}({counter.name})'"
+            ),
+        )
+
+    def _check_equals(self, argument: Argument) -> None:
+        """`DM_EQUALS` goes on a required `intent(in)` scalar integer, and nothing else.
+
+        The wrapper compares the value the caller passed with the expression before the call:
+        an output carries none yet, an omitted optional none at all, a real is not a size, and
+        an array would make the comparison a compile error in the generated wrapper.
+        """
+        if argument.directives.equals is None:
+            return
+        if (argument.type is not None and argument.type.base is BaseType.INTEGER
+                and not argument.is_array
+                and argument.intent is Intent.IN and not argument.optional):
+            return
+        self.error(
+            f"argument '{argument.name}' has a DM_EQUALS but is not a required intent(in) scalar "
+            "integer",
+            argument,
+            note=(
+                "the wrapper compares the value the caller passes with the expression before "
+                "the call, so DM_EQUALS goes on a required intent(in) scalar integer"
             ),
         )
 

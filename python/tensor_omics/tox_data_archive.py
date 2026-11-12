@@ -19,7 +19,7 @@ import os as _os
 import numpy as _np
 
 from . import _contract as _contract
-from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code, ToxError as _ToxError, _consumer_error as _consumer_error
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -126,8 +126,6 @@ _lib.read_tox_data_into_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _READ_TOX_DATA_INTO_ARGUMENTS = ("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_READ_TOX_DATA_INTO_ARGUMENT_SOURCES = (None, "gene_ids", None, None, "expression", "expression", None, "gene_to_family", None, "family_ids", None, None, "family_centroids", "family_centroids", None, "shift_vectors", "shift_vectors", None, None,)
 
 def create_zip_archive(
         zip_filename,
@@ -535,7 +533,10 @@ def read_tox_data_into(
     zip_filename_strlen = zip_filename.itemsize
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    _get_tox_data_dims_result = get_tox_data_dims(zip_filename=_zip_filename_raw)
+    try:
+        _get_tox_data_dims_result = get_tox_data_dims(zip_filename=_zip_filename_raw)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"zip_filename": 1}, _READ_TOX_DATA_INTO_ARGUMENTS) from None
     n_gene_ids = _get_tox_data_dims_result["n_gene_ids"]
     gene_id_len = _get_tox_data_dims_result["gene_id_len"]
     n_expression_rows = _get_tox_data_dims_result["n_expression_rows"]
@@ -580,7 +581,7 @@ def read_tox_data_into(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS, _READ_TOX_DATA_INTO_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     expression.flags.writeable = False
