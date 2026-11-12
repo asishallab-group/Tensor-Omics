@@ -183,7 +183,11 @@ attributes. Reading `elemental` alone as purity is exactly the claim-that-is-not
 
 An OpenMP root is the one implementation whose purity depends on the build: it is declared
 `M_OMP_PURE`, `pure` without OpenMP and `impure` with it, so its wrappers carry the macro rather
-than either word (see "An OpenMP root" below).
+than either word (see "An OpenMP root" below). Purity therefore has three values, and a wrapper
+gets the weakest of what it calls: impure before `M_OMP_PURE` before `pure`. A consumer whose
+producer is a root's wrapper, or reaches one through producers of its own, is `M_OMP_PURE`
+although its implementation is plain `pure`: emitted `pure`, it calls a procedure that is impure
+under OpenMP and does not compile there ("Subroutine call to ... is not PURE").
 
 ---
 
@@ -1123,9 +1127,10 @@ write the wrappers from it and to refuse what they could not honour. Six rules:
   makes the argument safe is a wrapper's: the check that it is at least 1, its documentation, the
   `M_OMP_PURE` prefix. A hand-written `M_EXPORT_C` procedure gets none of them, its function result
   likewise, and a prologue would be handed the caller's count where the root gets
-  `M_OMP_N_THREADS(...)`. A `DM_OUTPUT_FROM` producer is an export, so a root producer would also
-  give its consumer's wrapper a plain `pure` that fails under OpenMP. A wrapper is recognised by
-  `Procedure.implementation`, set by synthesis.
+  `M_OMP_N_THREADS(...)`. A hand-written `DM_OUTPUT_FROM` producer taking it would also give its
+  consumer's wrapper a plain `pure` that fails under OpenMP; a root's generated wrapper as the
+  producer does not, since its consumer is `M_OMP_PURE` too ("Purity is derived, never declared").
+  A wrapper is recognised by `Procedure.implementation`, set by synthesis.
 - **R2 -- a required, scalar `integer(int32)`, `intent(in)`.** Required because it sizes the
   work arrays and an optional cannot be an extent (DECIDED 3); `int32` because
   `M_OMP_N_THREADS` stands in for it as `1_int32`; read only because the allocating wrapper passes

@@ -362,7 +362,8 @@ The parts a source author does not need, and a generator maintainer does:
   to the dummy that supplied that input, else clears it (`emit.fortran_wrapper`), and Python and
   R re-raise a producer's error from their own call through `_consumer_error` /
   `.tox_consumer_error`, naming the argument the caller passed, else none. Its purity is derived
-  by the same `_is_pure`, recursively, with a visited set. A same-module producer is not
+  by the same `_purity`, recursively, with a visited set, and has three values: a producer
+  that is an OpenMP root's wrapper, or calls one, makes its consumer `M_OMP_PURE`, not `pure`. A same-module producer is not
   `use`d; an output nothing takes gets a local if it is a scalar and is refused if it is an
   array; an input the producer's binding derives (`ProducerInput.derived`) is resolved like any
   other and passed only by Fortran (`OutputFromPlan.binding_inputs` is what Python and R pass).

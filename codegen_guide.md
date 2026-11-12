@@ -186,6 +186,8 @@ caller's own pure procedure, which may call only pure ones, reach a validated en
 reaching past it.
 An OpenMP root (Section 5.18) is the one exception: it is declared `M_OMP_PURE`, pure without
 OpenMP and impure with it, and its wrappers carry `M_OMP_PURE` where they would carry `pure`.
+So does every wrapper whose producer is a root's wrapper or calls one: a wrapper is as pure as the
+least pure thing it calls, impure before `M_OMP_PURE` before `pure`.
 
 **The plain name always goes to the entry point a caller should reach for first**, and it is the
 same name in Fortran, C, Python and R: nothing is renamed on the way out, and the Fortran source
@@ -756,7 +758,8 @@ A generated producer validates its inputs, so calling it can fail. What you get 
 - **Each producer is checked before the next is called**, so with two producers the first one's
   error is the one reported.
 - **`foo` is as pure as everything it calls**, the generated producer included (it is asked the
-  same question in turn).
+  same question in turn). A producer that is an OpenMP root's wrapper, or calls one, makes `foo`
+  `M_OMP_PURE` rather than `pure` (Section 5.18).
 - **A producer in your own module works**: it is in scope, and the module does not `use` itself.
 
 `foo` calls the producer directly — once for each distinct set of inputs: two sizes from one
@@ -1204,7 +1207,9 @@ the macros in a doc comment: it is preprocessed, so `M_OMP_PURE` would read `pur
 **You get**, on every tier:
 
 - **`M_OMP_PURE`** where the wrapper would be `pure`; a root declared impure gets impure wrappers.
-  The C wrapper is never pure.
+  The C wrapper is never pure. A wrapper that names a root's `foo` as its `DM_OUTPUT_FROM`
+  producer, directly or through a producer of its own, is `M_OMP_PURE` as well: a plain `pure`
+  one would not compile with OpenMP, since it calls a procedure that is impure there.
 - **`n_omp_threads` in every signature**, in your order and required in every language -- Python
   and R give it no default.
 - **A check that it is at least 1**, as if you had written `DM_MIN(1_int32)`:
