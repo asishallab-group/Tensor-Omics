@@ -188,7 +188,7 @@
 <a id="ln-18" name="ln-18" href="#ln-18"></a><span class="w">    </span><span class="k">use </span><span class="n">f42_stats_impl</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">calc_quantile_impl</span><span class="p">,</span><span class="w"> </span><span class="n">compute_scaled_distance_tail_probability_impl</span>
 <a id="ln-19" name="ln-19" href="#ln-19"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_errors</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">ERR_INVALID_INPUT</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_ALLOC_FAIL</span><span class="p">,</span><span class="w"> </span><span class="n">set_ok</span><span class="p">,</span><span class="w"> </span><span class="n">set_err</span><span class="p">,</span><span class="w"> </span><span class="n">set_err_once</span><span class="p">,</span><span class="w"> </span><span class="n">is_err</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
 <a id="ln-20" name="ln-20" href="#ln-20"></a><span class="w">                          </span><span class="n">validate_all_in_range_real</span>
-<a id="ln-21" name="ln-21" href="#ln-21"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_loess_impl</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">tox_loess_required_workspace</span><span class="p">,</span><span class="w"> </span><span class="n">EPS_LOESS</span><span class="p">,</span><span class="w"> </span><span class="n">loess_evaluation</span><span class="p">,</span><span class="w"> </span><span class="n">loess_fit_plain_impl</span><span class="p">,</span><span class="w"> </span><span class="n">loess_fit_robust_impl</span>
+<a id="ln-21" name="ln-21" href="#ln-21"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_loess_impl</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">EPS_LOESS</span><span class="p">,</span><span class="w"> </span><span class="n">loess_evaluation</span><span class="p">,</span><span class="w"> </span><span class="n">loess_fit_plain_impl</span><span class="p">,</span><span class="w"> </span><span class="n">loess_fit_robust_impl</span>
 <a id="ln-22" name="ln-22" href="#ln-22"></a><span class="w">    </span><span class="n">M_IMPLICIT_NONE</span>
 <a id="ln-23" name="ln-23" href="#ln-23"></a>
 <a id="ln-24" name="ln-24" href="#ln-24"></a><span class="cp">#define CM_FAMILY_SPAN_DEFAULT 0.7_real64</span>
@@ -255,7 +255,7 @@
 <a id="ln-85" name="ln-85" href="#ln-85"></a><span class="w">        </span><span class="c">! LOESS workspace</span>
 <a id="ln-86" name="ln-86" href="#ln-86"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w">    </span><span class="kd">::</span><span class="w"> </span><span class="n">int_workspace_size</span>
 <a id="ln-87" name="ln-87" href="#ln-87"></a><span class="w">            </span><span class="c">!! Length of integer workspace.</span>
-<a id="ln-88" name="ln-88" href="#ln-88"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)</span>
+<a id="ln-88" name="ln-88" href="#ln-88"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)</span>
 <a id="ln-89" name="ln-89" href="#ln-89"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-90" name="ln-90" href="#ln-90"></a><span class="w">            </span><span class="c">!! | Producer input | Supplied by |</span>
 <a id="ln-91" name="ln-91" href="#ln-91"></a><span class="w">            </span><span class="c">!! |-----------------------|------------|</span>
@@ -266,7 +266,7 @@
 <a id="ln-96" name="ln-96" href="#ln-96"></a><span class="w">            </span><span class="c">!! Integer workspace array</span>
 <a id="ln-97" name="ln-97" href="#ln-97"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w">    </span><span class="kd">::</span><span class="w"> </span><span class="n">real_workspace_size</span>
 <a id="ln-98" name="ln-98" href="#ln-98"></a><span class="w">            </span><span class="c">!! Length of real workspace.</span>
-<a id="ln-99" name="ln-99" href="#ln-99"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)</span>
+<a id="ln-99" name="ln-99" href="#ln-99"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)</span>
 <a id="ln-100" name="ln-100" href="#ln-100"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-101" name="ln-101" href="#ln-101"></a><span class="w">            </span><span class="c">!! | Producer input | Supplied by |</span>
 <a id="ln-102" name="ln-102" href="#ln-102"></a><span class="w">            </span><span class="c">!! |-----------------------|------------|</span>
@@ -734,7 +734,7 @@
 <a id="ln-564" name="ln-564" href="#ln-564"></a><span class="w">        </span><span class="c">! LOESS workspace for compute_family_scaling</span>
 <a id="ln-565" name="ln-565" href="#ln-565"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w">    </span><span class="kd">::</span><span class="w"> </span><span class="n">int_workspace_size</span>
 <a id="ln-566" name="ln-566" href="#ln-566"></a><span class="w">            </span><span class="c">!! Length of integer workspace.</span>
-<a id="ln-567" name="ln-567" href="#ln-567"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)</span>
+<a id="ln-567" name="ln-567" href="#ln-567"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)</span>
 <a id="ln-568" name="ln-568" href="#ln-568"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-569" name="ln-569" href="#ln-569"></a><span class="w">            </span><span class="c">!! | Producer input | Supplied by |</span>
 <a id="ln-570" name="ln-570" href="#ln-570"></a><span class="w">            </span><span class="c">!! |-----------------------|------------|</span>
@@ -745,7 +745,7 @@
 <a id="ln-575" name="ln-575" href="#ln-575"></a><span class="w">            </span><span class="c">!! Integer workspace array</span>
 <a id="ln-576" name="ln-576" href="#ln-576"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w">    </span><span class="kd">::</span><span class="w"> </span><span class="n">real_workspace_size</span>
 <a id="ln-577" name="ln-577" href="#ln-577"></a><span class="w">            </span><span class="c">!! Length of real workspace.</span>
-<a id="ln-578" name="ln-578" href="#ln-578"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)</span>
+<a id="ln-578" name="ln-578" href="#ln-578"></a><span class="w">            </span><span class="c">!! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)</span>
 <a id="ln-579" name="ln-579" href="#ln-579"></a><span class="w">            </span><span class="c">!!</span>
 <a id="ln-580" name="ln-580" href="#ln-580"></a><span class="w">            </span><span class="c">!! | Producer input | Supplied by |</span>
 <a id="ln-581" name="ln-581" href="#ln-581"></a><span class="w">            </span><span class="c">!! |-----------------------|------------|</span>
@@ -846,7 +846,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-07 17:33 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>
