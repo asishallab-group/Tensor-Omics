@@ -13,7 +13,7 @@ module tox_data_integration_preprocessing_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_stats_impl, only: calc_percentile_impl
+    use f42_stats_impl, only: calc_quantile_impl
     M_IMPLICIT_NONE
 
 contains
@@ -108,7 +108,7 @@ contains
 
         n_pool = size(pooled_means, kind=int32)
 
-        ! NaN is always last -> find last non-NaN index for percentile calculation
+        ! NaN is always last -> find last non-NaN index for the quantile calculation
         do i_gene = n_pool, 1, -1
             if (ieee_is_nan(pooled_means(pooled_means_perm(i_gene)))) then
                 n_pool = n_pool - 1
@@ -122,11 +122,11 @@ contains
         else
             ! Compute reference points as empirical quantiles using the permutation
             do concurrent(i_point=1:n_points) local(quantile_level) shared(n_points, pooled_means, pooled_means_perm, n_pool, x_star)
-                ! Fraction in [0,1] as expected by calc_percentile_impl
+                ! Fraction in [0,1] as expected by calc_quantile_impl
                 quantile_level = real(i_point, real64)/real(n_points + 1, real64)
 
-                ! Use calc_percentile to compute the value
-                call calc_percentile_impl(pooled_means, size(pooled_means, kind=int32), pooled_means_perm, &
+                ! Use calc_quantile to compute the value
+                call calc_quantile_impl(pooled_means, size(pooled_means, kind=int32), pooled_means_perm, &
                                           quantile_level, x_star(i_point), n_considered=n_pool)
             end do
         end if

@@ -15,7 +15,7 @@ euclidean_distance <- function(vec1, vec2) {
     vec1 <- .tox_as_double_vector(vec1, "vec1")
     vec2 <- .tox_as_double_vector(vec2, "vec2")
     if (length(vec2) != length(vec1))
-        .tox_shape_error("vec2", length(vec2), "vec1", length(vec1))
+        .tox_shape_error("vec2", 1L, length(vec2), "'vec1' implies n_elements == ", length(vec1), "n_elements")
 
     .result <- .Call("euclidean_distance_call", vec1, vec2)
     .arguments <- c("vec1", "vec2", "n_elements", "result", "ierr")
@@ -44,10 +44,10 @@ distance_to_centroid <- function(genes, centroids, gene_to_fam) {
     genes <- .tox_as_double_matrix(genes, "genes")
     centroids <- .tox_as_double_matrix(centroids, "centroids")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
-    if (length(gene_to_fam) != dim(genes)[2])
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "genes", dim(genes)[2])
     if (dim(centroids)[1] != dim(genes)[1])
-        .tox_shape_error("centroids", dim(centroids)[1], "genes", dim(genes)[1])
+        .tox_shape_error("centroids", 1L, dim(centroids)[1], "'genes' implies n_tissues == ", dim(genes)[1], "n_tissues, n_families")
+    if (length(gene_to_fam) != dim(genes)[2])
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'genes' implies n_genes == ", dim(genes)[2], "n_genes")
 
     .result <- .Call("distance_to_centroid_call", genes, centroids, gene_to_fam)
     .arguments <- c("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "ierr")

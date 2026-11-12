@@ -11,6 +11,7 @@ module f42_math_impl
     use tox_errors, only: is_err
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite
     M_IMPLICIT_NONE
+    private :: scaled_mean, scaling_exponent_for_largest
 
     !> Generic clamp of a scalar into `[min_val, max_val]`, dispatches on the value's type.
     interface clamp
@@ -46,49 +47,159 @@ module f42_math_impl
 contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the arithmetic mean of vector
+    !| The power of two a set of values is scaled by, as `scale(value, exponent)`, before their sum
+    !| or their sum of squares is formed, so that neither overflows nor underflows: 0 while the
+    !| largest magnitude lies in \([2^{-470}, 2^{496}]\), so ordinary data is not scaled at all;
+    !| `-600` above that range, and `600` below it, the zero set included. Scaling by a power of two
+    !| is exact, and `scale(result, -exponent)` brings a sum, a mean or a length back to the values'
+    !| own magnitude.
+    !|
+    !| Inside the range, the squares of any `int32` count of values sum to a finite number, and a
+    !| value whose square falls below `tiny` is too small, next to the largest one, to change the
+    !| sum. A largest magnitude above the range always lands inside it once scaled, and so does a
+    !| non-zero one below the range, unless it lies below about \(2^{-1070}\), among the smallest
+    !| subnormal numbers: there it lands just short of the range, at \(2^{-474}\) or more, where its
+    !| square is still a normal number.
+    pure integer(int32) function scaling_exponent(values) result(exponent)
+        real(real64), dimension(:), intent(in) :: values
+            !! The set of values, of any magnitude
+
+        integer(int32) :: i_value
+        real(real64) :: largest
+
+        largest = 0.0_real64
+        do concurrent(i_value=1:size(values, kind=int32)) shared(values) reduce(max:largest)
+            largest = max(largest, abs(values(i_value)))
+        end do
+        exponent = scaling_exponent_for_largest(largest)
+    end function scaling_exponent
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| The power of two [[f42_math_impl(module):scaling_exponent(function)]] picks for a set whose
+    !| largest magnitude is `largest`, for callers that know that magnitude already.
+    pure integer(int32) function scaling_exponent_for_largest(largest) result(exponent)
+        real(real64), intent(in) :: largest
+            !! The largest magnitude in the set, never negative
+
+        real(real64), parameter :: LARGEST_UNSCALED = 2.0_real64**496
+        real(real64), parameter :: SMALLEST_UNSCALED = 2.0_real64**(-470)
+        integer(int32), parameter :: SCALE_DOWN = -600_int32, SCALE_UP = 600_int32
+
+        ! An exponent rather than a factor 2**exponent to multiply by: an optimizer that does not
+        ! keep to the source may hoist a factor out of a sum, and 2**-exponent(x) is subnormal
+        ! for x near huge, so it reads as zero where subnormals are flushed.
+        exponent = 0_int32
+        if (largest > LARGEST_UNSCALED) exponent = SCALE_DOWN
+        if (largest < SMALLEST_UNSCALED) exponent = SCALE_UP
+    end function scaling_exponent_for_largest
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Calculates the arithmetic mean of vector. The values are summed scaled by the power of two
+    !| [[f42_math_impl(module):scaling_exponent(function)]] picks, so the sum overflows for no
+    !| finite values: the mean of `[huge, huge, huge]` is `huge`. Ordinary data is summed unscaled.
     pure real(real64) function mean(vec)
         real(real64), dimension(:), intent(in) :: vec
             !! Vector to compute the mean value from
 
-        mean = sum(vec)/real(size(vec, kind=int32), real64)
+        integer(int32) :: exponent
+
+        exponent = scaling_exponent(vec)
+        mean = scale(scaled_mean(vec, exponent), -exponent)
     end function mean
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the standard deviation of vector, with or without Bessel's correction
+    !| Calculates the standard deviation of vector, with or without Bessel's correction, in the
+    !| centered two-pass form: the mean first, then the squared distances from it. The mean is
+    !| computed with the values scaled by the power of two
+    !| [[f42_math_impl(module):scaling_exponent(function)]] picks for them, and the squares with the
+    !| distances scaled once more, by the power of two picked for the largest distance. So no sum
+    !| overflows for finite values, and the squares of distances far smaller than the values, as
+    !| between distinct values close together, do not underflow even where the build flushes
+    !| subnormal numbers to zero. The result is Inf only where the true spread exceeds `huge`, as
+    !| Bessel's correction gives for `[huge, -huge]`.
+    !|
+    !| Values that are all equal, a single value included, have no spread: their standard deviation
+    !| is exactly 0 in either mode, decided on the values themselves rather than on their computed
+    !| mean, which can round away from them.
     pure real(real64) function std_dev(vec, do_bessel_correction)
         real(real64), dimension(:), intent(in) :: vec
             !! Vector to compute the standard deviation value from
         logical(c_bool), intent(in), optional :: do_bessel_correction
-            !! Tells whether to apply the bessel's correction or not, default: `.false.`
+            !! Tells whether to apply the bessel's correction or not, default: `.false.`. With
+            !! \(n = \texttt{size}(vec)\) and \(\bar{x} = \texttt{mean}(vec)\):
             !!
-            !! |    Case     |                                                Formula                                                      |
-            !! |-------------|-------------------------------------------------------------------------------------------------------------|
-            !! |  `.true.`   | \(\frac{1}{\texttt{size}(vec) - 1} \cdot \sum_{i=1}^{\texttt{size}(vec)} (vec(i) - \texttt{mean}(i))^{2}\)  |
-            !! |  `.false.`  |  \(\frac{1}{\texttt{size}(vec)} \cdot \sum_{i=1}^{\texttt{size}(vec)} vec(i)^{2} - \texttt{mean}(i)^{2}\)   |
+            !! |    Case     |                          Formula                                  |
+            !! |-------------|-------------------------------------------------------------------|
+            !! |  `.true.`   | \(\sqrt{\frac{1}{n - 1} \sum_{i=1}^{n} (vec(i) - \bar{x})^{2}}\) |
+            !! |  `.false.`  | \(\sqrt{\frac{1}{n} \sum_{i=1}^{n} (vec(i) - \bar{x})^{2}}\)     |
 
         logical(c_bool) :: bessel
-        integer(int32) :: n_elements, i_element
-        real(real64) :: mean_val, squares_sum
+        integer(int32) :: n_elements, i_element, exponent, distance_exponent
+        real(real64) :: mean_scaled, largest_distance, squares_sum_scaled, divisor
 
         M_DEFAULT_VAL(do_bessel_correction, bessel, .false.)
 
-        mean_val = mean(vec)
         n_elements = size(vec, kind=int32)
-        if (bessel) then
-            squares_sum = 0.0_real64
-            do concurrent(i_element=1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
-                squares_sum = squares_sum + (vec(i_element) - mean_val)**2
-            end do
-            std_dev = sqrt(squares_sum/real(n_elements - 1, kind=real64))
-        else
-            squares_sum = 0.0_real64
-            do concurrent(i_element=1:n_elements) shared(vec) reduce(+:squares_sum)
-                squares_sum = squares_sum + vec(i_element)**2
-            end do
-            std_dev = sqrt(max(0.0_real64, squares_sum/real(n_elements, kind=real64) - mean_val**2))
+
+        ! Values that all equal the first have no spread. The loop runs past its end only then,
+        ! which also covers a single value, where Bessel's n - 1 would divide 0 by 0.
+        do i_element = 2, n_elements
+            if (vec(i_element) /= vec(1)) exit
+        end do
+        if (i_element > n_elements) then
+            std_dev = 0.0_real64
+            return
         end if
+
+        exponent = scaling_exponent(vec)
+        mean_scaled = scaled_mean(vec, exponent)
+
+        ! The distances from the mean get their own exponent: picked for the values, it leaves
+        ! distances far smaller than the values (distinct values close together near 2**-470, say)
+        ! with squares below tiny, which a build that flushes subnormals turns into a spread of 0.
+        largest_distance = 0.0_real64
+        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled) reduce(max:largest_distance)
+            largest_distance = max(largest_distance, abs(scale(vec(i_element), exponent) - mean_scaled))
+        end do
+        distance_exponent = scaling_exponent_for_largest(largest_distance)
+
+        squares_sum_scaled = 0.0_real64
+        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled, distance_exponent) &
+            reduce(+:squares_sum_scaled)
+            squares_sum_scaled = squares_sum_scaled &
+                                 + scale(scale(vec(i_element), exponent) - mean_scaled, distance_exponent)**2
+        end do
+
+        if (bessel) then
+            divisor = real(n_elements - 1, kind=real64)
+        else
+            divisor = real(n_elements, kind=real64)
+        end if
+        ! One exponent at a time: together they can reach 1200, more than scale() takes safely
+        ! on every compiler.
+        std_dev = scale(scale(sqrt(squares_sum_scaled/divisor), -distance_exponent), -exponent)
     end function std_dev
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| The mean of `scale(vec, exponent)`, for [[f42_math_impl(module):mean(function)]] and
+    !| [[f42_math_impl(module):std_dev(function)]], which keep working in those scaled
+    !| coordinates.
+    pure real(real64) function scaled_mean(vec, exponent)
+        real(real64), dimension(:), intent(in) :: vec
+            !! The values
+        integer(int32), intent(in) :: exponent
+            !! Power of two the values are scaled by, from
+            !! [[f42_math_impl(module):scaling_exponent(function)]]
+
+        integer(int32) :: i_element
+        real(real64) :: scaled_sum
+
+        scaled_sum = 0.0_real64
+        do concurrent(i_element=1:size(vec, kind=int32)) shared(vec, exponent) reduce(+:scaled_sum)
+            scaled_sum = scaled_sum + scale(vec(i_element), exponent)
+        end do
+        scaled_mean = scaled_sum/real(size(vec, kind=int32), real64)
+    end function scaled_mean
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
@@ -160,6 +271,31 @@ contains
             exponent = log(val)/log(base)
         end if
     end subroutine logx_helper
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| `log(1 + x)`, accurate for tiny `x` as well. Forming `1 + x` first rounds away most digits of
+    !| a tiny `x` -- `1 + 1e-15` is `1.00000000000000111` -- so `log(1 + x)` is 11% off there.
+    !| Fortran has no `log1p` intrinsic. This takes the rounded `u = 1 + x` and corrects for the
+    !| rounding it suffered, `log(u)*x/(u - 1)` (Goldberg, "What Every Computer Scientist Should Know
+    !| About Floating-Point Arithmetic", Theorem 4), exact to a few ulps.
+    !|
+    !| The correction relies on `(1 + x) - 1` being evaluated as written, so it is spelled out in
+    !| parentheses, which the Fortran standard requires a compiler to respect. gfortran does by
+    !| default; ifx only with `-assume protect_parens`, which fpm.toml sets for every ifx build.
+    !| Held in a variable instead, ifx folds `u - 1` back to `x` even then.
+    !|
+    !| (no input validation) Ensure `x > -1`; yields a NaN/Inf result otherwise.
+    pure real(real64) function log1p(x)
+        real(real64), intent(in) :: x
+            !! Argument, must be `> -1`
+
+        if ((1.0_real64 + x) == 1.0_real64) then
+            ! `x` is below half an ulp of 1, where log(1 + x) = x to double precision
+            log1p = x
+        else
+            log1p = log(1.0_real64 + x)*(x/((1.0_real64 + x) - 1.0_real64))
+        end if
+    end function log1p
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus `below(0.0_real64)==-tiny(1.0_real64)` and `below(tiny(1.0_real64))==0.0_real64`

@@ -142,7 +142,7 @@ Two consequences follow, and both are enforced:
 - **An implementation module lives in a file named after it**
   (`validate._check_module_is_named_for_its_file`). Two independent derivations meet here: the
   wrapper's *contents* come from the module name, which synthesis reads, while its *path*
-  comes from the file name, which the cleaner scans without parsing anything. Let the two
+  is mirrored from the file name. Let the two
   disagree and the generator emits `module tox_a` into a file called `tox_b.F90` — legal
   Fortran, no error anywhere, and a tree in which nothing can be found by the name it has.
 
@@ -156,6 +156,11 @@ can.
 
 A generated wrapper is emitted `pure` exactly when the implementation it calls is pure, and
 so is everything the wrapper adds around it: the `DM_OUTPUT_FROM` producers and the prologue.
+A producer that is itself a generated wrapper is built impure in the IR -- synthesis cannot know
+yet -- so it is asked the same question in turn, recursively, with the wrappers already being
+asked in a visited set: a chain that comes back to one of them is not proven pure, and ends
+instead of recursing until Python gives up. Without that, every consumer of a generated
+producer was silently impure.
 Nothing else needs checking — every validator in `tox_errors`, `set_ok`, `is_err`,
 `clear_err_arg_pos`, `set_err`, `set_err_once`, `init_perm` and all four
 `sort_array_heapsort` specifics are `pure` or `elemental` already, and `allocate(..., stat=)`
@@ -171,6 +176,10 @@ It is derived rather than declared because the author has already said it: `pure
 implementation is the single statement of the fact, and a `DM_PURE` would be a second one to
 keep in step. The default is impure, deliberately — claiming purity that is not there is a
 compile error in generated code, while missing it only costs the caller.
+
+`elemental` implies `pure` unless the procedure also says `impure` (F2008), and Ford lists both
+attributes. Reading `elemental` alone as purity is exactly the claim-that-is-not-there case: an
+`impure elemental` implementation got a `pure` wrapper, which does not compile (#221, B17).
 
 ---
 
@@ -305,7 +314,7 @@ The `f42_utils` family converted whole: `f42_math`, `f42_sort`, `f42_random`, `f
 `f42_stats` and the `f42_utils` parent are all `_impl` modules now. Four of the six generate
 nothing at all, holding no `*_impl` procedure — which is legal, and is what let them move
 first while the tree stayed green. `f42_stats` generates `compute_edf` / `compute_edf_expert`
-and `calc_percentile` / `calc_percentile_expert`, and `f42_utils_impl`, having no procedures
+and `calc_quantile` / `calc_quantile_expert`, and `f42_utils_impl`, having no procedures
 of its own, generates a re-export parent over whichever children generate — today, just
 `f42_stats`.
 
@@ -323,7 +332,7 @@ no diagnostic.
 conversion had to begin by splitting the module into the part that becomes an implementation
 and the part that stays a hand-written export, because a generated module is whole-file. That
 premise was wrong: an implementation module may hold ordinary exported procedures, exactly as
-the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distance_quantile`
+the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distance_tail_probability`
 simply stayed in `f42_stats_impl` and were published from there, unsplit and unchanged.
 
 That they *could* stay is what made it worth asking whether they should, and both converted a
@@ -342,8 +351,8 @@ framework as the allocating tier while being an ordinary second procedure, the s
 it would put two procedures called `foo_expert` in one module and the emitter would call
 `foo_impl` from the wrong one — wrong code that compiles.
 
-**A bug the conversion surfaced.** `calc_percentile` validated `size(array) <= size(perm)`,
-the inverse of the contract it exists to serve: a percentile over a *slice* of a sorted
+**A bug the conversion surfaced.** `calc_quantile` validated `size(array) <= size(perm)`,
+the inverse of the contract it exists to serve: a quantile over a *slice* of a sorted
 permutation has a shorter permutation than array. Both callers that need that were therefore
 routing around the validated entry point and into the unvalidated helper. The converted
 signature takes the subset as an optional `n_considered` count rather than a second extent,
@@ -352,7 +361,7 @@ and puts the slice case inside the validated API for the first time.
 
 ### Exports that were implementations
 
-`loess_smooth_2d` and `compute_scaled_distance_quantile` survived the family conversion as
+`loess_smooth_2d` and `compute_scaled_distance_tail_probability` survived the family conversion as
 ordinary `M_EXPORT_C` procedures inside `f42_stats_impl`, because nothing in the mechanism
 required them to move. Then they converted too, and the reason is worth keeping: **a hand-written
 export inside an implementation module is only correct when there is no wrapper to generate.**
@@ -368,7 +377,7 @@ reached the smoother. Four `DM_MIN`/`DM_MAX` lines replace it and the finiteness
 free. Its published signature is unchanged — it takes over no work array and has no permutation,
 so it generates a lone wrapper under the plain name.
 
-`compute_scaled_distance_quantile` made the case from the other side: it demanded a `perm` its
+`compute_scaled_distance_tail_probability` made the case from the other side: it demanded a `perm` its
 callers had to build. Both binding test suites opened with the same prep — clamp the negatives,
 `argsort`, add one for 1-based. Renaming the argument to `sorted_rdi_perm` hands the sort to the
 allocating tier; the published call loses the argument, and `..._expert` keeps it for a caller
@@ -394,6 +403,20 @@ followed by `sort_array_heapsort` — exactly what the emitter writes into an al
 implementation that *is* a prologue looks like a mistake and is not one: what the convention
 automates for an argument is still a published operation in its own right, and the only thing the
 conversion took away was the hand-written `validate_dimension_size` that the wrapper now emits.
+
+`tox_loess_required_workspace`, one of the recommend routines left as hand-written exports,
+converted once a generated wrapper could be a `DM_OUTPUT_FROM` producer ("A generated wrapper
+as producer", below), by FES's decision on it (2026-11-10). It is not a rule: a producer only has
+to be exported, by `M_EXPORT_C` or as an implementation's generated wrapper (FES 2026-11-12),
+and the test above -- would a wrapper validate or prepare anything -- still decides between
+them. It validated nothing, so its wrapper adds only the trailing `ierr` every entry point has;
+what it bought is that it now sits in the generated module beside its consumers, `tox_loess`,
+whose LOESS wrappers call a producer generated into their own module. What a caller sees changed
+only as FES approved: the C symbol and its argument list, and the top-level Python and R name and
+parameters, are as they were; the Fortran entry point moved to `tox_loess` and gained the
+trailing `ierr`; and `tensor_omics.tox_loess_impl`, which held only this routine, is gone (the
+function is in `tensor_omics.tox_loess`). `calc_work_arr_paralog_subsets_size` converts in its
+own branch (#207), not here.
 
 ### f42_kd_tree: the hand-written triple the layer was designed for
 
@@ -502,12 +525,15 @@ byte of generated output — the C bindings are keyed by module name into a flat
 
 **Rejected — deleting `src/generated` wholesale in `clean`, now that it is generated-only.**
 `clean` runs per target, and the generated tree holds three targets' output; the Fortran
-target removes exactly the files it is about to write, one per implementation module, derived
-from the source tree by the same mirror that places them. An `rmtree` of the root would make
-`--target fortran` delete the C and R bindings it was not asked about.
+target removes every wrapper module it finds on disk under `generated_dir` -- every `.F90`
+outside the C and R binding trees (`synthesize.generated_wrapper_paths`). It used to remove
+only the files it was about to write, derived from the source tree by the mirror that places
+them, which missed the wrapper of a deleted implementation: fpm compiles all of
+`src/generated`, and that orphan broke every build after (#221). An `rmtree` of the root would
+make `--target fortran` delete the C and R bindings it was not asked about.
 
 **Ford excludes the generated tree by directory, not by file name.** It used to name the files
-— the same derived list `clean` uses — which is one fact with one definition and looks
+— the same derived list `clean` then used — which is one fact with one definition and looks
 strictly better. It is not, for two reasons the layer-free mirror created. Ford matches a bare
 exclude as `**/<name>`, so once an f42 implementation generates `f42_stats.F90`, excluding
 that name would also drop the hand-written `src/f42/utils/f42_stats.F90` from the parse, and
@@ -538,7 +564,7 @@ list: it drops work arrays, permutations and recommend-sized values, appends `ie
 a mode-split wrapper drops the mode argument too. Worse, a position propagates unchanged
 through every call that does not rewrite it, so what arrives is often not even the
 implementation's own numbering but that of some private helper three frames down —
-`compute_family_scaling_impl` returns `calc_percentile`'s positions 1–3, which in *its*
+`compute_family_scaling_impl` returns `calc_quantile`'s positions 1–3, which in *its*
 signature are `n_genes`, `n_families` and `distances`. Reporting any of that to a caller is
 worse than saying nothing, and "not argument related" is what position 0 means.
 
@@ -587,7 +613,9 @@ if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mo
 
 The generator parsed the table, so it knows the accepted set exactly. An optional mode is
 guarded by `present()`: absent means "use the documented default", which is one of the accepted
-values by construction, and reading an absent optional to discover that is not a Fortran program.
+values by construction, or -- for an optional mode with no default -- "the implementation
+decides", which it learns from `present()` itself. Reading an absent optional to discover
+either is not a Fortran program.
 
 A chain of `/=` rather than `all(x /= [...])`, so the check costs a few integer comparisons and
 no temporary array.
@@ -612,12 +640,14 @@ real argument is checked, and an argument opts *out* per failure mode.
 DM_MIN(EXPR)         The minimum valid value is `EXPR`.
 DM_MAX(EXPR)         The maximum valid value is `EXPR`.
 DM_SENTINEL(EXPR)    The value `EXPR` is additionally accepted.
+DM_EQUALS(EXPR)      Must equal `EXPR`.
 DM_ALLOW_NAN         NaN is permitted for this value.
 DM_ALLOW_INFINITE    Infinite values are permitted for this value.
 ```
 
-These compose onto the existing `tox_errors` validators — the generator never writes an ad-hoc
-check:
+These compose onto the existing `tox_errors` validators. The generator writes a check of its own
+only where a convention states one no validator expresses: the `n_selected_` count against its
+mask, a mode against its table, and `DM_EQUALS` (below):
 
 - Extent scalars → `validate_dimension_size` (automatic, from the argument's extent role; no
   macro needed).
@@ -626,6 +656,8 @@ check:
   (exclusive bounds via `above(0.0_real64)` / `below(…)`, written verbatim). `DM_ALLOW_NAN` /
   `DM_ALLOW_INFINITE` pass the corresponding new optional logical.
 - Integer scalars/arrays → validated only if they carry a bound (integers cannot be NaN/Inf).
+- `DM_EQUALS(EXPR)` → `if (n /= (EXPR)) call set_err_once(ierr, ERR_SIZE_MISMATCH, ...)` after
+  the scalar checks; an extent keeps `validate_dimension_size` beside it (#203).
 - `arg_pos` is the 1-based position of the argument in the *emitted* procedure's dummy list, so
   `foo` and `foo_expert` number independently — they have to, since `foo` is the shorter list.
 
@@ -655,6 +687,28 @@ turns up, it earns a *convention* — a directive with a name, a meaning, and ev
 that qualifies using it — not a per-procedure escape hatch that hides one bad signature and stops
 anyone from noticing the next.
 
+### An integer that must equal another size: `DM_EQUALS` (#203)
+
+`normalization_pipeline_impl` takes `n_replicates`, the rows of `expr`, and `reps_per_tissue`,
+which must add up to it. Until #203 that was said as `DM_MIN(sum(...))` beside `DM_MAX(sum(...))`:
+two doc sentences for one fact, `ERR_INVALID_INPUT` for a size, and no dimension check. FES's
+brief for the convention: "Keep it safe and simple."
+
+- **Only on a required `intent(in)` scalar integer** (`validate._check_equals`): the wrapper compares the
+  value the caller passed, before the call.
+- **Emitted like `DM_MIN`/`DM_MAX`**: `if (n /= (EXPR)) call set_err_once(ierr, ERR_SIZE_MISMATCH, ...)`,
+  after the other scalar checks and before the array checks, under the one return, inside
+  `NO_INPUT_VALIDATION`. After every scalar check, so an extent keeps its dimension check and an
+  empty input stays `ERR_EMPTY_INPUT` (FES on #203, 2026-09-14).
+- **Not done, on purpose** (FES, 2026-11-07): no int64 widening, so a sum that wraps in int32 is
+  not caught; no scope rule for `EXPR`, as there is none for `DM_MIN`/`DM_MAX`; no ordering of the
+  arrays `EXPR` reads before it; no separate check in the C wrapper.
+- **The bindings say it.** The argument's doc reads "Must equal `EXPR`." Where Python and R read
+  the extent off an array, that doc never reaches them, so `doc_contract.equality_notes` puts the
+  sentence on the array, its axis counted as each language counts; and
+  `error_arguments.equalities_of` hands `EXPR`, as written, to `check_err_code`, which appends
+  `'n_replicates' must equal sum(reps_per_tissue)`.
+
 ### Sorting and work arrays (the allocating tier)
 
 `foo_expert` exists only when the implementation needs work arrays, a pre-sorted permutation,
@@ -672,7 +726,12 @@ argument too, since a name that merely ends in `_perm` and orders something the 
 never receives is the caller's own data. There is no override macro: an ordering the default
 sort cannot give is expressed by a prologue that declares the permutation `intent(out)`
 (below), and an argument the convention does not recognise — a bare `perm` — stays the
-caller's own.
+caller's own. Since `foo` builds the permutation, it is something the implementation is handed:
+an `intent(out)` `<base>_perm` is the implementation's *result*, which `foo` would compute and
+throw away (Python and R got nothing back), so `validate` refuses it (#221 B7) rather than the
+convention growing an intent-dependent exception. A result is named for what it is. The same
+holds for a `DM_OUTPUT_FROM(..., AUTO)` value, which `foo` computes with the producer: an
+`intent(out)` one is refused for the same reason (`validate._check_taken_over_is_not_an_output`).
 
 `foo` calls the **implementation directly**, not `foo_expert`. It has just built the
 permutation and work arrays itself, so re-running the expert tier's validation — in particular
@@ -713,6 +772,97 @@ over-allocated is the fraction of points the fit drops; what is bought is that `
 flat sequence of calls and allocations. Should a case appear where the bound is genuinely far
 from the truth, the topological version is the answer — not before.
 
+### A generated wrapper as producer
+
+A producer is a **published entry point**: a hand-written `M_EXPORT_C` recommend routine, or
+an implementation's plain-named generated wrapper, named in its generated module --
+`DM_OUTPUT_FROM(n_out, foo, tox_x, AUTO)` for `foo_impl` in `tox_x_impl`. Synthesis puts the
+wrappers into the project before the output-from pass, so the wrapper resolves like any export,
+and every emitter reads its name, module, arguments and outputs off the plan with nothing to
+translate. `foo_impl` itself is refused (it is not exported, and exporting it is refused too),
+with a note naming `foo` and its module -- or, for a mode split, which has no `foo`, the per-mode
+wrappers -- and so it is when spelled with the generated module, where it does not exist.
+`foo_expert` is refused too, with a note naming `foo`: it is published, so it resolves, but it
+leaves its work arrays to the caller, and nothing downstream catches it -- where Fortran calls
+it, a missing work-array actual or an unrelated refusal; where Python or R does, an
+`ImportError` or "could not find function" at run time, since only `foo` reaches them.
+
+A generated producer validates its inputs, so a call of one can fail, and it reports the failure
+by **its own** argument position -- which none of the hand-written recommend routines sets.
+What the consumer does with that:
+
+- **`foo` checks `ierr` after each producer call.** Each producer starts with `set_ok`, so one
+  check after all of them reported the last producer's outcome and swallowed every earlier error.
+- **The position is translated, else cleared.** A producer input that one of `foo`'s dummies
+  supplied, passed straight through, is mapped to that dummy's position
+  (`select case (get_err_arg_pos(ierr))` + `map_err_arg_pos`); anything else -- a constant, a
+  value `foo` computed -- is cleared (`clear_err_arg_pos`), as an implementation's own position
+  is. Passed through unchanged, `fx_work_total(x, 0)` (`tests/fixtures/impl/fx_sized_impl.F90`)
+  blamed `x` for a bad `scale`.
+- **Python and R do the same on their own call.** Where the value sizes a result, the binding
+  calls the producer's binding itself, and re-raises its error through `_consumer_error` /
+  `.tox_consumer_error`: re-decoded by `check_err_code` against the consumer's argument tables,
+  at the position of the consumer argument that supplied it, or none.
+
+And what calling one directly takes:
+
+- **One call per distinct set of inputs.** One call fills every argument it outputs into, but
+  only arguments whose plans give it the same inputs (`OutputFromPlan.call`): two sizes from one
+  producer through different producer-input rows (`a | a1`, `a | a2`) are two calls. Grouping by
+  the producer alone made them one call, which wrote the second size and never the first.
+  Two arguments taking the same output of one call -- the same producer, given the same inputs
+  -- would hold one value, and the Fortran wrapper wrote only one of them (on main too):
+  `_check_repeated_outputs` refuses that on either route, with a note to use the first alone.
+- **An input the producer refines in place is passed through a required `intent(inout)`
+  argument**, and nothing else. The call writes it back through whatever supplies it: an
+  `intent(in)` dummy or a constant does not compile, and the local an optional is materialised
+  into would swallow the refined value. Those are refused with one message, whose note names the
+  one remedy. Where only Python and R call the producer they adopt the value
+  themselves (`inout_feedback`), so the rule applies only where `foo` makes the call.
+- **A refined value feeds that one producer call** (FES 2026-11-12), on either route: no other
+  producer call may read it, and no second one refine it. Which value another reader saw --
+  before or after the refinement -- depended on the call order, and silently: a size computed
+  from the value, declared before the computing and refining arguments, read the unrefined one
+  in all three languages. One call filling several outputs from it is one call, and the
+  allocations and the implementation call, which come after every producer call, see it
+  refined. `_check_refined_values` refuses the rest, naming the value, the refining producer
+  and the other reader.
+- **Producers do not feed each other** (FES 2026-11-12, "Rejected -- chaining producers"
+  above stands). A producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
+  consumer -- or by the value it computes itself -- is refused on either route
+  (`roles._refuses_chaining`), with the recorded alternative as its note: size for an upper
+  bound, or take the value as an argument of the caller's. So no producer call reads another's
+  output, and the calls run in argument order, which no longer matters. An attempt at ordering
+  them by their dependencies, with the cycles that brought, went again on that decision.
+- **A same-module producer is not `use`d** -- the module would `use` itself, which does not
+  compile. It is what an implementation module whose sizing routine is itself an implementation,
+  beside the consumers it sizes, generates.
+- **An output nothing takes** goes into a scalar local (`<output>_unused`) and is dropped. An
+  array output is refused: a local for it would need the producer's extents, spelled in the
+  consumer's arguments. Python and R take every output the producer's binding returns, so the
+  refusal applies only where `foo` makes the call.
+- **A derived producer input** -- one the producer's binding works out itself, an extent read
+  off one of its arrays -- is resolved like any other: by name, by a table row, as a constant,
+  else the "no argument of the same name" error. The plan marks it derived
+  (`ProducerInput.derived`), so Python and R still leave it out (`binding_inputs`), and the error
+  applies only where `foo` calls the producer: a hand-written consumer's producer is called by
+  Python and R alone, which never pass it. The resolution used to skip derived inputs before it
+  read the table, so a row `n | m` was validated and then dropped, and `foo` found `n` by name
+  or not at all.
+- **A producer may not come back to its consumer.** A procedure sizing an argument by itself,
+  or two sizing each other, recursed at run time until the stack ran out -- in Fortran, and in
+  Python and R through the bindings. `roles._check_producer_cycles` refuses the cycle over the
+  graph of producers (a generated pair is one node), naming the chain.
+- **Two modules may not consume each other's producers.** Generated modules now `use` generated
+  modules, so a pair sizing each other's arguments is a module cycle, which fpm stops on. Stated
+  rather than diagnosed: fpm already refuses it, by name.
+
+**Rejected -- naming the implementation, and translating `foo_impl` into its `foo`.** It
+generates byte-identical bindings, but it is a rule that rewrites what the author wrote, and it
+has no answer for a mode split, which has no `foo` to translate into; picking one per-mode
+wrapper from a table row would be a rule that silently selects a procedure. Naming the wrapper
+leaves nothing to translate: the author names what is called.
+
 ### The prologue is the allocating tier's sugar, and has no scope
 
 `DM_PROLOGUE(PROCEDURE, MODULE)` names a routine `foo` runs after the work arrays are prepared
@@ -734,7 +884,7 @@ values were mistakes:
   looks like when it should have been the procedure's own contract.
 - `EXPERT` contradicts what the expert tier is. FES: *the expert tier is the entry point for
   full control over what reaches the implementation -- a specific threshold, a specific
-  initialised permutation -- while the plain one derives the threshold from a percentile and
+  initialised permutation -- while the plain one derives the threshold from a quantile level and
   sorts with heapsort.* A prologue running in the expert tier would override exactly the
   control that tier exists to give.
 
@@ -749,7 +899,8 @@ belongs instead: at the top of the implementation, where every caller gets it.
 an emitter has no author's line to point at. Every way of getting one wrong therefore passed --
 a name that resolved to nothing produced a wrapper with no prologue; a dummy that matched nothing
 was dropped from the keyword call; a prologue without `handled` left the wrapper branching on an
-undefined logical. All are errors now, in `ir/validate.py`.
+undefined logical, and one with a `logical(c_bool)` `handled` did not compile, the wrapper's own
+flag being a default logical. All are errors now, in `ir/validate.py`.
 
 **Rejected -- letting the presence of a prologue switch off the `<base>_perm` sorting.** More
 explicit on the face of it, but at the wrong granularity: a prologue is per-implementation and
@@ -787,11 +938,12 @@ wrapper hand an `intent(in)` dummy to something that writes it.
 the caller passes.
 
 **A prologue dummy the implementation does not have becomes an argument of `foo`.** What a
-prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `percentile` --
+prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `quantile_level` --
 and
 the implementation, which takes the threshold, has no use for it. So it joins that wrapper's
-signature, after the implementation's own arguments and before `ierr`, and is validated there
-like any other argument. `foo_expert` is untouched: it takes the derived value directly. This
+signature, after the implementation's own arguments and before `ierr` -- the implementation's
+own `ierr` too, where it declares one: until #221 they were appended after that one, publishing
+`..., ierr, quantile_level` -- and is validated there like any other argument. `foo_expert` is untouched: it takes the derived value directly. This
 is also why the two tiers now appear whenever their signatures would differ, rather than only
 when something is taken over -- a prologue with an argument of its own is reason enough.
 
@@ -824,7 +976,9 @@ decision (see [`c-layer.md`](c-layer.md)).
 
 The C layer's null checks are *not* under this directive. They prevent a segfault rather than
 reject a bad value, and a caller who has established that their inputs are good has established
-nothing about a binding language passing a null pointer.
+nothing about a binding language passing a null pointer. Nor is the C wrapper's shape check of an
+axis the declaration computes (`c-layer.md`), for the same reason: it keeps a short buffer from
+being read past.
 
 ### No allocation in an implementation module
 
@@ -919,6 +1073,38 @@ It also needed the IR to carry two things it had no other use for — public gen
 and derived types (`entities.Declaration`). A binding can express neither, but authors link to
 both, and an interface block's own `!>` comment belongs to no procedure and no module, so
 without it the links inside it were read nowhere at all.
+
+---
+
+## A function implementation (#221 B1, 2026-10-27)
+
+An implementation may be a function. Its wrappers cannot be: `ierr` has to come back beside the
+result, and the tiers share one signature shape with every other wrapper. So the result becomes
+an `intent(out)` argument of every tier, under the result's own name and with its own `!!` doc,
+**right before `ierr`** (FES's decision) -- before the implementation's own `ierr` where it
+declares one, and so after a prologue's own arguments. The wrapper assigns the call to it
+(`total = total_impl(n = n, x = x)`). `synthesize.published_arguments` is the one place that
+places it; the mode split, the drop set, the prologue's resolution and `validate`'s
+implementation rules all start from that list, so a prologue may answer the result on its
+`handled` path like any output, and a result is taken over, refused or documented exactly as an
+`intent(out)` argument of the same declaration would be. The implementation itself stays a
+function: another implementation calling it is untouched.
+
+Refused, because a result can break what a dummy cannot (`validate.function_result_problems`):
+no `result(...)` clause (the result would be named after the function, which the wrapper imports
+by that name: no compiler accepts the dummy), a result named `ierr`, one with the `tmp_` prefix
+(a work array is never returned, so the function's one output would be swallowed by the
+allocating tier), and an assumed length. Synthesis leaves such a result out rather than
+building a wrapper the error is about.
+
+An `elemental` function is wrapped as an elemental subroutine is, with scalars, and purity is
+derived as ever. A function cannot be `pure` once it has an `intent(out)` argument -- its own
+`ierr`, a `tmp_` work array -- so those implementations, and their wrappers, are impure.
+
+*Rejected:* refusing function implementations (#221 item 6 offered both). Their wrappers were
+`call`ed, which does not compile, and nothing reported it; supporting them costs one argument and
+an assignment. *Rejected:* naming the argument after the function where there is no clause --
+it never compiles.
 
 ---
 

@@ -7,15 +7,17 @@
 #'
 #' @param arr a integer vector. Array to be serialized
 #' @param filename a string. Name of the file to write to
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return invisibly `NULL`; called for its effect.
 #' @export
 serialize_int_helper <- function(arr, filename) {
     arr <- .tox_as_integer_shaped(arr, "arr")
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     .result <- .Call("serialize_int_helper_call", arr, filename)
     .arguments <- c("arr", "n_elements", "arr_shape", "filename", "ierr")
     .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .shapes <- c("n_elements", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     invisible(NULL)
 }

@@ -12,51 +12,52 @@ applies the threshold and reports which genes exceed it.
 Python binding, generated from tox_get_outliers. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.compute_family_scaling_c.restype = None
 _lib.compute_family_scaling_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_FAMILY_SCALING_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES = ("distances", "dscale", None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_rdi_c.restype = None
 _lib.compute_rdi_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -66,41 +67,41 @@ _COMPUTE_RDI_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None
 
 _lib.identify_outliers_c.restype = None
 _lib.identify_outliers_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile", "ierr",)
+_IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "tail_probability", "quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None, None, None,)
 
 _lib.detect_outliers_c.restype = None
 _lib.detect_outliers_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile",)
+_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", "loess_x", None, None, None, None, None, None, None, None, None,)
+_DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None, None, None, None, None,)
 
 def compute_family_scaling(
         n_families,
@@ -135,10 +136,12 @@ def compute_family_scaling(
     degree : int, optional, default 2
         Degree of the LOESS polynomial
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
         The default value is `'robust'`.
-
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     n_iters : int, optional, default 3
         Number of iterations for robust LOESS fitting
         The default value is `3`.
@@ -152,13 +155,17 @@ def compute_family_scaling(
             Array of scaling factors per family (output)
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference x-coordinates for LOESS smoothing
+            Mean distance of each family in the LOESS fit, packed at the front in the order of
+            `indices_used`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference y-coordinates for LOESS smoothing
+            Standard deviation of the distances of each family in the LOESS fit, packed like
+            `loess_x`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         indices_used : np.ndarray[np.int32] of shape (n_families,), read-only
-            Indices of reference points used for smoothing
+            Family index of each point in the LOESS fit, packed at the front. Families with a
+            single member, and those with the lowest spread, are left out of the fit; the
+            remaining slots hold `0`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         low_sd_cutoff : float
             cutoff used to filter families with low std
@@ -168,6 +175,9 @@ def compute_family_scaling(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -176,58 +186,50 @@ def compute_family_scaling(
     Generated from the Fortran procedure `tox_get_outliers::compute_family_scaling`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        distances = np.ascontiguousarray(distances, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'distances' must be an array of np.float64: {error}") from None
-    if distances.ndim != 1:
-        raise ValueError(f"'distances' must have 1 dimension, but has {distances.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
-    mode = np.array([str(mode).lower().encode().ljust(6)], dtype="S6")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    distances = _contract.reals(distances, "distances", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    mode = _np.array([_contract.mode(mode, "mode", ("plain", "robust",)).ljust(6)], dtype="S6")
+    n_iters = _contract.integer(n_iters, "n_iters")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'distances' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    dscale = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_x = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_y = np.empty((n_families,), dtype=np.float64, order='C')
-    indices_used = np.empty((n_families,), dtype=np.int32, order='C')
-    low_sd_cutoff = ctypes.c_double(0)
-    excluded_low_sd = np.empty((n_families,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    dscale = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_x = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_y = _np.empty((n_families,), dtype=_np.float64, order='C')
+    indices_used = _np.empty((n_families,), dtype=_np.int32, order='C')
+    low_sd_cutoff = _ctypes.c_double(0)
+    excluded_low_sd = _np.empty((n_families,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_family_scaling_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         distances,
         gene_to_fam,
         dscale,
         loess_x,
         loess_y,
         indices_used,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
         mode,
-        ctypes.byref(ctypes.c_int(n_iters)),
-        ctypes.byref(low_sd_cutoff),
+        _ctypes.byref(_ctypes.c_int(n_iters)),
+        _ctypes.byref(low_sd_cutoff),
         excluded_low_sd,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS, _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS, _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     dscale.flags.writeable = False
@@ -284,6 +286,9 @@ def compute_rdi(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -292,55 +297,38 @@ def compute_rdi(
     Generated from the Fortran procedure `tox_get_outliers::compute_rdi`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        distances = np.ascontiguousarray(distances, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'distances' must be an array of np.float64: {error}") from None
-    if distances.ndim != 1:
-        raise ValueError(f"'distances' must have 1 dimension, but has {distances.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
-    try:
-        dscale = np.ascontiguousarray(dscale, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dscale' must be an array of np.float64: {error}") from None
-    if dscale.ndim != 1:
-        raise ValueError(f"'dscale' must have 1 dimension, but has {dscale.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    distances = _contract.reals(distances, "distances", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    dscale = _contract.reals(dscale, "dscale", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
     n_dscale_elements = dscale.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'distances' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    rdi = np.empty((n_genes,), dtype=np.float64, order='C')
-    sorted_rdi = np.empty((n_genes,), dtype=np.float64, order='C')
-    perm = np.empty((n_genes,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    rdi = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    sorted_rdi = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    perm = _np.empty((n_genes,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_rdi_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         distances,
         gene_to_fam,
         dscale,
-        ctypes.byref(ctypes.c_int(n_dscale_elements)),
+        _ctypes.byref(_ctypes.c_int(n_dscale_elements)),
         rdi,
         sorted_rdi,
         perm,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS, _COMPUTE_RDI_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS, _COMPUTE_RDI_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     rdi.flags.writeable = False
@@ -357,9 +345,9 @@ def identify_outliers(
         rdi,
         sorted_rdi,
         perm,
-        percentile=0.95,
+        quantile_level=0.95,
 ):
-    r"""Identify gene outliers based on the top percentile of RDI values
+    r"""Identify gene outliers based on an upper quantile of the RDI values
 
     Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
@@ -376,8 +364,8 @@ def identify_outliers(
         Infinite values are permitted for this value.
     perm : np.ndarray[np.int32] of shape (n_genes,)
         Permutation array with sorted indices
-    percentile : float, optional, default 0.95
-        Percentile threshold as a fraction in [0,1] (top 5% for the default).
+    quantile_level : float, optional, default 0.95
+        Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
         The default value is `0.95`.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -392,15 +380,18 @@ def identify_outliers(
             A result is a value; call `.copy()` to obtain a modifiable array.
         threshold : float
             Output threshold value used for detection
-        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-            Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+            Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            upper-tail quantile is used.
+            upper-tail probability is used.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -409,74 +400,56 @@ def identify_outliers(
     Generated from the Fortran procedure `tox_get_outliers::identify_outliers`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        rdi = np.ascontiguousarray(rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {error}") from None
-    if rdi.ndim != 1:
-        raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
-    try:
-        sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {error}") from None
-    if sorted_rdi.ndim != 1:
-        raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
-    try:
-        perm = np.ascontiguousarray(perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'perm' must be an array of np.int32: {error}") from None
-    if perm.ndim != 1:
-        raise ValueError(f"'perm' must have 1 dimension, but has {perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    rdi = _contract.reals(rdi, "rdi", ndim=1)
+    sorted_rdi = _contract.reals(sorted_rdi, "sorted_rdi", ndim=1)
+    perm = _contract.integers(perm, "perm", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi' is declared with shape (n_genes)", argument="sorted_rdi")
     if perm.shape[0] != n_genes:
-        raise ValueError(f"'perm' has {perm.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'perm' has {perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'perm' is declared with shape (n_genes)", argument="perm")
 
     # outputs and work arrays, which the caller never sees
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    threshold = ctypes.c_double(0)
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    threshold = _ctypes.c_double(0)
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.identify_outliers_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         perm,
         is_outlier,
-        ctypes.byref(threshold),
-        quantile,
-        ctypes.byref(ctypes.c_double(percentile)),
-        ctypes.byref(ierr),
+        _ctypes.byref(threshold),
+        tail_probability,
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS, _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS, _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     is_outlier.flags.writeable = False
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
     return {
         "is_outlier": is_outlier,
         "threshold": threshold.value,
-        "quantile": quantile,
+        "tail_probability": tail_probability,
     }
 
 def detect_outliers(
         n_families,
         distances,
         gene_to_fam,
-        percentile=0.95,
+        quantile_level=0.95,
 ):
     r"""Main routine to detect outliers using RDI and LOESS-based scaling
 
@@ -495,8 +468,8 @@ def detect_outliers(
         Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Gene-to-family mapping (1-based indexing)
-    percentile : float, optional, default 0.95
-        Percentile threshold as a fraction in [0,1] for outlier detection.
+    quantile_level : float, optional, default 0.95
+        Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
         The default value is `0.95`.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -510,23 +483,30 @@ def detect_outliers(
             Output boolean array indicating outliers
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference x-coordinates.
+            Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            front in the order of `loess_n`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference y-coordinates (length n_total).
+            Standard deviation of the distances of each family in that fit, packed like
+            `loess_x`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_n : np.ndarray[np.int32] of shape (n_families,), read-only
-            Indices of reference points used for smoothing.
+            Family index of each point in that fit, packed at the front. Families with a single
+            member, and those with the lowest spread, are left out of the fit; the remaining
+            slots hold `0`.
             A result is a value; call `.copy()` to obtain a modifiable array.
-        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-            Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+            Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            upper-tail quantile is used.
+            upper-tail probability is used.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -535,64 +515,54 @@ def detect_outliers(
     Generated from the Fortran procedure `tox_get_outliers::detect_outliers`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        distances = np.ascontiguousarray(distances, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'distances' must be an array of np.float64: {error}") from None
-    if distances.ndim != 1:
-        raise ValueError(f"'distances' must have 1 dimension, but has {distances.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    distances = _contract.reals(distances, "distances", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'distances' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    loess_x = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_y = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_n = np.empty((n_families,), dtype=np.int32, order='C')
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    loess_x = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_y = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_n = _np.empty((n_families,), dtype=_np.int32, order='C')
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_outliers_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         distances,
         gene_to_fam,
         is_outlier,
         loess_x,
         loess_y,
         loess_n,
-        quantile,
-        ctypes.byref(ierr),
-        ctypes.byref(ctypes.c_double(percentile)),
+        tail_probability,
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     is_outlier.flags.writeable = False
     loess_x.flags.writeable = False
     loess_y.flags.writeable = False
     loess_n.flags.writeable = False
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
     return {
         "is_outlier": is_outlier,
         "loess_x": loess_x,
         "loess_y": loess_y,
         "loess_n": loess_n,
-        "quantile": quantile,
+        "tail_probability": tail_probability,
     }

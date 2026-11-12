@@ -12,6 +12,7 @@ catchable by kind -- the R analogue of Python's exception subclasses.
 from __future__ import annotations
 
 from ..ir.errors import ErrorCatalogue, ErrorGroup
+from .errors_python import SIZE_MISMATCH
 from ..render import Writer
 
 #: The condition class for each group. `tox_error` is the parent every one inherits, so
@@ -26,6 +27,27 @@ GROUP_CONDITIONS = {
 }
 
 BASE_CONDITION = "tox_error"
+
+#: The class every binding-side refusal (`tox_type_error`, `tox_shape_error`, `tox_na_error`)
+#: inherits besides `tox_error`: it is an input error, the same as one the Fortran reports, only
+#: without a code (#221). `tryCatch(tox_input_error = ...)` catches both.
+ARGUMENT_CONDITION_PARENT = GROUP_CONDITIONS[ErrorGroup.INPUT]
+
+#: The classes every condition inherits after its own, and which a binding-side refusal
+#: inherits after its own too, input error first. The R shim raises the same refusals from C
+#: (`tox_refuse` in `tox_marshal.h`), built from these, so the two cannot drift apart.
+RAISED_CLASSES = (BASE_CONDITION, "error", "condition")
+ARGUMENT_CONDITION_CLASSES = (ARGUMENT_CONDITION_PARENT, *RAISED_CLASSES)
+
+#: The fields of every condition, in order -- what `.tox_raise` builds and `tox_refuse` too
+CONDITION_FIELDS = ("message", "call", "code", "name", "argument")
+
+#: The message of an NA refused, as a `sprintf` format taking the argument's name
+NA_MESSAGE = "'%s' contains NA, which tensor-omics cannot represent"
+
+#: The function a generated function raises a `DM_OUTPUT_FROM` producer's error again through,
+#: in its own words (`errors_python.CONSUMER_ERROR` in R)
+CONSUMER_ERROR = ".tox_consumer_error"
 
 
 class RErrorEmitter:
@@ -42,6 +64,7 @@ class RErrorEmitter:
         self._tables(writer)
         self._constructors(writer)
         self._check(writer)
+        self._consumer_error(writer)
         return writer.render(trailing_newline=True)
 
     def _codes(self, writer: Writer) -> None:
@@ -104,7 +127,8 @@ class RErrorEmitter:
         with writer.indent():
             writer.line("cond <- structure(")
             with writer.indent():
-                writer.line("class = c(class, \"tox_error\", \"error\", \"condition\"),")
+                classes = ", ".join(f'"{name}"' for name in RAISED_CLASSES)
+                writer.line(f"class = c(class, {classes}),")
                 writer.line("list(message = message, call = sys.call(-1),")
             with writer.indent(5):
                 writer.line("code = code, name = name, argument = argument)")
@@ -113,17 +137,31 @@ class RErrorEmitter:
         writer.line("}")
         writer.blank()
 
-        # the type/shape/na conditions the R wrappers raise before the call
+        # the type/shape/na conditions the R wrappers raise before the call: input errors with
+        # no tox code (`code` NA), since nothing reported one -- a binding-side refusal
+        writer.block(
+            "#' Signal an argument the binding refused before calling the library\n"
+            "#'\n"
+            "#' A `tox_input_error`, like an input error the Fortran reports, with `code` NA.\n"
+            "#' @keywords internal"
+        )
+        writer.line(".tox_argument_error <- function(message, class, argument) {")
+        with writer.indent():
+            writer.line(f'.tox_raise(message, c(class, "{ARGUMENT_CONDITION_PARENT}"), '
+                        "argument = argument)")
+        writer.line("}")
+        writer.blank()
+
         writer.line("#' @keywords internal")
         writer.line(".tox_type_error <- function(argument, expected, value) {")
         with writer.indent():
-            writer.line(".tox_raise(")
+            writer.line(".tox_argument_error(")
             with writer.indent():
                 writer.line(
                     'sprintf("\'%s\' must be %s, not %s", argument, expected, '
                     'class(value)[1]),'
                 )
-                writer.line('"tox_type_error", argument = argument')
+                writer.line('"tox_type_error", argument')
             writer.line(")")
         writer.line("}")
         writer.blank()
@@ -131,27 +169,32 @@ class RErrorEmitter:
         writer.line("#' @keywords internal")
         writer.line(".tox_na_error <- function(argument) {")
         with writer.indent():
-            writer.line(".tox_raise(")
+            writer.line(".tox_argument_error(")
             with writer.indent():
-                writer.line(
-                    'sprintf("\'%s\' contains NA, which tensor-omics cannot represent", '
-                    "argument),"
-                )
-                writer.line('"tox_na_error", argument = argument')
+                writer.line(f'sprintf("{NA_MESSAGE}", argument),')
+                writer.line('"tox_na_error", argument')
             writer.line(")")
         writer.line("}")
         writer.blank()
 
-        writer.line("#' @keywords internal")
-        writer.line(".tox_shape_error <- function(argument, actual, other, expected) {")
+        writer.block(
+            "#' Signal an input whose shape is not the one it is declared with\n"
+            "#'\n"
+            "#' @param dimension the 1-based dimension compared, or NA for the element count\n"
+            "#' @param reason why it must have `expected`, up to the value itself\n"
+            "#' @param shape the declared shape, for the reader\n"
+            "#' @keywords internal"
+        )
+        writer.line(".tox_shape_error <- function(argument, dimension, actual, reason, expected, shape) {")
         with writer.indent():
-            writer.line(".tox_raise(")
+            writer.line('where <- if (is.na(dimension)) "elements" else sprintf("along dimension %d", dimension)')
+            writer.line(".tox_argument_error(")
             with writer.indent():
                 writer.line(
-                    'sprintf("\'%s\' has extent %d, but \'%s\' implies it should be %d",'
+                    'sprintf("\'%s\' has %d %s, but %s%d; \'%s\' is declared with shape (%s)",'
                 )
-                writer.line("argument, actual, other, expected),")
-                writer.line('"tox_shape_error", argument = argument')
+                writer.line("argument, actual, where, reason, expected, argument, shape),")
+                writer.line('"tox_shape_error", argument')
             writer.line(")")
         writer.line("}")
         writer.blank()
@@ -167,11 +210,19 @@ class RErrorEmitter:
             "#'   caller's own.\n"
             "#' @param arguments the wrapped procedure's argument names, in order, so the\n"
             "#'   message can name the offending one\n"
+            "#' @param shapes positionally alongside `arguments`: the declared shape of an array\n"
+            f"#'   whose size the C wrapper compares, which the message of {SIZE_MISMATCH}\n"
+            "#'   then states. NA elsewhere.\n"
+            "#' @param equals positionally alongside `arguments`: what an argument documented\n"
+            f"#'   with DM_EQUALS must equal, which the message of {SIZE_MISMATCH} then\n"
+            "#'   states. NA elsewhere.\n"
             "#' @return invisibly, the name of the status code if the call reported one;\n"
             "#'   status codes are outcomes, not failures, and never raise\n"
             "#' @keywords internal"
         )
-        writer.line("check_err_code <- function(ierr, arguments = character(), sources = character()) {")
+        writer.line("check_err_code <- function(ierr, arguments = character(), sources = character(),")
+        with writer.indent(9):
+            writer.line("shapes = character(), equals = character()) {")
         with writer.indent():
             writer.line("code <- ierr %% ARG_POS_FACTOR")
             writer.line("if (code == 0L) return(invisible(NULL))")
@@ -208,6 +259,19 @@ class RErrorEmitter:
                     with writer.indent():
                         writer.line('message <- sprintf("%s (argument \'%s\')", message, argument)')
                     writer.line("}")
+                    size_mismatch = self.catalogue.code(SIZE_MISMATCH)
+                    if size_mismatch is not None:
+                        writer.line("shape <- if (arg_pos <= length(shapes)) shapes[[arg_pos]] else NA_character_")
+                        writer.line(f"if (!is.na(shape) && code == {size_mismatch.value}L)")
+                        with writer.indent():
+                            writer.line("# what the array must be, which no code can carry")
+                            writer.line("message <- sprintf(\"%s; '%s' is declared with shape (%s)\", "
+                                        "message, arguments[[arg_pos]], shape)")
+                        writer.line("expected <- if (arg_pos <= length(equals)) equals[[arg_pos]] else NA_character_")
+                        writer.line(f"if (!is.na(expected) && code == {size_mismatch.value}L)")
+                        with writer.indent():
+                            writer.line("message <- sprintf(\"%s; '%s' must equal %s\", "
+                                        "message, arguments[[arg_pos]], expected)")
                 writer.line("} else {")
                 with writer.indent():
                     writer.line('message <- sprintf("%s (argument %d)", message, arg_pos)')
@@ -220,6 +284,42 @@ class RErrorEmitter:
             writer.line(".tox_raise(message, class, code = code, name = .tox_names[key],")
             with writer.indent(11):
                 writer.line("argument = argument)")
+        writer.line("}")
+
+
+    def _consumer_error(self, writer: Writer) -> None:
+        """The error a producer raised, as the function that called it reports it.
+
+        As in Python: the producer names its own argument, which the caller never wrote; this
+        names the caller's argument that supplied it instead, through `check_err_code`, or no
+        argument where nothing the caller passed did.
+        """
+        writer.blank()
+        writer.block(
+            "#' Signal a producer's error again, naming the caller's argument\n"
+            "#'\n"
+            "#' @param e the condition the producer raised\n"
+            "#' @param supplied_by for each producer argument the calling function supplied,\n"
+            "#'   named by it, the position of the argument that supplied it in `arguments`\n"
+            "#' @param arguments,sources the calling function's, as `check_err_code` takes them\n"
+            "#' @keywords internal"
+        )
+        writer.line(f"{CONSUMER_ERROR} <- function(e, supplied_by, arguments, sources = character()) {{")
+        with writer.indent():
+            writer.line("known <- !is.na(e$argument) && e$argument %in% names(supplied_by)")
+            writer.line("position <- if (known) supplied_by[[e$argument]] else 0L")
+            writer.line("if (is.na(e$code)) {")
+            with writer.indent():
+                writer.line("# refused by the producer's binding before any code existed")
+                writer.line("argument <- NA_character_")
+                writer.line("if (position > 0L && position <= length(arguments)) {")
+                with writer.indent():
+                    writer.line("source <- if (position <= length(sources)) sources[[position]] else NA_character_")
+                    writer.line("argument <- if (is.na(source)) arguments[[position]] else source")
+                writer.line("}")
+                writer.line(".tox_argument_error(conditionMessage(e), class(e)[1], argument)")
+            writer.line("}")
+            writer.line("check_err_code(e$code + position * ARG_POS_FACTOR, arguments, sources)")
         writer.line("}")
 
 
