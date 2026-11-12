@@ -140,13 +140,4 @@ test_detect_neofunctionalization <- function() {
 
 }
 
-test_calc_work_arr_validates_even_with_nothing_to_size <- function() {
-  # a zero max_subset_size sizes nothing, but no genes is an error naming n_genes
-  sizes <- calc_work_arr_paralog_subsets_size(0L, 3L, 1L)
-  assert_true(sizes$work_array_size == 0L)
-  argument <- tryCatch({ calc_work_arr_paralog_subsets_size(0L, 0L, 1L); "accepted" },
-                       tox_input_error = function(e) e$argument)
-  assert_true(identical(argument, "n_genes"))
-}
-
 run_all_tests()

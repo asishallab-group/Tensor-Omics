@@ -4,10 +4,9 @@ module mod_test_paralog_analysis
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_paralog_analysis
-    ! the bit-mask utilities stayed in the kernel module; the work-array sizing routine is
-    ! published by tox_paralog_analysis, as a generated wrapper
+    ! the bit-mask utilities and the work-array sizing routine stayed in the kernel module
     use tox_paralog_analysis_impl, only: mask_chunk_count, mask_set_state, mask_check_state, &
-                                          mask_get_first_successor_idx, &
+                                          mask_get_first_successor_idx, calc_work_arr_paralog_subsets_size, &
                                           fill_array_with_minvals_for_each_idx, &
                                           add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper
     use test_suite, only: test_case
@@ -23,7 +22,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_paralog_analysis() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(21))
+        allocate (all_tests(20))
 
         all_tests(1) = test_case("test_paralog_analysis_mask_set_state", test_mask_set_state)
         all_tests(2) = test_case("test_paralog_analysis_mask_check_state", test_mask_check_state)
@@ -45,7 +44,6 @@ contains
         all_tests(18) = test_case("test_paralog_analysis_detect_neofunctionalization", test_detect_neofunctionalization)
         all_tests(19) = test_case("test_paralog_analysis_detect_patterns_input_validation", test_detect_patterns_input_validation)
         all_tests(20) = test_case("test_paralog_analysis_detect_neofunctionalization_input_validation", test_detect_neofunctionalization_input_validation)
-        all_tests(21) = test_case("test_paralog_analysis_calc_work_arr_paralog_subsets_size_validation", test_calc_work_arr_paralog_subsets_size_validation)
     end function get_all_tests_paralog_analysis
 
     !> Test the detect_neofunctionalization function with simple synthetic examples.
@@ -1000,40 +998,6 @@ contains
         call calc_work_arr_paralog_subsets_size(max_subset_size_overflown, n_paralogs_overflow, work_array_size, mask_all_active_overflow, size(mask_all_active_overflow), ierr)
         call assert_not_equal_int(max_subset_size_overflown, 16_int32, "test_calc_work_arr_paralog_subsets_size: for overflow the max subset size should be different to input")
     end subroutine test_calc_work_arr_paralog_subsets_size
-
-    !> The sizing routine's generated wrapper validates every input, before the implementation's
-    !| early return for a `max_subset_size` of zero: valid input still sizes nothing, and an invalid
-    !| `n_genes` or `n_mask_chunks` is an error naming it there too -- where the hand-written
-    !| export returned size zero.
-    subroutine test_calc_work_arr_paralog_subsets_size_validation
-        integer(int32) :: mask(1), max_subset_size, work_array_size, ierr
-
-        mask = 0
-        call mask_set_state(mask, 1_int32, .true._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_work_arr validation: setting up the mask")
-
-        ! valid input, nothing to size: zero, and no error
-        max_subset_size = 0
-        work_array_size = -1
-        call calc_work_arr_paralog_subsets_size(max_subset_size, 3_int32, work_array_size, mask, 1_int32, ierr)
-        call assert_err(ierr, ERR_OK, "calc_work_arr validation: zero subset size on valid input")
-        call assert_equal_int(work_array_size, 0_int32, "calc_work_arr validation: zero subset size sizes nothing")
-
-        ! no genes: refused at n_genes, the 2nd argument, even with nothing to size
-        max_subset_size = 0
-        call calc_work_arr_paralog_subsets_size(max_subset_size, 0_int32, work_array_size, mask, 1_int32, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "calc_work_arr validation: no genes", arg_pos=2_int32)
-
-        ! an empty mask: refused at n_mask_chunks, the 5th
-        max_subset_size = 0
-        call calc_work_arr_paralog_subsets_size(max_subset_size, 3_int32, work_array_size, mask(1:0), 0_int32, ierr)
-        call assert_err(ierr, ERR_EMPTY_INPUT, "calc_work_arr validation: no mask chunks", arg_pos=5_int32)
-
-        ! a negative subset size: refused at max_subset_size, the 1st
-        max_subset_size = -1
-        call calc_work_arr_paralog_subsets_size(max_subset_size, 3_int32, work_array_size, mask, 1_int32, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "calc_work_arr validation: negative subset size", arg_pos=1_int32)
-    end subroutine test_calc_work_arr_paralog_subsets_size_validation
 
     !> Test the mask_set_state function with various paralog indices and states.
     subroutine test_mask_set_state

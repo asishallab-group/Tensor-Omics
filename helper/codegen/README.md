@@ -611,7 +611,8 @@ dropping the fixed directory they used to be scoped to:
   tell apart from the validated `foo`. Support routines in the same module (the
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
   implementation module can itself show up in the bindings — `tox_paralog_analysis_impl.py` is
-  the Python home of `mask_chunk_count` and `mask_check_state`, and holds no implementation
+  the Python home of `mask_chunk_count`, `mask_check_state` and
+  `calc_work_arr_paralog_subsets_size`, and holds no implementation
 - an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
   `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
   (it calls the producer itself). Either way it would discard what the implementation computes;

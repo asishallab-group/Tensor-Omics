@@ -24,6 +24,7 @@ module tox_paralog_analysis_impl_c
 
     public :: mask_check_state_c
     public :: mask_chunk_count_c
+    public :: calc_work_arr_paralog_subsets_size_c
 
 contains
 
@@ -91,6 +92,60 @@ contains
             count = count&
         )
     end subroutine mask_chunk_count_c
+
+    !> summary: C-wrapper for [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size(subroutine)]]
+    !| The `detect_*` subroutines need a work array for the to be tested subsets.
+    !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+    !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
+    !|
+    !| This subroutine calculates the needed size for the work array.
+    subroutine calc_work_arr_paralog_subsets_size_c(&
+            max_subset_size,&
+            n_genes,&
+            work_array_size,&
+            filtered_paralogs_mask,&
+            n_mask_chunks,&
+            ierr&
+        ) bind(C, name="calc_work_arr_paralog_subsets_size_c")
+        use tox_paralog_analysis_impl, only: calc_work_arr_paralog_subsets_size
+
+        integer(c_int), intent(in), target :: n_mask_chunks
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes
+        integer(c_int), intent(inout), target :: max_subset_size
+            !! maximum size that a subset must not exceed. Zero is in range and means there is
+            !! nothing to size a work array for, which is reported back as a size of zero.
+            !! The minimum valid value is `0_int32`.
+            !! @warning
+            !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+            !!
+            !! Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+            !! @endwarning
+        integer(c_int), intent(in), target :: n_genes
+            !! number of genes
+        integer(c_int), intent(out), target :: work_array_size
+            !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
+        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
+            !! Output mask with all genes disabled that did not pass the filter
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(max_subset_size)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(work_array_size)
+        M_CHECK_NON_NULL(n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_mask, n_mask_chunks)
+
+        call calc_work_arr_paralog_subsets_size(&
+            max_subset_size = max_subset_size,&
+            n_genes = n_genes,&
+            work_array_size = work_array_size,&
+            filtered_paralogs_mask = filtered_paralogs_mask,&
+            n_mask_chunks = n_mask_chunks,&
+            ierr = ierr&
+        )
+    end subroutine calc_work_arr_paralog_subsets_size_c
 
 end module tox_paralog_analysis_impl_c
 #endif

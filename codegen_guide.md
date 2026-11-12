@@ -1181,8 +1181,8 @@ Because the procedure is not a numeric procedure of the pipeline:
   nothing and prepare nothing, so there is nothing to generate. Being a `DM_OUTPUT_FROM` producer
   does not change that: a producer only has to be exported, by `M_EXPORT_C` or as an
   implementation's generated wrapper (Section 5.9), and the same test decides which.
-  `tox_loess_required_workspace` and `calc_work_arr_paralog_subsets_size` were converted by
-  FES's decision on those two (2026-11-10), not by a rule.
+  `tox_loess_required_workspace` was converted by FES's decision on it (2026-11-10), not by a
+  rule.
 
 If your procedure is a numeric procedure of the pipeline, take Part I instead. "It was easier to
 export it directly" is how an unvalidated API gets shipped.
