@@ -289,7 +289,7 @@ def analyse_project(project, diagnostics: DiagnosticBag,
             # once per generated pair: its expert half carries every argument the plain half has
             expert = module.procedure(procedure.name + conventions.expert_suffix)
             if expert is None or _plain_of_an_expert(expert, project, conventions) is not procedure:
-                _check_refined_values(procedure, diagnostics)
+                _check_refined_values(procedure, project, diagnostics, conventions)
                 _check_repeated_outputs(procedure, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
 
@@ -634,10 +634,11 @@ def _check_repeated_outputs(consumer: Procedure, diagnostics: DiagnosticBag) -> 
             )
 
 
-def _check_refined_values(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
+def _check_refined_values(consumer: Procedure, project, diagnostics: DiagnosticBag,
+                          conventions: Conventions) -> None:
     """Refuse a value a producer refines in place that feeds any other producer call too.
 
-    The rule (FES 2026-11-12): a value a producer refines -- an `intent(inout)` input -- feeds
+    The rule: a value a producer refines -- an `intent(inout)` input -- feeds
     that one producer call and no other, on either route. Whether another call reading it saw
     it before or after the refinement would depend on the call order, and a second refiner would
     refine what the first already had; so neither is allowed. One call filling several outputs
@@ -667,7 +668,12 @@ def _check_refined_values(consumer: Procedure, diagnostics: DiagnosticBag) -> No
                 name = consumer.argument(value).name
                 refining = refiner[0].roles.computed_from.producer.name
                 reader = other[0].roles.computed_from.producer.name
-                verb = "refines it too" if value in refined_by(other) else "reads it too"
+                refines = value in refined_by(other)
+                verb = "refines it too" if refines else "reads it too"
+                # where the Fortran wrapper calls a refiner, its input must be a required
+                # intent(inout) argument (`_refuses_a_refined_input`); Python and R take any
+                fortran = refines and _is_called_from_fortran(consumer, other[0], project,
+                                                              conventions)
                 diagnostics.error(
                     f"'{name}' is refined in place by '{refining}' (computing "
                     f"'{refiner[0].name}'), so it may feed no other producer call, but "
@@ -675,8 +681,9 @@ def _check_refined_values(consumer: Procedure, diagnostics: DiagnosticBag) -> No
                     entity=other[0],
                     note=(
                         f"a value a producer refines feeds that producer alone: give "
-                        f"'{reader}' its own argument of the caller's for that input -- a "
-                        "required intent(inout) one where it refines it as well"
+                        f"'{reader}' its own argument of the caller's for that input"
+                        + (" -- a required intent(inout) one, since it refines it as well"
+                           if fortran else "")
                     ),
                 )
 

@@ -810,6 +810,9 @@ And what calling one directly takes:
   only arguments whose plans give it the same inputs (`OutputFromPlan.call`): two sizes from one
   producer through different producer-input rows (`a | a1`, `a | a2`) are two calls. Grouping by
   the producer alone made them one call, which wrote the second size and never the first.
+  Two arguments taking the same output of one call -- the same producer, given the same inputs
+  -- would hold one value, and the Fortran wrapper wrote only one of them (on main too):
+  `_check_repeated_outputs` refuses that on either route, with a note to use the first alone.
 - **An input the producer refines in place is passed through a required `intent(inout)`
   argument**, and nothing else. The call writes it back through whatever supplies it: an
   `intent(in)` dummy or a constant does not compile, and the local an optional is materialised

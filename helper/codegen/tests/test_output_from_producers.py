@@ -649,6 +649,34 @@ class TestARefinedValueFeedsOneCall:
 
         assert len(self.refusals(bag)) == 1
 
+    def test_the_note_asks_for_intent_inout_only_where_fortran_calls_a_second_refiner(self):
+        clause = " -- a required intent(inout) one, since it refines it as well"
+        for binding in (False, True):
+            cons = self.consumer_of(self.REFINER, ("s2", "capped_pair", "first", []),
+                                    binding=binding)
+            _, bag = analysed(self.producers(), cons)
+
+            [note] = [e.note for e in bag.errors if "is refined in place by" in e.message]
+            assert note.endswith(clause) is not binding
+
+    def test_a_generated_pair_whose_tiers_both_keep_them_is_refused_once(self):
+        # every AUTO value sizes a result, so the plain tier keeps them as the expert does; a
+        # work array makes the pair. Each refusal comes once, not once per tier
+        arguments = [integer("n_items", doc="items"), integer("cap", Intent.INOUT, doc="a cap")]
+        for name, producer, output, rows in (
+                self.REFINER, ("s2", "plain_size", "sized", [("base", "cap")]),
+                ("s3", "plain_size", "sized", [("base", "n_items")]),
+                ("s4", "plain_size", "sized", [("base", "n_items")])):
+            arguments.append(integer(name, doc=table(*rows),
+                                     directives=auto(output, producer, "tox_hand")))
+            arguments.append(real("res_" + name, Intent.OUT, f"({name})", doc="sized"))
+        arguments.append(real("tmp_work", Intent.OUT, "(n_items)", doc="scratch"))
+        synthesis, bag = analysed(self.producers(), consumer("both_tiers_impl", *arguments))
+
+        assert synthesis.project.procedure("tox_cons", "both_tiers").argument("s2") is not None
+        assert len(self.refusals(bag)) == 1
+        assert len([e for e in bag.errors if "takes the same output" in e.message]) == 1
+
     def test_one_call_filling_two_outputs_from_it_is_one_call(self):
         for binding in (False, True):
             _, bag = analysed(self.producers(), self.consumer_of(
