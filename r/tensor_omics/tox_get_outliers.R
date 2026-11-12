@@ -53,7 +53,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 
     .result <- .Call("compute_family_scaling_call", n_families, distances, gene_to_fam, span, degree, mode, n_iters)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "ierr")
-    .sources <- c("distances", "dscale", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("distances", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -186,7 +186,7 @@ detect_outliers <- function(n_families, distances, gene_to_fam, quantile_level =
 
     .result <- .Call("detect_outliers_call", n_families, distances, gene_to_fam, quantile_level)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "quantile_level", "ierr")
-    .sources <- c("distances", "loess_x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("distances", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

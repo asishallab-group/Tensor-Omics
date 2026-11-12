@@ -45,6 +45,10 @@ CONDITION_FIELDS = ("message", "call", "code", "name", "argument")
 #: The message of an NA refused, as a `sprintf` format taking the argument's name
 NA_MESSAGE = "'%s' contains NA, which tensor-omics cannot represent"
 
+#: The function a generated function raises a `DM_OUTPUT_FROM` producer's error again through,
+#: in its own words (`errors_python.CONSUMER_ERROR` in R)
+CONSUMER_ERROR = ".tox_consumer_error"
+
 
 class RErrorEmitter:
     def __init__(self, catalogue: ErrorCatalogue):
@@ -60,6 +64,7 @@ class RErrorEmitter:
         self._tables(writer)
         self._constructors(writer)
         self._check(writer)
+        self._consumer_error(writer)
         return writer.render(trailing_newline=True)
 
     def _codes(self, writer: Writer) -> None:
@@ -208,13 +213,16 @@ class RErrorEmitter:
             "#' @param shapes positionally alongside `arguments`: the declared shape of an array\n"
             f"#'   whose size the C wrapper compares, which the message of {SIZE_MISMATCH}\n"
             "#'   then states. NA elsewhere.\n"
+            "#' @param equals positionally alongside `arguments`: what an argument documented\n"
+            f"#'   with DM_EQUALS must equal, which the message of {SIZE_MISMATCH} then\n"
+            "#'   states. NA elsewhere.\n"
             "#' @return invisibly, the name of the status code if the call reported one;\n"
             "#'   status codes are outcomes, not failures, and never raise\n"
             "#' @keywords internal"
         )
         writer.line("check_err_code <- function(ierr, arguments = character(), sources = character(),")
         with writer.indent(9):
-            writer.line("shapes = character()) {")
+            writer.line("shapes = character(), equals = character()) {")
         with writer.indent():
             writer.line("code <- ierr %% ARG_POS_FACTOR")
             writer.line("if (code == 0L) return(invisible(NULL))")
@@ -259,6 +267,11 @@ class RErrorEmitter:
                             writer.line("# what the array must be, which no code can carry")
                             writer.line("message <- sprintf(\"%s; '%s' is declared with shape (%s)\", "
                                         "message, arguments[[arg_pos]], shape)")
+                        writer.line("expected <- if (arg_pos <= length(equals)) equals[[arg_pos]] else NA_character_")
+                        writer.line(f"if (!is.na(expected) && code == {size_mismatch.value}L)")
+                        with writer.indent():
+                            writer.line("message <- sprintf(\"%s; '%s' must equal %s\", "
+                                        "message, arguments[[arg_pos]], expected)")
                 writer.line("} else {")
                 with writer.indent():
                     writer.line('message <- sprintf("%s (argument %d)", message, arg_pos)')
@@ -271,6 +284,42 @@ class RErrorEmitter:
             writer.line(".tox_raise(message, class, code = code, name = .tox_names[key],")
             with writer.indent(11):
                 writer.line("argument = argument)")
+        writer.line("}")
+
+
+    def _consumer_error(self, writer: Writer) -> None:
+        """The error a producer raised, as the function that called it reports it.
+
+        As in Python: the producer names its own argument, which the caller never wrote; this
+        names the caller's argument that supplied it instead, through `check_err_code`, or no
+        argument where nothing the caller passed did.
+        """
+        writer.blank()
+        writer.block(
+            "#' Signal a producer's error again, naming the caller's argument\n"
+            "#'\n"
+            "#' @param e the condition the producer raised\n"
+            "#' @param supplied_by for each producer argument the calling function supplied,\n"
+            "#'   named by it, the position of the argument that supplied it in `arguments`\n"
+            "#' @param arguments,sources the calling function's, as `check_err_code` takes them\n"
+            "#' @keywords internal"
+        )
+        writer.line(f"{CONSUMER_ERROR} <- function(e, supplied_by, arguments, sources = character()) {{")
+        with writer.indent():
+            writer.line("known <- !is.na(e$argument) && e$argument %in% names(supplied_by)")
+            writer.line("position <- if (known) supplied_by[[e$argument]] else 0L")
+            writer.line("if (is.na(e$code)) {")
+            with writer.indent():
+                writer.line("# refused by the producer's binding before any code existed")
+                writer.line("argument <- NA_character_")
+                writer.line("if (position > 0L && position <= length(arguments)) {")
+                with writer.indent():
+                    writer.line("source <- if (position <= length(sources)) sources[[position]] else NA_character_")
+                    writer.line("argument <- if (is.na(source)) arguments[[position]] else source")
+                writer.line("}")
+                writer.line(".tox_argument_error(conditionMessage(e), class(e)[1], argument)")
+            writer.line("}")
+            writer.line("check_err_code(e$code + position * ARG_POS_FACTOR, arguments, sources)")
         writer.line("}")
 
 

@@ -542,7 +542,19 @@ an AUTO argument is a *parameter* of the `.Call` shim (R fills it) but never a p
 the user-facing R or Python function. The producer must be exported, else there is no wrapper
 to call; it may live in **any** module, and Python imports it inside the calling function
 rather than at the top of the file, because two modules may size each other's outputs and a
-module-level import would then be circular.
+module-level import would then be circular. (Two *generated* modules may not, where their
+Fortran wrappers call the producers: those `use` each other, and fpm stops on the cycle.)
+
+The producer's error is raised again in the consumer's words (`_consumer_error` in Python,
+`.tox_consumer_error` in R). Its argument is the producer's, which the caller never wrote --
+`fx_fill(x, 0)` (`tests/fixtures/impl/fx_sized_impl.F90`) used to report `(argument 'factor')`
+for the consumer's `scale` -- so the call is wrapped, and the error re-decoded by
+`check_err_code` against the consumer's own argument tables, at the position of the consumer
+argument that supplied the producer's: the same class, code and message format as the
+consumer's own errors. An input a constant supplied names no
+argument. An input the producer's binding derives (an extent read off one of its arrays) is not
+passed (`OutputFromPlan.binding_inputs`); only a generated Fortran wrapper calling the producer
+directly passes it.
 
 ## Decision: a default is rendered in the vocabulary of the layer that reads it
 

@@ -236,7 +236,7 @@ _EXCEPTIONS = {
 _STATUSES = {
 }
 
-def check_err_code(ierr, arguments=(), sources=(), shapes=()):
+def check_err_code(ierr, arguments=(), sources=(), shapes=(), equals=()):
     """Raise if `ierr` reports an error.
 
     Parameters
@@ -256,6 +256,10 @@ def check_err_code(ierr, arguments=(), sources=(), shapes=()):
         Positionally alongside `arguments`: the declared shape of an array
         whose size the C wrapper compares with its declaration, which the
         message of ERR_SIZE_MISMATCH then states. None elsewhere.
+    equals : sequence of str or None, optional
+        Positionally alongside `arguments`: what an argument documented with
+        DM_EQUALS must equal, which the message of
+        ERR_SIZE_MISMATCH then states. None elsewhere.
 
     Returns
     -------
@@ -284,6 +288,7 @@ def check_err_code(ierr, arguments=(), sources=(), shapes=()):
             argument = arguments[arg_pos - 1]
             source = sources[arg_pos - 1] if arg_pos <= len(sources) else None
             shape = shapes[arg_pos - 1] if arg_pos <= len(shapes) else None
+            expected = equals[arg_pos - 1] if arg_pos <= len(equals) else None
             if source:
                 # the caller's word first, then the Fortran argument it
                 # was derived from, which is what the signature calls it
@@ -294,9 +299,44 @@ def check_err_code(ierr, arguments=(), sources=(), shapes=()):
             if shape and code == 206:
                 # what the array must be, which no code can carry
                 message = f"{message}; '{arguments[arg_pos - 1]}' is declared with shape ({shape})"
+            if expected and code == 206:
+                message = f"{message}; '{arguments[arg_pos - 1]}' must equal {expected}"
         else:
             message = f"{message} (argument {arg_pos})"
 
     raise _EXCEPTIONS.get(code, ToxError)(
         message, code=code, name=_NAMES.get(code), argument=argument
     )
+
+
+def _consumer_error(error, supplied_by, arguments=(), sources=()):
+    """The error a producer raised, naming the caller's argument instead.
+
+    Parameters
+    ----------
+    error : ToxError
+        What the producer raised.
+    supplied_by : dict of str to int
+        For each producer argument the calling function supplied, the position
+        of the argument that supplied it in `arguments`.
+    arguments, sources : sequence
+        The calling function's, as `check_err_code` takes them.
+
+    Returns
+    -------
+    ToxError
+        The same error, of the same class, for the caller to raise.
+    """
+    position = supplied_by.get(error.argument, 0)
+    if error.code is None:
+        # refused by the producer's binding before any code existed
+        argument = None
+        if 0 < position <= len(arguments):
+            source = sources[position - 1] if position <= len(sources) else None
+            argument = source or arguments[position - 1]
+        return ToxArgumentError(str(error), argument=argument)
+    try:
+        check_err_code(error.code + position * ARG_POS_FACTOR, arguments, sources)
+    except ToxError as remapped:
+        return remapped
+    return error

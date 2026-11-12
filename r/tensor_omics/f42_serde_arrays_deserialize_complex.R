@@ -11,13 +11,13 @@
 #' @export
 deserialize_complex_helper <- function(filename) {
     filename <- .tox_as_string(filename, "filename")
-    .get_array_metadata_result <- get_array_metadata(filename = filename, dims_out_capacity = 5L)
-    arr_shape <- .get_array_metadata_result$dims_out
-
-    .result <- .Call("deserialize_complex_helper_call", arr_shape, filename)
     .arguments <- c("arr", "n_elements", "arr_shape", "filename", "ierr")
     .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)
     .shapes <- c("n_elements", NA_character_, NA_character_, NA_character_, NA_character_)
+    .get_array_metadata_result <- tryCatch(get_array_metadata(filename = filename, dims_out_capacity = 5L), tox_error = function(e) .tox_consumer_error(e, c(filename = 4L), .arguments, .sources))
+    arr_shape <- .get_array_metadata_result$dims_out
+
+    .result <- .Call("deserialize_complex_helper_call", arr_shape, filename)
     .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$arr
