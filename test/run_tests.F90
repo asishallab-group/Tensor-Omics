@@ -28,6 +28,8 @@ program main
     use mod_test_clustering, only: get_all_tests_clustering
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
+    use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
+    use mod_test_shatter_cluster_data, only: get_all_tests_shatter_cluster_data
     use mod_test_tail_probability, only: get_all_tests_tail_probability
     use mod_test_f42_reductions, only: get_all_tests_f42_reductions
     implicit none
@@ -63,6 +65,8 @@ program main
     call add_suite("clustering", get_all_tests_clustering)
     call add_suite("data_integration", get_all_tests_data_integration)
     call add_suite("binary_search", get_all_tests_binary_search)
+    call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
+    call add_suite("shatter_cluster_data", get_all_tests_shatter_cluster_data)
     call add_suite("tail_probability", get_all_tests_tail_probability)
     call add_suite("f42_reductions", get_all_tests_f42_reductions)
 

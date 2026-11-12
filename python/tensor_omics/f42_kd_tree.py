@@ -50,6 +50,42 @@ _BUILD_SPHERICAL_KD_ARGUMENTS = ("points", "n_dimensions", "n_points", "kd_indic
 #: For a derived argument, the one the caller passed it in
 _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES = (None, "points", "points", None, None, None,)
 
+_lib.vicinity_vectors_c.restype = None
+_lib.vicinity_vectors_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_VICINITY_VECTORS_ARGUMENTS = ("query_point", "points", "n_dimensions", "n_points", "r", "dimension_order", "kd_indices", "vicinity_mask", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_VICINITY_VECTORS_ARGUMENT_SOURCES = (None, None, "query_point", "points", None, None, None, None, None,)
+
+_lib.vicinity_vectors_count_c.restype = None
+_lib.vicinity_vectors_count_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_VICINITY_VECTORS_COUNT_ARGUMENTS = ("query_point", "points", "n_dimensions", "n_points", "r", "dimension_order", "kd_indices", "n_neighbors", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_VICINITY_VECTORS_COUNT_ARGUMENT_SOURCES = (None, None, "query_point", "points", None, None, None, None, None,)
+
 def build_kd_index(
         points,
         dimension_order,
@@ -185,3 +221,175 @@ def build_spherical_kd(
     kd_indices.flags.writeable = False
 
     return kd_indices
+
+def vicinity_vectors(
+        query_point,
+        points,
+        r,
+        dimension_order,
+        kd_indices,
+):
+    r"""Find reference points within a radius around a query point.
+
+    Parameters
+    ----------
+    query_point : np.ndarray[np.float64] of shape (n_dimensions,)
+        Coordinate vector used as the center of the search
+    points : np.ndarray[np.float64] of shape (n_dimensions, n_points,), column-major (order='F')
+        Ambient point matrix
+    r : float
+        Search radius
+        The minimum valid value is `0.0`.
+    dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
+        Sequence of k-d tree split dimensions
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
+    kd_indices : np.ndarray[np.int32] of shape (n_points,)
+        K-d tree index sequence
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
+
+    Returns
+    -------
+    vicinity_mask : np.ndarray[np.bool_] of shape (n_points,), read-only
+        Mask indicating points within the search radius
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `f42_kd_tree::vicinity_vectors`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    query_point = _contract.reals(query_point, "query_point", ndim=1)
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    r = _contract.real(r, "r")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
+    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
+
+    # what the inputs already say, rather than asking for it again
+    n_dimensions = query_point.shape[0]
+    n_points = points.shape[1]
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if points.shape[0] != n_dimensions:
+        raise _ToxArgumentError(f"'points' has {points.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'points' is declared with shape (n_dimensions, n_points)", argument="points")
+    if dimension_order.shape[0] != n_dimensions:
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
+    if kd_indices.shape[0] != n_points:
+        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'points' implies n_points == {n_points}; 'kd_indices' is declared with shape (n_points)", argument="kd_indices")
+
+    # outputs and work arrays, which the caller never sees
+    vicinity_mask = _np.empty((n_points,), dtype=_np.bool_, order='C')
+    ierr = _ctypes.c_int(0)
+
+    _lib.vicinity_vectors_c(
+        query_point,
+        points,
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(r)),
+        dimension_order,
+        kd_indices,
+        vicinity_mask,
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _VICINITY_VECTORS_ARGUMENTS, _VICINITY_VECTORS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    vicinity_mask.flags.writeable = False
+
+    return vicinity_mask
+
+def vicinity_vectors_count(
+        query_point,
+        points,
+        r,
+        dimension_order,
+        kd_indices,
+):
+    r"""Count reference points within a radius around a query point.
+
+    Parameters
+    ----------
+    query_point : np.ndarray[np.float64] of shape (n_dimensions,)
+        Coordinate vector used as the center of the search
+    points : np.ndarray[np.float64] of shape (n_dimensions, n_points,), column-major (order='F')
+        Ambient point matrix
+    r : float
+        Search radius
+        The minimum valid value is `0.0`.
+    dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
+        Sequence of k-d tree split dimensions
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
+    kd_indices : np.ndarray[np.int32] of shape (n_points,)
+        K-d tree index sequence
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
+
+    Returns
+    -------
+    n_neighbors : int
+        Number of points within the search radius
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `f42_kd_tree::vicinity_vectors_count`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    query_point = _contract.reals(query_point, "query_point", ndim=1)
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    r = _contract.real(r, "r")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
+    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
+
+    # what the inputs already say, rather than asking for it again
+    n_dimensions = query_point.shape[0]
+    n_points = points.shape[1]
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if points.shape[0] != n_dimensions:
+        raise _ToxArgumentError(f"'points' has {points.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'points' is declared with shape (n_dimensions, n_points)", argument="points")
+    if dimension_order.shape[0] != n_dimensions:
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'query_point' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
+    if kd_indices.shape[0] != n_points:
+        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'points' implies n_points == {n_points}; 'kd_indices' is declared with shape (n_points)", argument="kd_indices")
+
+    # outputs and work arrays, which the caller never sees
+    n_neighbors = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
+
+    _lib.vicinity_vectors_count_c(
+        query_point,
+        points,
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(r)),
+        dimension_order,
+        kd_indices,
+        _ctypes.byref(n_neighbors),
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _VICINITY_VECTORS_COUNT_ARGUMENTS, _VICINITY_VECTORS_COUNT_ARGUMENT_SOURCES)
+
+    return n_neighbors.value

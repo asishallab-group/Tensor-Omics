@@ -9,7 +9,7 @@
 !| index array rather than as linked nodes.
 module f42_kd_tree_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
+    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
@@ -18,6 +18,10 @@ module f42_kd_tree_c
     public :: build_kd_index_expert_c
     public :: build_spherical_kd_c
     public :: build_spherical_kd_expert_c
+    public :: vicinity_vectors_c
+    public :: vicinity_vectors_expert_c
+    public :: vicinity_vectors_count_c
+    public :: vicinity_vectors_count_expert_c
 
 contains
 
@@ -242,6 +246,264 @@ contains
             ierr = ierr&
         )
     end subroutine build_spherical_kd_expert_c
+
+    !> summary: C-wrapper for [[f42_kd_tree(module):vicinity_vectors(subroutine)]]
+    subroutine vicinity_vectors_c(&
+            query_point,&
+            points,&
+            n_dimensions,&
+            n_points,&
+            r,&
+            dimension_order,&
+            kd_indices,&
+            vicinity_mask,&
+            ierr&
+        ) bind(C, name="vicinity_vectors_c")
+        use f42_kd_tree, only: vicinity_vectors
+
+        integer(c_int), intent(in), target :: n_dimensions
+            !! Number of dimensions
+        integer(c_int), intent(in), target :: n_points
+            !! Total number of points organized in the k-d tree
+        real(c_double), dimension(n_dimensions), intent(in), target :: query_point
+            !! Coordinate vector used as the center of the search
+        real(c_double), dimension(n_dimensions, n_points), intent(in), target :: points
+            !! Ambient point matrix
+        real(c_double), intent(in), target :: r
+            !! Search radius
+            !! The minimum valid value is `0.0_real64`.
+        integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
+            !! Sequence of k-d tree split dimensions
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(c_int), dimension(n_points), intent(in), target :: kd_indices
+            !! K-d tree index sequence
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
+        logical(c_bool), dimension(n_points), intent(out), target :: vicinity_mask
+            !! Mask indicating points within the search radius
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dimensions)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(r)
+        M_CHECK_ARRAY_NON_NULL(query_point, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(points, n_dimensions * n_points)
+        M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(kd_indices, n_points)
+        M_CHECK_ARRAY_NON_NULL(vicinity_mask, n_points)
+
+        call vicinity_vectors(&
+            query_point = query_point,&
+            points = points,&
+            n_dimensions = n_dimensions,&
+            n_points = n_points,&
+            r = r,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            vicinity_mask = vicinity_mask,&
+            ierr = ierr&
+        )
+    end subroutine vicinity_vectors_c
+
+    !> summary: C-wrapper for [[f42_kd_tree(module):vicinity_vectors_expert(subroutine)]]
+    subroutine vicinity_vectors_expert_c(&
+            query_point,&
+            points,&
+            n_dimensions,&
+            n_points,&
+            r,&
+            dimension_order,&
+            kd_indices,&
+            tmp_stack,&
+            vicinity_mask,&
+            ierr&
+        ) bind(C, name="vicinity_vectors_expert_c")
+        use f42_kd_tree, only: vicinity_vectors_expert
+
+        integer(c_int), intent(in), target :: n_dimensions
+            !! Number of dimensions
+        integer(c_int), intent(in), target :: n_points
+            !! Total number of points organized in the k-d tree
+        real(c_double), dimension(n_dimensions), intent(in), target :: query_point
+            !! Coordinate vector used as the center of the search
+        real(c_double), dimension(n_dimensions, n_points), intent(in), target :: points
+            !! Ambient point matrix
+        real(c_double), intent(in), target :: r
+            !! Search radius
+            !! The minimum valid value is `0.0_real64`.
+        integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
+            !! Sequence of k-d tree split dimensions
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(c_int), dimension(n_points), intent(in), target :: kd_indices
+            !! K-d tree index sequence
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
+        integer(c_int), dimension(3, 64), intent(inout), target :: tmp_stack
+            !! Preallocated k-d tree traversal stack
+        logical(c_bool), dimension(n_points), intent(out), target :: vicinity_mask
+            !! Mask indicating points within the search radius
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dimensions)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(r)
+        M_CHECK_ARRAY_NON_NULL(query_point, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(points, n_dimensions * n_points)
+        M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(kd_indices, n_points)
+        M_CHECK_ARRAY_NON_NULL(tmp_stack, 3 * 64)
+        M_CHECK_ARRAY_NON_NULL(vicinity_mask, n_points)
+
+        call vicinity_vectors_expert(&
+            query_point = query_point,&
+            points = points,&
+            n_dimensions = n_dimensions,&
+            n_points = n_points,&
+            r = r,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            tmp_stack = tmp_stack,&
+            vicinity_mask = vicinity_mask,&
+            ierr = ierr&
+        )
+    end subroutine vicinity_vectors_expert_c
+
+    !> summary: C-wrapper for [[f42_kd_tree(module):vicinity_vectors_count(subroutine)]]
+    subroutine vicinity_vectors_count_c(&
+            query_point,&
+            points,&
+            n_dimensions,&
+            n_points,&
+            r,&
+            dimension_order,&
+            kd_indices,&
+            n_neighbors,&
+            ierr&
+        ) bind(C, name="vicinity_vectors_count_c")
+        use f42_kd_tree, only: vicinity_vectors_count
+
+        integer(c_int), intent(in), target :: n_dimensions
+            !! Number of dimensions
+        integer(c_int), intent(in), target :: n_points
+            !! Total number of points organized in the k-d tree
+        real(c_double), dimension(n_dimensions), intent(in), target :: query_point
+            !! Coordinate vector used as the center of the search
+        real(c_double), dimension(n_dimensions, n_points), intent(in), target :: points
+            !! Ambient point matrix
+        real(c_double), intent(in), target :: r
+            !! Search radius
+            !! The minimum valid value is `0.0_real64`.
+        integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
+            !! Sequence of k-d tree split dimensions
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(c_int), dimension(n_points), intent(in), target :: kd_indices
+            !! K-d tree index sequence
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
+        integer(c_int), intent(out), target :: n_neighbors
+            !! Number of points within the search radius
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dimensions)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(r)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_ARRAY_NON_NULL(query_point, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(points, n_dimensions * n_points)
+        M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(kd_indices, n_points)
+
+        call vicinity_vectors_count(&
+            query_point = query_point,&
+            points = points,&
+            n_dimensions = n_dimensions,&
+            n_points = n_points,&
+            r = r,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            n_neighbors = n_neighbors,&
+            ierr = ierr&
+        )
+    end subroutine vicinity_vectors_count_c
+
+    !> summary: C-wrapper for [[f42_kd_tree(module):vicinity_vectors_count_expert(subroutine)]]
+    subroutine vicinity_vectors_count_expert_c(&
+            query_point,&
+            points,&
+            n_dimensions,&
+            n_points,&
+            r,&
+            dimension_order,&
+            kd_indices,&
+            tmp_stack,&
+            n_neighbors,&
+            ierr&
+        ) bind(C, name="vicinity_vectors_count_expert_c")
+        use f42_kd_tree, only: vicinity_vectors_count_expert
+
+        integer(c_int), intent(in), target :: n_dimensions
+            !! Number of dimensions
+        integer(c_int), intent(in), target :: n_points
+            !! Total number of points organized in the k-d tree
+        real(c_double), dimension(n_dimensions), intent(in), target :: query_point
+            !! Coordinate vector used as the center of the search
+        real(c_double), dimension(n_dimensions, n_points), intent(in), target :: points
+            !! Ambient point matrix
+        real(c_double), intent(in), target :: r
+            !! Search radius
+            !! The minimum valid value is `0.0_real64`.
+        integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
+            !! Sequence of k-d tree split dimensions
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(c_int), dimension(n_points), intent(in), target :: kd_indices
+            !! K-d tree index sequence
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
+        integer(c_int), dimension(3, 64), intent(inout), target :: tmp_stack
+            !! Preallocated k-d tree traversal stack
+        integer(c_int), intent(out), target :: n_neighbors
+            !! Number of points within the search radius
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dimensions)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(r)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_ARRAY_NON_NULL(query_point, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(points, n_dimensions * n_points)
+        M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(kd_indices, n_points)
+        M_CHECK_ARRAY_NON_NULL(tmp_stack, 3 * 64)
+
+        call vicinity_vectors_count_expert(&
+            query_point = query_point,&
+            points = points,&
+            n_dimensions = n_dimensions,&
+            n_points = n_points,&
+            r = r,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            tmp_stack = tmp_stack,&
+            n_neighbors = n_neighbors,&
+            ierr = ierr&
+        )
+    end subroutine vicinity_vectors_count_expert_c
 
 end module f42_kd_tree_c
 #endif
