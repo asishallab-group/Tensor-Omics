@@ -1461,7 +1461,34 @@
     "prefix": "tox:loess.use",
     "description": "use tox_loess, only: ...",
     "body": [
-      "use tox_loess, only: ${1|loess_fit_plain,loess_fit_robust|}"
+      "use tox_loess, only: ${1|tox_loess_required_workspace,loess_fit_plain,loess_fit_robust|}"
+    ]
+  },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "call tox_loess_required_workspace( &",
+      "    n_dim=${1:n_dim}, &",
+      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
+      "    int_workspace_size=${3:int_workspace_size}, &",
+      "    real_workspace_size=${4:real_workspace_size}, &",
+      "    save_factorization=${5:save_factorization}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "tox_loess_required_workspace (call, checked)": {
+    "prefix": "tox:tox_loess_required_workspace.checked",
+    "description": "Computes the required sizes for integer and real workspace arrays. (with error check)",
+    "body": [
+      "call tox_loess_required_workspace( &",
+      "    n_dim=${1:n_dim}, &",
+      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
+      "    int_workspace_size=${3:int_workspace_size}, &",
+      "    real_workspace_size=${4:real_workspace_size}, &",
+      "    save_factorization=${5:save_factorization}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "loess_fit_plain (call)": {
@@ -1542,25 +1569,6 @@
       "    fitted_values=${12:fitted_values}, &",
       "    ierr=${13:ierr})",
       "if (is_err(ierr)) return"
-    ]
-  },
-  "tox_loess_impl (use)": {
-    "prefix": "tox:loess_impl.use",
-    "description": "use tox_loess_impl, only: ...",
-    "body": [
-      "use tox_loess_impl, only: ${1|tox_loess_required_workspace|}"
-    ]
-  },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "call tox_loess_required_workspace( &",
-      "    n_dim=${1:n_dim}, &",
-      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
-      "    int_workspace_size=${3:int_workspace_size}, &",
-      "    real_workspace_size=${4:real_workspace_size}, &",
-      "    save_factorization=${5:save_factorization})"
     ]
   },
   "tox_normalization (use)": {

@@ -158,6 +158,10 @@ both *asked for* and *derived* is silently overwritten. There is a parity test f
 Two producer subtleties: match producer inputs to consumer arguments **by name** unless the
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);
 and if the producer refines a value you handed it — capping it, say — adopt what it returned.
+Pass `plan.binding_inputs`, not `plan.inputs`: the derived ones are the producer binding's own to
+work out. And raise the producer's error again in the consumer's words — its argument is the
+producer's, which your caller never wrote: re-decode its code at the position of the consumer
+argument that supplied it (none for a constant), as `_consumer_error` does in Python.
 In Python the producer import goes *inside* the function, because two modules may size each
 other's outputs and a module-level import would be circular.
 
@@ -209,6 +213,8 @@ else.
 - Pass the declared *shape* of each array the C wrapper compares (`error_arguments.shapes_of`),
   so its `ERR_SIZE_MISMATCH` says what the array must be: `'expr' is declared with shape
   (sum(reps_per_tissue), n_genes)`.
+- Pass what each `DM_EQUALS` argument must equal (`error_arguments.equalities_of`), so its
+  `ERR_SIZE_MISMATCH` says so: `'n_replicates' must equal sum(reps_per_tissue)`.
 - `ERR_*` codes raise; `STAT_*` codes are outcomes and never do.
 - Generate a per-language error module from the catalogue (`errors_python.py`, `errors_r.py` are
   the templates): a decode function, the messages taken from the Fortran documentation, and one

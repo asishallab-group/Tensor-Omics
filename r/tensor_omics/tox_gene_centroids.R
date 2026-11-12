@@ -54,7 +54,7 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
 
     .result <- .Call("group_centroid_orthologs_call", expression_vectors, gene_to_family, n_families, n_omp_threads, ortholog_set)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "n_omp_threads", "ortholog_set", "ierr")
-    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "centroid_matrix", NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid_matrix
@@ -88,7 +88,7 @@ group_centroid_all <- function(expression_vectors, gene_to_family, n_families, n
 
     .result <- .Call("group_centroid_all_call", expression_vectors, gene_to_family, n_families, n_omp_threads)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "n_omp_threads", "ierr")
-    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "centroid_matrix", NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid_matrix

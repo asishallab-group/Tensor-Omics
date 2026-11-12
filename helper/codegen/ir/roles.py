@@ -87,6 +87,10 @@ class ProducerInput:
     argument: str | None = None
     #: The value, when the producer input is a constant the consumer has no argument for
     constant: object = None
+    #: Whether the producer's own wrapper derives it (an extent, a shape, a mask count, a
+    #: nested producer's value) and so leaves it out of what Python and R ask for. Only a
+    #: generated Fortran wrapper, which calls the producer directly, passes it.
+    derived: bool = False
 
     @property
     def is_constant(self) -> bool:
@@ -113,6 +117,25 @@ class OutputFromPlan:
     is_automatic: bool
 
     @property
+    def call(self) -> tuple:
+        """What makes two plans one producer call: the producer, and every input it is given.
+
+        One call fills every argument it outputs into -- but only arguments whose plans pass it
+        the same inputs. Two arguments a table supplies differently (`a | a1`, `a | a2`) are two
+        calls, each into its own argument. Python and R key their calls the same way.
+        """
+        return id(self.producer), self.inputs
+
+    @property
+    def binding_inputs(self) -> tuple[ProducerInput, ...]:
+        """What Python and R pass when they call the producer: every input but the derived.
+
+        The producer's own binding works a derived input out from the arrays it is handed,
+        so it is not one of its parameters there. A Fortran call passes them all.
+        """
+        return tuple(supply for supply in self.inputs if not supply.derived)
+
+    @property
     def inout_feedback(self) -> tuple[ProducerInput, ...]:
         """The producer inputs it refines in place, that a consumer argument supplied.
 
@@ -123,7 +146,7 @@ class OutputFromPlan:
         with a stale figure. Constants are never fed back (nothing supplied them).
         """
         fed_back = []
-        for supply in self.inputs:
+        for supply in self.binding_inputs:
             if supply.argument is None:
                 continue
             producer_input = self.producer.argument(supply.name)
@@ -268,12 +291,22 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     for module in project:
         for procedure in module.exported_procedures:
             _resolve_output_from(procedure, project, diagnostics, conventions, evaluator)
+            # once per generated pair: its expert half carries every argument the plain half has
+            expert = module.procedure(procedure.name + conventions.expert_suffix)
+            if expert is None or _plain_of_an_expert(expert, project, conventions) is not procedure:
+                _check_refined_values(procedure, project, diagnostics, conventions)
+                _check_repeated_outputs(procedure, diagnostics)
+    _check_producer_cycles(project, diagnostics, conventions)
 
 
 def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag,
                          conventions: Conventions = CONVENTIONS,
                          evaluator: ConstantEvaluator | None = None) -> None:
     """Attach an `OutputFromPlan` to every argument documented with `DM_OUTPUT_FROM`.
+
+    The producer is a published entry point: a hand-written `M_EXPORT_C` procedure, or the
+    generated wrapper of an implementation -- the plain-named one, in the generated module.
+    An implementation itself is not one; the error names the wrapper to spell instead.
 
     Each of the producer's inputs is supplied by the consumer argument of the same name.
     Where the two disagree, the argument documents the mapping in a table:
@@ -287,9 +320,14 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
     is always one-dimensional -- can be given a value outright.
 
     A producer input that is neither name-matched, nor mapped to an argument, nor a
-    constant is an error naming it. The producer may live in another module; the Python
-    emitter imports it where it is called, and R has every wrapper in one environment.
+    constant is an error naming it. An input the producer's binding derives (an extent read
+    off one of its arrays) is resolved the same way and marked derived: Python and R leave
+    it out of their call, and only a generated Fortran wrapper calling the producer passes
+    it -- so only there is one that resolves to nothing an error. The producer may live in
+    another module; the Python emitter imports it where it is called, and R has every
+    wrapper in one environment.
     """
+    called_here: dict[tuple, list[Argument]] = {}
     for argument in consumer.arguments:
         directive = argument.directives.output_from
         if directive is None:
@@ -301,6 +339,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"'{argument.name}' is computed from '{directive.procedure}' in "
                 f"'{directive.module}', which does not exist",
                 entity=argument,
+                note=_missing_producer_note(directive, project, conventions),
             )
             continue
 
@@ -309,10 +348,18 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"'{argument.name}' is computed from '{producer.name}', which is not "
                 f"exported, so there is no wrapper to call",
                 entity=argument,
-                note=(
-                    f"add 'category: {CONVENTIONS.c_binding_category}' to "
-                    f"'{producer.name}'"
-                ),
+                note=_not_exported_note(producer, project, conventions),
+            )
+            continue
+
+        plain = _plain_of_an_expert(producer, project, conventions)
+        if plain is not None:
+            diagnostics.error(
+                f"'{argument.name}' is computed from '{producer.name}', the expert tier, "
+                f"which leaves preparing its work to the caller",
+                entity=argument,
+                note=(f"name the plain-named wrapper, which prepares it itself: "
+                      f"'{plain.name}' in '{plain.module.name}'"),
             )
             continue
 
@@ -341,6 +388,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
         if renames is None:
             continue
 
+        fortran_calls = _is_called_from_fortran(consumer, argument, project, conventions)
         inputs = []
         unmatched = []
         for producer_input in producer.arguments:
@@ -350,16 +398,20 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 continue
             if producer_input.name.lower() == "ierr":
                 continue
-            if producer_input.roles and producer_input.roles.is_derived:
-                # the producer's own wrapper derives this input (an extent read off one of
-                # its array arguments, a shape, a mask count, or a nested producer) and
-                # drops it from its signature, so the call must not -- and need not --
-                # supply it: the producer recomputes it from the array inputs it is passed
-                continue
+            # the producer's own wrapper derives this input (an extent read off one of its
+            # array arguments, a shape, a mask count, or a nested producer) and drops it from
+            # its signature, so Python and R must not supply it -- but a Fortran call of the
+            # producer has to, so it is resolved like any other input
+            # a nested producer's value counts before its own plan is resolved: the directive
+            # says so already, and the consumers are resolved in no particular order
+            nested = producer_input.directives.output_from
+            derived = bool(producer_input.roles and producer_input.roles.is_derived) or bool(
+                nested is not None and nested.is_automatic)
             supplier = renames.get(producer_input.name.lower(), producer_input.name)
             match = consumer.argument(supplier)
             if match is not None:
-                inputs.append(ProducerInput(producer_input.name, argument=match.name))
+                inputs.append(ProducerInput(producer_input.name, argument=match.name,
+                                            derived=derived))
                 continue
             # not an argument of the consumer: a table may supply it as a constant, which
             # is how a producer input the consumer simply does not have gets a value
@@ -369,8 +421,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 except ConstantError:
                     pass
                 else:
-                    inputs.append(ProducerInput(producer_input.name, constant=value))
+                    inputs.append(ProducerInput(producer_input.name, constant=value,
+                                                derived=derived))
                     continue
+            if derived and not fortran_calls:
+                continue  # nothing that calls the producer here passes it
             unmatched.append(producer_input.name)
 
         if unmatched:
@@ -383,13 +438,392 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
+        if _refuses_chaining(argument, consumer, producer, inputs, fortran_calls, diagnostics):
+            continue
+        if fortran_calls and _refuses_a_refined_input(argument, consumer, producer, inputs,
+                                                      renames, diagnostics, conventions):
+            continue
+
         argument.roles.computed_from = OutputFromPlan(
             producer=producer,
             output=output,
             inputs=tuple(inputs),
             is_automatic=directive.is_automatic,
         )
+        if fortran_calls:
+            called_here.setdefault(argument.roles.computed_from.call, []).append(argument)
 
+    for arguments in called_here.values():
+        _check_unused_outputs(arguments, diagnostics, conventions)
+
+
+def _check_producer_cycles(project, diagnostics: DiagnosticBag,
+                           conventions: Conventions) -> None:
+    """Refuse a producer that, through its own producers, comes back to its consumer.
+
+    Calling it recurses until the stack runs out: the generated wrapper calls its producer, which
+    calls its own, and so on, and the bindings do the same through the producers' bindings. One
+    procedure sizing an argument by itself is the shortest such chain.
+
+    A generated pair is one procedure here: a producer is always the plain-named wrapper, and what
+    it calls is what either tier of it names, the work it takes over sitting on its expert half.
+    """
+    edges: dict[int, list[tuple[Procedure, Argument]]] = {}
+    nodes: dict[int, Procedure] = {}
+    for module in project:
+        for consumer in module.exported_procedures:
+            entry = _plain_of_an_expert(consumer, project, conventions) or consumer
+            for argument in consumer.arguments:
+                plan = argument.roles.computed_from if argument.roles else None
+                if plan is None or not plan.is_automatic:
+                    continue
+                nodes[id(entry)] = entry
+                nodes.setdefault(id(plan.producer), plan.producer)
+                callees = edges.setdefault(id(entry), [])
+                if all(callee is not plan.producer for callee, _ in callees):
+                    callees.append((plan.producer, argument))
+
+    reported: set[frozenset] = set()
+    finished: set[int] = set()
+
+    def visit(node: Procedure, chain: list[tuple[Procedure, Argument]]) -> None:
+        # `chain`: each procedure on the way here, with its argument that calls the next one
+        on_chain = [id(procedure) for procedure, _ in chain]
+        for callee, argument in edges.get(id(node), []):
+            here = chain + [(node, argument)]
+            if id(callee) == id(node) or id(callee) in on_chain:
+                cycle = here[(on_chain + [id(node)]).index(id(callee)):]
+                key = frozenset(id(procedure) for procedure, _ in cycle)
+                if key not in reported:
+                    reported.add(key)
+                    _report_cycle(cycle, diagnostics)
+            elif id(callee) not in finished:
+                visit(callee, here)
+        finished.add(id(node))
+
+    for node_id, node in nodes.items():
+        if node_id not in finished:
+            visit(node, [])
+
+
+def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: DiagnosticBag) -> None:
+    """One diagnostic per cycle, on the argument where its chain starts, naming the whole chain.
+
+    `cycle` holds each procedure on it with its argument that calls the next one; the last one
+    calls the first again.
+    """
+    first, argument = cycle[0]
+    chain = " -> ".join([procedure.name for procedure, _ in cycle] + [first.name])
+    diagnostics.error(
+        f"'{argument.name}' of '{first.name}' is computed from a producer that comes back to "
+        f"it: {chain}",
+        entity=argument,
+        note=(
+            "each call would make the next until the stack runs out; size one of them by "
+            "something that does not depend on the others"
+        ),
+    )
+
+
+def _refuses_chaining(argument: Argument, consumer: Procedure, producer: Procedure,
+                      inputs: list[ProducerInput], fortran_calls: bool,
+                      diagnostics: DiagnosticBag) -> bool:
+    """Refuse a producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the consumer.
+
+    Chaining producers, so one feeds another, is rejected (`design/impl-layer.md`, "Rejected --
+    chaining producers"): every producer input comes from the caller, as an argument or a
+    constant. On either route, and for a value given back to its own producer too -- but only
+    for an input that is passed: one the producer's binding derives is passed by a Fortran call
+    alone. True when something was refused.
+    """
+    refused = False
+    for supply in inputs:
+        if supply.derived and not fortran_calls:
+            continue
+        supplier = consumer.argument(supply.argument) if supply.argument is not None else None
+        directive = supplier.directives.output_from if supplier is not None else None
+        if directive is None or not directive.is_automatic:
+            continue
+        diagnostics.error(
+            f"'{argument.name}' is computed from '{producer.name}', whose input "
+            f"'{supply.name}' would be '{supplier.name}', which a producer computes here too",
+            entity=argument,
+            note=(
+                "producers do not feed each other: size for an upper bound instead (the sizing "
+                "formulas are monotone, so a buffer sized for the bound fits), or take the value "
+                "as an argument of the caller's"
+                + (" -- a required intent(inout) one, since the producer refines it in place"
+                   if fortran_calls and producer.argument(supply.name).intent is Intent.INOUT
+                   else "")
+            ),
+        )
+        refused = True
+    return refused
+
+
+def _refuses_a_refined_input(argument: Argument, consumer: Procedure, producer: Procedure,
+                             inputs: list[ProducerInput], renames: dict[str, str],
+                             diagnostics: DiagnosticBag, conventions: Conventions) -> bool:
+    """Refuse an `intent(inout)` producer input not supplied by a required `intent(inout)` dummy.
+
+    The rule, where the generated Fortran wrapper calls the producer itself: an input the
+    producer refines in place is passed through a required `intent(inout)` argument of the
+    consumer, and nothing else. That is what the call can write, and what carries the refined
+    value on: to the caller, and to the allocations and the implementation call after it (no
+    other producer call may read it, `_check_refined_values`). An `intent(in)` argument or a
+    constant does not compile there, and the local an optional is materialised into would
+    swallow the refined value. Python and R adopt the refined value themselves
+    (`inout_feedback`), so where only they call the producer nothing is refused. True when
+    something was.
+    """
+    plain = consumer.module.procedure(consumer.name[: -len(conventions.expert_suffix)])
+    refused = False
+    for supply in inputs:
+        if producer.argument(supply.name).intent is not Intent.INOUT:
+            continue
+        dummy = plain.argument(supply.argument) if supply.argument is not None else None
+        if dummy is not None and dummy.intent is Intent.INOUT and not dummy.optional:
+            continue
+        if supply.argument is None:
+            given = f"the constant {renames.get(supply.name.lower(), supply.constant)}"
+        elif dummy is None:
+            given = f"'{supply.argument}', a work array or other value the wrapper prepares"
+        else:
+            intent = f"intent({dummy.intent.value})" if dummy.intent else "no intent"
+            given = f"{'optional ' if dummy.optional else ''}{intent} '{supply.argument}'"
+        diagnostics.error(
+            f"'{argument.name}' is computed from '{producer.name}', which refines its input "
+            f"'{supply.name}' in place, so it must be passed through a required intent(inout) "
+            f"argument; it is given {given}",
+            entity=argument,
+            note=(
+                f"the generated wrapper calls '{producer.name}' itself, and writes "
+                f"'{supply.name}' back through what supplies it: supply it by a required "
+                "intent(inout) argument of the implementation, which the refined value then "
+                "reaches, and the caller with it"
+            ),
+        )
+        refused = True
+    return refused
+
+
+def _producer_calls(consumer: Procedure) -> list[list[Argument]]:
+    """The consumer's AUTO arguments, grouped by the producer call that fills them."""
+    calls: dict[tuple, list[Argument]] = {}
+    for argument in consumer.arguments:
+        plan = argument.roles.computed_from if argument.roles else None
+        if plan is not None and plan.is_automatic:
+            calls.setdefault(plan.call, []).append(argument)
+    return list(calls.values())
+
+
+def _check_repeated_outputs(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
+    """Refuse two arguments taking the same output of one producer call.
+
+    One call -- the same producer, given the same inputs -- fills each output once, so the two
+    would hold one value; the generated Fortran wrapper wrote only one of them. Either route.
+    """
+    for arguments in _producer_calls(consumer):
+        taken: dict[str, Argument] = {}
+        for argument in arguments:
+            plan = argument.roles.computed_from
+            first = taken.setdefault(plan.output.name.lower(), argument)
+            if first is argument:
+                continue
+            diagnostics.error(
+                f"'{argument.name}' takes the same output '{plan.output.name}' of "
+                f"'{plan.producer.name}', given the same inputs, as '{first.name}'",
+                entity=argument,
+                note=(f"one call fills both with one value: use '{first.name}' alone, since "
+                      f"'{argument.name}' would hold the same value"),
+            )
+
+
+def _check_refined_values(consumer: Procedure, project, diagnostics: DiagnosticBag,
+                          conventions: Conventions) -> None:
+    """Refuse a value a producer refines in place that feeds any other producer call too.
+
+    The rule: a value a producer refines -- an `intent(inout)` input -- feeds
+    that one producer call and no other, on either route. Whether another call reading it saw
+    it before or after the refinement would depend on the call order, and a second refiner would
+    refine what the first already had; so neither is allowed. One call filling several outputs
+    from it is still one call.
+    """
+    calls = _producer_calls(consumer)
+
+    def refined_by(arguments) -> set[str]:
+        plan = arguments[0].roles.computed_from
+        return {s.argument.lower() for s in plan.inputs if s.argument is not None
+                and plan.producer.argument(s.name).intent is Intent.INOUT}
+
+    def reads(arguments) -> set[str]:
+        return {s.argument.lower() for s in arguments[0].roles.computed_from.inputs
+                if s.argument is not None}
+
+    reported: set[tuple] = set()
+    for refiner in calls:
+        for value in sorted(refined_by(refiner)):
+            for other in calls:
+                if other is refiner or value not in reads(other):
+                    continue
+                key = (value, frozenset({id(refiner[0]), id(other[0])}))
+                if key in reported:
+                    continue
+                reported.add(key)
+                name = consumer.argument(value).name
+                refining = refiner[0].roles.computed_from.producer.name
+                reader = other[0].roles.computed_from.producer.name
+                refines = value in refined_by(other)
+                verb = "refines it too" if refines else "reads it too"
+                # where the Fortran wrapper calls a refiner, its input must be a required
+                # intent(inout) argument (`_refuses_a_refined_input`); Python and R take any
+                fortran = refines and _is_called_from_fortran(consumer, other[0], project,
+                                                              conventions)
+                diagnostics.error(
+                    f"'{name}' is refined in place by '{refining}' (computing "
+                    f"'{refiner[0].name}'), so it may feed no other producer call, but "
+                    f"'{reader}' (computing '{other[0].name}') {verb}",
+                    entity=other[0],
+                    note=(
+                        f"a value a producer refines feeds that producer alone: give "
+                        f"'{reader}' its own argument of the caller's for that input"
+                        + (" -- a required intent(inout) one, since it refines it as well"
+                           if fortran else "")
+                    ),
+                )
+
+
+def _is_called_from_fortran(consumer: Procedure, argument: Argument, project,
+                            conventions: Conventions) -> bool:
+    """Whether a generated Fortran wrapper calls the producer of `argument` itself.
+
+    It does where the allocating tier took the argument over: `consumer` is the expert half
+    of a generated pair, and the plain-named half beside it no longer has the argument.
+    Everywhere else the caller supplies the value, or Python and R compute it through the
+    producer's binding.
+    """
+    module = consumer.module
+    if module is None or project.module(module.name + conventions.impl_suffix) is None:
+        return False  # a hand-written module: nothing generated calls anything here
+    suffix = conventions.expert_suffix
+    if not consumer.name.lower().endswith(suffix):
+        return False
+    plain = module.procedure(consumer.name[: -len(suffix)])
+    return plain is not None and plain.argument(argument.name) is None
+
+
+def unused_outputs(arguments: list[Argument],
+                   conventions: Conventions = CONVENTIONS) -> list[Argument]:
+    """The outputs of the producer `arguments` are computed from that none of them takes.
+
+    `arguments` are a consumer's AUTO values from one producer, which one call fills. A
+    direct Fortran call must pass the rest of the producer's outputs all the same.
+    """
+    plan = arguments[0].roles.computed_from
+    used = {a.roles.computed_from.output.name.lower() for a in arguments}
+    error = conventions.error_arg.lower()
+    return [
+        dummy for dummy in plan.producer.arguments
+        if dummy.intent is Intent.OUT and dummy.name.lower() not in used | {error}
+    ]
+
+
+def fits_a_local(argument: Argument) -> bool:
+    """Whether a wrapper can declare a local of this output's type as it is spelled.
+
+    A scalar can, as long as nothing in its declaration names the producer's other
+    arguments: an array's extents do, and so does a string's length unless it is a literal.
+    """
+    length = argument.type.length
+    return not argument.is_array and (length is None or length.is_constant)
+
+
+def _check_unused_outputs(arguments: list[Argument], diagnostics: DiagnosticBag,
+                          conventions: Conventions) -> None:
+    """Refuse an output of a Fortran-called producer that nothing takes and no local can hold.
+
+    A direct call has to pass every output. One the consumer takes goes into the value it
+    computes; a scalar it does not take goes into a local and is dropped (`fits_a_local`).
+    An array cannot: its local would need the producer's extents, spelled in the consumer's
+    arguments.
+    """
+    producer = arguments[0].roles.computed_from.producer
+    for dummy in unused_outputs(arguments, conventions):
+        if fits_a_local(dummy):
+            continue
+        diagnostics.error(
+            f"'{arguments[0].name}' is computed from '{producer.name}', whose output "
+            f"'{dummy.name}' nothing here takes, and it is not a scalar the generated "
+            f"wrapper can drop",
+            entity=arguments[0],
+            note=(
+                "the generated wrapper calls the producer itself and must pass every output; "
+                "a scalar it does not need goes into a local, but an array (or a string whose "
+                "length is not a literal) would need the producer's own sizes, which nothing "
+                "here can spell"
+            ),
+        )
+
+
+def _missing_producer_note(directive, project, conventions: Conventions) -> str | None:
+    """Where the producer a directive names is, when it names the right thing in the wrong place.
+
+    The two mix-ups of an implementation and its wrapper: `foo_impl` with the generated module,
+    and `foo` with the implementation module.
+    """
+    suffix = conventions.impl_suffix
+    implementation = project.procedure(directive.module + suffix, directive.procedure)
+    if implementation is not None:
+        return _not_exported_note(implementation, project, conventions)
+    if directive.module.lower().endswith(suffix):
+        generated = directive.module[: -len(suffix)]
+        wrapper = project.procedure(generated, directive.procedure)
+        if wrapper is not None:
+            # the plain-named one, even for `foo_expert`: that is what a producer names
+            wrapper = _plain_of_an_expert(wrapper, project, conventions) or wrapper
+            return (f"'{wrapper.name}' is generated into '{generated}', not into "
+                    f"'{directive.module}': name it there")
+    return None
+
+
+def _plain_of_an_expert(producer: Procedure, project, conventions: Conventions):
+    """The plain-named wrapper beside `producer`, if `producer` is a generated `foo_expert`."""
+    module = producer.module
+    suffix = conventions.expert_suffix
+    if module is None or not producer.name.lower().endswith(suffix):
+        return None
+    if project.module(module.name + conventions.impl_suffix) is None:
+        return None  # a hand-written pair: its `_expert` is the author's own name
+    return module.procedure(producer.name[: -len(suffix)])
+
+
+def _not_exported_note(producer: Procedure, project, conventions: Conventions) -> str:
+    """What to name instead of a producer that is not exported.
+
+    An implementation never is, and marking it `M_EXPORT_C` is refused as well: what is
+    published is its generated wrapper, so that is what the directive names. A hand-written
+    procedure is exported by the marker.
+    """
+    suffix = conventions.impl_suffix
+    module = producer.module.name if producer.module is not None else ""
+    if not (module.lower().endswith(suffix) and producer.name.lower().endswith(suffix)):
+        return f"mark '{producer.name}' {conventions.export_marker} to export it"
+    generated, base = module[: -len(suffix)], producer.name[: -len(suffix)]
+    if project.procedure(generated, base) is not None:
+        return (f"an implementation is published as its generated wrapper: name '{base}' "
+                f"in '{generated}'")
+    per_mode = [
+        value.procedure_name
+        for argument in producer.arguments
+        if argument.roles is not None and argument.roles.mode is not None
+        and argument.roles.mode.is_split
+        for value in argument.roles.mode.values
+    ]
+    if per_mode:
+        names = ", ".join(f"'{name}'" for name in per_mode)
+        return (f"'{producer.name}' splits by mode, into one wrapper per mode: name the one "
+                f"you mean in '{generated}' ({names})")
+    return f"an implementation is published as its generated wrapper, in '{generated}'"
 
 
 def _looks_like_a_producer_input_table(table: DocTable, conventions: Conventions) -> bool:

@@ -634,7 +634,18 @@
     "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
     "body": [
       "from tensor_omics.tox_loess import (",
-      "    ${1|loess_fit_plain,loess_fit_robust|},",
+      "    ${1|tox_loess_required_workspace,loess_fit_plain,loess_fit_robust|},",
+      ")"
+    ]
+  },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "${1:result} = tox_loess_required_workspace(",
+      "    n_dim=${2:n_dim},",
+      "    max_neighborhood_size=${3:max_neighborhood_size},",
+      "    save_factorization=${4:save_factorization},",
       ")"
     ]
   },
@@ -670,26 +681,6 @@
       "    compute_influence=${9:False},",
       "    save_factorization=${10:False},",
       "    n_iters=${11:3},",
-      ")"
-    ]
-  },
-  "tox_loess_impl (import)": {
-    "prefix": "tox:loess_impl.setup",
-    "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
-    "body": [
-      "from tensor_omics.tox_loess_impl import (",
-      "    ${1|tox_loess_required_workspace|},",
-      ")"
-    ]
-  },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "${1:result} = tox_loess_required_workspace(",
-      "    n_dim=${2:n_dim},",
-      "    max_neighborhood_size=${3:max_neighborhood_size},",
-      "    save_factorization=${4:save_factorization},",
       ")"
     ]
   },

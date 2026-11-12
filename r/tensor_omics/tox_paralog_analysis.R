@@ -76,7 +76,9 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
     max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")
     max_angle <- .tox_as_double_scalar(max_angle, "max_angle")
     gain_gamma <- .tox_as_double_scalar(gain_gamma, "gain_gamma")
-    .calc_work_arr_paralog_subsets_size_result <- calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_mask = filtered_paralogs_mask)
+    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "max_angle", "gain_gamma", "ierr")
+    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_mask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .calc_work_arr_paralog_subsets_size_result <- tryCatch(calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_mask = filtered_paralogs_mask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_mask = 5L), .arguments, .sources))
     max_subset_size <- .calc_work_arr_paralog_subsets_size_result$max_subset_size
     n_paralog_subsets <- .calc_work_arr_paralog_subsets_size_result$work_array_size
 
@@ -84,8 +86,6 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
         .tox_shape_error("genes", 1L, dim(genes)[1], "'ancestor' implies n_dims == ", length(ancestor), "n_dims, n_genes")
 
     .result <- .Call("detect_dosage_effect_call", ancestor, genes, filtered_paralogs_mask, max_subset_size, n_paralog_subsets, max_angle, gain_gamma)
-    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "max_angle", "gain_gamma", "ierr")
-    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_mask", NA_character_, NA_character_, NA_character_, "work_arr_paralog_subsets", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -131,7 +131,9 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
     rdi_threshold <- .tox_as_double_scalar(rdi_threshold, "rdi_threshold")
     paralog_norms <- .tox_as_double_vector(paralog_norms, "paralog_norms")
     sorted_paralog_norms_perm <- .tox_as_integer_vector(sorted_paralog_norms_perm, "sorted_paralog_norms_perm")
-    .calc_work_arr_paralog_subsets_size_result <- calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_mask = filtered_paralogs_mask)
+    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr")
+    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_mask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .calc_work_arr_paralog_subsets_size_result <- tryCatch(calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_mask = filtered_paralogs_mask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_mask = 5L), .arguments, .sources))
     max_subset_size <- .calc_work_arr_paralog_subsets_size_result$max_subset_size
     n_paralog_subsets <- .calc_work_arr_paralog_subsets_size_result$work_array_size
 
@@ -143,8 +145,6 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
         .tox_shape_error("sorted_paralog_norms_perm", 1L, length(sorted_paralog_norms_perm), "'genes' implies n_genes == ", dim(genes)[2], "n_genes")
 
     .result <- .Call("detect_subfunctionalization_call", ancestor, genes, filtered_paralogs_mask, max_subset_size, n_paralog_subsets, rdi_threshold, paralog_norms, sorted_paralog_norms_perm)
-    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_mask", "n_mask_chunks", "n_results", "max_subset_size", "work_arr_paralog_subsets", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr")
-    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_mask", NA_character_, NA_character_, NA_character_, "work_arr_paralog_subsets", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -185,7 +185,7 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 
     .result <- .Call("filter_paralogs_by_pattern_dosage_effect_call", gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks)
     .arguments <- c("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr")
-    .sources <- c(NA_character_, NA_character_, "gene_angles", "masks", NA_character_, NA_character_, "masks", NA_character_)
+    .sources <- c(NA_character_, NA_character_, "gene_angles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$masks
@@ -223,7 +223,7 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
 
     .result <- .Call("filter_paralogs_by_pattern_subfunctionalization_call", gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks)
     .arguments <- c("gene_angles", "threshold", "n_genes", "n_families", "gene_to_fam", "masks", "n_mask_chunks", "ierr")
-    .sources <- c(NA_character_, NA_character_, "gene_angles", "masks", NA_character_, NA_character_, "masks", NA_character_)
+    .sources <- c(NA_character_, NA_character_, "gene_angles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$masks

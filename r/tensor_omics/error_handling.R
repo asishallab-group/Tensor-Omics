@@ -215,11 +215,14 @@ ERR_UNKNOWN <- 9999L
 #' @param shapes positionally alongside `arguments`: the declared shape of an array
 #'   whose size the C wrapper compares, which the message of ERR_SIZE_MISMATCH
 #'   then states. NA elsewhere.
+#' @param equals positionally alongside `arguments`: what an argument documented
+#'   with DM_EQUALS must equal, which the message of ERR_SIZE_MISMATCH then
+#'   states. NA elsewhere.
 #' @return invisibly, the name of the status code if the call reported one;
 #'   status codes are outcomes, not failures, and never raise
 #' @keywords internal
 check_err_code <- function(ierr, arguments = character(), sources = character(),
-                                    shapes = character()) {
+                                    shapes = character(), equals = character()) {
     code <- ierr %% ARG_POS_FACTOR
     if (code == 0L) return(invisible(NULL))
 
@@ -249,6 +252,9 @@ check_err_code <- function(ierr, arguments = character(), sources = character(),
             if (!is.na(shape) && code == 206L)
                 # what the array must be, which no code can carry
                 message <- sprintf("%s; '%s' is declared with shape (%s)", message, arguments[[arg_pos]], shape)
+            expected <- if (arg_pos <= length(equals)) equals[[arg_pos]] else NA_character_
+            if (!is.na(expected) && code == 206L)
+                message <- sprintf("%s; '%s' must equal %s", message, arguments[[arg_pos]], expected)
         } else {
             message <- sprintf("%s (argument %d)", message, arg_pos)
         }
@@ -258,4 +264,26 @@ check_err_code <- function(ierr, arguments = character(), sources = character(),
                                         else "tox_error"
     .tox_raise(message, class, code = code, name = .tox_names[key],
                                                 argument = argument)
+}
+
+#' Signal a producer's error again, naming the caller's argument
+#'
+#' @param e the condition the producer raised
+#' @param supplied_by for each producer argument the calling function supplied,
+#'   named by it, the position of the argument that supplied it in `arguments`
+#' @param arguments,sources the calling function's, as `check_err_code` takes them
+#' @keywords internal
+.tox_consumer_error <- function(e, supplied_by, arguments, sources = character()) {
+    known <- !is.na(e$argument) && e$argument %in% names(supplied_by)
+    position <- if (known) supplied_by[[e$argument]] else 0L
+    if (is.na(e$code)) {
+        # refused by the producer's binding before any code existed
+        argument <- NA_character_
+        if (position > 0L && position <= length(arguments)) {
+            source <- if (position <= length(sources)) sources[[position]] else NA_character_
+            argument <- if (is.na(source)) arguments[[position]] else source
+        }
+        .tox_argument_error(conditionMessage(e), class(e)[1], argument)
+    }
+    check_err_code(e$code + position * ARG_POS_FACTOR, arguments, sources)
 }
