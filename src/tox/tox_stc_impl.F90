@@ -231,9 +231,7 @@ contains
         call sort_array_heapsort(density_labels, tmp_perm)
 
         ! Heapsort provides ascending density order. Reverse the permutation.
-        do concurrent(i_vec=1:n_vectors) shared(sorted_perm, tmp_perm, n_vectors)
-            sorted_perm(i_vec) = tmp_perm(n_vectors - i_vec + 1_int32)
-        end do
+        sorted_perm = tmp_perm(n_vectors:1:-1)
 
         seed_mask = .false.
         seed_radii = 0.0_real64
@@ -541,13 +539,15 @@ contains
 
     end subroutine accept_ensemble_helper
 
-    !> Grow independent seed ensembles in parallel tiles.
-    pure subroutine obtain_ensembles_helper(vectors, n_dimensions, n_vectors, dimension_order, &
+    !> summary: Grow one raw ensemble from each seed, using a global radius or per-seed radii.
+    !| AUTHOR_SALIH_ALBAYRAK
+    pure subroutine obtain_ensembles_impl(vectors, n_dimensions, n_vectors, dimension_order, &
                                             kd_indices, density_labels, seed_indices, n_seeds, &
-                                            use_seed_radii, r, seed_radii, alpha_mad, mad_ambient, alpha_accept, n_tiles, &
+                                            growth_mode, r, seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                             tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                            ensemble_matrix, stop_reasons, n_ensembles)
+                                            ensemble_matrix, stop_reasons, &
+                                            mad_ambient, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -555,66 +555,117 @@ contains
         !! Number of vectors
         integer(int32), intent(in) :: n_seeds
         !! Number of seed vectors, from `identify_ensemble_seeds`.
+        !! DM_MIN(0_int32)
+        !! DM_MAX(n_vectors)
         real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
         !! Input data matrix (n_dimensions x n_vectors)
         integer(int32), intent(in) :: dimension_order(n_dimensions)
         !! Sequence array tracking split dimensions for KD-tree
+        !! DM_MIN(1_int32)
+        !! DM_MAX(n_dimensions)
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+        !! DM_MIN(1_int32)
+        !! DM_MAX(n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Density labels for all vectors, from `calculate_labels_as_density`.
+        !! DM_MIN(1.0_real64)
         integer(int32), intent(in) :: seed_indices(n_seeds)
         !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-        logical(c_bool), intent(in) :: use_seed_radii
-        !! Grow seed i at `seed_radii(i)` when true, and every seed at `r` otherwise
+        !! DM_MIN(1_int32)
+        !! DM_MAX(n_vectors)
+        integer(int32), intent(in) :: growth_mode
+        !! Radius to use for ensemble growth.
+        !!
+        !! | Mode | Value | Procedure |
+        !! |-------------|-------|-----------|
+        !! | Global radius | [[tox_stc_impl(module):MODE_GLOBAL_RADIUS(variable)]] | obtain_ensembles_global_radius |
+        !! | Per-seed radius | [[tox_stc_impl(module):MODE_SEED_RADIUS(variable)]] | obtain_ensembles_seed_radius |
         real(real64), intent(in), optional :: r
-        !! Uniform growth radius, present when `use_seed_radii` is false
+        !! Uniform growth radius for every seed.
+        !! DM_REQUIRED_IF_MODE(growth_mode, tox_stc_impl, MODE_GLOBAL_RADIUS)
+        !! DM_MIN(0.0_real64)
         real(real64), intent(in), optional :: seed_radii(n_seeds)
-        !! Per-seed growth radius, present when `use_seed_radii` is true
-        real(real64), intent(in) :: alpha_mad
+        !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
+        !! DM_MIN(0.0_real64)
+        !! DM_REQUIRED_IF_MODE(growth_mode, tox_stc_impl, MODE_SEED_RADIUS)
+        real(real64), intent(in), optional :: alpha_mad
         !! MAD multiplier for density compatibility threshold
-        real(real64), intent(in) :: mad_ambient
-        !! Positive ambient MAD of the density labels, computed once by the caller
-        real(real64), intent(in) :: alpha_accept
+        !! DM_MIN(0.0_real64)
+        !! DM_DEFAULT(0.5_real64)
+        real(real64), intent(in), optional :: alpha_accept
         !! Acceptance log2 fold-change threshold
+        !! DM_MIN(0.0_real64)
+        !! DM_DEFAULT(0.5_real64)
+        integer(int32), intent(in) :: t_observables
+        !! History window in iterations, at least two because acceptance compares two consecutive
+        !! steps. Pass n_vectors to retain the full history.
+        !! DM_MIN(2_int32)
         integer(int32), intent(in) :: n_tiles
-        !! Number of concurrently processed seed tiles, `n_tiles >= 1`. Tiles beyond `n_seeds` receive an empty seed range and stay idle.
-        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH, n_tiles)
+        !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+        !! DM_MIN(1_int32)
+        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH, &
+                                                   min(n_tiles, max(1_int32, n_seeds)))
         !! Workspace stack for tree traversal per tile
-        logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors, n_tiles)
+        logical(c_bool), intent(out) :: tmp_vicinity_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Workspace mask holding one member's neighborhood query result per tile
-        logical(c_bool), intent(inout) :: tmp_surface_mask(n_vectors, n_tiles)
+        logical(c_bool), intent(out) :: tmp_surface_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Cached spatial neighborhood union per tile, reset for each seed
-        integer(int32), intent(inout) :: tmp_perm(n_vectors, n_tiles)
+        integer(int32), intent(inout) :: tmp_perm(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
-        real(real64), intent(inout) :: tmp_abs_diff(n_vectors, n_tiles)
+        real(real64), intent(out) :: tmp_abs_diff(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Workspace array for deviation calculations per tile
-        real(real64), intent(inout) :: tmp_observables(:, :, :)
-        !! Observable history per tile; its column count is the history window
-        logical(c_bool), intent(inout) :: tmp_current_mask(n_vectors, n_tiles)
+        real(real64), intent(out) :: tmp_observables(CM_OBSERVABLE_COUNT, max(2_int32, min(t_observables, n_vectors)), &
+                                                     min(n_tiles, max(1_int32, n_seeds)))
+        !! Observable history per tile. Growth adds at least one member per iteration, so more than
+        !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
+        logical(c_bool), intent(out) :: tmp_current_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
         !! Workspace holding accepted seed ensemble membership per tile
         logical(c_bool), intent(out) :: ensemble_matrix(n_vectors, n_seeds)
         !! Output matrix storing unmerged grown ensemble masks
         integer(int32), intent(out) :: stop_reasons(n_seeds)
         !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
         !! 3: first step rejected, 4: no candidates.
-        integer(int32), intent(out) :: n_ensembles
-        !! Total count of extracted raw ensembles (equals n_seeds)
+        real(real64), intent(out) :: mad_ambient
+        !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+        !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+        integer(int32), intent(out) :: ierr
+        !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+        !! half the labels are equal), which leaves no density tolerance for growth.
 
-        integer(int32) :: i_tile, i_seed, seed_start, seed_end, tile_base, tile_rem
+        real(real64) :: actual_alpha_mad, actual_alpha_accept, median_ambient
+        integer(int32) :: active_tiles, i_tile, i_seed, seed_start, seed_end, tile_base, tile_rem
         real(real64) :: growth_radius
+        logical(c_bool) :: use_seed_radii
 
+        call set_ok(ierr)
+        if (n_seeds == 0_int32) then
+            mad_ambient = 0.0_real64
+            return
+        end if
+
+        call compute_ambient_density_stats_impl(density_labels, n_vectors, tmp_perm(:, 1), tmp_abs_diff(:, 1), &
+                                                median_ambient, mad_ambient)
+        if (mad_ambient <= 0.0_real64) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=6_int32)
+            return
+        end if
+
+        M_DEFAULT_VAL(alpha_mad, actual_alpha_mad, 0.5_real64)
+        M_DEFAULT_VAL(alpha_accept, actual_alpha_accept, 0.5_real64)
+        active_tiles = min(n_tiles, n_seeds)
+        use_seed_radii = logical(growth_mode == MODE_SEED_RADIUS, c_bool)
         ensemble_matrix = .false.
 
         ! Distribute seeds evenly across tiles, with the first tile_rem tiles receiving one extra seed.
-        tile_base = n_seeds/n_tiles
-        tile_rem = mod(n_seeds, n_tiles)
+        tile_base = n_seeds/active_tiles
+        tile_rem = mod(n_seeds, active_tiles)
 
         ! Process independent seed tiles concurrently, with seeds within each tile handled serially.
-        do concurrent(i_tile=1:n_tiles) &
+        do concurrent(i_tile=1:active_tiles) &
             shared(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
-                   density_labels, seed_indices, n_seeds, use_seed_radii, r, seed_radii, alpha_mad, mad_ambient, &
-                   alpha_accept, tile_base, tile_rem, tmp_stack, tmp_vicinity_mask, &
+                   density_labels, seed_indices, n_seeds, use_seed_radii, r, seed_radii, actual_alpha_mad, mad_ambient, &
+                   actual_alpha_accept, tile_base, tile_rem, tmp_stack, tmp_vicinity_mask, &
                    tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
                    tmp_current_mask, ensemble_matrix, stop_reasons) &
             local(i_seed, seed_start, seed_end, growth_radius)
@@ -638,7 +689,7 @@ contains
 
                 call grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                              kd_indices, density_labels, seed_indices(i_seed), &
-                                             growth_radius, alpha_mad, mad_ambient, alpha_accept, &
+                                             growth_radius, actual_alpha_mad, mad_ambient, actual_alpha_accept, &
                                              tmp_stack(:, :, i_tile), tmp_vicinity_mask(:, i_tile), &
                                              tmp_surface_mask(:, i_tile), tmp_perm(:, i_tile), &
                                              tmp_abs_diff(:, i_tile), tmp_observables(:, :, i_tile), &
@@ -649,9 +700,7 @@ contains
 
         end do
 
-        n_ensembles = n_seeds
-
-    end subroutine obtain_ensembles_helper
+    end subroutine obtain_ensembles_impl
 
     !> Grow one seed and record why it stopped.
     pure subroutine grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
@@ -968,7 +1017,7 @@ contains
         call compute_ambient_density_stats_impl(density_labels, n_vectors, tmp_perm, tmp_abs_diff, &
                                                 median_ambient, mad_ambient)
         if (mad_ambient <= 0.0_real64) then
-            call set_err_once(ierr, ERR_INVALID_INPUT)
+            call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
             return
         end if
         M_DEFAULT_VAL(alpha_mad, actual_alpha_mad, 0.5_real64)
@@ -1048,131 +1097,5 @@ contains
 
         call accept_ensemble_helper(observables, current_iter, alpha_accept, is_accepted)
     end subroutine accept_ensemble_impl
-
-    !> summary: Grow one raw ensemble from each seed, using a global radius or per-seed radii.
-    !| AUTHOR_SALIH_ALBAYRAK
-    pure subroutine obtain_ensembles_impl(vectors, n_dimensions, n_vectors, dimension_order, &
-                                            kd_indices, density_labels, seed_indices, n_seeds, &
-                                            growth_mode, r, seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles, &
-                                            tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
-                                            tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                            ensemble_matrix, stop_reasons, &
-                                            mad_ambient, n_ensembles, ierr)
-
-        integer(int32), intent(in) :: n_dimensions
-        !! Number of dimensions
-        integer(int32), intent(in) :: n_vectors
-        !! Number of vectors
-        integer(int32), intent(in) :: n_seeds
-        !! Number of seed vectors, from `identify_ensemble_seeds`.
-        !! DM_MIN(0_int32)
-        !! DM_MAX(n_vectors)
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
-        integer(int32), intent(in) :: dimension_order(n_dimensions)
-        !! Sequence array tracking split dimensions for KD-tree
-        !! DM_MIN(1_int32)
-        !! DM_MAX(n_dimensions)
-        integer(int32), intent(in) :: kd_indices(n_vectors)
-        !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        !! DM_MIN(1_int32)
-        !! DM_MAX(n_vectors)
-        real(real64), intent(in) :: density_labels(n_vectors)
-        !! Density labels for all vectors, from `calculate_labels_as_density`.
-        !! DM_MIN(1.0_real64)
-        integer(int32), intent(in) :: seed_indices(n_seeds)
-        !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-        !! DM_MIN(1_int32)
-        !! DM_MAX(n_vectors)
-        integer(int32), intent(in) :: growth_mode
-        !! Radius to use for ensemble growth.
-        !!
-        !! | Mode | Value | Procedure |
-        !! |-------------|-------|-----------|
-        !! | Global radius | [[tox_stc_impl(module):MODE_GLOBAL_RADIUS(variable)]] | obtain_ensembles_global_radius |
-        !! | Per-seed radius | [[tox_stc_impl(module):MODE_SEED_RADIUS(variable)]] | obtain_ensembles_seed_radius |
-        real(real64), intent(in), optional :: r
-        !! Uniform growth radius for every seed.
-        !! DM_REQUIRED_IF_MODE(growth_mode, tox_stc_impl, MODE_GLOBAL_RADIUS)
-        !! DM_MIN(0.0_real64)
-        real(real64), intent(in), optional :: seed_radii(n_seeds)
-        !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
-        !! DM_MIN(0.0_real64)
-        !! DM_REQUIRED_IF_MODE(growth_mode, tox_stc_impl, MODE_SEED_RADIUS)
-        real(real64), intent(in), optional :: alpha_mad
-        !! MAD multiplier for density compatibility threshold
-        !! DM_MIN(0.0_real64)
-        !! DM_DEFAULT(0.5_real64)
-        real(real64), intent(in), optional :: alpha_accept
-        !! Acceptance log2 fold-change threshold
-        !! DM_MIN(0.0_real64)
-        !! DM_DEFAULT(0.5_real64)
-        integer(int32), intent(in) :: t_observables
-        !! History window in iterations, at least two because acceptance compares two consecutive
-        !! steps. Pass n_vectors to retain the full history.
-        !! DM_MIN(2_int32)
-        integer(int32), intent(in) :: n_tiles
-        !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-        !! DM_MIN(1_int32)
-        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH, &
-                                                   min(n_tiles, max(1_int32, n_seeds)))
-        !! Workspace stack for tree traversal per tile
-        logical(c_bool), intent(out) :: tmp_vicinity_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
-        !! Workspace mask holding one member's neighborhood query result per tile
-        logical(c_bool), intent(out) :: tmp_surface_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
-        !! Cached spatial neighborhood union per tile, reset for each seed
-        integer(int32), intent(inout) :: tmp_perm(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
-        !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
-        real(real64), intent(out) :: tmp_abs_diff(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
-        !! Workspace array for deviation calculations per tile
-        real(real64), intent(out) :: tmp_observables(CM_OBSERVABLE_COUNT, max(2_int32, min(t_observables, n_vectors)), &
-                                                     min(n_tiles, max(1_int32, n_seeds)))
-        !! Observable history per tile. Growth adds at least one member per iteration, so more than
-        !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
-        logical(c_bool), intent(out) :: tmp_current_mask(n_vectors, min(n_tiles, max(1_int32, n_seeds)))
-        !! Workspace holding accepted seed ensemble membership per tile
-        logical(c_bool), intent(out) :: ensemble_matrix(n_vectors, n_seeds)
-        !! Output matrix storing unmerged grown ensemble masks
-        integer(int32), intent(out) :: stop_reasons(n_seeds)
-        !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-        !! 3: first step rejected, 4: no candidates.
-        real(real64), intent(out) :: mad_ambient
-        !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-        !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        integer(int32), intent(out) :: n_ensembles
-        !! Total count of extracted raw ensembles (equals n_seeds)
-        integer(int32), intent(out) :: ierr
-        !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
-        !! half the labels are equal), which leaves no density tolerance for growth.
-
-        real(real64) :: actual_alpha_mad, actual_alpha_accept, median_ambient
-        integer(int32) :: active_tiles
-
-        call set_ok(ierr)
-        if (n_seeds == 0_int32) then
-            n_ensembles = 0_int32
-            mad_ambient = 0.0_real64
-            return
-        end if
-
-        call compute_ambient_density_stats_impl(density_labels, n_vectors, tmp_perm(:, 1), tmp_abs_diff(:, 1), &
-                                                median_ambient, mad_ambient)
-        if (mad_ambient <= 0.0_real64) then
-            call set_err_once(ierr, ERR_INVALID_INPUT)
-            return
-        end if
-
-        M_DEFAULT_VAL(alpha_mad, actual_alpha_mad, 0.5_real64)
-        M_DEFAULT_VAL(alpha_accept, actual_alpha_accept, 0.5_real64)
-        active_tiles = min(n_tiles, n_seeds)
-        call obtain_ensembles_helper(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, density_labels, &
-                                     seed_indices, n_seeds, &
-                                     ! The generated entry point for each mode passes that mode's radius.
-                                     logical(growth_mode == MODE_SEED_RADIUS, c_bool), r, seed_radii, &
-                                     actual_alpha_mad, mad_ambient, &
-                                     actual_alpha_accept, active_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, &
-                                     tmp_perm, tmp_abs_diff, tmp_observables, tmp_current_mask, ensemble_matrix, &
-                                     stop_reasons, n_ensembles)
-    end subroutine obtain_ensembles_impl
 
 end module tox_stc_impl

@@ -33,3 +33,6 @@ bad_accept <- tryCatch(accept_ensemble(history, 2L), error = identity)
 stopifnot(inherits(bad_update, "error"), inherits(bad_accept, "error"),
           grepl("observables", conditionMessage(bad_update), fixed = TRUE),
           grepl("observables", conditionMessage(bad_accept), fixed = TRUE))
+
+stopifnot(!("n_ensembles" %in% names(global_result)))
+stopifnot(!("n_ensembles" %in% names(local_result)))

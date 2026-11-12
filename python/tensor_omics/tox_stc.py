@@ -87,6 +87,58 @@ _COMPUTE_AMBIENT_DENSITY_STATS_ARGUMENTS = ("density_labels", "n_vectors", "medi
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_AMBIENT_DENSITY_STATS_ARGUMENT_SOURCES = (None, "density_labels", None, None, None,)
 
+_lib.obtain_ensembles_global_radius_c.restype = None
+_lib.obtain_ensembles_global_radius_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "r", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, "seed_indices", None, None, None, None, None, None, None, None, None,)
+
+_lib.obtain_ensembles_seed_radius_c.restype = None
+_lib.obtain_ensembles_seed_radius_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "seed_radii", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, "seed_indices", None, None, None, None, None, None, None, None, None,)
+
 _lib.merge_ensembles_c.restype = None
 _lib.merge_ensembles_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
@@ -156,60 +208,6 @@ _lib.accept_ensemble_c.argtypes = (
 _ACCEPT_ENSEMBLE_ARGUMENTS = ("observables", "n_history", "n_observables", "current_iter", "alpha_accept", "is_accepted", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _ACCEPT_ENSEMBLE_ARGUMENT_SOURCES = (None, "observables", "observables", None, None, None, None,)
-
-_lib.obtain_ensembles_global_radius_c.restype = None
-_lib.obtain_ensembles_global_radius_c.argtypes = (
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
-    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "r", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "n_ensembles", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, "seed_indices", None, None, None, None, None, None, None, None, None, None,)
-
-_lib.obtain_ensembles_seed_radius_c.restype = None
-_lib.obtain_ensembles_seed_radius_c.argtypes = (
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_int),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
-    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    _ctypes.POINTER(_ctypes.c_double),
-    _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "seed_radii", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "n_ensembles", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, "seed_indices", None, None, None, None, None, None, None, None, None, None,)
 
 def calculate_density_radius(
         vectors,
@@ -539,6 +537,296 @@ def compute_ambient_density_stats(
         "mad_ambient": mad_ambient.value,
     }
 
+def obtain_ensembles_global_radius(
+        vectors,
+        dimension_order,
+        kd_indices,
+        density_labels,
+        seed_indices,
+        r,
+        t_observables,
+        n_tiles,
+        alpha_mad=0.5,
+        alpha_accept=0.5,
+):
+    r"""Grow one raw ensemble from each seed, using a global radius or per-seed radii.
+
+    Parameters
+    ----------
+    vectors : np.ndarray[np.float64] of shape (n_dimensions, n_vectors,), column-major (order='F')
+        Input data matrix (n_dimensions x n_vectors)
+    dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
+        Sequence array tracking split dimensions for KD-tree
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
+    kd_indices : np.ndarray[np.int32] of shape (n_vectors,)
+        KD-tree index sequence array computed via :func:`tensor_omics.build_kd_index`.
+        The minimum valid value is `1`.
+        The maximum valid value is `n_vectors`.
+    density_labels : np.ndarray[np.float64] of shape (n_vectors,)
+        Density labels for all vectors, from `calculate_labels_as_density`.
+        The minimum valid value is `1.0`.
+    seed_indices : np.ndarray[np.int32] of shape (n_seeds,)
+        Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+        The minimum valid value is `1`.
+        The maximum valid value is `n_vectors`.
+    r : float
+        Uniform growth radius for every seed.
+        The minimum valid value is `0.0`.
+    alpha_mad : float, optional, default 0.5
+        MAD multiplier for density compatibility threshold
+        The minimum valid value is `0.0`.
+        The default value is `0.5`.
+    alpha_accept : float, optional, default 0.5
+        Acceptance log2 fold-change threshold
+        The minimum valid value is `0.0`.
+        The default value is `0.5`.
+    t_observables : int
+        History window in iterations, at least two because acceptance compares two consecutive
+        steps. Pass n_vectors to retain the full history.
+        The minimum valid value is `2`.
+    n_tiles : int
+        Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        ensemble_matrix : np.ndarray[np.bool_] of shape (n_vectors, n_seeds,), column-major (order='F'), read-only
+            Output matrix storing unmerged grown ensemble masks
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        stop_reasons : np.ndarray[np.int32] of shape (n_seeds,), read-only
+            Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+            3: first step rejected, 4: no candidates.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mad_ambient : float
+            Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_stc::obtain_ensembles_global_radius`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    vectors = _contract.reals(vectors, "vectors", ndim=2, order="F")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
+    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
+    density_labels = _contract.reals(density_labels, "density_labels", ndim=1)
+    seed_indices = _contract.integers(seed_indices, "seed_indices", ndim=1)
+    r = _contract.real(r, "r")
+    alpha_mad = _contract.real(alpha_mad, "alpha_mad")
+    alpha_accept = _contract.real(alpha_accept, "alpha_accept")
+    t_observables = _contract.integer(t_observables, "t_observables")
+    n_tiles = _contract.integer(n_tiles, "n_tiles")
+
+    # what the inputs already say, rather than asking for it again
+    n_dimensions = vectors.shape[0]
+    n_vectors = vectors.shape[1]
+    n_seeds = seed_indices.shape[0]
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if dimension_order.shape[0] != n_dimensions:
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'vectors' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
+    if kd_indices.shape[0] != n_vectors:
+        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'kd_indices' is declared with shape (n_vectors)", argument="kd_indices")
+    if density_labels.shape[0] != n_vectors:
+        raise _ToxArgumentError(f"'density_labels' has {density_labels.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'density_labels' is declared with shape (n_vectors)", argument="density_labels")
+
+    # outputs and work arrays, which the caller never sees
+    ensemble_matrix = _np.empty((n_vectors, n_seeds,), dtype=_np.bool_, order='F')
+    stop_reasons = _np.empty((n_seeds,), dtype=_np.int32, order='C')
+    mad_ambient = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
+
+    _lib.obtain_ensembles_global_radius_c(
+        vectors,
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_vectors)),
+        dimension_order,
+        kd_indices,
+        density_labels,
+        seed_indices,
+        _ctypes.byref(_ctypes.c_int(n_seeds)),
+        _ctypes.byref(_ctypes.c_double(r)),
+        _ctypes.byref(_ctypes.c_double(alpha_mad)),
+        _ctypes.byref(_ctypes.c_double(alpha_accept)),
+        _ctypes.byref(_ctypes.c_int(t_observables)),
+        _ctypes.byref(_ctypes.c_int(n_tiles)),
+        ensemble_matrix,
+        stop_reasons,
+        _ctypes.byref(mad_ambient),
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENTS, _OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    ensemble_matrix.flags.writeable = False
+    stop_reasons.flags.writeable = False
+
+    return {
+        "ensemble_matrix": ensemble_matrix,
+        "stop_reasons": stop_reasons,
+        "mad_ambient": mad_ambient.value,
+    }
+
+def obtain_ensembles_seed_radius(
+        vectors,
+        dimension_order,
+        kd_indices,
+        density_labels,
+        seed_indices,
+        seed_radii,
+        t_observables,
+        n_tiles,
+        alpha_mad=0.5,
+        alpha_accept=0.5,
+):
+    r"""Grow one raw ensemble from each seed, using a global radius or per-seed radii.
+
+    Parameters
+    ----------
+    vectors : np.ndarray[np.float64] of shape (n_dimensions, n_vectors,), column-major (order='F')
+        Input data matrix (n_dimensions x n_vectors)
+    dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
+        Sequence array tracking split dimensions for KD-tree
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
+    kd_indices : np.ndarray[np.int32] of shape (n_vectors,)
+        KD-tree index sequence array computed via :func:`tensor_omics.build_kd_index`.
+        The minimum valid value is `1`.
+        The maximum valid value is `n_vectors`.
+    density_labels : np.ndarray[np.float64] of shape (n_vectors,)
+        Density labels for all vectors, from `calculate_labels_as_density`.
+        The minimum valid value is `1.0`.
+    seed_indices : np.ndarray[np.int32] of shape (n_seeds,)
+        Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+        The minimum valid value is `1`.
+        The maximum valid value is `n_vectors`.
+    seed_radii : np.ndarray[np.float64] of shape (n_seeds,)
+        Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
+        The minimum valid value is `0.0`.
+    alpha_mad : float, optional, default 0.5
+        MAD multiplier for density compatibility threshold
+        The minimum valid value is `0.0`.
+        The default value is `0.5`.
+    alpha_accept : float, optional, default 0.5
+        Acceptance log2 fold-change threshold
+        The minimum valid value is `0.0`.
+        The default value is `0.5`.
+    t_observables : int
+        History window in iterations, at least two because acceptance compares two consecutive
+        steps. Pass n_vectors to retain the full history.
+        The minimum valid value is `2`.
+    n_tiles : int
+        Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        ensemble_matrix : np.ndarray[np.bool_] of shape (n_vectors, n_seeds,), column-major (order='F'), read-only
+            Output matrix storing unmerged grown ensemble masks
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        stop_reasons : np.ndarray[np.int32] of shape (n_seeds,), read-only
+            Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+            3: first step rejected, 4: no candidates.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mad_ambient : float
+            Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_stc::obtain_ensembles_seed_radius`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    vectors = _contract.reals(vectors, "vectors", ndim=2, order="F")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
+    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
+    density_labels = _contract.reals(density_labels, "density_labels", ndim=1)
+    seed_indices = _contract.integers(seed_indices, "seed_indices", ndim=1)
+    seed_radii = _contract.reals(seed_radii, "seed_radii", ndim=1)
+    alpha_mad = _contract.real(alpha_mad, "alpha_mad")
+    alpha_accept = _contract.real(alpha_accept, "alpha_accept")
+    t_observables = _contract.integer(t_observables, "t_observables")
+    n_tiles = _contract.integer(n_tiles, "n_tiles")
+
+    # what the inputs already say, rather than asking for it again
+    n_dimensions = vectors.shape[0]
+    n_vectors = vectors.shape[1]
+    n_seeds = seed_indices.shape[0]
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if dimension_order.shape[0] != n_dimensions:
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'vectors' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
+    if kd_indices.shape[0] != n_vectors:
+        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'kd_indices' is declared with shape (n_vectors)", argument="kd_indices")
+    if density_labels.shape[0] != n_vectors:
+        raise _ToxArgumentError(f"'density_labels' has {density_labels.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'density_labels' is declared with shape (n_vectors)", argument="density_labels")
+    if seed_radii.shape[0] != n_seeds:
+        raise _ToxArgumentError(f"'seed_radii' has {seed_radii.shape[0]} along axis 0, but 'seed_indices' implies n_seeds == {n_seeds}; 'seed_radii' is declared with shape (n_seeds)", argument="seed_radii")
+
+    # outputs and work arrays, which the caller never sees
+    ensemble_matrix = _np.empty((n_vectors, n_seeds,), dtype=_np.bool_, order='F')
+    stop_reasons = _np.empty((n_seeds,), dtype=_np.int32, order='C')
+    mad_ambient = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
+
+    _lib.obtain_ensembles_seed_radius_c(
+        vectors,
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_vectors)),
+        dimension_order,
+        kd_indices,
+        density_labels,
+        seed_indices,
+        _ctypes.byref(_ctypes.c_int(n_seeds)),
+        seed_radii,
+        _ctypes.byref(_ctypes.c_double(alpha_mad)),
+        _ctypes.byref(_ctypes.c_double(alpha_accept)),
+        _ctypes.byref(_ctypes.c_int(t_observables)),
+        _ctypes.byref(_ctypes.c_int(n_tiles)),
+        ensemble_matrix,
+        stop_reasons,
+        _ctypes.byref(mad_ambient),
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENTS, _OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    ensemble_matrix.flags.writeable = False
+    stop_reasons.flags.writeable = False
+
+    return {
+        "ensemble_matrix": ensemble_matrix,
+        "stop_reasons": stop_reasons,
+        "mad_ambient": mad_ambient.value,
+    }
+
 def merge_ensembles(
         raw_masks,
         min_overlap_coefficient=0.9,
@@ -853,303 +1141,3 @@ def accept_ensemble(
     _check_err_code(ierr.value, _ACCEPT_ENSEMBLE_ARGUMENTS, _ACCEPT_ENSEMBLE_ARGUMENT_SOURCES)
 
     return is_accepted.value
-
-def obtain_ensembles_global_radius(
-        vectors,
-        dimension_order,
-        kd_indices,
-        density_labels,
-        seed_indices,
-        r,
-        t_observables,
-        n_tiles,
-        alpha_mad=0.5,
-        alpha_accept=0.5,
-):
-    r"""Grow one raw ensemble from each seed, using a global radius or per-seed radii.
-
-    Parameters
-    ----------
-    vectors : np.ndarray[np.float64] of shape (n_dimensions, n_vectors,), column-major (order='F')
-        Input data matrix (n_dimensions x n_vectors)
-    dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
-        Sequence array tracking split dimensions for KD-tree
-        The minimum valid value is `1`.
-        The maximum valid value is `n_dimensions`.
-    kd_indices : np.ndarray[np.int32] of shape (n_vectors,)
-        KD-tree index sequence array computed via :func:`tensor_omics.build_kd_index`.
-        The minimum valid value is `1`.
-        The maximum valid value is `n_vectors`.
-    density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Density labels for all vectors, from `calculate_labels_as_density`.
-        The minimum valid value is `1.0`.
-    seed_indices : np.ndarray[np.int32] of shape (n_seeds,)
-        Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-        The minimum valid value is `1`.
-        The maximum valid value is `n_vectors`.
-    r : float
-        Uniform growth radius for every seed.
-        The minimum valid value is `0.0`.
-    alpha_mad : float, optional, default 0.5
-        MAD multiplier for density compatibility threshold
-        The minimum valid value is `0.0`.
-        The default value is `0.5`.
-    alpha_accept : float, optional, default 0.5
-        Acceptance log2 fold-change threshold
-        The minimum valid value is `0.0`.
-        The default value is `0.5`.
-    t_observables : int
-        History window in iterations, at least two because acceptance compares two consecutive
-        steps. Pass n_vectors to retain the full history.
-        The minimum valid value is `2`.
-    n_tiles : int
-        Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-        The minimum valid value is `1`.
-
-    Returns
-    -------
-    dict
-        with keys:
-
-        ensemble_matrix : np.ndarray[np.bool_] of shape (n_vectors, n_seeds,), column-major (order='F'), read-only
-            Output matrix storing unmerged grown ensemble masks
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        stop_reasons : np.ndarray[np.int32] of shape (n_seeds,), read-only
-            Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-            3: first step rejected, 4: no candidates.
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        mad_ambient : float
-            Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-            Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        n_ensembles : int
-            Total count of extracted raw ensembles (equals n_seeds)
-
-    Raises
-    ------
-    ToxArgumentError
-        If an argument is refused before the library is called: its shape, type
-        or value. A ToxInputError without a code, and a TypeError and a ValueError.
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_stc::obtain_ensembles_global_radius`, whose argument names are
-    the ones an error message reports.
-    """
-    # check every input by the input contract, converting only when C needs it
-    vectors = _contract.reals(vectors, "vectors", ndim=2, order="F")
-    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
-    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
-    density_labels = _contract.reals(density_labels, "density_labels", ndim=1)
-    seed_indices = _contract.integers(seed_indices, "seed_indices", ndim=1)
-    r = _contract.real(r, "r")
-    alpha_mad = _contract.real(alpha_mad, "alpha_mad")
-    alpha_accept = _contract.real(alpha_accept, "alpha_accept")
-    t_observables = _contract.integer(t_observables, "t_observables")
-    n_tiles = _contract.integer(n_tiles, "n_tiles")
-
-    # what the inputs already say, rather than asking for it again
-    n_dimensions = vectors.shape[0]
-    n_vectors = vectors.shape[1]
-    n_seeds = seed_indices.shape[0]
-
-    # Fortran cannot check that an array has the shape it is declared with; this can
-    if dimension_order.shape[0] != n_dimensions:
-        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'vectors' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
-    if kd_indices.shape[0] != n_vectors:
-        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'kd_indices' is declared with shape (n_vectors)", argument="kd_indices")
-    if density_labels.shape[0] != n_vectors:
-        raise _ToxArgumentError(f"'density_labels' has {density_labels.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'density_labels' is declared with shape (n_vectors)", argument="density_labels")
-
-    # outputs and work arrays, which the caller never sees
-    ensemble_matrix = _np.empty((n_vectors, n_seeds,), dtype=_np.bool_, order='F')
-    stop_reasons = _np.empty((n_seeds,), dtype=_np.int32, order='C')
-    mad_ambient = _ctypes.c_double(0)
-    n_ensembles = _ctypes.c_int(0)
-    ierr = _ctypes.c_int(0)
-
-    _lib.obtain_ensembles_global_radius_c(
-        vectors,
-        _ctypes.byref(_ctypes.c_int(n_dimensions)),
-        _ctypes.byref(_ctypes.c_int(n_vectors)),
-        dimension_order,
-        kd_indices,
-        density_labels,
-        seed_indices,
-        _ctypes.byref(_ctypes.c_int(n_seeds)),
-        _ctypes.byref(_ctypes.c_double(r)),
-        _ctypes.byref(_ctypes.c_double(alpha_mad)),
-        _ctypes.byref(_ctypes.c_double(alpha_accept)),
-        _ctypes.byref(_ctypes.c_int(t_observables)),
-        _ctypes.byref(_ctypes.c_int(n_tiles)),
-        ensemble_matrix,
-        stop_reasons,
-        _ctypes.byref(mad_ambient),
-        _ctypes.byref(n_ensembles),
-        _ctypes.byref(ierr),
-    )
-
-    _check_err_code(ierr.value, _OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENTS, _OBTAIN_ENSEMBLES_GLOBAL_RADIUS_ARGUMENT_SOURCES)
-
-    # a result is a value: modify a copy, not this
-    ensemble_matrix.flags.writeable = False
-    stop_reasons.flags.writeable = False
-
-    return {
-        "ensemble_matrix": ensemble_matrix,
-        "stop_reasons": stop_reasons,
-        "mad_ambient": mad_ambient.value,
-        "n_ensembles": n_ensembles.value,
-    }
-
-def obtain_ensembles_seed_radius(
-        vectors,
-        dimension_order,
-        kd_indices,
-        density_labels,
-        seed_indices,
-        seed_radii,
-        t_observables,
-        n_tiles,
-        alpha_mad=0.5,
-        alpha_accept=0.5,
-):
-    r"""Grow one raw ensemble from each seed, using a global radius or per-seed radii.
-
-    Parameters
-    ----------
-    vectors : np.ndarray[np.float64] of shape (n_dimensions, n_vectors,), column-major (order='F')
-        Input data matrix (n_dimensions x n_vectors)
-    dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
-        Sequence array tracking split dimensions for KD-tree
-        The minimum valid value is `1`.
-        The maximum valid value is `n_dimensions`.
-    kd_indices : np.ndarray[np.int32] of shape (n_vectors,)
-        KD-tree index sequence array computed via :func:`tensor_omics.build_kd_index`.
-        The minimum valid value is `1`.
-        The maximum valid value is `n_vectors`.
-    density_labels : np.ndarray[np.float64] of shape (n_vectors,)
-        Density labels for all vectors, from `calculate_labels_as_density`.
-        The minimum valid value is `1.0`.
-    seed_indices : np.ndarray[np.int32] of shape (n_seeds,)
-        Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-        The minimum valid value is `1`.
-        The maximum valid value is `n_vectors`.
-    seed_radii : np.ndarray[np.float64] of shape (n_seeds,)
-        Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
-        The minimum valid value is `0.0`.
-    alpha_mad : float, optional, default 0.5
-        MAD multiplier for density compatibility threshold
-        The minimum valid value is `0.0`.
-        The default value is `0.5`.
-    alpha_accept : float, optional, default 0.5
-        Acceptance log2 fold-change threshold
-        The minimum valid value is `0.0`.
-        The default value is `0.5`.
-    t_observables : int
-        History window in iterations, at least two because acceptance compares two consecutive
-        steps. Pass n_vectors to retain the full history.
-        The minimum valid value is `2`.
-    n_tiles : int
-        Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-        The minimum valid value is `1`.
-
-    Returns
-    -------
-    dict
-        with keys:
-
-        ensemble_matrix : np.ndarray[np.bool_] of shape (n_vectors, n_seeds,), column-major (order='F'), read-only
-            Output matrix storing unmerged grown ensemble masks
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        stop_reasons : np.ndarray[np.int32] of shape (n_seeds,), read-only
-            Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-            3: first step rejected, 4: no candidates.
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        mad_ambient : float
-            Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-            Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        n_ensembles : int
-            Total count of extracted raw ensembles (equals n_seeds)
-
-    Raises
-    ------
-    ToxArgumentError
-        If an argument is refused before the library is called: its shape, type
-        or value. A ToxInputError without a code, and a TypeError and a ValueError.
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_stc::obtain_ensembles_seed_radius`, whose argument names are
-    the ones an error message reports.
-    """
-    # check every input by the input contract, converting only when C needs it
-    vectors = _contract.reals(vectors, "vectors", ndim=2, order="F")
-    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
-    kd_indices = _contract.integers(kd_indices, "kd_indices", ndim=1)
-    density_labels = _contract.reals(density_labels, "density_labels", ndim=1)
-    seed_indices = _contract.integers(seed_indices, "seed_indices", ndim=1)
-    seed_radii = _contract.reals(seed_radii, "seed_radii", ndim=1)
-    alpha_mad = _contract.real(alpha_mad, "alpha_mad")
-    alpha_accept = _contract.real(alpha_accept, "alpha_accept")
-    t_observables = _contract.integer(t_observables, "t_observables")
-    n_tiles = _contract.integer(n_tiles, "n_tiles")
-
-    # what the inputs already say, rather than asking for it again
-    n_dimensions = vectors.shape[0]
-    n_vectors = vectors.shape[1]
-    n_seeds = seed_indices.shape[0]
-
-    # Fortran cannot check that an array has the shape it is declared with; this can
-    if dimension_order.shape[0] != n_dimensions:
-        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'vectors' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
-    if kd_indices.shape[0] != n_vectors:
-        raise _ToxArgumentError(f"'kd_indices' has {kd_indices.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'kd_indices' is declared with shape (n_vectors)", argument="kd_indices")
-    if density_labels.shape[0] != n_vectors:
-        raise _ToxArgumentError(f"'density_labels' has {density_labels.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'density_labels' is declared with shape (n_vectors)", argument="density_labels")
-    if seed_radii.shape[0] != n_seeds:
-        raise _ToxArgumentError(f"'seed_radii' has {seed_radii.shape[0]} along axis 0, but 'seed_indices' implies n_seeds == {n_seeds}; 'seed_radii' is declared with shape (n_seeds)", argument="seed_radii")
-
-    # outputs and work arrays, which the caller never sees
-    ensemble_matrix = _np.empty((n_vectors, n_seeds,), dtype=_np.bool_, order='F')
-    stop_reasons = _np.empty((n_seeds,), dtype=_np.int32, order='C')
-    mad_ambient = _ctypes.c_double(0)
-    n_ensembles = _ctypes.c_int(0)
-    ierr = _ctypes.c_int(0)
-
-    _lib.obtain_ensembles_seed_radius_c(
-        vectors,
-        _ctypes.byref(_ctypes.c_int(n_dimensions)),
-        _ctypes.byref(_ctypes.c_int(n_vectors)),
-        dimension_order,
-        kd_indices,
-        density_labels,
-        seed_indices,
-        _ctypes.byref(_ctypes.c_int(n_seeds)),
-        seed_radii,
-        _ctypes.byref(_ctypes.c_double(alpha_mad)),
-        _ctypes.byref(_ctypes.c_double(alpha_accept)),
-        _ctypes.byref(_ctypes.c_int(t_observables)),
-        _ctypes.byref(_ctypes.c_int(n_tiles)),
-        ensemble_matrix,
-        stop_reasons,
-        _ctypes.byref(mad_ambient),
-        _ctypes.byref(n_ensembles),
-        _ctypes.byref(ierr),
-    )
-
-    _check_err_code(ierr.value, _OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENTS, _OBTAIN_ENSEMBLES_SEED_RADIUS_ARGUMENT_SOURCES)
-
-    # a result is a value: modify a copy, not this
-    ensemble_matrix.flags.writeable = False
-    stop_reasons.flags.writeable = False
-
-    return {
-        "ensemble_matrix": ensemble_matrix,
-        "stop_reasons": stop_reasons,
-        "mad_ambient": mad_ambient.value,
-        "n_ensembles": n_ensembles.value,
-    }

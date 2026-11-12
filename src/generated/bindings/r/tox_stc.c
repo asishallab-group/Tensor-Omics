@@ -10,12 +10,12 @@ void calculate_density_radius_c(const double*, const int*, const int*, const dou
 void calculate_labels_as_density_c(const double*, const int*, const int*, const double*, const int*, const int*, const int*, double*, int*);
 void identify_ensemble_seeds_c(const double*, const int*, const int*, const double*, const int*, const int*, const int*, int*, int*, unsigned char*, double*, const double*, int*);
 void compute_ambient_density_stats_c(const double*, const int*, double*, double*, int*);
+void obtain_ensembles_global_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*);
+void obtain_ensembles_seed_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*);
 void merge_ensembles_c(const unsigned char*, const int*, const int*, const double*, unsigned char*, int*, int*);
 void grow_ensemble_c(const double*, const int*, const int*, const unsigned char*, const double*, const int*, const int*, const double*, const double*, unsigned char*, int*);
 void compute_ensemble_observable_c(const unsigned char*, const double*, const int*, const int*, const int*, double*, const int*, const int*, int*);
 void accept_ensemble_c(const double*, const int*, const int*, const int*, const double*, unsigned char*, int*);
-void obtain_ensembles_global_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*, int*);
-void obtain_ensembles_seed_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*, int*);
 
 SEXP calculate_density_radius_call(SEXP vectors, SEXP mean_to_other_vecs_dist_quant) {
     int _nprot = 0;
@@ -174,6 +174,133 @@ SEXP compute_ambient_density_stats_call(SEXP density_labels) {
     SET_STRING_ELT(_nms, 0, Rf_mkChar("median_ambient"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("mad_ambient"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(_nprot);
+    return _out;
+}
+
+SEXP obtain_ensembles_global_radius_call(SEXP vectors, SEXP dimension_order, SEXP kd_indices, SEXP density_labels, SEXP seed_indices, SEXP r, SEXP alpha_mad, SEXP alpha_accept, SEXP t_observables, SEXP n_tiles) {
+    int _nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
+    int n_vectors = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[1];
+    int n_seeds = (int) Rf_length(seed_indices);
+
+    // scalar inputs, pulled from their length-1 vectors
+    double _v_r = Rf_asReal(r);
+    double _v_alpha_mad = Rf_asReal(alpha_mad);
+    double _v_alpha_accept = Rf_asReal(alpha_accept);
+    int _v_t_observables = Rf_asInteger(t_observables);
+    int _v_n_tiles = Rf_asInteger(n_tiles);
+
+    // convert what Fortran cannot take from R directly
+    const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
+    const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
+    const int* _c_seed_indices = tox_int_in(seed_indices, "seed_indices");
+
+    // outputs and work space
+    unsigned char* _c_ensemble_matrix = tox_bool_alloc(n_vectors * n_seeds);
+    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, n_seeds)); _nprot++;
+    double mad_ambient = 0;
+    int ierr = 0;
+
+    obtain_ensembles_global_radius_c(
+        REAL(vectors),
+        &n_dimensions,
+        &n_vectors,
+        _c_dimension_order,
+        _c_kd_indices,
+        REAL(density_labels),
+        _c_seed_indices,
+        &n_seeds,
+        &_v_r,
+        &_v_alpha_mad,
+        &_v_alpha_accept,
+        &_v_t_observables,
+        &_v_n_tiles,
+        _c_ensemble_matrix,
+        INTEGER(stop_reasons),
+        &mad_ambient,
+        &ierr
+    );
+
+    // convert the outputs back
+    SEXP ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, n_vectors * n_seeds)); _nprot++;
+    { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, ensemble_matrix);
+    SET_VECTOR_ELT(_out, 1, stop_reasons);
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(mad_ambient));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("ensemble_matrix"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("stop_reasons"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("mad_ambient"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(_nprot);
+    return _out;
+}
+
+SEXP obtain_ensembles_seed_radius_call(SEXP vectors, SEXP dimension_order, SEXP kd_indices, SEXP density_labels, SEXP seed_indices, SEXP seed_radii, SEXP alpha_mad, SEXP alpha_accept, SEXP t_observables, SEXP n_tiles) {
+    int _nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
+    int n_vectors = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[1];
+    int n_seeds = (int) Rf_length(seed_indices);
+
+    // scalar inputs, pulled from their length-1 vectors
+    double _v_alpha_mad = Rf_asReal(alpha_mad);
+    double _v_alpha_accept = Rf_asReal(alpha_accept);
+    int _v_t_observables = Rf_asInteger(t_observables);
+    int _v_n_tiles = Rf_asInteger(n_tiles);
+
+    // convert what Fortran cannot take from R directly
+    const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
+    const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
+    const int* _c_seed_indices = tox_int_in(seed_indices, "seed_indices");
+
+    // outputs and work space
+    unsigned char* _c_ensemble_matrix = tox_bool_alloc(n_vectors * n_seeds);
+    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, n_seeds)); _nprot++;
+    double mad_ambient = 0;
+    int ierr = 0;
+
+    obtain_ensembles_seed_radius_c(
+        REAL(vectors),
+        &n_dimensions,
+        &n_vectors,
+        _c_dimension_order,
+        _c_kd_indices,
+        REAL(density_labels),
+        _c_seed_indices,
+        &n_seeds,
+        REAL(seed_radii),
+        &_v_alpha_mad,
+        &_v_alpha_accept,
+        &_v_t_observables,
+        &_v_n_tiles,
+        _c_ensemble_matrix,
+        INTEGER(stop_reasons),
+        &mad_ambient,
+        &ierr
+    );
+
+    // convert the outputs back
+    SEXP ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, n_vectors * n_seeds)); _nprot++;
+    { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, ensemble_matrix);
+    SET_VECTOR_ELT(_out, 1, stop_reasons);
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(mad_ambient));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("ensemble_matrix"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("stop_reasons"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("mad_ambient"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;
@@ -343,141 +470,6 @@ SEXP accept_ensemble_call(SEXP observables, SEXP current_iter, SEXP alpha_accept
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("is_accepted"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
-    Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(_nprot);
-    return _out;
-}
-
-SEXP obtain_ensembles_global_radius_call(SEXP vectors, SEXP dimension_order, SEXP kd_indices, SEXP density_labels, SEXP seed_indices, SEXP r, SEXP alpha_mad, SEXP alpha_accept, SEXP t_observables, SEXP n_tiles) {
-    int _nprot = 0;
-    // derived from the inputs, not asked of the caller
-    int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
-    int n_vectors = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[1];
-    int n_seeds = (int) Rf_length(seed_indices);
-
-    // scalar inputs, pulled from their length-1 vectors
-    double _v_r = Rf_asReal(r);
-    double _v_alpha_mad = Rf_asReal(alpha_mad);
-    double _v_alpha_accept = Rf_asReal(alpha_accept);
-    int _v_t_observables = Rf_asInteger(t_observables);
-    int _v_n_tiles = Rf_asInteger(n_tiles);
-
-    // convert what Fortran cannot take from R directly
-    const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
-    const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
-    const int* _c_seed_indices = tox_int_in(seed_indices, "seed_indices");
-
-    // outputs and work space
-    unsigned char* _c_ensemble_matrix = tox_bool_alloc(n_vectors * n_seeds);
-    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, n_seeds)); _nprot++;
-    double mad_ambient = 0;
-    int n_ensembles = 0;
-    int ierr = 0;
-
-    obtain_ensembles_global_radius_c(
-        REAL(vectors),
-        &n_dimensions,
-        &n_vectors,
-        _c_dimension_order,
-        _c_kd_indices,
-        REAL(density_labels),
-        _c_seed_indices,
-        &n_seeds,
-        &_v_r,
-        &_v_alpha_mad,
-        &_v_alpha_accept,
-        &_v_t_observables,
-        &_v_n_tiles,
-        _c_ensemble_matrix,
-        INTEGER(stop_reasons),
-        &mad_ambient,
-        &n_ensembles,
-        &ierr
-    );
-
-    // convert the outputs back
-    SEXP ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, n_vectors * n_seeds)); _nprot++;
-    { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
-
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 5)); _nprot++;
-    SET_VECTOR_ELT(_out, 0, ensemble_matrix);
-    SET_VECTOR_ELT(_out, 1, stop_reasons);
-    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(mad_ambient));
-    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(n_ensembles));
-    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 5)); _nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("ensemble_matrix"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("stop_reasons"));
-    SET_STRING_ELT(_nms, 2, Rf_mkChar("mad_ambient"));
-    SET_STRING_ELT(_nms, 3, Rf_mkChar("n_ensembles"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("ierr"));
-    Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(_nprot);
-    return _out;
-}
-
-SEXP obtain_ensembles_seed_radius_call(SEXP vectors, SEXP dimension_order, SEXP kd_indices, SEXP density_labels, SEXP seed_indices, SEXP seed_radii, SEXP alpha_mad, SEXP alpha_accept, SEXP t_observables, SEXP n_tiles) {
-    int _nprot = 0;
-    // derived from the inputs, not asked of the caller
-    int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
-    int n_vectors = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[1];
-    int n_seeds = (int) Rf_length(seed_indices);
-
-    // scalar inputs, pulled from their length-1 vectors
-    double _v_alpha_mad = Rf_asReal(alpha_mad);
-    double _v_alpha_accept = Rf_asReal(alpha_accept);
-    int _v_t_observables = Rf_asInteger(t_observables);
-    int _v_n_tiles = Rf_asInteger(n_tiles);
-
-    // convert what Fortran cannot take from R directly
-    const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
-    const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
-    const int* _c_seed_indices = tox_int_in(seed_indices, "seed_indices");
-
-    // outputs and work space
-    unsigned char* _c_ensemble_matrix = tox_bool_alloc(n_vectors * n_seeds);
-    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, n_seeds)); _nprot++;
-    double mad_ambient = 0;
-    int n_ensembles = 0;
-    int ierr = 0;
-
-    obtain_ensembles_seed_radius_c(
-        REAL(vectors),
-        &n_dimensions,
-        &n_vectors,
-        _c_dimension_order,
-        _c_kd_indices,
-        REAL(density_labels),
-        _c_seed_indices,
-        &n_seeds,
-        REAL(seed_radii),
-        &_v_alpha_mad,
-        &_v_alpha_accept,
-        &_v_t_observables,
-        &_v_n_tiles,
-        _c_ensemble_matrix,
-        INTEGER(stop_reasons),
-        &mad_ambient,
-        &n_ensembles,
-        &ierr
-    );
-
-    // convert the outputs back
-    SEXP ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, n_vectors * n_seeds)); _nprot++;
-    { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
-
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 5)); _nprot++;
-    SET_VECTOR_ELT(_out, 0, ensemble_matrix);
-    SET_VECTOR_ELT(_out, 1, stop_reasons);
-    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(mad_ambient));
-    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(n_ensembles));
-    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 5)); _nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("ensemble_matrix"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("stop_reasons"));
-    SET_STRING_ELT(_nms, 2, Rf_mkChar("mad_ambient"));
-    SET_STRING_ELT(_nms, 3, Rf_mkChar("n_ensembles"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;

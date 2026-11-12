@@ -24,6 +24,8 @@ def test_radius_variants():
     options = dict(t_observables=10, n_tiles=2)
     global_result = tox_stc.obtain_ensembles_global_radius(*inputs, r=0.15, **options)
     local_result = tox_stc.obtain_ensembles_seed_radius(*inputs, seed_radii=np.array([0.15, 5.5]), **options)
+    assert "n_ensembles" not in global_result
+    assert "n_ensembles" not in local_result
     np.testing.assert_array_equal(global_result["ensemble_matrix"].sum(axis=0), [3, 1])
     np.testing.assert_array_equal(local_result["ensemble_matrix"].sum(axis=0), [3, 3])
     np.testing.assert_array_equal(global_result["stop_reasons"], [1, 4])

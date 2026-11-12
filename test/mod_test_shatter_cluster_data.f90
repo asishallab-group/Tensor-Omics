@@ -5,7 +5,7 @@ module mod_test_shatter_cluster_data
     use, intrinsic :: iso_c_binding, only: c_bool
     use asserts
     use test_suite, only: test_case
-    use tox_errors, only: ERR_OK
+    use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, get_err_arg_pos
     use f42_kd_tree, only: build_kd_index_expert
     use f42_kd_tree_impl, only: KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
     use tox_stc, only: calculate_density_radius, calculate_density_radius_expert, &
@@ -14,7 +14,7 @@ module mod_test_shatter_cluster_data
                        grow_ensemble, grow_ensemble_expert, compute_ensemble_observable, accept_ensemble, &
                        obtain_ensembles_global_radius, obtain_ensembles_seed_radius, &
                        obtain_ensembles_seed_radius_expert, merge_ensembles, merge_ensembles_expert
-    use tox_stc_impl, only: grow_single_seed_helper, compute_ensemble_observable_helper, accept_ensemble_helper, &
+    use tox_stc_impl, only: grow_ensemble_impl, obtain_ensembles_impl, MODE_GLOBAL_RADIUS, grow_single_seed_helper, compute_ensemble_observable_helper, accept_ensemble_helper, &
                             compute_ambient_density_stats_helper => compute_ambient_density_stats_impl, &
                             STC_STOP_FIXED_POINT, STC_STOP_REJECT_AFTER_ACCEPT, &
                             STC_STOP_NEVER_ACCEPTED, STC_STOP_NO_CANDIDATES
@@ -26,7 +26,7 @@ contains
 
     function get_all_tests_shatter_cluster_data() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(69))
+        allocate (all_tests(70))
         all_tests(1) = test_case("test_density_radius_basic", test_density_radius_basic)
         all_tests(2) = test_case("test_density_labels_basic", test_density_labels_basic)
         all_tests(3) = test_case("test_density_radius_invalid_quantile", test_density_radius_invalid_quantile)
@@ -110,6 +110,7 @@ contains
         all_tests(67) = test_case("test_obtain_ensembles_per_seed_radii", test_obtain_ensembles_per_seed_radii)
         all_tests(68) = test_case("test_observable_window_rejects_after_shift", test_observable_window_rejects_after_shift)
         all_tests(69) = test_case("test_history_requires_two_columns", test_history_requires_two_columns)
+        all_tests(70) = test_case("test_zero_mad_error_positions", test_zero_mad_error_positions)
     end function get_all_tests_shatter_cluster_data
 
     subroutine test_density_radius_basic()
@@ -1445,6 +1446,44 @@ contains
         call assert_false(logical(is_accepted), "iteration 11 is compared against iteration 10, not an empty column")
     end subroutine test_observable_window_rejects_after_shift
 
+    !> A zero ambient MAD is reported against `density_labels`: at its own position by a direct call
+    !| to the implementation, and with the position cleared by the generated entry points.
+    subroutine test_zero_mad_error_positions()
+        integer(int32), parameter :: n_dims = 1_int32, n_vecs = 3_int32, n_seeds = 1_int32
+        real(real64) :: vectors(n_dims, n_vecs), labels(n_vecs), abs_diff(n_vecs, 1), obs(5, 2, 1), mad
+        integer(int32) :: dims(n_dims), kd(n_vecs), seeds(n_seeds), stack(3, 64, 1), perm(n_vecs, 1)
+        integer(int32) :: stops(n_seeds), ierr
+        logical(c_bool) :: mask(n_vecs), grown(n_vecs), vicinity(n_vecs, 1), surface(n_vecs, 1)
+        logical(c_bool) :: current(n_vecs, 1), ensembles(n_vecs, n_seeds)
+
+        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64]
+        labels = 5.0_real64
+        dims = 1_int32
+        kd = [1_int32, 2_int32, 3_int32]
+        seeds = 1_int32
+        mask = [.true., .false., .false.]
+
+        call grow_ensemble_impl(vectors, n_dims, n_vecs, mask, 1.0_real64, dims, kd, labels, &
+            0.5_real64, stack(:, :, 1), vicinity(:, 1), surface(:, 1), perm(:, 1), abs_diff(:, 1), grown, ierr)
+        call assert_equal_int(get_err_arg_pos(ierr), 8_int32, "direct growth names density_labels argument")
+
+        call obtain_ensembles_impl(vectors, n_dims, n_vecs, dims, kd, labels, seeds, n_seeds, &
+            MODE_GLOBAL_RADIUS, r=1.0_real64, t_observables=2_int32, n_tiles=1_int32, tmp_stack=stack, &
+            tmp_vicinity_mask=vicinity, tmp_surface_mask=surface, tmp_perm=perm, tmp_abs_diff=abs_diff, &
+            tmp_observables=obs, tmp_current_mask=current, ensemble_matrix=ensembles, stop_reasons=stops, &
+            mad_ambient=mad, ierr=ierr)
+        call assert_equal_int(get_err_arg_pos(ierr), 6_int32, "direct ensemble growth names density_labels argument")
+
+        call grow_ensemble(vectors, n_dims, n_vecs, mask, 1.0_real64, dims, kd, labels, &
+            0.5_real64, grown, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "generated growth clears implementation argument positions")
+
+        call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dims, kd, labels, seeds, n_seeds, &
+            1.0_real64, t_observables=2_int32, n_tiles=1_int32, ensemble_matrix=ensembles, &
+            stop_reasons=stops, mad_ambient=mad, ierr=ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "generated ensembles clear implementation argument positions")
+    end subroutine test_zero_mad_error_positions
+
     !> Acceptance compares two consecutive steps, so every entry point requires a history of two columns.
     subroutine test_history_requires_two_columns()
         integer(int32), parameter :: n_dims = 2_int32, n_vecs = 4_int32, n_seeds = 2_int32
@@ -1479,14 +1518,14 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=1_int32, n_tiles=1_int32, &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, "a one-iteration history window is rejected by growth")
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=2_int32, n_tiles=1_int32, &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "a two-iteration history window is accepted")
     end subroutine test_history_requires_two_columns
 
@@ -1710,8 +1749,9 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, n_ensembles=n_raw, &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
             ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles execution check")
 
@@ -1755,8 +1795,8 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "unmerged obtain_ensembles execution check")
         call assert_equal_int(n_ensembles, n_seeds, &
@@ -1789,8 +1829,8 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "zero seeds execution check")
         call assert_equal_int(n_ensembles, 0_int32, "n_ensembles must equal 0")
@@ -1824,8 +1864,8 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_true(ierr /= ERR_OK, "seed_indices out of bounds must fail")
 
@@ -1833,8 +1873,8 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, -0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_true(ierr /= ERR_OK, "negative r must fail")
 
@@ -1902,8 +1942,9 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, n_ensembles=n_raw, &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
             ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles 500 execution check")
 
@@ -2160,8 +2201,8 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=1_int32, &
-            ensemble_matrix=reference_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=reference_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(reference_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "tile invariance: serial reference run check")
         call assert_equal_int(n_ensembles, n_seeds, "tile invariance: reference ensemble count")
@@ -2171,8 +2212,8 @@ contains
 
             call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
                 seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=i_tiles, &
-                ensemble_matrix=tiled_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-                n_ensembles=n_ensembles, ierr=ierr)
+                ensemble_matrix=tiled_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+            if (ierr == ERR_OK) n_ensembles = size(tiled_matrix, dim=2, kind=int32)
 
             call assert_equal_int(ierr, ERR_OK, "tile invariance: tiled run execution check")
             call assert_equal_int(n_ensembles, n_seeds, "tile invariance: tiled ensemble count")
@@ -2218,20 +2259,20 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=0_int32, &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, "n_tiles = 0 must fail")
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=-3_int32, &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, "negative n_tiles must fail")
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=64_int32, &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "n_tiles above n_seeds must be accepted, not rejected")
         call assert_equal_int(n_ensembles, n_seeds, "surplus-tile run still grows every seed")
 
@@ -2280,7 +2321,8 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
-            tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+            tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "layer agreement: preallocated layer must accept n_tiles > n_seeds")
@@ -2288,7 +2330,8 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, 0.5_real64, 0.5_real64, t_obs, n_tiles, alloc_matrix, stop_reasons, &
-            mad_ambient, n_ensembles_alloc, ierr)
+            mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles_alloc = size(alloc_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "layer agreement: allocating layer must accept n_tiles > n_seeds")
@@ -2444,16 +2487,16 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             0_int32, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
-            n_ensembles, ierr)
+            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, &
                          "obtain_ensembles must reject a nonpositive history window")
 
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
-            n_ensembles, ierr)
+            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
                               "obtain_ensembles must accept a correctly sized observable workspace")
         call assert_equal_int(n_ensembles, n_seeds, "every seed still grown")
@@ -2495,8 +2538,9 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, n_ensembles=n_raw, &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
             ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "stop reasons: execution check")
 
@@ -2518,7 +2562,8 @@ contains
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, alpha_accept=0.0_real64, t_observables=10_int32, &
             n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, &
-            mad_ambient=mad_ambient, n_ensembles=n_raw, ierr=ierr)
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "stop reasons: zero alpha_accept execution check")
         call assert_equal_int(stop_reasons(1), STC_STOP_NEVER_ACCEPTED, &
@@ -2531,8 +2576,9 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, n_ensembles=n_raw, &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
             ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "stop reasons: omitting the argument still works")
     end subroutine test_obtain_ensembles_stop_reasons
 
@@ -2577,23 +2623,23 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            exact_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
-            n_ensembles, ierr)
+            exact_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
                               "workspace matches the history capped by the input size")
 
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             2_int32, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            narrow_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
-            n_ensembles, ierr)
+            narrow_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
                               "two-column observable history is accepted")
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, &
                               "allocating wrapper still works when n_vectors < t_observables")
     end subroutine test_obtain_ensembles_observable_window_match
@@ -2635,14 +2681,16 @@ contains
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, 0.25_real64, t_observables=10_int32, &
             n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=quarter_matrix, stop_reasons=stop_reasons, &
-            mad_ambient=mad_ambient, n_ensembles=n_raw, ierr=ierr)
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(quarter_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, &
                          "a degenerate ambient MAD must be rejected, not clustered under")
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, 1.0_real64, t_observables=10_int32, &
             n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=full_matrix, stop_reasons=stop_reasons, &
-            mad_ambient=mad_ambient, n_ensembles=n_raw, ierr=ierr)
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(full_matrix, dim=2, kind=int32)
         call assert_true(ierr /= ERR_OK, &
                          "a degenerate ambient MAD is rejected for every alpha_mad")
 
@@ -2652,8 +2700,9 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, n_ensembles=n_raw, &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
             ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "spread densities execution check")
         call assert_true(mad_ambient > 0.0_real64, &
                          "spread density labels give a non-zero ambient MAD")
@@ -2662,8 +2711,9 @@ contains
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.5_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, n_ensembles=n_raw, &
+            ensemble_matrix=raw_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
             ierr=ierr)
+        if (ierr == ERR_OK) n_raw = size(raw_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "growth succeeds with the same explicit MAD output")
     end subroutine test_obtain_ensembles_reports_degenerate_mad
 
@@ -2815,8 +2865,8 @@ contains
         ! A uniform radius tight enough for the dense cluster leaves the sparse seed isolated.
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, 0.15_real64, t_observables=10_int32, n_tiles=max(1_int32, min(8_int32, n_seeds)), &
-            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, &
-            n_ensembles=n_ensembles, ierr=ierr)
+            ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "per-seed radii: uniform radius execution")
         call assert_equal_int(count(ensemble_matrix(:, 2)), 1_int32, &
@@ -2826,8 +2876,8 @@ contains
         call obtain_ensembles_seed_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
                                             density_labels, seed_indices, n_seeds, seed_radii=spread(0.15_real64, 1, n_seeds), &
                                             t_observables=10_int32, n_tiles=2_int32, ensemble_matrix=generated_matrix, &
-                                            stop_reasons=generated_stops, mad_ambient=generated_mad, &
-                                            n_ensembles=generated_count, ierr=ierr)
+                                            stop_reasons=generated_stops, mad_ambient=generated_mad, ierr=ierr)
+        if (ierr == ERR_OK) generated_count = size(generated_matrix, dim=2, kind=int32)
         call assert_equal_int(ierr, ERR_OK, "equal per-seed radius execution")
         call assert_equal_int(generated_count, n_ensembles, "equal per-seed radius ensemble count")
         call assert_true(all(generated_matrix .eqv. ensemble_matrix), "equal per-seed radius ensemble membership")
@@ -2840,7 +2890,8 @@ contains
         call obtain_ensembles_seed_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, per_seed_radii, t_observables=10_int32, &
             n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, &
-            mad_ambient=mad_ambient, n_ensembles=n_ensembles, ierr=ierr)
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_equal_int(ierr, ERR_OK, "per-seed radii: per-seed radius execution")
         call assert_equal_int(count(ensemble_matrix(:, 1)), 3_int32, &
@@ -2855,7 +2906,8 @@ contains
         call obtain_ensembles_seed_radius(vectors, n_dims, n_vecs, dimension_order, kd_indices, density_labels, &
             seed_indices, n_seeds, per_seed_radii, t_observables=10_int32, &
             n_tiles=max(1_int32, min(8_int32, n_seeds)), ensemble_matrix=ensemble_matrix, stop_reasons=stop_reasons, &
-            mad_ambient=mad_ambient, n_ensembles=n_ensembles, ierr=ierr)
+            mad_ambient=mad_ambient, ierr=ierr)
+        if (ierr == ERR_OK) n_ensembles = size(ensemble_matrix, dim=2, kind=int32)
 
         call assert_true(ierr /= ERR_OK, "per-seed radii: negative radius must fail")
 

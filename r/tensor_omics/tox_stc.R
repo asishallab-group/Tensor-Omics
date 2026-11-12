@@ -138,6 +138,142 @@ compute_ambient_density_stats <- function(density_labels) {
     )
 }
 
+#' Grow one raw ensemble from each seed, using a global radius or per-seed radii.
+#'
+#' Generated from the Fortran procedure \code{tox_stc::obtain_ensembles_global_radius}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param vectors a numeric matrix. Input data matrix (n_dimensions x n_vectors)
+#' @param dimension_order a integer vector. Sequence array tracking split dimensions for KD-tree
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
+#' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_vectors`.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
+#'   The minimum valid value is `1.0`.
+#' @param seed_indices a integer vector. Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_vectors`.
+#' @param r a numeric scalar. Uniform growth radius for every seed.
+#'   The minimum valid value is `0.0`.
+#' @param alpha_mad a numeric scalar. MAD multiplier for density compatibility threshold
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.5`.
+#' @param alpha_accept a numeric scalar. Acceptance log2 fold-change threshold
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.5`.
+#' @param t_observables a integer scalar. History window in iterations, at least two because acceptance compares two consecutive
+#'   steps. Pass n_vectors to retain the full history.
+#'   The minimum valid value is `2`.
+#' @param n_tiles a integer scalar. Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+#'   The minimum valid value is `1`.
+#' @return a named list with elements:
+#'   \item{ensemble_matrix}{a logical matrix. Output matrix storing unmerged grown ensemble masks}
+#'   \item{stop_reasons}{a integer vector. Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+#'     3: first step rejected, 4: no candidates.}
+#'   \item{mad_ambient}{a numeric scalar. Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+#'     Zero when there are no seeds; otherwise positive on success, because a zero value is an error.}
+#' @export
+obtain_ensembles_global_radius <- function(vectors, dimension_order, kd_indices, density_labels, seed_indices, r, alpha_mad = 0.5, alpha_accept = 0.5, t_observables, n_tiles) {
+    vectors <- .tox_as_double_matrix(vectors, "vectors")
+    dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
+    kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
+    density_labels <- .tox_as_double_vector(density_labels, "density_labels")
+    seed_indices <- .tox_as_integer_vector(seed_indices, "seed_indices")
+    r <- .tox_as_double_scalar(r, "r")
+    alpha_mad <- .tox_as_double_scalar(alpha_mad, "alpha_mad")
+    alpha_accept <- .tox_as_double_scalar(alpha_accept, "alpha_accept")
+    t_observables <- .tox_as_integer_scalar(t_observables, "t_observables")
+    n_tiles <- .tox_as_integer_scalar(n_tiles, "n_tiles")
+    if (length(dimension_order) != dim(vectors)[1])
+        .tox_shape_error("dimension_order", 1L, length(dimension_order), "'vectors' implies n_dimensions == ", dim(vectors)[1], "n_dimensions")
+    if (length(kd_indices) != dim(vectors)[2])
+        .tox_shape_error("kd_indices", 1L, length(kd_indices), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
+    if (length(density_labels) != dim(vectors)[2])
+        .tox_shape_error("density_labels", 1L, length(density_labels), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
+
+    .result <- .Call("obtain_ensembles_global_radius_call", vectors, dimension_order, kd_indices, density_labels, seed_indices, r, alpha_mad, alpha_accept, t_observables, n_tiles)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "r", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, "seed_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        ensemble_matrix = .result$ensemble_matrix,
+        stop_reasons = .result$stop_reasons,
+        mad_ambient = .result$mad_ambient
+    )
+}
+
+#' Grow one raw ensemble from each seed, using a global radius or per-seed radii.
+#'
+#' Generated from the Fortran procedure \code{tox_stc::obtain_ensembles_seed_radius}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param vectors a numeric matrix. Input data matrix (n_dimensions x n_vectors)
+#' @param dimension_order a integer vector. Sequence array tracking split dimensions for KD-tree
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
+#' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_vectors`.
+#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
+#'   The minimum valid value is `1.0`.
+#' @param seed_indices a integer vector. Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_vectors`.
+#' @param seed_radii a numeric vector. Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
+#'   The minimum valid value is `0.0`.
+#' @param alpha_mad a numeric scalar. MAD multiplier for density compatibility threshold
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.5`.
+#' @param alpha_accept a numeric scalar. Acceptance log2 fold-change threshold
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.5`.
+#' @param t_observables a integer scalar. History window in iterations, at least two because acceptance compares two consecutive
+#'   steps. Pass n_vectors to retain the full history.
+#'   The minimum valid value is `2`.
+#' @param n_tiles a integer scalar. Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+#'   The minimum valid value is `1`.
+#' @return a named list with elements:
+#'   \item{ensemble_matrix}{a logical matrix. Output matrix storing unmerged grown ensemble masks}
+#'   \item{stop_reasons}{a integer vector. Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+#'     3: first step rejected, 4: no candidates.}
+#'   \item{mad_ambient}{a numeric scalar. Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+#'     Zero when there are no seeds; otherwise positive on success, because a zero value is an error.}
+#' @export
+obtain_ensembles_seed_radius <- function(vectors, dimension_order, kd_indices, density_labels, seed_indices, seed_radii, alpha_mad = 0.5, alpha_accept = 0.5, t_observables, n_tiles) {
+    vectors <- .tox_as_double_matrix(vectors, "vectors")
+    dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
+    kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
+    density_labels <- .tox_as_double_vector(density_labels, "density_labels")
+    seed_indices <- .tox_as_integer_vector(seed_indices, "seed_indices")
+    seed_radii <- .tox_as_double_vector(seed_radii, "seed_radii")
+    alpha_mad <- .tox_as_double_scalar(alpha_mad, "alpha_mad")
+    alpha_accept <- .tox_as_double_scalar(alpha_accept, "alpha_accept")
+    t_observables <- .tox_as_integer_scalar(t_observables, "t_observables")
+    n_tiles <- .tox_as_integer_scalar(n_tiles, "n_tiles")
+    if (length(dimension_order) != dim(vectors)[1])
+        .tox_shape_error("dimension_order", 1L, length(dimension_order), "'vectors' implies n_dimensions == ", dim(vectors)[1], "n_dimensions")
+    if (length(kd_indices) != dim(vectors)[2])
+        .tox_shape_error("kd_indices", 1L, length(kd_indices), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
+    if (length(density_labels) != dim(vectors)[2])
+        .tox_shape_error("density_labels", 1L, length(density_labels), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
+    if (length(seed_radii) != length(seed_indices))
+        .tox_shape_error("seed_radii", 1L, length(seed_radii), "'seed_indices' implies n_seeds == ", length(seed_indices), "n_seeds")
+
+    .result <- .Call("obtain_ensembles_seed_radius_call", vectors, dimension_order, kd_indices, density_labels, seed_indices, seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "seed_radii", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, "seed_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        ensemble_matrix = .result$ensemble_matrix,
+        stop_reasons = .result$stop_reasons,
+        mad_ambient = .result$mad_ambient
+    )
+}
+
 #' Merge intersecting ensembles by overlap coefficient and discard final singletons.
 #'
 #' Generated from the Fortran procedure \code{tox_stc::merge_ensembles}, whose argument names
@@ -264,144 +400,4 @@ accept_ensemble <- function(observables, current_iter, alpha_accept = 0.5) {
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$is_accepted
-}
-
-#' Grow one raw ensemble from each seed, using a global radius or per-seed radii.
-#'
-#' Generated from the Fortran procedure \code{tox_stc::obtain_ensembles_global_radius}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param vectors a numeric matrix. Input data matrix (n_dimensions x n_vectors)
-#' @param dimension_order a integer vector. Sequence array tracking split dimensions for KD-tree
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_dimensions`.
-#' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_vectors`.
-#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
-#'   The minimum valid value is `1.0`.
-#' @param seed_indices a integer vector. Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_vectors`.
-#' @param r a numeric scalar. Uniform growth radius for every seed.
-#'   The minimum valid value is `0.0`.
-#' @param alpha_mad a numeric scalar. MAD multiplier for density compatibility threshold
-#'   The minimum valid value is `0.0`.
-#'   The default value is `0.5`.
-#' @param alpha_accept a numeric scalar. Acceptance log2 fold-change threshold
-#'   The minimum valid value is `0.0`.
-#'   The default value is `0.5`.
-#' @param t_observables a integer scalar. History window in iterations, at least two because acceptance compares two consecutive
-#'   steps. Pass n_vectors to retain the full history.
-#'   The minimum valid value is `2`.
-#' @param n_tiles a integer scalar. Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-#'   The minimum valid value is `1`.
-#' @return a named list with elements:
-#'   \item{ensemble_matrix}{a logical matrix. Output matrix storing unmerged grown ensemble masks}
-#'   \item{stop_reasons}{a integer vector. Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-#'     3: first step rejected, 4: no candidates.}
-#'   \item{mad_ambient}{a numeric scalar. Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-#'     Zero when there are no seeds; otherwise positive on success, because a zero value is an error.}
-#'   \item{n_ensembles}{a integer scalar. Total count of extracted raw ensembles (equals n_seeds)}
-#' @export
-obtain_ensembles_global_radius <- function(vectors, dimension_order, kd_indices, density_labels, seed_indices, r, alpha_mad = 0.5, alpha_accept = 0.5, t_observables, n_tiles) {
-    vectors <- .tox_as_double_matrix(vectors, "vectors")
-    dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
-    kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
-    density_labels <- .tox_as_double_vector(density_labels, "density_labels")
-    seed_indices <- .tox_as_integer_vector(seed_indices, "seed_indices")
-    r <- .tox_as_double_scalar(r, "r")
-    alpha_mad <- .tox_as_double_scalar(alpha_mad, "alpha_mad")
-    alpha_accept <- .tox_as_double_scalar(alpha_accept, "alpha_accept")
-    t_observables <- .tox_as_integer_scalar(t_observables, "t_observables")
-    n_tiles <- .tox_as_integer_scalar(n_tiles, "n_tiles")
-    if (length(dimension_order) != dim(vectors)[1])
-        .tox_shape_error("dimension_order", 1L, length(dimension_order), "'vectors' implies n_dimensions == ", dim(vectors)[1], "n_dimensions")
-    if (length(kd_indices) != dim(vectors)[2])
-        .tox_shape_error("kd_indices", 1L, length(kd_indices), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
-    if (length(density_labels) != dim(vectors)[2])
-        .tox_shape_error("density_labels", 1L, length(density_labels), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
-
-    .result <- .Call("obtain_ensembles_global_radius_call", vectors, dimension_order, kd_indices, density_labels, seed_indices, r, alpha_mad, alpha_accept, t_observables, n_tiles)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "r", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "n_ensembles", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, "seed_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        ensemble_matrix = .result$ensemble_matrix,
-        stop_reasons = .result$stop_reasons,
-        mad_ambient = .result$mad_ambient,
-        n_ensembles = .result$n_ensembles
-    )
-}
-
-#' Grow one raw ensemble from each seed, using a global radius or per-seed radii.
-#'
-#' Generated from the Fortran procedure \code{tox_stc::obtain_ensembles_seed_radius}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param vectors a numeric matrix. Input data matrix (n_dimensions x n_vectors)
-#' @param dimension_order a integer vector. Sequence array tracking split dimensions for KD-tree
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_dimensions`.
-#' @param kd_indices a integer vector. KD-tree index sequence array computed via \code{\link{build_kd_index}}.
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_vectors`.
-#' @param density_labels a numeric vector. Density labels for all vectors, from `calculate_labels_as_density`.
-#'   The minimum valid value is `1.0`.
-#' @param seed_indices a integer vector. Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_vectors`.
-#' @param seed_radii a numeric vector. Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
-#'   The minimum valid value is `0.0`.
-#' @param alpha_mad a numeric scalar. MAD multiplier for density compatibility threshold
-#'   The minimum valid value is `0.0`.
-#'   The default value is `0.5`.
-#' @param alpha_accept a numeric scalar. Acceptance log2 fold-change threshold
-#'   The minimum valid value is `0.0`.
-#'   The default value is `0.5`.
-#' @param t_observables a integer scalar. History window in iterations, at least two because acceptance compares two consecutive
-#'   steps. Pass n_vectors to retain the full history.
-#'   The minimum valid value is `2`.
-#' @param n_tiles a integer scalar. Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-#'   The minimum valid value is `1`.
-#' @return a named list with elements:
-#'   \item{ensemble_matrix}{a logical matrix. Output matrix storing unmerged grown ensemble masks}
-#'   \item{stop_reasons}{a integer vector. Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-#'     3: first step rejected, 4: no candidates.}
-#'   \item{mad_ambient}{a numeric scalar. Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-#'     Zero when there are no seeds; otherwise positive on success, because a zero value is an error.}
-#'   \item{n_ensembles}{a integer scalar. Total count of extracted raw ensembles (equals n_seeds)}
-#' @export
-obtain_ensembles_seed_radius <- function(vectors, dimension_order, kd_indices, density_labels, seed_indices, seed_radii, alpha_mad = 0.5, alpha_accept = 0.5, t_observables, n_tiles) {
-    vectors <- .tox_as_double_matrix(vectors, "vectors")
-    dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
-    kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
-    density_labels <- .tox_as_double_vector(density_labels, "density_labels")
-    seed_indices <- .tox_as_integer_vector(seed_indices, "seed_indices")
-    seed_radii <- .tox_as_double_vector(seed_radii, "seed_radii")
-    alpha_mad <- .tox_as_double_scalar(alpha_mad, "alpha_mad")
-    alpha_accept <- .tox_as_double_scalar(alpha_accept, "alpha_accept")
-    t_observables <- .tox_as_integer_scalar(t_observables, "t_observables")
-    n_tiles <- .tox_as_integer_scalar(n_tiles, "n_tiles")
-    if (length(dimension_order) != dim(vectors)[1])
-        .tox_shape_error("dimension_order", 1L, length(dimension_order), "'vectors' implies n_dimensions == ", dim(vectors)[1], "n_dimensions")
-    if (length(kd_indices) != dim(vectors)[2])
-        .tox_shape_error("kd_indices", 1L, length(kd_indices), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
-    if (length(density_labels) != dim(vectors)[2])
-        .tox_shape_error("density_labels", 1L, length(density_labels), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
-    if (length(seed_radii) != length(seed_indices))
-        .tox_shape_error("seed_radii", 1L, length(seed_radii), "'seed_indices' implies n_seeds == ", length(seed_indices), "n_seeds")
-
-    .result <- .Call("obtain_ensembles_seed_radius_call", vectors, dimension_order, kd_indices, density_labels, seed_indices, seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "dimension_order", "kd_indices", "density_labels", "seed_indices", "n_seeds", "seed_radii", "alpha_mad", "alpha_accept", "t_observables", "n_tiles", "ensemble_matrix", "stop_reasons", "mad_ambient", "n_ensembles", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, "seed_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        ensemble_matrix = .result$ensemble_matrix,
-        stop_reasons = .result$stop_reasons,
-        mad_ambient = .result$mad_ambient,
-        n_ensembles = .result$n_ensembles
-    )
 }

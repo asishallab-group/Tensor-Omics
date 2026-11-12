@@ -45,7 +45,7 @@
     "description": "Import a function from k-d tree spatial index over fixed-dimensional point sets.",
     "body": [
       "from tensor_omics.f42_kd_tree import (",
-      "    ${1|build_kd_index,build_spherical_kd|},",
+      "    ${1|build_kd_index,build_spherical_kd,vicinity_vectors,vicinity_vectors_count|},",
       ")"
     ]
   },
@@ -66,6 +66,32 @@
       "${1:result} = build_spherical_kd(",
       "    points=${2:points},",
       "    dimension_order=${3:dimension_order},",
+      ")"
+    ]
+  },
+  "vicinity_vectors (call)": {
+    "prefix": "f42:vicinity_vectors",
+    "description": "vicinity_vectors",
+    "body": [
+      "${1:result} = vicinity_vectors(",
+      "    query_point=${2:query_point},",
+      "    points=${3:points},",
+      "    r=${4:r},",
+      "    dimension_order=${5:dimension_order},",
+      "    kd_indices=${6:kd_indices},",
+      ")"
+    ]
+  },
+  "vicinity_vectors_count (call)": {
+    "prefix": "f42:vicinity_vectors_count",
+    "description": "vicinity_vectors_count",
+    "body": [
+      "${1:result} = vicinity_vectors_count(",
+      "    query_point=${2:query_point},",
+      "    points=${3:points},",
+      "    r=${4:r},",
+      "    dimension_order=${5:dimension_order},",
+      "    kd_indices=${6:kd_indices},",
       ")"
     ]
   },

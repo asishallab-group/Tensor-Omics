@@ -51,6 +51,32 @@
       ")"
     ]
   },
+  "vicinity_vectors (call)": {
+    "prefix": "f42:vicinity_vectors",
+    "description": "vicinity_vectors",
+    "body": [
+      "${1:result} <- vicinity_vectors(",
+      "  query_point = ${2:query_point},",
+      "  points = ${3:points},",
+      "  r = ${4:r},",
+      "  dimension_order = ${5:dimension_order},",
+      "  kd_indices = ${6:kd_indices}",
+      ")"
+    ]
+  },
+  "vicinity_vectors_count (call)": {
+    "prefix": "f42:vicinity_vectors_count",
+    "description": "vicinity_vectors_count",
+    "body": [
+      "${1:result} <- vicinity_vectors_count(",
+      "  query_point = ${2:query_point},",
+      "  points = ${3:points},",
+      "  r = ${4:r},",
+      "  dimension_order = ${5:dimension_order},",
+      "  kd_indices = ${6:kd_indices}",
+      ")"
+    ]
+  },
   "deserialize_char_helper (call)": {
     "prefix": "f42:deserialize_char_helper",
     "description": "deserialize_char_helper",

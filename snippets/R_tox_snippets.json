@@ -827,6 +827,137 @@
       ")"
     ]
   },
+  "calculate_density_radius (call)": {
+    "prefix": "tox:calculate_density_radius",
+    "description": "calculate_density_radius",
+    "body": [
+      "${1:result} <- calculate_density_radius(",
+      "  vectors = ${2:vectors},",
+      "  mean_to_other_vecs_dist_quant = ${3:0.15}",
+      ")"
+    ]
+  },
+  "calculate_labels_as_density (call)": {
+    "prefix": "tox:calculate_labels_as_density",
+    "description": "calculate_labels_as_density",
+    "body": [
+      "${1:result} <- calculate_labels_as_density(",
+      "  vectors = ${2:vectors},",
+      "  r = ${3:r},",
+      "  dimension_order = ${4:dimension_order},",
+      "  kd_indices = ${5:kd_indices},",
+      "  n_tiles = ${6:n_tiles}",
+      ")"
+    ]
+  },
+  "identify_ensemble_seeds (call)": {
+    "prefix": "tox:identify_ensemble_seeds",
+    "description": "identify_ensemble_seeds",
+    "body": [
+      "${1:result} <- identify_ensemble_seeds(",
+      "  vectors = ${2:vectors},",
+      "  density_labels = ${3:density_labels},",
+      "  dimension_order = ${4:dimension_order},",
+      "  kd_indices = ${5:kd_indices},",
+      "  k_seeding = ${6:k_seeding},",
+      "  coverage_quant = ${7:0.5}",
+      ")"
+    ]
+  },
+  "compute_ambient_density_stats (call)": {
+    "prefix": "tox:compute_ambient_density_stats",
+    "description": "compute_ambient_density_stats",
+    "body": [
+      "${1:result} <- compute_ambient_density_stats(",
+      "  density_labels = ${2:density_labels}",
+      ")"
+    ]
+  },
+  "obtain_ensembles_global_radius (call)": {
+    "prefix": "tox:obtain_ensembles_global_radius",
+    "description": "obtain_ensembles_global_radius",
+    "body": [
+      "${1:result} <- obtain_ensembles_global_radius(",
+      "  vectors = ${2:vectors},",
+      "  dimension_order = ${3:dimension_order},",
+      "  kd_indices = ${4:kd_indices},",
+      "  density_labels = ${5:density_labels},",
+      "  seed_indices = ${6:seed_indices},",
+      "  r = ${7:r},",
+      "  alpha_mad = ${8:0.5},",
+      "  alpha_accept = ${9:0.5},",
+      "  t_observables = ${10:t_observables},",
+      "  n_tiles = ${11:n_tiles}",
+      ")"
+    ]
+  },
+  "obtain_ensembles_seed_radius (call)": {
+    "prefix": "tox:obtain_ensembles_seed_radius",
+    "description": "obtain_ensembles_seed_radius",
+    "body": [
+      "${1:result} <- obtain_ensembles_seed_radius(",
+      "  vectors = ${2:vectors},",
+      "  dimension_order = ${3:dimension_order},",
+      "  kd_indices = ${4:kd_indices},",
+      "  density_labels = ${5:density_labels},",
+      "  seed_indices = ${6:seed_indices},",
+      "  seed_radii = ${7:seed_radii},",
+      "  alpha_mad = ${8:0.5},",
+      "  alpha_accept = ${9:0.5},",
+      "  t_observables = ${10:t_observables},",
+      "  n_tiles = ${11:n_tiles}",
+      ")"
+    ]
+  },
+  "merge_ensembles (call)": {
+    "prefix": "tox:merge_ensembles",
+    "description": "merge_ensembles",
+    "body": [
+      "${1:result} <- merge_ensembles(",
+      "  raw_masks = ${2:raw_masks},",
+      "  min_overlap_coefficient = ${3:0.9}",
+      ")"
+    ]
+  },
+  "grow_ensemble (call)": {
+    "prefix": "tox:grow_ensemble",
+    "description": "grow_ensemble",
+    "body": [
+      "${1:result} <- grow_ensemble(",
+      "  vectors = ${2:vectors},",
+      "  ensemble_mask = ${3:ensemble_mask},",
+      "  r = ${4:r},",
+      "  dimension_order = ${5:dimension_order},",
+      "  kd_indices = ${6:kd_indices},",
+      "  density_labels = ${7:density_labels},",
+      "  alpha_mad = ${8:0.5}",
+      ")"
+    ]
+  },
+  "compute_ensemble_observable (call)": {
+    "prefix": "tox:compute_ensemble_observable",
+    "description": "compute_ensemble_observable",
+    "body": [
+      "compute_ensemble_observable(",
+      "  ensemble_mask = ${1:ensemble_mask},",
+      "  density_labels = ${2:density_labels},",
+      "  candidate_count = ${3:candidate_count},",
+      "  current_iter = ${4:current_iter},",
+      "  observables = ${5:observables}",
+      ")"
+    ]
+  },
+  "accept_ensemble (call)": {
+    "prefix": "tox:accept_ensemble",
+    "description": "accept_ensemble",
+    "body": [
+      "${1:result} <- accept_ensemble(",
+      "  observables = ${2:observables},",
+      "  current_iter = ${3:current_iter},",
+      "  alpha_accept = ${4:0.5}",
+      ")"
+    ]
+  },
   "compute_tissue_versatility (call)": {
     "prefix": "tox:compute_tissue_versatility",
     "description": "The metric is based on the angle between each gene expression vector and the space diagonal.",

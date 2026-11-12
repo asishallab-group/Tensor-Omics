@@ -26,16 +26,16 @@ module tox_stc
     public :: identify_ensemble_seeds_expert
     public :: compute_ambient_density_stats
     public :: compute_ambient_density_stats_expert
+    public :: obtain_ensembles_global_radius
+    public :: obtain_ensembles_global_radius_expert
+    public :: obtain_ensembles_seed_radius
+    public :: obtain_ensembles_seed_radius_expert
     public :: merge_ensembles
     public :: merge_ensembles_expert
     public :: grow_ensemble
     public :: grow_ensemble_expert
     public :: compute_ensemble_observable
     public :: accept_ensemble
-    public :: obtain_ensembles_global_radius
-    public :: obtain_ensembles_global_radius_expert
-    public :: obtain_ensembles_seed_radius
-    public :: obtain_ensembles_seed_radius_expert
 
 contains
 
@@ -572,6 +572,572 @@ contains
         )
     end subroutine compute_ambient_density_stats_expert
 
+    !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):obtain_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):obtain_ensembles_global_radius_expert]] to prepare it yourself.
+    pure subroutine obtain_ensembles_global_radius(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            dimension_order,&
+            kd_indices,&
+            density_labels,&
+            seed_indices,&
+            n_seeds,&
+            r,&
+            alpha_mad,&
+            alpha_accept,&
+            t_observables,&
+            n_tiles,&
+            ensemble_matrix,&
+            stop_reasons,&
+            mad_ambient,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+            !! Number of vectors
+        integer(int32), intent(in) :: n_seeds
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
+            !! Input data matrix (n_dimensions x n_vectors)
+        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
+            !! Sequence array tracking split dimensions for KD-tree
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
+            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_vectors), intent(in) :: density_labels
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
+            !! The minimum valid value is `1.0_real64`.
+        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), intent(in) :: r
+            !! Uniform growth radius for every seed.
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), intent(in), optional :: alpha_mad
+            !! MAD multiplier for density compatibility threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        real(real64), intent(in), optional :: alpha_accept
+            !! Acceptance log2 fold-change threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        integer(int32), intent(in) :: t_observables
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
+        integer(int32), intent(in) :: n_tiles
+            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+            !! The minimum valid value is `1_int32`.
+        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
+            !! Output matrix storing unmerged grown ensemble masks
+        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
+            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+            !! 3: first step rejected, 4: no candidates.
+        real(real64), intent(out) :: mad_ambient
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+        integer(int32), intent(out) :: ierr
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
+        integer(int32), dimension(:, :, :), allocatable :: tmp_stack
+        logical(c_bool), dimension(:, :), allocatable :: tmp_vicinity_mask
+        logical(c_bool), dimension(:, :), allocatable :: tmp_surface_mask
+        integer(int32), dimension(:, :), allocatable :: tmp_perm
+        real(real64), dimension(:, :), allocatable :: tmp_abs_diff
+        real(real64), dimension(:, :, :), allocatable :: tmp_observables
+        logical(c_bool), dimension(:, :), allocatable :: tmp_current_mask
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
+        call validate_in_range_real(r, ierr, arg_pos=9_int32, min=0.0_real64)
+        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
+        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
+        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
+        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
+        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
+        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
+        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(tmp_stack(3, 64, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_vicinity_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_surface_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_perm(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+
+        call obtain_ensembles_impl(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            density_labels = density_labels,&
+            seed_indices = seed_indices,&
+            n_seeds = n_seeds,&
+            growth_mode = MODE_GLOBAL_RADIUS,&
+            r = r,&
+            alpha_mad = alpha_mad,&
+            alpha_accept = alpha_accept,&
+            t_observables = t_observables,&
+            n_tiles = n_tiles,&
+            tmp_stack = tmp_stack,&
+            tmp_vicinity_mask = tmp_vicinity_mask,&
+            tmp_surface_mask = tmp_surface_mask,&
+            tmp_perm = tmp_perm,&
+            tmp_abs_diff = tmp_abs_diff,&
+            tmp_observables = tmp_observables,&
+            tmp_current_mask = tmp_current_mask,&
+            ensemble_matrix = ensemble_matrix,&
+            stop_reasons = stop_reasons,&
+            mad_ambient = mad_ambient,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine obtain_ensembles_global_radius
+
+    !> summary: Validates its inputs, then calls [[tox_stc_impl(module):obtain_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):obtain_ensembles_global_radius]] does both.
+    pure subroutine obtain_ensembles_global_radius_expert(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            dimension_order,&
+            kd_indices,&
+            density_labels,&
+            seed_indices,&
+            n_seeds,&
+            r,&
+            alpha_mad,&
+            alpha_accept,&
+            t_observables,&
+            n_tiles,&
+            tmp_stack,&
+            tmp_vicinity_mask,&
+            tmp_surface_mask,&
+            tmp_perm,&
+            tmp_abs_diff,&
+            tmp_observables,&
+            tmp_current_mask,&
+            ensemble_matrix,&
+            stop_reasons,&
+            mad_ambient,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+            !! Number of vectors
+        integer(int32), intent(in) :: n_seeds
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `n_vectors`.
+        integer(int32), intent(in) :: t_observables
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
+        integer(int32), intent(in) :: n_tiles
+            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+            !! The minimum valid value is `1_int32`.
+        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
+            !! Input data matrix (n_dimensions x n_vectors)
+        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
+            !! Sequence array tracking split dimensions for KD-tree
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
+            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_vectors), intent(in) :: density_labels
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
+            !! The minimum valid value is `1.0_real64`.
+        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), intent(in) :: r
+            !! Uniform growth radius for every seed.
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), intent(in), optional :: alpha_mad
+            !! MAD multiplier for density compatibility threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        real(real64), intent(in), optional :: alpha_accept
+            !! Acceptance log2 fold-change threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        integer(int32), dimension(3, 64, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_stack
+            !! Workspace stack for tree traversal per tile
+        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_vicinity_mask
+            !! Workspace mask holding one member's neighborhood query result per tile
+        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_surface_mask
+            !! Cached spatial neighborhood union per tile, reset for each seed
+        integer(int32), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_perm
+            !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
+        real(real64), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_abs_diff
+            !! Workspace array for deviation calculations per tile
+        real(real64), dimension(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
+            !! Observable history per tile. Growth adds at least one member per iteration, so more than
+            !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
+        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
+            !! Workspace holding accepted seed ensemble membership per tile
+        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
+            !! Output matrix storing unmerged grown ensemble masks
+        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
+            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+            !! 3: first step rejected, 4: no candidates.
+        real(real64), intent(out) :: mad_ambient
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+        integer(int32), intent(out) :: ierr
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
+        call validate_in_range_real(r, ierr, arg_pos=9_int32, min=0.0_real64)
+        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
+        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
+        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
+        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
+        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
+        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
+        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
+        if (is_err(ierr)) return
+#endif
+
+        call obtain_ensembles_impl(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            density_labels = density_labels,&
+            seed_indices = seed_indices,&
+            n_seeds = n_seeds,&
+            growth_mode = MODE_GLOBAL_RADIUS,&
+            r = r,&
+            alpha_mad = alpha_mad,&
+            alpha_accept = alpha_accept,&
+            t_observables = t_observables,&
+            n_tiles = n_tiles,&
+            tmp_stack = tmp_stack,&
+            tmp_vicinity_mask = tmp_vicinity_mask,&
+            tmp_surface_mask = tmp_surface_mask,&
+            tmp_perm = tmp_perm,&
+            tmp_abs_diff = tmp_abs_diff,&
+            tmp_observables = tmp_observables,&
+            tmp_current_mask = tmp_current_mask,&
+            ensemble_matrix = ensemble_matrix,&
+            stop_reasons = stop_reasons,&
+            mad_ambient = mad_ambient,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine obtain_ensembles_global_radius_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):obtain_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):obtain_ensembles_seed_radius_expert]] to prepare it yourself.
+    pure subroutine obtain_ensembles_seed_radius(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            dimension_order,&
+            kd_indices,&
+            density_labels,&
+            seed_indices,&
+            n_seeds,&
+            seed_radii,&
+            alpha_mad,&
+            alpha_accept,&
+            t_observables,&
+            n_tiles,&
+            ensemble_matrix,&
+            stop_reasons,&
+            mad_ambient,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+            !! Number of vectors
+        integer(int32), intent(in) :: n_seeds
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
+            !! Input data matrix (n_dimensions x n_vectors)
+        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
+            !! Sequence array tracking split dimensions for KD-tree
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
+            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_vectors), intent(in) :: density_labels
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
+            !! The minimum valid value is `1.0_real64`.
+        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_seeds), intent(in) :: seed_radii
+            !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), intent(in), optional :: alpha_mad
+            !! MAD multiplier for density compatibility threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        real(real64), intent(in), optional :: alpha_accept
+            !! Acceptance log2 fold-change threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        integer(int32), intent(in) :: t_observables
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
+        integer(int32), intent(in) :: n_tiles
+            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+            !! The minimum valid value is `1_int32`.
+        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
+            !! Output matrix storing unmerged grown ensemble masks
+        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
+            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+            !! 3: first step rejected, 4: no candidates.
+        real(real64), intent(out) :: mad_ambient
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+        integer(int32), intent(out) :: ierr
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
+        integer(int32), dimension(:, :, :), allocatable :: tmp_stack
+        logical(c_bool), dimension(:, :), allocatable :: tmp_vicinity_mask
+        logical(c_bool), dimension(:, :), allocatable :: tmp_surface_mask
+        integer(int32), dimension(:, :), allocatable :: tmp_perm
+        real(real64), dimension(:, :), allocatable :: tmp_abs_diff
+        real(real64), dimension(:, :, :), allocatable :: tmp_observables
+        logical(c_bool), dimension(:, :), allocatable :: tmp_current_mask
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
+        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
+        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
+        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
+        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
+        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
+        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
+        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
+        call validate_all_in_range_real(seed_radii, n_seeds, ierr, arg_pos=9_int32, min=0.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(tmp_stack(3, 64, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_vicinity_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_surface_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_perm(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
+        M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
+
+        call obtain_ensembles_impl(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            density_labels = density_labels,&
+            seed_indices = seed_indices,&
+            n_seeds = n_seeds,&
+            growth_mode = MODE_SEED_RADIUS,&
+            seed_radii = seed_radii,&
+            alpha_mad = alpha_mad,&
+            alpha_accept = alpha_accept,&
+            t_observables = t_observables,&
+            n_tiles = n_tiles,&
+            tmp_stack = tmp_stack,&
+            tmp_vicinity_mask = tmp_vicinity_mask,&
+            tmp_surface_mask = tmp_surface_mask,&
+            tmp_perm = tmp_perm,&
+            tmp_abs_diff = tmp_abs_diff,&
+            tmp_observables = tmp_observables,&
+            tmp_current_mask = tmp_current_mask,&
+            ensemble_matrix = ensemble_matrix,&
+            stop_reasons = stop_reasons,&
+            mad_ambient = mad_ambient,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine obtain_ensembles_seed_radius
+
+    !> summary: Validates its inputs, then calls [[tox_stc_impl(module):obtain_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):obtain_ensembles_seed_radius]] does both.
+    pure subroutine obtain_ensembles_seed_radius_expert(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            dimension_order,&
+            kd_indices,&
+            density_labels,&
+            seed_indices,&
+            n_seeds,&
+            seed_radii,&
+            alpha_mad,&
+            alpha_accept,&
+            t_observables,&
+            n_tiles,&
+            tmp_stack,&
+            tmp_vicinity_mask,&
+            tmp_surface_mask,&
+            tmp_perm,&
+            tmp_abs_diff,&
+            tmp_observables,&
+            tmp_current_mask,&
+            ensemble_matrix,&
+            stop_reasons,&
+            mad_ambient,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+            !! Number of vectors
+        integer(int32), intent(in) :: n_seeds
+            !! Number of seed vectors, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `n_vectors`.
+        integer(int32), intent(in) :: t_observables
+            !! History window in iterations, at least two because acceptance compares two consecutive
+            !! steps. Pass n_vectors to retain the full history.
+            !! The minimum valid value is `2_int32`.
+        integer(int32), intent(in) :: n_tiles
+            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
+            !! The minimum valid value is `1_int32`.
+        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
+            !! Input data matrix (n_dimensions x n_vectors)
+        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
+            !! Sequence array tracking split dimensions for KD-tree
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
+            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_vectors), intent(in) :: density_labels
+            !! Density labels for all vectors, from `calculate_labels_as_density`.
+            !! The minimum valid value is `1.0_real64`.
+        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
+            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(real64), dimension(n_seeds), intent(in) :: seed_radii
+            !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), intent(in), optional :: alpha_mad
+            !! MAD multiplier for density compatibility threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        real(real64), intent(in), optional :: alpha_accept
+            !! Acceptance log2 fold-change threshold
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.5_real64`.
+        integer(int32), dimension(3, 64, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_stack
+            !! Workspace stack for tree traversal per tile
+        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_vicinity_mask
+            !! Workspace mask holding one member's neighborhood query result per tile
+        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_surface_mask
+            !! Cached spatial neighborhood union per tile, reset for each seed
+        integer(int32), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_perm
+            !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
+        real(real64), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_abs_diff
+            !! Workspace array for deviation calculations per tile
+        real(real64), dimension(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
+            !! Observable history per tile. Growth adds at least one member per iteration, so more than
+            !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
+        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
+            !! Workspace holding accepted seed ensemble membership per tile
+        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
+            !! Output matrix storing unmerged grown ensemble masks
+        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
+            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
+            !! 3: first step rejected, 4: no candidates.
+        real(real64), intent(out) :: mad_ambient
+            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
+            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
+        integer(int32), intent(out) :: ierr
+            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
+            !! half the labels are equal), which leaves no density tolerance for growth.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
+        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
+        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
+        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
+        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
+        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
+        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
+        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
+        call validate_all_in_range_real(seed_radii, n_seeds, ierr, arg_pos=9_int32, min=0.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        call obtain_ensembles_impl(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            dimension_order = dimension_order,&
+            kd_indices = kd_indices,&
+            density_labels = density_labels,&
+            seed_indices = seed_indices,&
+            n_seeds = n_seeds,&
+            growth_mode = MODE_SEED_RADIUS,&
+            seed_radii = seed_radii,&
+            alpha_mad = alpha_mad,&
+            alpha_accept = alpha_accept,&
+            t_observables = t_observables,&
+            n_tiles = n_tiles,&
+            tmp_stack = tmp_stack,&
+            tmp_vicinity_mask = tmp_vicinity_mask,&
+            tmp_surface_mask = tmp_surface_mask,&
+            tmp_perm = tmp_perm,&
+            tmp_abs_diff = tmp_abs_diff,&
+            tmp_observables = tmp_observables,&
+            tmp_current_mask = tmp_current_mask,&
+            ensemble_matrix = ensemble_matrix,&
+            stop_reasons = stop_reasons,&
+            mad_ambient = mad_ambient,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine obtain_ensembles_seed_radius_expert
+
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):merge_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):merge_ensembles_expert]] to prepare it yourself.
     pure subroutine merge_ensembles(&
             raw_masks,&
@@ -989,587 +1555,5 @@ contains
             is_accepted = is_accepted&
         )
     end subroutine accept_ensemble
-
-    !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):obtain_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):obtain_ensembles_global_radius_expert]] to prepare it yourself.
-    pure subroutine obtain_ensembles_global_radius(&
-            vectors,&
-            n_dimensions,&
-            n_vectors,&
-            dimension_order,&
-            kd_indices,&
-            density_labels,&
-            seed_indices,&
-            n_seeds,&
-            r,&
-            alpha_mad,&
-            alpha_accept,&
-            t_observables,&
-            n_tiles,&
-            ensemble_matrix,&
-            stop_reasons,&
-            mad_ambient,&
-            n_ensembles,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_dimensions
-            !! Number of dimensions
-        integer(int32), intent(in) :: n_vectors
-            !! Number of vectors
-        integer(int32), intent(in) :: n_seeds
-            !! Number of seed vectors, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
-            !! Input data matrix (n_dimensions x n_vectors)
-        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
-            !! Sequence array tracking split dimensions for KD-tree
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_dimensions`.
-        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
-            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors, from `calculate_labels_as_density`.
-            !! The minimum valid value is `1.0_real64`.
-        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), intent(in) :: r
-            !! Uniform growth radius for every seed.
-            !! The minimum valid value is `0.0_real64`.
-        real(real64), intent(in), optional :: alpha_mad
-            !! MAD multiplier for density compatibility threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        real(real64), intent(in), optional :: alpha_accept
-            !! Acceptance log2 fold-change threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        integer(int32), intent(in) :: t_observables
-            !! History window in iterations, at least two because acceptance compares two consecutive
-            !! steps. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `2_int32`.
-        integer(int32), intent(in) :: n_tiles
-            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-            !! The minimum valid value is `1_int32`.
-        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
-            !! Output matrix storing unmerged grown ensemble masks
-        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
-            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-            !! 3: first step rejected, 4: no candidates.
-        real(real64), intent(out) :: mad_ambient
-            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        integer(int32), intent(out) :: n_ensembles
-            !! Total count of extracted raw ensembles (equals n_seeds)
-        integer(int32), intent(out) :: ierr
-            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
-            !! half the labels are equal), which leaves no density tolerance for growth.
-        integer(int32), dimension(:, :, :), allocatable :: tmp_stack
-        logical(c_bool), dimension(:, :), allocatable :: tmp_vicinity_mask
-        logical(c_bool), dimension(:, :), allocatable :: tmp_surface_mask
-        integer(int32), dimension(:, :), allocatable :: tmp_perm
-        real(real64), dimension(:, :), allocatable :: tmp_abs_diff
-        real(real64), dimension(:, :, :), allocatable :: tmp_observables
-        logical(c_bool), dimension(:, :), allocatable :: tmp_current_mask
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
-        call validate_in_range_real(r, ierr, arg_pos=9_int32, min=0.0_real64)
-        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
-        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
-        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
-        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
-        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
-        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
-        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
-        if (is_err(ierr)) return
-#endif
-
-        M_ALLOCATE(tmp_stack(3, 64, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_vicinity_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_surface_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_perm(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-
-        call obtain_ensembles_impl(&
-            vectors = vectors,&
-            n_dimensions = n_dimensions,&
-            n_vectors = n_vectors,&
-            dimension_order = dimension_order,&
-            kd_indices = kd_indices,&
-            density_labels = density_labels,&
-            seed_indices = seed_indices,&
-            n_seeds = n_seeds,&
-            growth_mode = MODE_GLOBAL_RADIUS,&
-            r = r,&
-            alpha_mad = alpha_mad,&
-            alpha_accept = alpha_accept,&
-            t_observables = t_observables,&
-            n_tiles = n_tiles,&
-            tmp_stack = tmp_stack,&
-            tmp_vicinity_mask = tmp_vicinity_mask,&
-            tmp_surface_mask = tmp_surface_mask,&
-            tmp_perm = tmp_perm,&
-            tmp_abs_diff = tmp_abs_diff,&
-            tmp_observables = tmp_observables,&
-            tmp_current_mask = tmp_current_mask,&
-            ensemble_matrix = ensemble_matrix,&
-            stop_reasons = stop_reasons,&
-            mad_ambient = mad_ambient,&
-            n_ensembles = n_ensembles,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-    end subroutine obtain_ensembles_global_radius
-
-    !> summary: Validates its inputs, then calls [[tox_stc_impl(module):obtain_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):obtain_ensembles_global_radius]] does both.
-    pure subroutine obtain_ensembles_global_radius_expert(&
-            vectors,&
-            n_dimensions,&
-            n_vectors,&
-            dimension_order,&
-            kd_indices,&
-            density_labels,&
-            seed_indices,&
-            n_seeds,&
-            r,&
-            alpha_mad,&
-            alpha_accept,&
-            t_observables,&
-            n_tiles,&
-            tmp_stack,&
-            tmp_vicinity_mask,&
-            tmp_surface_mask,&
-            tmp_perm,&
-            tmp_abs_diff,&
-            tmp_observables,&
-            tmp_current_mask,&
-            ensemble_matrix,&
-            stop_reasons,&
-            mad_ambient,&
-            n_ensembles,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_dimensions
-            !! Number of dimensions
-        integer(int32), intent(in) :: n_vectors
-            !! Number of vectors
-        integer(int32), intent(in) :: n_seeds
-            !! Number of seed vectors, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `n_vectors`.
-        integer(int32), intent(in) :: t_observables
-            !! History window in iterations, at least two because acceptance compares two consecutive
-            !! steps. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `2_int32`.
-        integer(int32), intent(in) :: n_tiles
-            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-            !! The minimum valid value is `1_int32`.
-        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
-            !! Input data matrix (n_dimensions x n_vectors)
-        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
-            !! Sequence array tracking split dimensions for KD-tree
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_dimensions`.
-        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
-            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors, from `calculate_labels_as_density`.
-            !! The minimum valid value is `1.0_real64`.
-        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), intent(in) :: r
-            !! Uniform growth radius for every seed.
-            !! The minimum valid value is `0.0_real64`.
-        real(real64), intent(in), optional :: alpha_mad
-            !! MAD multiplier for density compatibility threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        real(real64), intent(in), optional :: alpha_accept
-            !! Acceptance log2 fold-change threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        integer(int32), dimension(3, 64, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_stack
-            !! Workspace stack for tree traversal per tile
-        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_vicinity_mask
-            !! Workspace mask holding one member's neighborhood query result per tile
-        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_surface_mask
-            !! Cached spatial neighborhood union per tile, reset for each seed
-        integer(int32), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_perm
-            !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
-        real(real64), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_abs_diff
-            !! Workspace array for deviation calculations per tile
-        real(real64), dimension(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
-            !! Observable history per tile. Growth adds at least one member per iteration, so more than
-            !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
-        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
-            !! Workspace holding accepted seed ensemble membership per tile
-        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
-            !! Output matrix storing unmerged grown ensemble masks
-        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
-            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-            !! 3: first step rejected, 4: no candidates.
-        real(real64), intent(out) :: mad_ambient
-            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        integer(int32), intent(out) :: n_ensembles
-            !! Total count of extracted raw ensembles (equals n_seeds)
-        integer(int32), intent(out) :: ierr
-            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
-            !! half the labels are equal), which leaves no density tolerance for growth.
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
-        call validate_in_range_real(r, ierr, arg_pos=9_int32, min=0.0_real64)
-        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
-        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
-        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
-        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
-        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
-        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
-        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
-        if (is_err(ierr)) return
-#endif
-
-        call obtain_ensembles_impl(&
-            vectors = vectors,&
-            n_dimensions = n_dimensions,&
-            n_vectors = n_vectors,&
-            dimension_order = dimension_order,&
-            kd_indices = kd_indices,&
-            density_labels = density_labels,&
-            seed_indices = seed_indices,&
-            n_seeds = n_seeds,&
-            growth_mode = MODE_GLOBAL_RADIUS,&
-            r = r,&
-            alpha_mad = alpha_mad,&
-            alpha_accept = alpha_accept,&
-            t_observables = t_observables,&
-            n_tiles = n_tiles,&
-            tmp_stack = tmp_stack,&
-            tmp_vicinity_mask = tmp_vicinity_mask,&
-            tmp_surface_mask = tmp_surface_mask,&
-            tmp_perm = tmp_perm,&
-            tmp_abs_diff = tmp_abs_diff,&
-            tmp_observables = tmp_observables,&
-            tmp_current_mask = tmp_current_mask,&
-            ensemble_matrix = ensemble_matrix,&
-            stop_reasons = stop_reasons,&
-            mad_ambient = mad_ambient,&
-            n_ensembles = n_ensembles,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-    end subroutine obtain_ensembles_global_radius_expert
-
-    !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):obtain_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):obtain_ensembles_seed_radius_expert]] to prepare it yourself.
-    pure subroutine obtain_ensembles_seed_radius(&
-            vectors,&
-            n_dimensions,&
-            n_vectors,&
-            dimension_order,&
-            kd_indices,&
-            density_labels,&
-            seed_indices,&
-            n_seeds,&
-            seed_radii,&
-            alpha_mad,&
-            alpha_accept,&
-            t_observables,&
-            n_tiles,&
-            ensemble_matrix,&
-            stop_reasons,&
-            mad_ambient,&
-            n_ensembles,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_dimensions
-            !! Number of dimensions
-        integer(int32), intent(in) :: n_vectors
-            !! Number of vectors
-        integer(int32), intent(in) :: n_seeds
-            !! Number of seed vectors, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
-            !! Input data matrix (n_dimensions x n_vectors)
-        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
-            !! Sequence array tracking split dimensions for KD-tree
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_dimensions`.
-        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
-            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors, from `calculate_labels_as_density`.
-            !! The minimum valid value is `1.0_real64`.
-        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_seeds), intent(in) :: seed_radii
-            !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
-            !! The minimum valid value is `0.0_real64`.
-        real(real64), intent(in), optional :: alpha_mad
-            !! MAD multiplier for density compatibility threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        real(real64), intent(in), optional :: alpha_accept
-            !! Acceptance log2 fold-change threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        integer(int32), intent(in) :: t_observables
-            !! History window in iterations, at least two because acceptance compares two consecutive
-            !! steps. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `2_int32`.
-        integer(int32), intent(in) :: n_tiles
-            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-            !! The minimum valid value is `1_int32`.
-        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
-            !! Output matrix storing unmerged grown ensemble masks
-        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
-            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-            !! 3: first step rejected, 4: no candidates.
-        real(real64), intent(out) :: mad_ambient
-            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        integer(int32), intent(out) :: n_ensembles
-            !! Total count of extracted raw ensembles (equals n_seeds)
-        integer(int32), intent(out) :: ierr
-            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
-            !! half the labels are equal), which leaves no density tolerance for growth.
-        integer(int32), dimension(:, :, :), allocatable :: tmp_stack
-        logical(c_bool), dimension(:, :), allocatable :: tmp_vicinity_mask
-        logical(c_bool), dimension(:, :), allocatable :: tmp_surface_mask
-        integer(int32), dimension(:, :), allocatable :: tmp_perm
-        real(real64), dimension(:, :), allocatable :: tmp_abs_diff
-        real(real64), dimension(:, :, :), allocatable :: tmp_observables
-        logical(c_bool), dimension(:, :), allocatable :: tmp_current_mask
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
-        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
-        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
-        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
-        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
-        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
-        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
-        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
-        call validate_all_in_range_real(seed_radii, n_seeds, ierr, arg_pos=9_int32, min=0.0_real64)
-        if (is_err(ierr)) return
-#endif
-
-        M_ALLOCATE(tmp_stack(3, 64, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_vicinity_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_surface_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_perm(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-
-        call obtain_ensembles_impl(&
-            vectors = vectors,&
-            n_dimensions = n_dimensions,&
-            n_vectors = n_vectors,&
-            dimension_order = dimension_order,&
-            kd_indices = kd_indices,&
-            density_labels = density_labels,&
-            seed_indices = seed_indices,&
-            n_seeds = n_seeds,&
-            growth_mode = MODE_SEED_RADIUS,&
-            seed_radii = seed_radii,&
-            alpha_mad = alpha_mad,&
-            alpha_accept = alpha_accept,&
-            t_observables = t_observables,&
-            n_tiles = n_tiles,&
-            tmp_stack = tmp_stack,&
-            tmp_vicinity_mask = tmp_vicinity_mask,&
-            tmp_surface_mask = tmp_surface_mask,&
-            tmp_perm = tmp_perm,&
-            tmp_abs_diff = tmp_abs_diff,&
-            tmp_observables = tmp_observables,&
-            tmp_current_mask = tmp_current_mask,&
-            ensemble_matrix = ensemble_matrix,&
-            stop_reasons = stop_reasons,&
-            mad_ambient = mad_ambient,&
-            n_ensembles = n_ensembles,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-    end subroutine obtain_ensembles_seed_radius
-
-    !> summary: Validates its inputs, then calls [[tox_stc_impl(module):obtain_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):obtain_ensembles_seed_radius]] does both.
-    pure subroutine obtain_ensembles_seed_radius_expert(&
-            vectors,&
-            n_dimensions,&
-            n_vectors,&
-            dimension_order,&
-            kd_indices,&
-            density_labels,&
-            seed_indices,&
-            n_seeds,&
-            seed_radii,&
-            alpha_mad,&
-            alpha_accept,&
-            t_observables,&
-            n_tiles,&
-            tmp_stack,&
-            tmp_vicinity_mask,&
-            tmp_surface_mask,&
-            tmp_perm,&
-            tmp_abs_diff,&
-            tmp_observables,&
-            tmp_current_mask,&
-            ensemble_matrix,&
-            stop_reasons,&
-            mad_ambient,&
-            n_ensembles,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_dimensions
-            !! Number of dimensions
-        integer(int32), intent(in) :: n_vectors
-            !! Number of vectors
-        integer(int32), intent(in) :: n_seeds
-            !! Number of seed vectors, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `n_vectors`.
-        integer(int32), intent(in) :: t_observables
-            !! History window in iterations, at least two because acceptance compares two consecutive
-            !! steps. Pass n_vectors to retain the full history.
-            !! The minimum valid value is `2_int32`.
-        integer(int32), intent(in) :: n_tiles
-            !! Number of concurrent seed tiles, at least 1. Capped at the number of seeds when nonzero.
-            !! The minimum valid value is `1_int32`.
-        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
-            !! Input data matrix (n_dimensions x n_vectors)
-        integer(int32), dimension(n_dimensions), intent(in) :: dimension_order
-            !! Sequence array tracking split dimensions for KD-tree
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_dimensions`.
-        integer(int32), dimension(n_vectors), intent(in) :: kd_indices
-            !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_vectors), intent(in) :: density_labels
-            !! Density labels for all vectors, from `calculate_labels_as_density`.
-            !! The minimum valid value is `1.0_real64`.
-        integer(int32), dimension(n_seeds), intent(in) :: seed_indices
-            !! Indices of the seed vectors to grow from, from `identify_ensemble_seeds`.
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(real64), dimension(n_seeds), intent(in) :: seed_radii
-            !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
-            !! The minimum valid value is `0.0_real64`.
-        real(real64), intent(in), optional :: alpha_mad
-            !! MAD multiplier for density compatibility threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        real(real64), intent(in), optional :: alpha_accept
-            !! Acceptance log2 fold-change threshold
-            !! The minimum valid value is `0.0_real64`.
-            !! The default value is `0.5_real64`.
-        integer(int32), dimension(3, 64, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_stack
-            !! Workspace stack for tree traversal per tile
-        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_vicinity_mask
-            !! Workspace mask holding one member's neighborhood query result per tile
-        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_surface_mask
-            !! Cached spatial neighborhood union per tile, reset for each seed
-        integer(int32), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(inout) :: tmp_perm
-            !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
-        real(real64), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_abs_diff
-            !! Workspace array for deviation calculations per tile
-        real(real64), dimension(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_observables
-            !! Observable history per tile. Growth adds at least one member per iteration, so more than
-            !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
-        logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
-            !! Workspace holding accepted seed ensemble membership per tile
-        logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
-            !! Output matrix storing unmerged grown ensemble masks
-        integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
-            !! Per-seed stop code. 1: fixed point, 2: rejection after acceptance,
-            !! 3: first step rejected, 4: no candidates.
-        real(real64), intent(out) :: mad_ambient
-            !! Median absolute deviation of `density_labels`, which scales the `alpha_mad` density tolerance.
-            !! Zero when there are no seeds; otherwise positive on success, because a zero value is an error.
-        integer(int32), intent(out) :: n_ensembles
-            !! Total count of extracted raw ensembles (equals n_seeds)
-        integer(int32), intent(out) :: ierr
-            !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
-            !! half the labels are equal), which leaves no density tolerance for growth.
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_seeds, ierr, arg_pos=8_int32, min=0_int32, max=n_vectors)
-        call validate_in_range_real(alpha_mad, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_in_range_real(alpha_accept, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_int(t_observables, ierr, arg_pos=12_int32, min=2_int32)
-        call validate_in_range_int(n_tiles, ierr, arg_pos=13_int32, min=1_int32)
-        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
-        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=4_int32, min=1_int32, max=n_dimensions)
-        call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors)
-        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=6_int32, min=1.0_real64)
-        call validate_all_in_range_int(seed_indices, n_seeds, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors)
-        call validate_all_in_range_real(seed_radii, n_seeds, ierr, arg_pos=9_int32, min=0.0_real64)
-        if (is_err(ierr)) return
-#endif
-
-        call obtain_ensembles_impl(&
-            vectors = vectors,&
-            n_dimensions = n_dimensions,&
-            n_vectors = n_vectors,&
-            dimension_order = dimension_order,&
-            kd_indices = kd_indices,&
-            density_labels = density_labels,&
-            seed_indices = seed_indices,&
-            n_seeds = n_seeds,&
-            growth_mode = MODE_SEED_RADIUS,&
-            seed_radii = seed_radii,&
-            alpha_mad = alpha_mad,&
-            alpha_accept = alpha_accept,&
-            t_observables = t_observables,&
-            n_tiles = n_tiles,&
-            tmp_stack = tmp_stack,&
-            tmp_vicinity_mask = tmp_vicinity_mask,&
-            tmp_surface_mask = tmp_surface_mask,&
-            tmp_perm = tmp_perm,&
-            tmp_abs_diff = tmp_abs_diff,&
-            tmp_observables = tmp_observables,&
-            tmp_current_mask = tmp_current_mask,&
-            ensemble_matrix = ensemble_matrix,&
-            stop_reasons = stop_reasons,&
-            mad_ambient = mad_ambient,&
-            n_ensembles = n_ensembles,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-    end subroutine obtain_ensembles_seed_radius_expert
 
 end module tox_stc

@@ -214,12 +214,12 @@ from .tox_stc import (
     calculate_labels_as_density,
     identify_ensemble_seeds,
     compute_ambient_density_stats,
+    obtain_ensembles_global_radius,
+    obtain_ensembles_seed_radius,
     merge_ensembles,
     grow_ensemble,
     compute_ensemble_observable,
     accept_ensemble,
-    obtain_ensembles_global_radius,
-    obtain_ensembles_seed_radius,
 )
 from .tox_tissue_versatility import (
     compute_tissue_versatility,
