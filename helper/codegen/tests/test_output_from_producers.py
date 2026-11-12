@@ -367,6 +367,28 @@ class TestEachProducerCallIsChecked:
         assert "factor = scale_a" in first and "scaled = size_a" in first
         assert "factor = scale_b" in second and "scaled = size_b" in second
 
+    def test_two_arguments_taking_one_call_s_same_output_are_refused_on_either_route(self):
+        # one call, `factor | scale` for both: one value, which the Fortran call wrote once
+        for sized in ("tmp", "res"):
+            cons = consumer(
+                "same_impl",
+                integer("n_items", doc="items"),
+                integer("scale", doc="scale"),
+                integer("size_a", doc=table(("factor", "scale")),
+                        directives=auto("scaled", "scaled_size", "tox_prod")),
+                real(f"{sized}_a", Intent.OUT, "(size_a)", doc="sized"),
+                integer("size_b", doc=table(("factor", "scale")),
+                        directives=auto("scaled", "scaled_size", "tox_prod")),
+                real(f"{sized}_b", Intent.OUT, "(size_b)", doc="sized"),
+            )
+            _, bag = analysed(producers(), cons)
+
+            [error] = [e for e in bag.errors if "takes the same output" in e.message]
+            assert error.message == ("'size_b' takes the same output 'scaled' of 'scaled_size', "
+                                     "given the same inputs, as 'size_a'")
+            assert error.note == ("one call fills both with one value: use 'size_a' alone, "
+                                  "since 'size_b' would hold the same value")
+
     def test_a_producer_without_ierr_is_not_checked(self):
         hand = module(
             "tox_hand",

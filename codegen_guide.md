@@ -1493,6 +1493,7 @@ source and carries a note saying what to write instead.
 | an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls, supplied by anything but a required `intent(inout)` argument (an `intent(in)` argument, a constant, an optional) | the producer writes it back through what supplies it: an `intent(in)` argument or a constant does not compile, and the local an optional goes through would swallow the refined value (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer input supplied by another `DM_OUTPUT_FROM` value of the consumer, or by the value it computes itself | chaining producers is rejected: size for an upper bound, or take the value as an argument of the caller's (Section 5.9) |
 | a value a `DM_OUTPUT_FROM` producer refines in place (its `intent(inout)` input) that another producer call reads or refines too | what the other call saw would depend on the call order; a refined value feeds that one call (Section 5.9) |
+| two arguments taking the same output of one `DM_OUTPUT_FROM` producer, given the same inputs | one call fills both with one value; use one argument (Section 5.9) |
 | an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |

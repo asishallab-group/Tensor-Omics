@@ -290,6 +290,7 @@ def analyse_project(project, diagnostics: DiagnosticBag,
             expert = module.procedure(procedure.name + conventions.expert_suffix)
             if expert is None or _plain_of_an_expert(expert, project, conventions) is not procedure:
                 _check_refined_values(procedure, diagnostics)
+                _check_repeated_outputs(procedure, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
 
 
@@ -608,6 +609,28 @@ def _producer_calls(consumer: Procedure) -> list[list[Argument]]:
         if plan is not None and plan.is_automatic:
             calls.setdefault(plan.call, []).append(argument)
     return list(calls.values())
+
+
+def _check_repeated_outputs(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
+    """Refuse two arguments taking the same output of one producer call.
+
+    One call -- the same producer, given the same inputs -- fills each output once, so the two
+    would hold one value; the generated Fortran wrapper wrote only one of them. Either route.
+    """
+    for arguments in _producer_calls(consumer):
+        taken: dict[str, Argument] = {}
+        for argument in arguments:
+            plan = argument.roles.computed_from
+            first = taken.setdefault(plan.output.name.lower(), argument)
+            if first is argument:
+                continue
+            diagnostics.error(
+                f"'{argument.name}' takes the same output '{plan.output.name}' of "
+                f"'{plan.producer.name}', given the same inputs, as '{first.name}'",
+                entity=argument,
+                note=(f"one call fills both with one value: use '{first.name}' alone, since "
+                      f"'{argument.name}' would hold the same value"),
+            )
 
 
 def _check_refined_values(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
