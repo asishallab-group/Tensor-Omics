@@ -411,10 +411,9 @@ recommend routine that `DM_OUTPUT_FROM` consumers name is generated, so they cal
 The paralog one failed the test outright: it carried its own `set_ok` / `validate_*` /
 `is_err` block, with no `arg_pos=` at all, so its errors named nothing. A `DM_MIN(1_int32)` on
 `n_genes` and the existing `DM_MIN(0_int32)` on `max_subset_size` replace the block, and the
-wrapper names the argument. One
-behaviour changed, accepted by FES: the wrapper validates before the implementation's early return
-for a zero `max_subset_size`, so no genes or no mask chunks is now an error there too, where the
-hand-written routine returned a size of zero. The overflow clamping and the "size zero" answer for
+wrapper names the argument. One behaviour changed, accepted by FES: the wrapper validates before
+the implementation's early return for a zero `max_subset_size`, so no genes or no mask chunks is
+now an error there too, where the hand-written routine returned a size of zero. The overflow clamping and the "size zero" answer for
 valid input are the implementation's and stay. The LOESS one validated nothing, so its wrapper
 adds only the trailing `ierr` every entry point has; what it bought is that both now sit in the
 generated modules beside their consumers -- `tox_loess` and `tox_paralog_analysis` -- and the

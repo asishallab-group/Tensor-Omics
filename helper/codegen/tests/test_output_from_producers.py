@@ -180,6 +180,20 @@ class TestTheProducerIsAPublishedEntryPoint:
         assert error.note == ("'scaled_size' is generated into 'tox_prod', not into "
                               "'tox_prod_impl': name it there")
 
+    def test_a_dangling_link_beside_a_missing_producer_is_still_reported(self):
+        # the refusal of the producer covers the directive; the link the macro renders into the
+        # argument's documentation dangles too, and is reported as itself
+        from codegen.ir.validate import validate_project
+
+        link = ["Size, produced by [[tox_prod_impl(module):scaled_size]]."]
+        cons = work_consumer("scaled_size", "tox_prod_impl", doc=link + table(("factor", "scale"))[1:])
+        synthesis, bag = analysed(producers(), cons)
+        validate_project(synthesis.project, bag)
+
+        assert any("does not exist" in e.message for e in bag.errors)
+        assert any("documentation links to 'scaled_size', which 'tox_prod_impl' does not publish"
+                   in e.message for e in bag.errors)
+
     def test_the_expert_with_the_implementation_module_is_pointed_at_the_plain_one(self):
         middle = procedure(
             "middle_impl",
