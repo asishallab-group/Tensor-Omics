@@ -763,10 +763,13 @@ one of the producer's arguments:
   is refused: an `intent(in)` argument, a constant from the table, an optional argument (with or
   without `DM_DEFAULT`). Where only Python and R call the producer, they adopt the refined value
   themselves, and nothing is refused.
+- **A refined value feeds that one producer call.** No other producer call may read it, and no
+  second one refine it — in `foo`, Python and R alike; one call filling several outputs from it
+  is one call. The allocations and your implementation see it refined. Where another producer
+  needs the same quantity, give it its own argument for it.
 - **A producer given another's output runs after it**, whatever order the arguments are declared
-  in — `foo`, Python and R alike — so it reads the computed value, and every later use (the
-  allocations, the implementation call, other producers) sees it as refined. Two values each
-  given the other, or one given itself, have no such order and are refused.
+  in — `foo`, Python and R alike — so it reads the computed value. Two values each given the
+  other, or one given itself, have no such order and are refused.
 - **An output you do not take** goes into a local and is dropped — if it is a scalar. An array
   output nothing takes is refused, since a local for it would need the producer's own extents.
 - **An input the producer's binding derives** — `n` of `extent_size(n, x(n))`, read off `x` — is
@@ -1487,6 +1490,7 @@ source and carries a note saying what to write instead.
 | a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
 | an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls, supplied by anything but a required `intent(inout)` argument or another `DM_OUTPUT_FROM` value `foo` computes (an `intent(in)` argument, a constant, an optional) | the producer writes it back through what supplies it: an `intent(in)` argument or a constant does not compile, and the local an optional goes through would swallow the refined value (Section 5.9) |
 | two `DM_OUTPUT_FROM` values each given the other through their producers' inputs, or one given itself | no order of the producer calls gives each its input (Section 5.9) |
+| a value a `DM_OUTPUT_FROM` producer refines in place (its `intent(inout)` input) that another producer call reads or refines too | what the other call saw would depend on the call order; a refined value feeds that one call (Section 5.9) |
 | an array output of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes | the call must pass it, and a local for it would need the producer's own extents (Section 5.9) |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |

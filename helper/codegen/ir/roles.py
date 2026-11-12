@@ -289,6 +289,7 @@ def analyse_project(project, diagnostics: DiagnosticBag,
             # once per pair: the expert half carries every argument the plain half has
             if module.procedure(procedure.name + conventions.expert_suffix) is None:
                 _check_supply_cycles(procedure, diagnostics)
+                _check_refined_values(procedure, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
 
 
@@ -526,8 +527,9 @@ def _refuses_a_refined_input(argument: Argument, consumer: Procedure, producer: 
     producer refines in place is supplied by a required `intent(inout)` argument of the consumer,
     or by a value the wrapper computes itself -- another `DM_OUTPUT_FROM` argument it takes
     over, a local it owns, which the producers are ordered around (`call_order`). That is
-    what the call can write, and what carries the refined value on: to the caller, or to every
-    later use of the local. An `intent(in)` argument or a constant does not compile there, and
+    what the call can write, and what carries the refined value on: to the caller, or to the
+    allocations and the implementation call after it (no other producer call may read it,
+    `_check_refined_values`). An `intent(in)` argument or a constant does not compile there, and
     the local an optional is materialised into would swallow the refined value. Python and R
     adopt the refined value themselves (`inout_feedback`), so where only they call the producer
     nothing is refused. True when something was.
@@ -560,7 +562,7 @@ def _refuses_a_refined_input(argument: Argument, consumer: Procedure, producer: 
                 f"'{supply.name}' back through what supplies it: supply it by a required "
                 "intent(inout) argument of the implementation, which the refined value then "
                 "reaches, and the caller with it, or by another argument a producer computes "
-                "here, which every later use then sees refined"
+                "here, which the implementation then sees refined"
             ),
         )
         refused = True
@@ -638,6 +640,53 @@ def _supply_entries(consumer: Procedure) -> list[tuple[set[str], set[str], list[
          arguments)
         for arguments in calls.values()
     ]
+
+
+def _check_refined_values(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
+    """Refuse a value a producer refines in place that feeds any other producer call too.
+
+    The rule (FES 2026-11-12): a value a producer refines -- an `intent(inout)` input -- feeds
+    that one producer call and no other, on either route. Whether another call reading it saw
+    it before or after the refinement would depend on the call order, and a second refiner would
+    refine what the first already had; so neither is allowed. One call filling several outputs
+    from it is still one call.
+    """
+    calls = [arguments for _, _, arguments in _supply_entries(consumer)]
+
+    def refined_by(arguments) -> set[str]:
+        plan = arguments[0].roles.computed_from
+        return {s.argument.lower() for s in plan.inputs if s.argument is not None
+                and plan.producer.argument(s.name).intent is Intent.INOUT}
+
+    def reads(arguments) -> set[str]:
+        return {s.argument.lower() for s in arguments[0].roles.computed_from.inputs
+                if s.argument is not None}
+
+    reported: set[tuple] = set()
+    for refiner in calls:
+        for value in sorted(refined_by(refiner)):
+            for other in calls:
+                if other is refiner or value not in reads(other):
+                    continue
+                key = (value, frozenset({id(refiner[0]), id(other[0])}))
+                if key in reported:
+                    continue
+                reported.add(key)
+                name = consumer.argument(value).name
+                refining = refiner[0].roles.computed_from.producer.name
+                reader = other[0].roles.computed_from.producer.name
+                verb = "refines it too" if value in refined_by(other) else "reads it too"
+                diagnostics.error(
+                    f"'{name}' is refined in place by '{refining}' (computing "
+                    f"'{refiner[0].name}'), so it may feed no other producer call, but "
+                    f"'{reader}' (computing '{other[0].name}') {verb}",
+                    entity=other[0],
+                    note=(
+                        f"a value a producer refines feeds that producer alone: give "
+                        f"'{reader}' its own argument of the caller's for that input -- a "
+                        "required intent(inout) one where it refines it as well"
+                    ),
+                )
 
 
 def _check_supply_cycles(consumer: Procedure, diagnostics: DiagnosticBag) -> None:

@@ -507,7 +507,7 @@ class TestAnInputTheProducerRefines:
             "the generated wrapper calls 'capped_size' itself, and writes 'cap' back through "
             "what supplies it: supply it by a required intent(inout) argument of the "
             "implementation, which the refined value then reaches, and the caller with it, or by "
-            "another argument a producer computes here, which every later use then sees refined")
+            "another argument a producer computes here, which the implementation then sees refined")
 
     def test_an_intent_in_argument_is_refused(self):
         self.refused_as(self.capped(integer("cap", Intent.IN, doc="a cap")), "intent(in) 'cap'")
@@ -593,6 +593,78 @@ class TestAnInputTheProducerRefines:
 
         assert python.index("base_size(") < python.index("capped_size(")
         assert r.index("base_size(") < r.index("capped_size(")
+
+
+class TestARefinedValueFeedsOneCall:
+    """A value a producer refines in place feeds that one producer call, and no other.
+
+    Another call reading it, or refining it again, is refused on either route: what it would
+    see depended on the call order. One call filling several outputs from it is one call.
+    """
+
+    def producers(self):
+        return module("tox_hand",
+            procedure("capped_size", integer("n_items", doc="items"),
+                      integer("cap", Intent.INOUT, doc="a cap it lowers"),
+                      integer("sized", Intent.OUT, doc="the size"),
+                      integer("ierr", Intent.OUT, doc="error")),
+            procedure("capped_pair", integer("cap", Intent.INOUT, doc="a cap it lowers"),
+                      integer("first", Intent.OUT, doc="a size"),
+                      integer("second", Intent.OUT, doc="another"),
+                      integer("ierr", Intent.OUT, doc="error")),
+            procedure("plain_size", integer("base", doc="a base"),
+                      integer("sized", Intent.OUT, doc="the size"),
+                      integer("ierr", Intent.OUT, doc="error")),
+        )
+
+    def consumer_of(self, *sized, binding=False):
+        """`cap` a required intent(inout) argument; each of `sized` is (name, producer, output,
+        table rows), sizing a work array (the Fortran route) or a result (the binding route)."""
+        arguments = [integer("n_items", doc="items"), integer("cap", Intent.INOUT, doc="a cap")]
+        for name, producer, output, rows in sized:
+            arguments.append(integer(name, doc=table(*rows),
+                                     directives=auto(output, producer, "tox_hand")))
+            arguments.append(real(("res_" if binding else "tmp_") + name, Intent.OUT, f"({name})",
+                                  doc="sized"))
+        return consumer("refining_impl", *arguments)
+
+    def refusals(self, bag):
+        return [e.message for e in bag.errors if "is refined in place by" in e.message]
+
+    REFINER = ("s1", "capped_size", "sized", [])
+
+    def test_a_second_refiner_is_refused_on_the_fortran_route(self):
+        cons = self.consumer_of(self.REFINER, ("s2", "capped_pair", "first", []))
+        _, bag = analysed(self.producers(), cons)
+
+        assert self.refusals(bag) == [
+            "'cap' is refined in place by 'capped_size' (computing 's1'), so it may feed no "
+            "other producer call, but 'capped_pair' (computing 's2') refines it too"]
+
+    def test_another_reader_is_refused_whatever_the_order(self):
+        reader = ("s0", "plain_size", "sized", [("base", "cap")])
+        for sized in ((reader, self.REFINER), (self.REFINER, reader)):
+            _, bag = analysed(self.producers(), self.consumer_of(*sized))
+
+            assert self.refusals(bag) == [
+                "'cap' is refined in place by 'capped_size' (computing 's1'), so it may feed no "
+                "other producer call, but 'plain_size' (computing 's0') reads it too"]
+
+    def test_both_are_refused_on_the_binding_route_too(self):
+        reader = ("s0", "plain_size", "sized", [("base", "cap")])
+        for other, verb in ((reader, "reads"), (("s2", "capped_pair", "first", []), "refines")):
+            _, bag = analysed(self.producers(),
+                              self.consumer_of(self.REFINER, other, binding=True))
+
+            assert len(self.refusals(bag)) == 1 and self.refusals(bag)[0].endswith(f"{verb} it too")
+
+    def test_one_call_filling_two_outputs_from_it_is_one_call(self):
+        for binding in (False, True):
+            _, bag = analysed(self.producers(), self.consumer_of(
+                ("s1", "capped_pair", "first", []), ("s2", "capped_pair", "second", []),
+                binding=binding))
+
+            assert bag.errors == ()
 
 
 class TestASupplyCycle:
