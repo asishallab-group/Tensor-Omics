@@ -42,7 +42,7 @@ _lib.perform_permutation_test_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _PERFORM_PERMUTATION_TEST_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, "local_contributions", None, None, None, None,)
+_PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_p_values_c.restype = None
 _lib.compute_p_values_c.argtypes = (

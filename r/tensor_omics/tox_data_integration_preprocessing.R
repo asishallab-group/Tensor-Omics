@@ -69,7 +69,7 @@ pool_means <- function(pooled_means, n_points) {
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     .result <- .Call("pool_means_call", pooled_means, n_points)
     .arguments <- c("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr")
-    .sources <- c(NA_character_, "pooled_means", "x_star", NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "pooled_means", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -106,7 +106,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 
     .result <- .Call("pool_means_expert_call", pooled_means, pooled_means_perm, n_points)
     .arguments <- c("pooled_means", "pooled_means_perm", "pool_size", "n_points", "n_pool", "x_star", "ierr")
-    .sources <- c(NA_character_, NA_character_, "pooled_means", "x_star", NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, NA_character_, "pooled_means", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -138,7 +138,7 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     .result <- .Call("pool_study_means_call", mean_S1, mean_S2, n_points)
     .arguments <- c("n_genes_S1", "mean_S1", "n_genes_S2", "mean_S2", "n_points", "n_pool", "x_star", "ierr")
-    .sources <- c("mean_S1", NA_character_, "mean_S2", NA_character_, "x_star", NA_character_, NA_character_, NA_character_)
+    .sources <- c("mean_S1", NA_character_, "mean_S2", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -178,7 +178,7 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
 
     .result <- .Call("construct_neighborhoods_call", x_star, mean_S, resid_S, n_neighbors)
     .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr")
-    .sources <- c("x_star", NA_character_, "mean_S", NA_character_, "resid_S", NA_character_, NA_character_, NA_character_, "neighborhood_residuals", NA_character_)
+    .sources <- c("x_star", NA_character_, "mean_S", NA_character_, "resid_S", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

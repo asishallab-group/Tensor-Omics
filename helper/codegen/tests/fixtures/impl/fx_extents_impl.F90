@@ -6,8 +6,8 @@
 !| form of input axis the shape checks compare (#221 A-shape): a constant one, two the C wrapper
 !| compares because the declaration computes them -- one reading another array's contents, one of
 !| an optional array --, an optional array sharing an extent, and an input sized by a mask's
-!| count. Compiled and run by `test_end_to_end_fortran.py`, and through C, Python and R by
-!| `test_end_to_end_impl.py`.
+!| count; and an extent that must equal what other arguments compute (#203). Compiled and run
+!| by `test_end_to_end_fortran.py`, and through C, Python and R by `test_end_to_end_impl.py`.
 module fx_extents_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
@@ -16,6 +16,7 @@ module fx_extents_impl
 
     public :: truncated_count_impl, pair_sums_impl, shifted_sum_impl, grouped_sums_impl
     public :: weighted_total_impl, selected_total_impl, optional_shift_impl
+    public :: grouped_rows_impl
 
 contains
 
@@ -138,5 +139,30 @@ contains
         total = sum(y)
         if (present(x)) total = total + sum(x)
     end subroutine optional_shift_impl
+
+    !> summary: The sum of each group of rows
+    !| author: A Developer
+    !| An edge case: an extent that must equal the sum of another array, as
+    !| `normalization_pipeline`'s `n_replicates` must equal `sum(reps_per_tissue)`.
+    pure subroutine grouped_rows_impl(n_rows, n_groups, group_sizes, values, sums)
+        integer(int32), intent(in) :: n_rows
+            !! number of rows of `values`
+            !! DM_EQUALS(sum(group_sizes))
+        integer(int32), intent(in) :: n_groups
+            !! number of groups
+        integer(int32), dimension(n_groups), intent(in) :: group_sizes
+            !! how many rows each group has, in order
+            !! DM_MIN(1_int32)
+        real(real64), dimension(n_rows), intent(in) :: values
+            !! the values, group after group
+        real(real64), dimension(n_groups), intent(out) :: sums
+            !! each group's sum
+        integer(int32) :: group, first
+        first = 1
+        do group = 1, n_groups
+            sums(group) = sum(values(first:first + group_sizes(group) - 1))
+            first = first + group_sizes(group)
+        end do
+    end subroutine grouped_rows_impl
 
 end module fx_extents_impl

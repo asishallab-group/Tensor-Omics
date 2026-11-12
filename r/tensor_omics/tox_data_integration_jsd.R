@@ -133,7 +133,7 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
 
     .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask)
     .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
-    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

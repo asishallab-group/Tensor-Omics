@@ -396,14 +396,6 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><p>C-wrapper for <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p><a href="../proc/calc_tiss_avg_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_tiss_avg_helper.html'>calc_tiss_avg_helper</a></td>
-                 <td><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></td>
-                 <td>Subroutine</td>
-                 <td><p>(no input validation) Calculate tissue averages by averaging replicates within each group.
-For each group of tissue replicates, this subroutine computes the average
-expression per gene.</p></td>
-               </tr>
-			   <tr>
                  <td><a href='../proc/calc_tiss_avg_impl.html'>calc_tiss_avg_impl</a></td>
                  <td><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></td>
                  <td>Subroutine</td>
@@ -2175,6 +2167,16 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
                  <td><p>Performs LOESS smoothing on a set of data points</p><a href="../proc/loess_smooth_2d_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/log1p.html'>log1p</a></td>
+                 <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
+                 <td>Function</td>
+                 <td><p><code>log(1 + x)</code>, accurate for tiny <code>x</code> as well. Forming <code>1 + x</code> first rounds away most digits of
+a tiny <code>x</code> -- <code>1 + 1e-15</code> is <code>1.00000000000000111</code> -- so <code>log(1 + x)</code> is 11% off there.
+Fortran has no <code>log1p</code> intrinsic. This takes the rounded <code>u = 1 + x</code> and corrects for the
+rounding it suffered, <code>log(u)*x/(u - 1)</code> (Goldberg, "What Every Computer Scientist Should Know
+About Floating-Point Arithmetic", Theorem 4), exact to a few ulps.</p><a href="../proc/log1p.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/log2_transformation.html'>log2_transformation</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
@@ -2198,9 +2200,9 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
                  <td>Subroutine</td>
                  <td><p>Apply <code>log2(x + 1)</code> transformation to each element of the input matrix.
 This subroutine performs element-wise <code>log2(x + 1)</code> transformation on a
-matrix flattened in column-major order. The <code>log2</code> is computed via:
-<code>log(x + 1) / log(2)</code>, which is numerically equivalent and avoids the
-non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WASM).</p></td>
+matrix flattened in column-major order. The <code>log2</code> is computed as <code>log1p(x)/log(2)</code>:
+<code>log1p</code> keeps the digits of a tiny <code>x</code> that forming <code>x + 1</code> would round away, and dividing
+by <code>log(2)</code> avoids the non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WASM).</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/logical_as_c_int.html'>logical_as_c_int</a></td>
@@ -2273,7 +2275,9 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
                  <td><a href='../proc/mean.html'>mean</a></td>
                  <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
                  <td>Function</td>
-                 <td><p>Calculates the arithmetic mean of vector</p></td>
+                 <td><p>Calculates the arithmetic mean of vector. The values are summed scaled by the power of two
+<a href="../proc/scaling_exponent.html">scaling_exponent</a> picks, so the sum overflows for no
+finite values: the mean of <code>[huge, huge, huge]</code> is <code>huge</code>. Ordinary data is summed unscaled.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/mean_vector.html'>mean_vector</a></td>
@@ -2315,7 +2319,11 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
                  <td><a href='../proc/norm.html'>norm</a></td>
                  <td><a href='../module/f42_vector_impl.html'>f42_vector_impl</a></td>
                  <td>Function</td>
-                 <td><p>Calculates the euclidean norm of a vector</p></td>
+                 <td><p>Calculates the euclidean norm of a vector, as
+<a href="../proc/scaled_length.html">scaled_length</a> scaled back: squaring an entry neither
+overflows (past about 1e154) nor underflows to zero (below about 1e-162), so a vector of any
+finite magnitude gets its norm. The result is Inf only where the true norm exceeds <code>huge</code>, as
+for <code>[huge, huge]</code>; the zero vector has norm 0.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalization_pipeline.html'>normalization_pipeline</a></td>
@@ -2669,7 +2677,11 @@ index build, which has already validated everything this reads.</p></td>
                  <td><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></td>
                  <td>Subroutine</td>
                  <td><p>Quantile normalization of a gene expression matrix (F42-compliant).
-Computes average expression per rank across tissues.</p></td>
+Computes average expression per rank across tissues, each value divided by the number of
+replicates before it is added, so no rank mean overflows for finite input; a rank mean that
+still rounds past <code>huge</code> is <code>huge</code>, with its sign. A tie gets the
+<a href="../proc/mean.html">mean</a> of the rank means it spans, or their common value
+exactly where they are equal, so a single replicate comes back unchanged.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/quicksort_char.html'>quicksort_char</a></td>
@@ -2854,7 +2866,9 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></td>
                  <td>Subroutine</td>
                  <td><p>Normalizes each gene's expression vector using <code>sqrt(mean(x^2))</code>
-across tissues (not classical standard deviation).</p></td>
+across tissues (not classical standard deviation).
+A gene is left unchanged only where its root mean square is exactly zero, which makes it the
+zero gene (or, where subnormals are flushed, one made only of subnormal values).</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_expression_vectors.html'>save_expression_vectors</a></td>
@@ -2903,6 +2917,26 @@ across tissues (not classical standard deviation).</p></td>
                  <td><a href='../module/tox_data_archive_c.html'>tox_data_archive_c</a></td>
                  <td>Subroutine</td>
                  <td><p>C-wrapper for <a href="../proc/save_tox_data.html">save_tox_data</a></p><a href="../proc/save_tox_data_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/scaled_length.html'>scaled_length</a></td>
+                 <td><a href='../module/f42_vector_impl.html'>f42_vector_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Length of a vector in scaled coordinates: <code>scaled_norm</code> is the euclidean length of
+<code>scale(vector, exponent)</code>, and <code>scale(scaled_norm, -exponent)</code> the vector's own length. The
+exponent comes from <a href="../proc/scaling_exponent.html">scaling_exponent</a>, so it is 0 for
+ordinary data, and the sum of squares overflows or underflows for no finite vector.</p><a href="../proc/scaled_length.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/scaling_exponent.html'>scaling_exponent</a></td>
+                 <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The power of two a set of values is scaled by, as <code>scale(value, exponent)</code>, before their sum
+or their sum of squares is formed, so that neither overflows nor underflows: 0 while the
+largest magnitude lies in <script type="math/tex">[2^{-470}, 2^{496}]</script>, so ordinary data is not scaled at all;
+<code>-600</code> above that range, and <code>600</code> below it, the zero set included. Scaling by a power of two
+is exact, and <code>scale(result, -exponent)</code> brings a sum, a mean or a length back to the values'
+own magnitude.</p><a href="../proc/scaling_exponent.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/select_random_sample.html'>select_random_sample</a></td>
@@ -3244,7 +3278,15 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
                  <td><a href='../proc/std_dev.html'>std_dev</a></td>
                  <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
                  <td>Function</td>
-                 <td><p>Calculates the standard deviation of vector, with or without Bessel's correction</p></td>
+                 <td><p>Calculates the standard deviation of vector, with or without Bessel's correction, in the
+centered two-pass form: the mean first, then the squared distances from it. The mean is
+computed with the values scaled by the power of two
+<a href="../proc/scaling_exponent.html">scaling_exponent</a> picks for them, and the squares with the
+distances scaled once more, by the power of two picked for the largest distance. So no sum
+overflows for finite values, and the squares of distances far smaller than the values, as
+between distinct values close together, do not underflow even where the build flushes
+subnormal numbers to zero. The result is Inf only where the true spread exceeds <code>huge</code>, as
+Bessel's correction gives for <code>[huge, -huge]</code>.</p><a href="../proc/std_dev.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/subtract_vector.html'>subtract_vector</a></td>
@@ -3274,15 +3316,21 @@ This routine removes an active mask from the <code>subsets</code> array and retu
                </tr>
 			   <tr>
                  <td><a href='../proc/tox_loess_required_workspace.html'>tox_loess_required_workspace</a></td>
-                 <td><a href='../module/tox_loess_impl.html'>tox_loess_impl</a></td>
+                 <td><a href='../module/tox_loess.html'>tox_loess</a></td>
                  <td>Subroutine</td>
-                 <td><p>Recommend workspace sizes based on Netlib exact formulas</p><a href="../proc/tox_loess_required_workspace.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/tox_loess_required_workspace_impl.html">tox_loess_required_workspace_impl</a>.</p><a href="../proc/tox_loess_required_workspace.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/tox_loess_required_workspace_c.html'>tox_loess_required_workspace_c</a></td>
-                 <td><a href='../module/tox_loess_impl_c.html'>tox_loess_impl_c</a></td>
+                 <td><a href='../module/tox_loess_c.html'>tox_loess_c</a></td>
                  <td>Subroutine</td>
                  <td><p>C-wrapper for <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a></p><a href="../proc/tox_loess_required_workspace_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/tox_loess_required_workspace_impl.html'>tox_loess_required_workspace_impl</a></td>
+                 <td><a href='../module/tox_loess_impl.html'>tox_loess_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Recommend workspace sizes based on Netlib exact formulas</p><a href="../proc/tox_loess_required_workspace_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/validate_all_data.html'>validate_all_data</a></td>
@@ -3523,7 +3571,7 @@ Closes the connected unit in case of an error</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-30 09:20 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>

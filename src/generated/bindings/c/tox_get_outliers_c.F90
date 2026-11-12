@@ -198,7 +198,7 @@ contains
             !! Total number of gene families
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -207,7 +207,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -706,7 +706,7 @@ contains
             !! Total number of gene families
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -715,7 +715,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|

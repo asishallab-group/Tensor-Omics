@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>calc_tiss_avg_helper &ndash; TensorOmics</title>
+    <title>scaling_exponent &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,34 +77,34 @@
 
     <div class="container">
   <div class="row">
-    <h1>calc_tiss_avg_helper
-      <small>Subroutine</small>
+    <h1>scaling_exponent
+      <small>Function</small>
       
     </h1>
       <div class="container p-2 mb-4 bg-light border rounded-3">
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">22 statements</a>
+                 title=" 0.1% of total for procedures.">10 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization_impl.F90"> Source File</a>
+              <a href="../src/f42_math_impl.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_impl.f90.html'>tox_normalization_impl.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></li>
-            <li class="breadcrumb-item active" aria-current="page">calc_tiss_avg_helper</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_math_impl.f90.html'>f42_math_impl.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_math_impl.html'>f42_math_impl</a></li>
+            <li class="breadcrumb-item active" aria-current="page">scaling_exponent</li>
           </ol>
         </nav>
       </div>
@@ -151,13 +151,22 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)  
+    <h2>public pure function scaling_exponent(values) result(exponent)  
 </h2>
     
 
-    <p>(no input validation) Calculate tissue averages by averaging replicates within each group.
-For each group of tissue replicates, this subroutine computes the average
-expression per gene.</p>
+    <p>The power of two a set of values is scaled by, as <code>scale(value, exponent)</code>, before their sum
+or their sum of squares is formed, so that neither overflows nor underflows: 0 while the
+largest magnitude lies in <script type="math/tex">[2^{-470}, 2^{496}]</script>, so ordinary data is not scaled at all;
+<code>-600</code> above that range, and <code>600</code> below it, the zero set included. Scaling by a power of two
+is exact, and <code>scale(result, -exponent)</code> brings a sum, a mean or a length back to the values'
+own magnitude.</p>
+<p>Inside the range, the squares of any <code>int32</code> count of values sum to a finite number, and a
+value whose square falls below <code>tiny</code> is too small, next to the largest one, to change the
+sum. A largest magnitude above the range always lands inside it once scaled, and so does a
+non-zero one below the range, unless it lies below about <script type="math/tex">2^{-1070}</script>, among the smallest
+subnormal numbers: there it lands just short of the range, at <script type="math/tex">2^{-474}</script> or more, where its
+square is still a normal number.</p>
 
 
     <h3>Arguments</h3>
@@ -173,83 +182,29 @@ expression per gene.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~49"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-                <p>Number of genes (rows)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_tissues~12"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_tissues</strong></td>
-            <td>
-                <p>Number of tissues</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-reps_per_tissue~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_tissues)
-            </td>
-            <td>::</td>
-            <td><strong>reps_per_tissue</strong></td>
-            <td>
-                <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expr~25"></span>
+              <span class="anchor" id="variable-values~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(sum(reps_per_tissue), n_genes)
+              dimension(:)
             </td>
             <td>::</td>
-            <td><strong>expr</strong></td>
+            <td><strong>values</strong></td>
             <td>
-                <p>Gene Expression matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tissue_averages~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_tissues, n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tissue_averages</strong></td>
-            <td>
-                <p>Tissue averages per gene</p>
+                <p>The set of values, of any magnitude</p>
             </td>
         </tr>
     </tbody>
   </table>
 
+      <h3>Return Value
+        <small>
+          <span class="anchor" id="variable-exponent~5"></span>
+          integer(kind=int32)
+        </small>
+      </h3>
+      
     <br>
 
 
@@ -281,7 +236,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-30 09:20 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>
