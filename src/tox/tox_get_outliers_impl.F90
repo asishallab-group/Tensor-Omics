@@ -20,7 +20,7 @@ module tox_get_outliers_impl
     use f42_stats_impl, only: calc_quantile_impl, compute_scaled_distance_tail_probability_impl
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err, &
                           validate_all_in_range_real
-    use tox_loess_impl, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
+    use tox_loess_impl, only: EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
     M_IMPLICIT_NONE
 
 #define CM_FAMILY_SPAN_DEFAULT 0.7_real64
@@ -87,7 +87,7 @@ contains
         ! LOESS workspace
         integer(int32), intent(in)    :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input | Supplied by |
             !! |-----------------------|------------|
@@ -98,7 +98,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in)    :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input | Supplied by |
             !! |-----------------------|------------|
@@ -601,7 +601,7 @@ contains
         ! LOESS workspace for compute_family_scaling
         integer(int32), intent(in)    :: int_workspace_size
             !! Length of integer workspace.
-            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input | Supplied by |
             !! |-----------------------|------------|
@@ -612,7 +612,7 @@ contains
             !! Integer workspace array
         integer(int32), intent(in)    :: real_workspace_size
             !! Length of real workspace.
-            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
             !!
             !! | Producer input | Supplied by |
             !! |-----------------------|------------|

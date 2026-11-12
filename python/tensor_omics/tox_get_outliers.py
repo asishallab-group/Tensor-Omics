@@ -47,7 +47,7 @@ _lib.compute_family_scaling_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_FAMILY_SCALING_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES = ("distances", "dscale", None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_rdi_c.restype = None
 _lib.compute_rdi_c.argtypes = (
@@ -103,7 +103,7 @@ _lib.detect_outliers_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", "loess_x", None, None, None, None, None, None, None, None, None,)
+_DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None, None, None, None, None,)
 
 def compute_family_scaling(
         n_families,

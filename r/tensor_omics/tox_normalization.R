@@ -34,8 +34,10 @@ normalize_unit_length <- function(vector) {
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   `n_replicates`, its axis 1, must equal `sum(reps_per_tissue)`.
 #' @param reps_per_tissue a integer vector. Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
 #'   e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+#'   The minimum valid value is `1`.
 #' @param span a numeric scalar. LOESS span parameter.
 #'   The default value is `0.7`.
 #'   The minimum valid value is `EPS_LOESS`.
@@ -56,8 +58,9 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
     use_quantile <- .tox_as_logical_scalar(use_quantile, "use_quantile")
     .result <- .Call("normalization_pipeline_call", expr, reps_per_tissue, span, degree, use_quantile)
     .arguments <- c("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr")
-    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "log_transformed_expr", NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
+    .equals <- c(NA_character_, "sum(reps_per_tissue)", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, equals = .equals)
 
     .result$log_transformed_expr
 }

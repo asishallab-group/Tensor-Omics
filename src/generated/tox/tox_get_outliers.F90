@@ -18,10 +18,11 @@ module tox_get_outliers
     use tox_get_outliers_impl, only: detect_outliers_impl, identify_outliers_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
+    use tox_loess, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
-    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
-    use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_once
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -137,8 +138,18 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -231,7 +242,7 @@ contains
             !! Total number of gene families
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -240,7 +251,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -638,8 +649,18 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -743,7 +764,7 @@ contains
             !! Total number of gene families
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -752,7 +773,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
