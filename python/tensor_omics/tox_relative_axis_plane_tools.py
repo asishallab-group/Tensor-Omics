@@ -44,7 +44,7 @@ _lib.omics_vector_RAP_projection_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS = ("vecs", "n_axes", "n_vecs", "vecs_selection_mask", "n_selected_vecs", "axes_selection_mask", "n_selected_axes", "projections", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "vecs", "vecs", None, "projections", None, "projections", None, None,)
+_OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "vecs", "vecs", None, "vecs_selection_mask", None, "axes_selection_mask", None, None,)
 
 _lib.omics_field_RAP_projection_c.restype = None
 _lib.omics_field_RAP_projection_c.argtypes = (
@@ -62,7 +62,7 @@ _lib.omics_field_RAP_projection_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS = ("fields", "n_axes", "n_fields", "fields_selection_mask", "n_selected_fields", "axes_selection_mask", "n_selected_axes", "projections", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "fields", "fields", None, "projections", None, "projections", None, None,)
+_OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "fields", "fields", None, "fields_selection_mask", None, "axes_selection_mask", None, None,)
 
 _lib.clock_hand_angle_between_vectors_c.restype = None
 _lib.clock_hand_angle_between_vectors_c.argtypes = (
@@ -94,7 +94,7 @@ _lib.clock_hand_angles_for_shift_vectors_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS = ("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "orientation_reference", "signed_angles", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES = (None, "fields", "fields", None, "signed_angles", None, None, None,)
+_CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES = (None, "fields", "fields", None, "fields_selection_mask", None, None, None,)
 
 _lib.compute_relative_axis_contributions_c.restype = None
 _lib.compute_relative_axis_contributions_c.argtypes = (

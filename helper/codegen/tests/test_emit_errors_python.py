@@ -260,3 +260,54 @@ class TestAgainstTheRealCatalogue:
 
         with pytest.raises(module.ToxError, match="null pointer dereference"):
             module.check_err_code(module.ERR_POINTER_NULL)
+
+
+class TestAProducersErrorInItsConsumersWords:
+    """`_consumer_error`: a DM_OUTPUT_FROM producer's error, raised again by the function that
+    called it, naming that function's argument -- the one the caller actually wrote."""
+
+    def producer_error(self, module, ierr, arguments):
+        try:
+            module.check_err_code(ierr, arguments=arguments)
+        except module.ToxError as error:
+            return error
+        raise AssertionError("the producer did not raise")
+
+    def test_the_argument_that_supplied_it_is_named(self, module):
+        # the producer's `factor` (its 2nd) is the consumer's `scale` (its 3rd)
+        error = self.producer_error(module, 10000 * 2 + 201, ("n_items", "factor"))
+
+        again = module._consumer_error(error, {"n_items": 1, "factor": 3},
+                                      ("n_items", "x", "scale", "ierr"))
+
+        assert type(again) is type(error)
+        assert (again.code, again.argument) == (201, "scale")
+        assert str(again) == "invalid input arguments (argument 'scale')"
+
+    def test_a_derived_argument_is_named_by_what_the_caller_passed(self, module):
+        error = self.producer_error(module, 10000 * 1 + 201, ("n_items", "factor"))
+
+        # the consumer's `n_items` is read off its `x`
+        again = module._consumer_error(error, {"n_items": 1}, ("n_items", "x", "ierr"),
+                                      ("x", None, None))
+
+        assert again.argument == "x"
+        assert str(again).endswith("(argument 'x', via 'n_items')")
+
+    def test_an_input_nothing_the_caller_passed_supplied_names_no_argument(self, module):
+        # a constant the consumer's table gave the producer
+        error = self.producer_error(module, 10000 * 2 + 201, ("n_items", "factor"))
+
+        again = module._consumer_error(error, {"n_items": 1}, ("n_items", "x", "ierr"))
+
+        assert again.argument is None
+        assert str(again) == "invalid input arguments"
+
+    def test_a_refusal_by_the_producer_s_binding_keeps_its_class_and_message(self, module):
+        error = module.ToxArgumentError("'factor' must be an integer", argument="factor")
+
+        again = module._consumer_error(error, {"factor": 3}, ("n_items", "x", "scale", "ierr"))
+
+        assert type(again) is module.ToxArgumentError
+        assert (again.code, again.argument, str(again)) == (
+            None, "scale", "'factor' must be an integer")

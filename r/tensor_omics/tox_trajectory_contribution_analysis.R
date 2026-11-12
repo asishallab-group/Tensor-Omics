@@ -33,7 +33,7 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
         random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     .result <- .Call("perform_permutation_test_call", trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "random_seed", "ierr")
-    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, "local_contributions", NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

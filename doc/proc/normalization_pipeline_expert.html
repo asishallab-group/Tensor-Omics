@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">39 statements</a>
+                 title=" 0.2% of total for procedures.">41 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -170,7 +170,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~11"></span>
+              <span class="anchor" id="variable-n_genes~43"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -185,7 +185,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_replicates~2"></span>
+              <span class="anchor" id="variable-n_replicates~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -195,14 +195,13 @@
             <td>::</td>
             <td><strong>n_replicates</strong></td>
             <td>
-                <p>Number of replicates per gene, the rows of <code>expr</code>; <code>reps_per_tissue</code> must add up to it
-The minimum valid value is <code>sum(reps_per_tissue)</code>.
-The maximum valid value is <code>sum(reps_per_tissue)</code>.</p>
+                <p>Number of replicates per gene, the rows of <code>expr</code>
+Must equal <code>sum(reps_per_tissue)</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~4"></span>
+              <span class="anchor" id="variable-expr~13"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -217,7 +216,7 @@ The maximum valid value is <code>sum(reps_per_tissue)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-log_transformed_expr~2"></span>
+              <span class="anchor" id="variable-log_transformed_expr~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -232,7 +231,7 @@ The maximum valid value is <code>sum(reps_per_tissue)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-reps_per_tissue~2"></span>
+              <span class="anchor" id="variable-reps_per_tissue~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -243,12 +242,13 @@ The maximum valid value is <code>sum(reps_per_tissue)</code>.</p>
             <td><strong>reps_per_tissue</strong></td>
             <td>
                 <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.</p>
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+The minimum valid value is <code>1_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~2"></span>
+              <span class="anchor" id="variable-n_tissues~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -263,7 +263,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_expr_copy~2"></span>
+              <span class="anchor" id="variable-tmp_expr_copy~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -278,7 +278,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_loess_y~2"></span>
+              <span class="anchor" id="variable-tmp_loess_y~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -293,7 +293,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_indices_used~2"></span>
+              <span class="anchor" id="variable-tmp_indices_used~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -308,7 +308,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_yhat_global~2"></span>
+              <span class="anchor" id="variable-tmp_yhat_global~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -323,7 +323,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~6"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -338,7 +338,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~6"></span>
+              <span class="anchor" id="variable-int_workspace_size~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -376,7 +376,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~6"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -391,7 +391,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~6"></span>
+              <span class="anchor" id="variable-real_workspace_size~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -429,7 +429,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~6"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -444,7 +444,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_loess_weights~2"></span>
+              <span class="anchor" id="variable-tmp_loess_weights~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -459,7 +459,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~2"></span>
+              <span class="anchor" id="variable-tmp_eval_points~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -474,7 +474,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~4"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -489,7 +489,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~4"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -504,7 +504,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~4"></span>
+              <span class="anchor" id="variable-tmp_residuals~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -519,7 +519,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~4"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -534,7 +534,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~6"></span>
+              <span class="anchor" id="variable-span~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -552,7 +552,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~6"></span>
+              <span class="anchor" id="variable-degree~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -570,7 +570,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-use_quantile~2"></span>
+              <span class="anchor" id="variable-use_quantile~3"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -586,7 +586,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~32"></span>
+              <span class="anchor" id="variable-ierr~146"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -633,7 +633,7 @@ The default value is <code>.false.</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-06 13:05 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>

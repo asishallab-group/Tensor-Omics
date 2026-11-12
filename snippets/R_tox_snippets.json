@@ -521,6 +521,17 @@
       ")"
     ]
   },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "${1:result} <- tox_loess_required_workspace(",
+      "  n_dim = ${2:n_dim},",
+      "  max_neighborhood_size = ${3:max_neighborhood_size},",
+      "  save_factorization = ${4:save_factorization}",
+      ")"
+    ]
+  },
   "loess_fit_plain (call)": {
     "prefix": "tox:loess_fit_plain",
     "description": "Data too degenerate to fit is answered directly, by the observations themselves; see",
@@ -553,17 +564,6 @@
       "  compute_influence = ${9:FALSE},",
       "  save_factorization = ${10:FALSE},",
       "  n_iters = ${11:3L}",
-      ")"
-    ]
-  },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "${1:result} <- tox_loess_required_workspace(",
-      "  n_dim = ${2:n_dim},",
-      "  max_neighborhood_size = ${3:max_neighborhood_size},",
-      "  save_factorization = ${4:save_factorization}",
       ")"
     ]
   },

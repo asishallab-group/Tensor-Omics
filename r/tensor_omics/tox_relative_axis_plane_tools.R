@@ -26,7 +26,7 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 
     .result <- .Call("omics_vector_RAP_projection_call", vecs, vecs_selection_mask, axes_selection_mask)
     .arguments <- c("vecs", "n_axes", "n_vecs", "vecs_selection_mask", "n_selected_vecs", "axes_selection_mask", "n_selected_axes", "projections", "ierr")
-    .sources <- c(NA_character_, "vecs", "vecs", NA_character_, "projections", NA_character_, "projections", NA_character_, NA_character_)
+    .sources <- c(NA_character_, "vecs", "vecs", NA_character_, "vecs_selection_mask", NA_character_, "axes_selection_mask", NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$projections
@@ -59,7 +59,7 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
 
     .result <- .Call("omics_field_RAP_projection_call", fields, fields_selection_mask, axes_selection_mask)
     .arguments <- c("fields", "n_axes", "n_fields", "fields_selection_mask", "n_selected_fields", "axes_selection_mask", "n_selected_axes", "projections", "ierr")
-    .sources <- c(NA_character_, "fields", "fields", NA_character_, "projections", NA_character_, "projections", NA_character_, NA_character_)
+    .sources <- c(NA_character_, "fields", "fields", NA_character_, "fields_selection_mask", NA_character_, "axes_selection_mask", NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$projections
@@ -132,7 +132,7 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, o
 
     .result <- .Call("clock_hand_angles_for_shift_vectors_call", fields, fields_selection_mask, orientation_reference)
     .arguments <- c("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "orientation_reference", "signed_angles", "ierr")
-    .sources <- c(NA_character_, "fields", "fields", NA_character_, "signed_angles", NA_character_, NA_character_, NA_character_)
+    .sources <- c(NA_character_, "fields", "fields", NA_character_, "fields_selection_mask", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$signed_angles

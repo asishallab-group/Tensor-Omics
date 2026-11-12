@@ -86,9 +86,8 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
+            !! Number of replicates per gene, the rows of `expr`
+            !! Must equal `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
@@ -98,6 +97,7 @@ contains
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+            !! The minimum valid value is `1_int32`.
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
@@ -174,14 +174,13 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
+            !! Number of replicates per gene, the rows of `expr`
+            !! Must equal `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -190,7 +189,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -204,6 +203,7 @@ contains
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: tmp_expr_copy
             !! Work matrix the pipeline normalizes in place
         real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_y
@@ -402,7 +402,7 @@ contains
             !! Number of replicates per gene
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -411,7 +411,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|

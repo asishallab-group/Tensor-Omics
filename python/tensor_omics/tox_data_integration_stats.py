@@ -46,7 +46,7 @@ _lib.gjct_permutation_test_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _GJCT_PERMUTATION_TEST_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None, "jsd_null", None, None, None, None, None, None,)
+_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None, None, None, None, None, None, None, None,)
 
 def gjct_permutation_test(
         neighborhood_residuals_S1,
