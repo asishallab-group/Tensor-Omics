@@ -596,12 +596,20 @@ class TestAnInputTheProducerRefines:
 
 
 class TestASupplyCycle:
-    """Two AUTO arguments each given the other -- or one given itself -- have no call order."""
+    """Two AUTO arguments each given the other -- or one given itself -- have no call order.
 
-    def test_two_given_each_other_are_refused(self):
-        base = module("tox_base", procedure(
+    Reported once per cycle, naming its chain.
+    """
+
+    def pair(self):
+        return module("tox_base", procedure(
             "pair_size", integer("other", doc="the other size"),
             integer("sized", Intent.OUT, doc="a size"), integer("ierr", Intent.OUT, doc="error")))
+
+    def cycles(self, bag):
+        return [e for e in bag.errors if "through its inputs" in e.message]
+
+    def test_two_given_each_other_are_refused_once(self):
         cons = consumer(
             "cyclic_impl",
             integer("first", doc=table(("other", "second")),
@@ -611,14 +619,34 @@ class TestASupplyCycle:
                     directives=auto("sized", "pair_size", "tox_base")),
             real("tmp_b", Intent.OUT, "(second)", doc="scratch"),
         )
-        _, bag = analysed(base, cons)
+        _, bag = analysed(self.pair(), cons)
 
-        assert sorted(e.message for e in bag.errors if "itself" in e.message) == [
-            "'first' is computed from a producer that is given, through its inputs, 'first' itself",
-            "'second' is computed from a producer that is given, through its inputs, 'second' "
-            "itself",
-        ]
+        [error] = self.cycles(bag)
+        assert error.message == ("'first' is computed from a producer given, through its inputs, "
+                                 "'first' itself: first -> second -> first")
+        assert "a required intent(inout) one where the producer refines it in place" in error.note
 
+    def test_one_given_itself_is_refused(self):
+        cons = consumer(
+            "selfish_impl",
+            integer("first", doc=table(("other", "first")),
+                    directives=auto("sized", "pair_size", "tox_base")),
+            real("tmp_a", Intent.OUT, "(first)", doc="scratch"),
+        )
+        _, bag = analysed(self.pair(), cons)
+
+        [error] = self.cycles(bag)
+        assert error.message == ("'first' is computed from a producer given, through its inputs, "
+                                 "'first' itself: first -> first")
+
+    def test_the_emitters_assert_there_is_none(self):
+        from codegen.ir.roles import call_order, supply_order
+
+        entries = [({"a"}, {"b"}, "a"), ({"b"}, {"a"}, "b"), ({"c"}, set(), "c")]
+        ordered, cycles = call_order(entries)
+        assert (ordered, cycles) == (["c"], [["a", "b"]])
+        with pytest.raises(AssertionError):
+            supply_order(entries)
 
 class TestACycle:
     """A producer that, through its producers, comes back to its consumer is refused.

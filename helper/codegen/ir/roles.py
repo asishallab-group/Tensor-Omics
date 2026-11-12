@@ -500,16 +500,21 @@ def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: Diagnost
     calls the first again.
     """
     first, argument = cycle[0]
-    chain = " -> ".join([procedure.name for procedure, _ in cycle] + [first.name])
-    diagnostics.error(
-        f"'{argument.name}' of '{first.name}' is computed from a producer that comes back to "
-        f"it: {chain}",
-        entity=argument,
+    _report_chain(
+        diagnostics, argument,
+        f"'{argument.name}' of '{first.name}' is computed from a producer that comes back to it",
+        [procedure.name for procedure, _ in cycle],
         note=(
             "each call would make the next until the stack runs out; size one of them by "
             "something that does not depend on the others"
         ),
     )
+
+
+def _report_chain(diagnostics: DiagnosticBag, entity, what: str, chain: list[str],
+                  note: str) -> None:
+    """One diagnostic for one cycle: what is wrong, then the chain, back to where it starts."""
+    diagnostics.error(f"{what}: {' -> '.join(chain + chain[:1])}", entity=entity, note=note)
 
 
 def _refuses_a_refined_input(argument: Argument, consumer: Procedure, producer: Procedure,
@@ -520,7 +525,7 @@ def _refuses_a_refined_input(argument: Argument, consumer: Procedure, producer: 
     The rule, where the generated Fortran wrapper calls the producer itself: an input the
     producer refines in place is supplied by a required `intent(inout)` argument of the consumer,
     or by a value the wrapper computes itself -- another `DM_OUTPUT_FROM` argument it takes
-    over, a local it owns, which the producers are ordered around (`supply_order`). That is
+    over, a local it owns, which the producers are ordered around (`call_order`). That is
     what the call can write, and what carries the refined value on: to the caller, or to every
     later use of the local. An `intent(in)` argument or a constant does not compile there, and
     the local an optional is materialised into would swallow the refined value. Python and R
@@ -568,60 +573,90 @@ def _is_computed_here(argument: Argument | None) -> bool:
     return directive is not None and directive.is_automatic
 
 
-def supply_order(entries: list[tuple[set[str], set[str], object]]) -> list[object]:
-    """Producer calls in an order where each runs after those whose outputs it is given.
+def call_order(entries: list[tuple[set[str], set[str], object]]) -> tuple[list, list[list]]:
+    """Producer calls in dependency order, and the cycles that have none.
 
     `entries` is `(the arguments a call fills, the arguments it is given, the call)` in
     argument order. A call reads another's output when one of its inputs is an argument the
-    other fills -- a size computed from a size, or a value an earlier producer computed and a
-    later one refines in place -- so the other has to run first, whatever the order the
-    arguments are declared in. Otherwise the argument order stands. A dependency cycle among a
-    consumer's arguments is refused (`_check_supply_cycles`); were one to reach here, the
-    remaining calls keep their argument order rather than hang.
+    other fills -- a size computed from a size -- so the other runs first, whatever the order
+    the arguments are declared in; otherwise the argument order stands. A call given what it
+    fills itself, or calls given each other's outputs, have no such order: each such cycle is
+    returned, as its calls in the order each feeds the next, and left out of the order.
+
+    The one walk both the check (`_check_supply_cycles`) and the emitters (`supply_order`) use.
     """
     remaining = list(entries)
-    ordered = []
+    ordered, cycles = [], []
     while remaining:
-        for index, (fills, reads, call) in enumerate(remaining):
-            others = set().union(*(f for i, (f, _, _) in enumerate(remaining) if i != index))
-            if not (reads & others):
+        for index, (_, reads, _) in enumerate(remaining):
+            if not reads & set().union(*(fills for fills, _, _ in remaining)):
+                ordered.append(remaining.pop(index)[2])
                 break
         else:
-            index = 0
-        ordered.append(remaining.pop(index)[2])
+            cycle = _a_cycle(remaining)
+            # from the call declared first, so the report reads in the author's order
+            start = min(range(len(cycle)), key=lambda i: entries.index(cycle[i]))
+            cycle = cycle[start:] + cycle[:start]
+            cycles.append([call for _, _, call in cycle])
+            remaining = [entry for entry in remaining if entry not in cycle]
+    return ordered, cycles
+
+
+def _a_cycle(entries: list[tuple[set[str], set[str], object]]) -> list:
+    """A cycle among `entries`, each of which reads what one of them fills: follow the reads."""
+    def feeder(entry):
+        return next(e for e in entries if e[0] & entry[1])
+
+    path = [entries[0]]
+    while True:
+        nxt = feeder(path[-1])
+        if nxt in path:
+            cycle = path[path.index(nxt):]
+            # in the order each feeds the next: the feeder of an entry precedes it
+            return list(reversed(cycle))
+        path.append(nxt)
+
+
+def supply_order(entries: list[tuple[set[str], set[str], object]]) -> list:
+    """`call_order`'s order, for an emitter: a cycle was refused before anything is emitted."""
+    ordered, cycles = call_order(entries)
+    assert not cycles, "a supply cycle reached an emitter; `_check_supply_cycles` refuses it"
     return ordered
 
 
-def _check_supply_cycles(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
-    """Refuse AUTO arguments of one consumer that are computed, through their producers' inputs,
-    from each other -- or one from itself: no order of the calls gives each its input."""
-    reads: dict[str, set[str]] = {}
+def _supply_entries(consumer: Procedure) -> list[tuple[set[str], set[str], list[Argument]]]:
+    """The consumer's producer calls, as `call_order` takes them: one per `OutputFromPlan.call`."""
+    calls: dict[tuple, list[Argument]] = {}
     for argument in consumer.arguments:
         plan = argument.roles.computed_from if argument.roles else None
-        if plan is None or not plan.is_automatic:
-            continue
-        reads[argument.name.lower()] = {s.argument.lower() for s in plan.inputs
-                                        if s.argument is not None}
-    computed = set(reads)
-    for name in reads:
-        reads[name] &= computed
+        if plan is not None and plan.is_automatic:
+            calls.setdefault(plan.call, []).append(argument)
+    return [
+        ({a.name.lower() for a in arguments},
+         {s.argument.lower() for s in arguments[0].roles.computed_from.inputs
+          if s.argument is not None},
+         arguments)
+        for arguments in calls.values()
+    ]
 
-    def reaches(start: str, goal: str, seen: set[str]) -> bool:
-        for nxt in reads.get(start, ()):
-            if nxt == goal or (nxt not in seen and reaches(nxt, goal, seen | {nxt})):
-                return True
-        return False
 
-    for argument in consumer.arguments:
-        name = argument.name.lower()
-        if name in reads and reaches(name, name, {name}):
-            diagnostics.error(
-                f"'{argument.name}' is computed from a producer that is given, through its "
-                f"inputs, '{argument.name}' itself",
-                entity=argument,
-                note=("no order of the producer calls gives each its input; supply one of "
-                      "them by an argument of the caller's or a constant"),
-            )
+def _check_supply_cycles(consumer: Procedure, diagnostics: DiagnosticBag) -> None:
+    """Refuse AUTO arguments computed, through their producers' inputs, from each other -- or
+    one from itself: no order of the calls gives each its input. Once per cycle."""
+    _, cycles = call_order(_supply_entries(consumer))
+    for cycle in cycles:
+        first = cycle[0][0]
+        _report_chain(
+            diagnostics, first,
+            f"'{first.name}' is computed from a producer given, through its inputs, "
+            f"'{first.name}' itself",
+            [arguments[0].name for arguments in cycle],
+            note=(
+                "no order of the producer calls gives each its input; give one of these "
+                "producers that input from an argument the caller passes -- a required "
+                "intent(inout) one where the producer refines it in place"
+            ),
+        )
 
 
 def _is_called_from_fortran(consumer: Procedure, argument: Argument, project,
