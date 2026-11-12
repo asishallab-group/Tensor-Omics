@@ -6,7 +6,7 @@
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix (n_dimensions x n_vectors)
-#' @param mean_to_other_vecs_dist_quant a numeric scalar. Optional quantile fraction (0.0 to 1.0), defaults to 0.15
+#' @param mean_to_other_vecs_dist_quant a numeric scalar. Quantile of the distances to the data centroid that becomes the density radius
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.15`.
@@ -77,7 +77,7 @@ calculate_labels_as_density <- function(vectors, r, dimension_order, kd_indices,
 #' @param k_seeding a integer scalar. Number of nearest neighbors used to estimate each seed's local coverage radius
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors - 1`.
-#' @param coverage_quant a numeric scalar. Optional percentile of k-nearest-neighbor distances used as the seed coverage and growth radius; defaults to 0.5.
+#' @param coverage_quant a numeric scalar. Quantile of each seed's k-nearest-neighbor distances used as its coverage and growth radius
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.5`.
@@ -182,7 +182,7 @@ merge_ensembles <- function(raw_masks, min_overlap_coefficient = 0.9) {
 #' @param alpha_mad a numeric scalar. Multiplier factor for MAD density compatibility threshold
 #'   The minimum valid value is `0.0`.
 #'   The default value is `0.5`.
-#' @return a logical vector. Membership after the growth step.
+#' @return a logical vector. Membership after the growth step: every input member plus each density-compatible neighbor.
 #' @export
 grow_ensemble <- function(vectors, ensemble_mask, r, dimension_order, kd_indices, density_labels, alpha_mad = 0.5) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
@@ -249,7 +249,7 @@ compute_ensemble_observable <- function(ensemble_mask, density_labels, candidate
 #' @param observables a numeric matrix. Observable history written by \code{\link{compute_ensemble_observable}}
 #' @param current_iter a integer scalar. Current growth iteration index (1-based)
 #'   The minimum valid value is `1`.
-#' @param alpha_accept a numeric scalar. Optional log2 fold change acceptance threshold (defaults to 0.5)
+#' @param alpha_accept a numeric scalar. Log2 fold-change threshold; a step whose density heterogeneity changes by at least this much is rejected
 #'   The minimum valid value is `0.0`.
 #'   The default value is `0.5`.
 #' @return a logical scalar. Output flag indicating step acceptance decision

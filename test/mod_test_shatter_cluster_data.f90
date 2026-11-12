@@ -2259,7 +2259,6 @@ contains
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds), alloc_matrix(n_vecs, n_seeds)
         integer(int32) :: stop_reasons(n_seeds)
         real(real64) :: mad_ambient
-        real(real64) :: tmp_growth_radii(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -2281,7 +2280,7 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
-            tmp_current_mask, tmp_growth_radii, ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+            tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, &
                               "layer agreement: preallocated layer must accept n_tiles > n_seeds")
@@ -2426,7 +2425,6 @@ contains
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
         integer(int32) :: stop_reasons(n_seeds)
         real(real64) :: mad_ambient
-        real(real64) :: tmp_growth_radii(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -2446,7 +2444,7 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             0_int32, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            good_observables, tmp_current_mask, tmp_growth_radii, ensemble_matrix, stop_reasons, mad_ambient, &
+            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
             n_ensembles, ierr)
         call assert_true(ierr /= ERR_OK, &
                          "obtain_ensembles must reject a nonpositive history window")
@@ -2454,7 +2452,7 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            good_observables, tmp_current_mask, tmp_growth_radii, ensemble_matrix, stop_reasons, mad_ambient, &
+            good_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
             n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "obtain_ensembles must accept a correctly sized observable workspace")
@@ -2559,7 +2557,6 @@ contains
         real(real64) :: narrow_observables(5, 2, n_tiles)
         logical(c_bool) :: tmp_current_mask(n_vecs, n_tiles)
         logical(c_bool) :: ensemble_matrix(n_vecs, n_seeds)
-        real(real64) :: tmp_growth_radii(n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.2_real64]
@@ -2580,7 +2577,7 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             t_obs, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            exact_observables, tmp_current_mask, tmp_growth_radii, ensemble_matrix, stop_reasons, mad_ambient, &
+            exact_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
             n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "workspace matches the history capped by the input size")
@@ -2588,7 +2585,7 @@ contains
         call obtain_ensembles_seed_radius_expert(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
             density_labels, seed_indices, n_seeds, spread(0.5_real64, 1_int32, n_seeds), 0.5_real64, 0.5_real64, &
             2_int32, n_tiles, tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, tmp_abs_diff, &
-            narrow_observables, tmp_current_mask, tmp_growth_radii, ensemble_matrix, stop_reasons, mad_ambient, &
+            narrow_observables, tmp_current_mask, ensemble_matrix, stop_reasons, mad_ambient, &
             n_ensembles, ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "two-column observable history is accepted")

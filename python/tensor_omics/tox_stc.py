@@ -222,7 +222,7 @@ def calculate_density_radius(
     vectors : np.ndarray[np.float64] of shape (n_dimensions, n_vectors,), column-major (order='F')
         Input data matrix (n_dimensions x n_vectors)
     mean_to_other_vecs_dist_quant : float, optional, default 0.15
-        Optional quantile fraction (0.0 to 1.0), defaults to 0.15
+        Quantile of the distances to the data centroid that becomes the density radius
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.15`.
@@ -387,7 +387,7 @@ def identify_ensemble_seeds(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
     coverage_quant : float, optional, default 0.5
-        Optional percentile of k-nearest-neighbor distances used as the seed coverage and growth radius; defaults to 0.5.
+        Quantile of each seed's k-nearest-neighbor distances used as its coverage and growth radius
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.5`.
@@ -644,7 +644,7 @@ def grow_ensemble(
     Returns
     -------
     grown_mask : np.ndarray[np.bool_] of shape (n_vectors,), read-only
-        Membership after the growth step.
+        Membership after the growth step: every input member plus each density-compatible neighbor.
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -805,7 +805,7 @@ def accept_ensemble(
         Current growth iteration index (1-based)
         The minimum valid value is `1`.
     alpha_accept : float, optional, default 0.5
-        Optional log2 fold change acceptance threshold (defaults to 0.5)
+        Log2 fold-change threshold; a step whose density heterogeneity changes by at least this much is rejected
         The minimum valid value is `0.0`.
         The default value is `0.5`.
 

@@ -55,7 +55,7 @@ contains
         real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
             !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in), optional :: mean_to_other_vecs_dist_quant
-            !! Optional quantile fraction (0.0 to 1.0), defaults to 0.15
+            !! Quantile of the distances to the data centroid that becomes the density radius
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.15_real64`.
@@ -119,7 +119,7 @@ contains
         integer(int32), dimension(n_vectors), intent(out) :: tmp_perm
             !! Preallocated workspace for permutation indices
         real(real64), intent(in), optional :: mean_to_other_vecs_dist_quant
-            !! Optional quantile fraction (0.0 to 1.0), defaults to 0.15
+            !! Quantile of the distances to the data centroid that becomes the density radius
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.15_real64`.
@@ -332,7 +332,7 @@ contains
         real(real64), dimension(n_vectors), intent(out) :: seed_radii
             !! Per-seed growth radius, stored at each seed's own vector index; zero at non-seeds
         real(real64), intent(in), optional :: coverage_quant
-            !! Optional percentile of k-nearest-neighbor distances used as the seed coverage and growth radius; defaults to 0.5.
+            !! Quantile of each seed's k-nearest-neighbor distances used as its coverage and growth radius
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.5_real64`.
@@ -446,7 +446,7 @@ contains
         real(real64), dimension(n_vectors), intent(out) :: seed_radii
             !! Per-seed growth radius, stored at each seed's own vector index; zero at non-seeds
         real(real64), intent(in), optional :: coverage_quant
-            !! Optional percentile of k-nearest-neighbor distances used as the seed coverage and growth radius; defaults to 0.5.
+            !! Quantile of each seed's k-nearest-neighbor distances used as its coverage and growth radius
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.5_real64`.
@@ -730,7 +730,7 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.5_real64`.
         logical(c_bool), dimension(n_vectors), intent(out) :: grown_mask
-            !! Membership after the growth step.
+            !! Membership after the growth step: every input member plus each density-compatible neighbor.
         integer(int32), intent(out) :: ierr
             !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
             !! half the labels are equal), which leaves no density tolerance for growth.
@@ -828,7 +828,7 @@ contains
         integer(int32), dimension(3, 64), intent(inout) :: tmp_stack
             !! Preallocated workspace stack for a single tree traversal
         logical(c_bool), dimension(n_vectors), intent(out) :: tmp_vicinity_mask
-            !! Workspace for one neighborhood query, then the complete trial membership
+            !! Workspace for one member's neighborhood query
         logical(c_bool), dimension(n_vectors), intent(out) :: tmp_surface_mask
             !! Geometric union of accepted member neighborhoods before this growth step
         integer(int32), dimension(n_vectors), intent(inout) :: tmp_perm
@@ -836,7 +836,7 @@ contains
         real(real64), dimension(n_vectors), intent(out) :: tmp_abs_diff
             !! Preallocated workspace array holding the active member densities
         logical(c_bool), dimension(n_vectors), intent(out) :: grown_mask
-            !! Membership after the growth step.
+            !! Membership after the growth step: every input member plus each density-compatible neighbor.
         integer(int32), intent(out) :: ierr
             !! Invalid input when the median absolute deviation of `density_labels` is zero (more than
             !! half the labels are equal), which leaves no density tolerance for growth.
@@ -962,7 +962,7 @@ contains
             !! Current growth iteration index (1-based)
             !! The minimum valid value is `1_int32`.
         real(real64), intent(in), optional :: alpha_accept
-            !! Optional log2 fold change acceptance threshold (defaults to 0.5)
+            !! Log2 fold-change threshold; a step whose density heterogeneity changes by at least this much is rejected
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.5_real64`.
         logical(c_bool), intent(out) :: is_accepted
@@ -1074,7 +1074,6 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_abs_diff
         real(real64), dimension(:, :, :), allocatable :: tmp_observables
         logical(c_bool), dimension(:, :), allocatable :: tmp_current_mask
-        real(real64), dimension(:), allocatable :: tmp_growth_radii
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -1101,7 +1100,6 @@ contains
         M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_growth_radii(n_seeds))
 
         call obtain_ensembles_impl(&
             vectors = vectors,&
@@ -1125,7 +1123,6 @@ contains
             tmp_abs_diff = tmp_abs_diff,&
             tmp_observables = tmp_observables,&
             tmp_current_mask = tmp_current_mask,&
-            tmp_growth_radii = tmp_growth_radii,&
             ensemble_matrix = ensemble_matrix,&
             stop_reasons = stop_reasons,&
             mad_ambient = mad_ambient,&
@@ -1157,7 +1154,6 @@ contains
             tmp_abs_diff,&
             tmp_observables,&
             tmp_current_mask,&
-            tmp_growth_radii,&
             ensemble_matrix,&
             stop_reasons,&
             mad_ambient,&
@@ -1222,8 +1218,6 @@ contains
             !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
         logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
             !! Workspace holding accepted seed ensemble membership per tile
-        real(real64), dimension(n_seeds), intent(out) :: tmp_growth_radii
-            !! Growth radius in seed order, shared by both modes.
         logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
             !! Output matrix storing unmerged grown ensemble masks
         integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
@@ -1278,7 +1272,6 @@ contains
             tmp_abs_diff = tmp_abs_diff,&
             tmp_observables = tmp_observables,&
             tmp_current_mask = tmp_current_mask,&
-            tmp_growth_radii = tmp_growth_radii,&
             ensemble_matrix = ensemble_matrix,&
             stop_reasons = stop_reasons,&
             mad_ambient = mad_ambient,&
@@ -1372,7 +1365,6 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_abs_diff
         real(real64), dimension(:, :, :), allocatable :: tmp_observables
         logical(c_bool), dimension(:, :), allocatable :: tmp_current_mask
-        real(real64), dimension(:), allocatable :: tmp_growth_radii
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -1399,7 +1391,6 @@ contains
         M_ALLOCATE(tmp_abs_diff(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_observables(5, max(2_int32,min(t_observables,n_vectors)), min(n_tiles,max(1_int32,n_seeds))))
         M_ALLOCATE(tmp_current_mask(n_vectors, min(n_tiles,max(1_int32,n_seeds))))
-        M_ALLOCATE(tmp_growth_radii(n_seeds))
 
         call obtain_ensembles_impl(&
             vectors = vectors,&
@@ -1423,7 +1414,6 @@ contains
             tmp_abs_diff = tmp_abs_diff,&
             tmp_observables = tmp_observables,&
             tmp_current_mask = tmp_current_mask,&
-            tmp_growth_radii = tmp_growth_radii,&
             ensemble_matrix = ensemble_matrix,&
             stop_reasons = stop_reasons,&
             mad_ambient = mad_ambient,&
@@ -1455,7 +1445,6 @@ contains
             tmp_abs_diff,&
             tmp_observables,&
             tmp_current_mask,&
-            tmp_growth_radii,&
             ensemble_matrix,&
             stop_reasons,&
             mad_ambient,&
@@ -1520,8 +1509,6 @@ contains
             !! n_vectors columns are never needed; at least two are kept so acceptance can compare steps.
         logical(c_bool), dimension(n_vectors, min(n_tiles,max(1_int32,n_seeds))), intent(out) :: tmp_current_mask
             !! Workspace holding accepted seed ensemble membership per tile
-        real(real64), dimension(n_seeds), intent(out) :: tmp_growth_radii
-            !! Growth radius in seed order, shared by both modes.
         logical(c_bool), dimension(n_vectors, n_seeds), intent(out) :: ensemble_matrix
             !! Output matrix storing unmerged grown ensemble masks
         integer(int32), dimension(n_seeds), intent(out) :: stop_reasons
@@ -1576,7 +1563,6 @@ contains
             tmp_abs_diff = tmp_abs_diff,&
             tmp_observables = tmp_observables,&
             tmp_current_mask = tmp_current_mask,&
-            tmp_growth_radii = tmp_growth_radii,&
             ensemble_matrix = ensemble_matrix,&
             stop_reasons = stop_reasons,&
             mad_ambient = mad_ambient,&

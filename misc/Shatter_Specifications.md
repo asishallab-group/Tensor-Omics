@@ -168,9 +168,9 @@ and fixes the mode inside each:
   seed $i$ -- and every later expansion of its ensemble -- at `seed_radii(i)`.
 
 Each entry point requires its own radius argument and does not have the other's, so neither can
-be called with the wrong one. Inside the implementation both modes fill the same per-seed array
-(`tmp_growth_radii(S)`, the scalar broadcast in global mode) and grow identically from there, so
-the global mode is exactly the constant-array case of the per-seed one.
+be called with the wrong one. Inside the implementation the mode only chooses each seed's radius --
+`seed_radii(i)` or `r` -- and growth is identical from there, so the global mode is exactly the
+constant-array case of the per-seed one, with no radius array allocated for it.
 
 Cost: $8S$ bytes, and nothing else -- no extra queries, since the radii fall out of work seeding
 already does.

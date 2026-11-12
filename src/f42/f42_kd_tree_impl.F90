@@ -1,7 +1,5 @@
 #include <src/macros.h>
 
-#include <src/f42/kd_tree_workspace.h>
-
 !> k-d tree spatial index over fixed-dimensional point sets.
 !| Builds a k-d tree by recursively partitioning `kd_indices` around the median point along a
 !| caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
@@ -16,8 +14,8 @@ module f42_kd_tree_impl
     use tox_errors, only: set_ok, validate_in_range_int, is_err
     M_IMPLICIT_NONE
 
-    integer(int32), parameter :: KD_STACK_ENTRY_SIZE = CM_KD_STACK_ENTRY_SIZE
-    integer(int32), parameter :: KD_TRAVERSAL_STACK_DEPTH = CM_KD_TRAVERSAL_STACK_DEPTH
+    integer(int32), parameter :: KD_STACK_ENTRY_SIZE = M_KD_STACK_ENTRY_SIZE
+    integer(int32), parameter :: KD_TRAVERSAL_STACK_DEPTH = M_KD_TRAVERSAL_STACK_DEPTH
 
 contains
 
@@ -224,7 +222,7 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_points)
         integer(int32), intent(inout) :: tmp_stack( &
-                                         CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
+                                         M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH)
             !! Preallocated k-d tree traversal stack
         logical(c_bool), intent(out) :: vicinity_mask(n_points)
             !! Mask indicating points within the search radius
@@ -259,7 +257,7 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_points)
         integer(int32), intent(inout) :: tmp_stack( &
-                                         CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
+                                         M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH)
             !! Preallocated k-d tree traversal stack
         integer(int32), intent(out) :: n_neighbors
             !! Number of points within the search radius
@@ -288,8 +286,8 @@ contains
         !! Sequence of k-d tree split dimensions
         integer(int32), intent(in) :: kd_indices(n_points)
         !! K-d tree index sequence
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, &
-                                                   CM_KD_TRAVERSAL_STACK_DEPTH)
+        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, &
+                                                   M_KD_TRAVERSAL_STACK_DEPTH)
         !! Preallocated k-d tree traversal stack
         logical(c_bool), intent(out) :: vicinity_mask(n_points)
         !! Mask indicating points within the search radius
@@ -363,8 +361,8 @@ contains
         !! Sequence of k-d tree split dimensions
         integer(int32), intent(in) :: kd_indices(n_points)
         !! K-d tree index sequence
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, &
-                                                   CM_KD_TRAVERSAL_STACK_DEPTH)
+        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, &
+                                                   M_KD_TRAVERSAL_STACK_DEPTH)
         !! Preallocated k-d tree traversal stack
         integer(int32), intent(out) :: n_neighbors
         !! Number of points within the search radius
