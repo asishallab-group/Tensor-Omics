@@ -136,9 +136,9 @@ SEXP compute_angle_outlier_threshold_call(SEXP, SEXP);
 SEXP flag_angle_outliers_call(SEXP, SEXP);
 SEXP detect_angle_outliers_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP detect_angle_outliers_rap_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP normalize_unit_length_call(SEXP);
 SEXP normalization_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normalize_by_std_dev_call(SEXP, SEXP, SEXP);
@@ -255,9 +255,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"flag_angle_outliers_call", (DL_FUNC) &flag_angle_outliers_call, 2},
     {"detect_angle_outliers_call", (DL_FUNC) &detect_angle_outliers_call, 6},
     {"detect_angle_outliers_rap_call", (DL_FUNC) &detect_angle_outliers_rap_call, 6},
+    {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 9},
     {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 10},
-    {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"normalize_unit_length_call", (DL_FUNC) &normalize_unit_length_call, 1},
     {"normalization_pipeline_call", (DL_FUNC) &normalization_pipeline_call, 5},
     {"normalize_by_std_dev_call", (DL_FUNC) &normalize_by_std_dev_call, 3},

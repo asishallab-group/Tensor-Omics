@@ -76,7 +76,8 @@ contains
     end do
   end subroutine test_pipeline_matches_its_steps
 
-  !> The replicates per tissue must add up to the rows of `expr`: ERR_INVALID_INPUT otherwise.
+  !> The replicates per tissue must add up to the rows of `expr` (`DM_EQUALS`): ERR_SIZE_MISMATCH at
+  !| n_replicates otherwise. A count below one is `reps_per_tissue`'s own error (DM_MIN(1)).
   subroutine test_pipeline_reps_not_summing_to_the_replicates()
     integer(int32), parameter :: n_genes = 10, n_replicates = 6
     real(real64), dimension(n_replicates, n_genes) :: expr
@@ -86,7 +87,13 @@ contains
     call fill_linear_trend(expr)
     reps_per_tissue = [3, 2]
     call normalization_pipeline(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, 2, ierr=ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "reps [3, 2] sum to 5, but expr has 6 rows")
+    call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "reps [3, 2] sum to 5, but expr has 6 rows")
+    call assert_equal_int(get_err_arg_pos(ierr), 2_int32, "reps [3, 2]: blames n_replicates")
+
+    reps_per_tissue = [5, -3]
+    call normalization_pipeline(n_genes, 2, expr, log_transformed_expr, reps_per_tissue, 2, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "reps [5, -3]: a negative count")
+    call assert_equal_int(get_err_arg_pos(ierr), 5_int32, "reps [5, -3]: blames reps_per_tissue")
   end subroutine test_pipeline_reps_not_summing_to_the_replicates
 
   !> The first step needs five genes that vary; an all-zero matrix has none: ERR_INVALID_INPUT.
@@ -162,10 +169,10 @@ contains
     end do
   end subroutine test_pipeline_rejects_nan_and_inf
 
-  !> Each dimension on its own. n_genes = 0 is ERR_EMPTY_INPUT and a negative one ERR_INVALID_INPUT.
-  !| n_replicates is checked against sum(reps_per_tissue) instead of as a dimension (DM_MIN/DM_MAX,
-  !| until #203), so n_replicates = 0 is ERR_INVALID_INPUT, and so is n_tissues = 0: its empty sum
-  !| is 0, which n_replicates misses before n_tissues' own check runs.
+  !> Each dimension on its own. Zero is ERR_EMPTY_INPUT and a negative one ERR_INVALID_INPUT, at the
+  !| dimension itself. n_replicates keeps its dimension check beside its DM_EQUALS, which runs
+  !| after every scalar check, so neither a zero n_replicates nor n_tissues' empty sum reads as a
+  !| mismatch.
   subroutine test_pipeline_dimensions()
     real(real64), dimension(1, 1) :: expr, log_transformed_expr
     integer(int32) :: reps_per_tissue(1), ierr
@@ -175,9 +182,14 @@ contains
     call normalization_pipeline(0, 1, expr, log_transformed_expr, reps_per_tissue, 1, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_pipeline_dimensions: n_genes = 0")
     call normalization_pipeline(1, 0, expr, log_transformed_expr, reps_per_tissue, 1, ierr=ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_dimensions: n_replicates = 0")
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_pipeline_dimensions: n_replicates = 0")
+    call assert_equal_int(get_err_arg_pos(ierr), 2_int32, "test_pipeline_dimensions: n_replicates = 0, position")
+    call normalization_pipeline(1, -2, expr, log_transformed_expr, reps_per_tissue, 1, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_dimensions: n_replicates = -2")
+    call assert_equal_int(get_err_arg_pos(ierr), 2_int32, "test_pipeline_dimensions: n_replicates = -2, position")
     call normalization_pipeline(1, 1, expr, log_transformed_expr, reps_per_tissue, 0, ierr=ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_dimensions: n_tissues = 0")
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_pipeline_dimensions: n_tissues = 0")
+    call assert_equal_int(get_err_arg_pos(ierr), 6_int32, "test_pipeline_dimensions: n_tissues = 0, position")
     call normalization_pipeline(-1, 1, expr, log_transformed_expr, reps_per_tissue, 1, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_dimensions: n_genes = -1")
   end subroutine test_pipeline_dimensions

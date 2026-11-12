@@ -58,7 +58,7 @@ compute_family_direction <- function(n_families, expression_vectors, gene_to_fam
 
     .result <- .Call("compute_family_direction_call", n_families, expression_vectors, gene_to_fam, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_axes", "n_genes", "n_families", "expression_vectors", "gene_to_fam", "family_directions", "angular_dispersions", "member_counts", "status", "min_angular_dispersion", "max_angular_dispersion", "ierr")
-    .sources <- c("expression_vectors", "expression_vectors", "family_directions", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("expression_vectors", "expression_vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -160,7 +160,7 @@ compute_family_direction_rap <- function(n_families, signed_angles, gene_to_fam,
 
     .result <- .Call("compute_family_direction_rap_call", n_families, signed_angles, gene_to_fam, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_genes", "n_families", "signed_angles", "gene_to_fam", "family_mean_angles", "angular_dispersions", "member_counts", "status", "min_angular_dispersion", "max_angular_dispersion", "ierr")
-    .sources <- c("signed_angles", "family_mean_angles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("signed_angles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -394,7 +394,7 @@ detect_angle_outliers <- function(n_families, expression_vectors, gene_to_fam, q
 
     .result <- .Call("detect_angle_outliers_call", n_families, expression_vectors, gene_to_fam, quantile_level, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_axes", "n_genes", "n_families", "expression_vectors", "gene_to_fam", "family_directions", "angular_dispersions", "member_counts", "status", "relative_angular_deviations", "threshold", "is_outlier", "gene_status", "quantile_level", "min_angular_dispersion", "max_angular_dispersion", "ierr")
-    .sources <- c("expression_vectors", "expression_vectors", "family_directions", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("expression_vectors", "expression_vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -480,7 +480,7 @@ detect_angle_outliers_rap <- function(n_families, signed_angles, gene_to_fam, qu
 
     .result <- .Call("detect_angle_outliers_rap_call", n_families, signed_angles, gene_to_fam, quantile_level, min_angular_dispersion, max_angular_dispersion)
     .arguments <- c("n_genes", "n_families", "signed_angles", "gene_to_fam", "family_mean_angles", "angular_dispersions", "member_counts", "status", "relative_angular_deviations", "threshold", "is_outlier", "gene_status", "quantile_level", "min_angular_dispersion", "max_angular_dispersion", "ierr")
-    .sources <- c("signed_angles", "family_mean_angles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .sources <- c("signed_angles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

@@ -39,7 +39,7 @@ SOURCES = {
 
 #: The suffixes of a Fortran wrapper's locals
 FORTRAN_SUFFIXES = (names.CONVERTED, names.MODE_VALUE, names.MODE_POINTER, names.VIEW_ADDRESS,
-                    names.DEFAULT_VALUE)
+                    names.DEFAULT_VALUE, names.UNUSED_OUTPUT)
 #: What a Fortran C wrapper module declares beside its wrappers
 FORTRAN_C_MODULE_VARIABLES = (names.EMPTY_VIEW_ANCHOR,)
 
@@ -201,6 +201,13 @@ class TestTheFortranWrappers:
                 # what the allocating tier takes over becomes a local of the same name
                 arguments = [a.name for a in spec.impl.arguments]
                 arguments += [a.name for a in module.procedure(procedure).arguments]
+                # and a producer output it passes a local for and drops (`UNUSED_OUTPUT`)
+                plans = [a.roles.computed_from for a in spec.validating.arguments
+                         if a.roles is not None and a.roles.computed_from is not None]
+                arguments += [d.name for plan in plans for d in plan.producer.arguments]
+                # `<producer>_<output>` where two producers' dropped outputs share a name
+                arguments += [f"{plan.producer.name}_{d.name}"
+                              for plan in plans for d in plan.producer.arguments]
                 for name in _FORTRAN_DECLARATION.findall(body):
                     if name.lower() in {a.lower() for a in arguments}:
                         continue

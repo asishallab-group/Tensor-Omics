@@ -73,7 +73,7 @@ _lib.compute_family_direction_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_FAMILY_DIRECTION_ARGUMENTS = ("n_axes", "n_genes", "n_families", "expression_vectors", "gene_to_fam", "family_directions", "angular_dispersions", "member_counts", "status", "min_angular_dispersion", "max_angular_dispersion", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_FAMILY_DIRECTION_ARGUMENT_SOURCES = ("expression_vectors", "expression_vectors", "family_directions", None, None, None, None, None, None, None, None, None,)
+_COMPUTE_FAMILY_DIRECTION_ARGUMENT_SOURCES = ("expression_vectors", "expression_vectors", None, None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_angular_deviations_c.restype = None
 _lib.compute_angular_deviations_c.argtypes = (
@@ -110,7 +110,7 @@ _lib.compute_family_direction_rap_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENTS = ("n_genes", "n_families", "signed_angles", "gene_to_fam", "family_mean_angles", "angular_dispersions", "member_counts", "status", "min_angular_dispersion", "max_angular_dispersion", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENT_SOURCES = ("signed_angles", "family_mean_angles", None, None, None, None, None, None, None, None, None,)
+_COMPUTE_FAMILY_DIRECTION_RAP_ARGUMENT_SOURCES = ("signed_angles", None, None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_angular_deviations_rap_c.restype = None
 _lib.compute_angular_deviations_rap_c.argtypes = (
@@ -196,7 +196,7 @@ _lib.detect_angle_outliers_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_ANGLE_OUTLIERS_ARGUMENTS = ("n_axes", "n_genes", "n_families", "expression_vectors", "gene_to_fam", "family_directions", "angular_dispersions", "member_counts", "status", "relative_angular_deviations", "threshold", "is_outlier", "gene_status", "quantile_level", "min_angular_dispersion", "max_angular_dispersion", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_ANGLE_OUTLIERS_ARGUMENT_SOURCES = ("expression_vectors", "expression_vectors", "family_directions", None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_DETECT_ANGLE_OUTLIERS_ARGUMENT_SOURCES = ("expression_vectors", "expression_vectors", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.detect_angle_outliers_rap_c.restype = None
 _lib.detect_angle_outliers_rap_c.argtypes = (
@@ -221,7 +221,7 @@ _lib.detect_angle_outliers_rap_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_ANGLE_OUTLIERS_RAP_ARGUMENTS = ("n_genes", "n_families", "signed_angles", "gene_to_fam", "family_mean_angles", "angular_dispersions", "member_counts", "status", "relative_angular_deviations", "threshold", "is_outlier", "gene_status", "quantile_level", "min_angular_dispersion", "max_angular_dispersion", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_ANGLE_OUTLIERS_RAP_ARGUMENT_SOURCES = ("signed_angles", "family_mean_angles", None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_DETECT_ANGLE_OUTLIERS_RAP_ARGUMENT_SOURCES = ("signed_angles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def compute_family_direction(
         n_families,

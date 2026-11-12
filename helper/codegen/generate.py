@@ -20,7 +20,7 @@ from .diagnostics import DiagnosticBag
 from .emit.errors_python import PythonErrorEmitter
 from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
-from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+from .emit.fortran_wrapper import FortranWrapperEmitter, wrapper_info
 from .emit.name_clashes import check_wrapper_names
 from .emit.doc_links import LinkResolver, build as build_links
 from .emit.doc_tiers import build as build_tiers
@@ -178,20 +178,14 @@ def generate_and_write(
 def _fortran_files(
     project, synthesis: SynthesisResult, paths: Paths, conventions: Conventions
 ) -> list[GeneratedFile]:
-    emitter = FortranWrapperEmitter(
-        conventions, macros_header=str(paths.macros_header), project=project
-    )
-    generated = synthesis.generated_names
     # per generated module: what each wrapper needs beyond its own signature -- the
     # implementation it calls, and (for a per-mode wrapper) the mode it fixes
-    info: dict[str, dict[str, WrapperInfo]] = {}
-    for spec in synthesis.specs:
-        module_info = info.setdefault(spec.module_name, {})
-        for wrapper in (spec.validating, spec.allocating):
-            if wrapper is not None:
-                module_info[wrapper.name.lower()] = WrapperInfo(
-                    spec.impl.name, spec.mode_fix
-                )
+    info = wrapper_info(synthesis)
+    emitter = FortranWrapperEmitter(
+        conventions, macros_header=str(paths.macros_header), project=project,
+        wrapper_info=info,
+    )
+    generated = synthesis.generated_names
     files = []
     for module in project:
         if module.name not in generated:
