@@ -548,7 +548,8 @@ def _refuses_chaining(argument: Argument, consumer: Procedure, producer: Procedu
                 "formulas are monotone, so a buffer sized for the bound fits), or take the value "
                 "as an argument of the caller's"
                 + (" -- a required intent(inout) one, since the producer refines it in place"
-                   if producer.argument(supply.name).intent is Intent.INOUT else "")
+                   if fortran_calls and producer.argument(supply.name).intent is Intent.INOUT
+                   else "")
             ),
         )
         refused = True

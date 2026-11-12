@@ -707,13 +707,16 @@ class TestChainingIsRefused:
             procedure("capped_size", integer("cap", Intent.INOUT, doc="a cap it lowers"),
                       integer("sized", Intent.OUT, doc="a size"),
                       integer("ierr", Intent.OUT, doc="error")))
-        cons = self.consumer_of(("s0", "base_size", "base", []),
-                                ("s1", "capped_size", "sized", [("cap", "s0")]))
-        _, bag = analysed(sizes, cons)
+        clause = " -- a required intent(inout) one, since the producer refines it in place"
+        for binding in (False, True):
+            cons = self.consumer_of(("s0", "base_size", "base", []),
+                                    ("s1", "capped_size", "sized", [("cap", "s0")]),
+                                    binding=binding)
+            _, bag = analysed(sizes, cons)
 
-        [(_, note)] = self.chained(bag)
-        assert note.endswith(" -- a required intent(inout) one, since the producer refines it "
-                             "in place")
+            [(_, note)] = self.chained(bag)
+            # a requirement of the Fortran route only: Python and R adopt the refined value
+            assert note.endswith(clause) is not binding
 
     def test_one_given_what_it_fills_is_refused(self):
         _, bag = analysed(self.sizes(),
