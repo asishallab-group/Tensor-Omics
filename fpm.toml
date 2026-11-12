@@ -49,6 +49,11 @@ default.macos.link-time-flags = "-Wl,-dead_strip_dylibs"
 # 12-dimension sum of squares may no longer be split for vectorization).
 default.ifx.flags = "-assume protect_parens -fp-model precise"
 
+# gfortran must never get -ffast-math, -ffinite-math-only or -Ofast, here or through
+# --override-flags. They let it assume that no Inf or NaN exists, and it then folds ieee_is_nan and
+# ieee_is_finite to constants: the input validation stops rejecting NaN and Inf, and every other
+# test for an Inf or NaN result disappears, without a warning.
+
 [[test]]
 name = "run_tests"
 source-dir = "test"

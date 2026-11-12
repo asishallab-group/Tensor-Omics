@@ -18,9 +18,11 @@ module tox_normalization
     use tox_normalization_impl, only: normalize_by_std_dev_impl, normalize_unit_length_impl, quantile_normalization_impl, root_mean_sq_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_loess, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, map_err_arg_pos, set_err
+    use tox_errors, only: set_err_once, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
     use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
@@ -40,6 +42,13 @@ module tox_normalization
 contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_unit_length_impl]].
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    !| coordinates, and the vector's own length is never formed, so it does no harm that this
+    !| length can be subnormal or overflow, as it does for entries near the smallest normal number
+    !| (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    !| flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     pure subroutine normalize_unit_length(&
             vector,&
             n_dims,&
@@ -84,9 +93,8 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
+            !! Number of replicates per gene, the rows of `expr`
+            !! Must equal `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
@@ -96,6 +104,7 @@ contains
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+            !! The minimum valid value is `1_int32`.
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
@@ -130,11 +139,13 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
+        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_in_range_real(span, ierr, arg_pos=7_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=8_int32, min=0_int32, max=2_int32)
+        if (n_replicates /= (sum(reps_per_tissue))) call set_err_once(ierr, ERR_SIZE_MISMATCH, arg_pos=2_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=5_int32, min=1_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -143,8 +154,18 @@ contains
             max_neighborhood_size = n_genes,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                call map_err_arg_pos(ierr, 2_int32, 1_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_expr_copy(n_replicates, n_genes))
         M_ALLOCATE(tmp_loess_y(n_genes))
         M_ALLOCATE(tmp_indices_used(n_genes))
@@ -221,14 +242,13 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
+            !! Number of replicates per gene, the rows of `expr`
+            !! Must equal `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -237,7 +257,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -251,6 +271,7 @@ contains
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: tmp_expr_copy
             !! Work matrix the pipeline normalizes in place
         real(real64), dimension(n_genes), intent(out) :: tmp_loess_y
@@ -296,13 +317,15 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
+        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=12_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=14_int32)
         call validate_in_range_real(span, ierr, arg_pos=22_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=23_int32, min=0_int32, max=2_int32)
+        if (n_replicates /= (sum(reps_per_tissue))) call set_err_once(ierr, ERR_SIZE_MISMATCH, arg_pos=2_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=5_int32, min=1_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -339,9 +362,11 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalize_by_std_dev_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalize_by_std_dev_expert]] to prepare it yourself.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev(&
             n_genes,&
             n_replicates,&
@@ -402,8 +427,18 @@ contains
             max_neighborhood_size = n_genes,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                call map_err_arg_pos(ierr, 2_int32, 1_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_loess_x(n_genes))
         M_ALLOCATE(tmp_loess_y(n_genes))
         M_ALLOCATE(tmp_indices_used(n_genes))
@@ -448,9 +483,11 @@ contains
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_by_std_dev_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalize_by_std_dev]] does both.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_expert(&
             n_genes,&
             n_replicates,&
@@ -481,7 +518,7 @@ contains
             !! Number of replicates per gene
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -490,7 +527,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -581,6 +618,11 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    !| is; every other gene is divided by its root mean square, however small or large its values,
+    !| up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    !| fast floating-point model or by the host program, a gene made only of subnormals reads as
+    !| the zero gene.
     pure subroutine root_mean_sq_normalization(&
             n_genes,&
             n_replicates,&
@@ -619,7 +661,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization(&
             n_genes,&
             n_replicates,&
@@ -669,7 +715,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization_expert(&
             n_genes,&
             n_replicates,&
@@ -762,7 +812,6 @@ contains
     !| expression per gene.
     pure subroutine calc_tiss_avg(&
             n_genes,&
-            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
@@ -771,17 +820,13 @@ contains
         )
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
-        integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
-            !! The minimum valid value is `sum(reps_per_tissue)`.
-            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
+        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
             !! Gene Expression matrix
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
@@ -791,16 +836,14 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
-        call validate_dimension_size(n_tissues, ierr, arg_pos=3_int32)
-        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=5_int32)
+        call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_all_in_range_real(expr, (sum(reps_per_tissue)) * n_genes, ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
         call calc_tiss_avg_impl(&
             n_genes = n_genes,&
-            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&

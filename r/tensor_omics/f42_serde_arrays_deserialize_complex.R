@@ -6,17 +6,19 @@
 #' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a complex vector. Pre-allocated array to read the data into
 #' @export
 deserialize_complex_helper <- function(filename) {
-    filename <- .tox_as_character(filename, "filename")
-    .get_array_metadata_result <- get_array_metadata(filename = filename, dims_out_capacity = 5L)
+    filename <- .tox_as_string(filename, "filename")
+    .arguments <- c("arr", "n_elements", "arr_shape", "filename", "ierr")
+    .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)
+    .shapes <- c("n_elements", NA_character_, NA_character_, NA_character_, NA_character_)
+    .get_array_metadata_result <- tryCatch(get_array_metadata(filename = filename, dims_out_capacity = 5L), tox_error = function(e) .tox_consumer_error(e, c(filename = 4L), .arguments, .sources))
     arr_shape <- .get_array_metadata_result$dims_out
 
     .result <- .Call("deserialize_complex_helper_call", arr_shape, filename)
-    .arguments <- c("arr", "n_elements", "arr_shape", "filename", "ierr")
-    .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$arr
 }

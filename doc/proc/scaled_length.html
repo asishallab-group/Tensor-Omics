@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>calc_tiss_avg_helper &ndash; TensorOmics</title>
+    <title>scaled_length &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>calc_tiss_avg_helper
+    <h1>scaled_length
       <small>Subroutine</small>
       
     </h1>
@@ -85,26 +85,26 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">22 statements</a>
+                 title=" 0.1% of total for procedures.">14 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization_impl.F90"> Source File</a>
+              <a href="../src/f42_vector_impl.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_impl.f90.html'>tox_normalization_impl.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></li>
-            <li class="breadcrumb-item active" aria-current="page">calc_tiss_avg_helper</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_vector_impl.f90.html'>f42_vector_impl.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_vector_impl.html'>f42_vector_impl</a></li>
+            <li class="breadcrumb-item active" aria-current="page">scaled_length</li>
           </ol>
         </nav>
       </div>
@@ -151,13 +151,21 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)  
+    <h2>public pure subroutine scaled_length(n_dims, vector, exponent, scaled_norm)  
 </h2>
     
 
-    <p>(no input validation) Calculate tissue averages by averaging replicates within each group.
-For each group of tissue replicates, this subroutine computes the average
-expression per gene.</p>
+    <p>Length of a vector in scaled coordinates: <code>scaled_norm</code> is the euclidean length of
+<code>scale(vector, exponent)</code>, and <code>scale(scaled_norm, -exponent)</code> the vector's own length. The
+exponent comes from <a href="../proc/scaling_exponent.html">scaling_exponent</a>, so it is 0 for
+ordinary data, and the sum of squares overflows or underflows for no finite vector.</p>
+<p><code>scale(vector(i), exponent)/scaled_norm</code> is the unit vector's component. Computed that way,
+it never passes through the vector's length itself, which may overflow or be subnormal.
+<code>scaled_norm</code> is exactly 0 for the zero vector, and positive for every other one -- but see
+the next paragraph for a vector made only of subnormal numbers.</p>
+<p>An input made only of subnormal numbers can give different results in builds that flush
+subnormals to zero (a fast floating-point model, or a host program that sets flush-to-zero or
+denormals-are-zero): there it reads as the zero vector, with a <code>scaled_norm</code> of 0.</p>
 
 
     <h3>Arguments</h3>
@@ -173,7 +181,7 @@ expression per gene.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~105"></span>
+              <span class="anchor" id="variable-n_dims~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -181,70 +189,55 @@ expression per gene.</p>
               
             </td>
             <td>::</td>
-            <td><strong>n_genes</strong></td>
+            <td><strong>n_dims</strong></td>
             <td>
-                <p>Number of genes (rows)</p>
+                <p>Number of elements in <code>vector</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~21"></span>
+              <span class="anchor" id="variable-vector~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>vector</strong></td>
+            <td>
+                <p>The vector, of any finite magnitude</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-exponent~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>n_tissues</strong></td>
+            <td><strong>exponent</strong></td>
             <td>
-                <p>Number of tissues</p>
+                <p>Power of two the vector is scaled by before its length is taken; meaningless for
+the zero vector</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-reps_per_tissue~9"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_tissues)
-            </td>
-            <td>::</td>
-            <td><strong>reps_per_tissue</strong></td>
-            <td>
-                <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expr~37"></span>
+              <span class="anchor" id="variable-scaled_norm~4"></span>
               real(kind=real64),
             </td>
-<td>intent(in),</td>
+<td>intent(out)</td>
               <td></td>            <td>
-              dimension(sum(reps_per_tissue), n_genes)
+              
             </td>
             <td>::</td>
-            <td><strong>expr</strong></td>
+            <td><strong>scaled_norm</strong></td>
             <td>
-                <p>Gene Expression matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tissue_averages~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_tissues, n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tissue_averages</strong></td>
-            <td>
-                <p>Tissue averages per gene</p>
+                <p>Euclidean length of <code>scale(vector, exponent)</code>; exactly 0 for the zero vector</p>
             </td>
         </tr>
     </tbody>
@@ -281,7 +274,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>
