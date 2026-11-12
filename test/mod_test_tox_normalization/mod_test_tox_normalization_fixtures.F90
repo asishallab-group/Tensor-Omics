@@ -1,11 +1,21 @@
 !> Shared data for the tox_normalization suites: a matrix whose genes lie exactly on a linear
 !| mean-sd trend. LOESS reproduces a straight line exactly, so normalizing by the fitted sd has a
 !| closed form, and the LOESS-based cases can compare against hand-derived values.
+!|
+!| Also subnormal inputs, and whether this build flushes them to zero. A subnormal is built from
+!| its bits at run time: computed (0.9*tiny) it is already 0 where results are flushed, and as a
+!| compile-time constant the compiler may fold whatever uses it.
 module mod_test_tox_normalization_fixtures
-    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_fortran_env, only: real64, int32, int64
     implicit none
     private
     public :: fill_linear_trend, linear_trend_offset, linear_trend_sd
+    public :: subnormal_from_bits, flushes_subnormals, SMALLEST_SUBNORMAL_BITS, NINE_TENTHS_OF_TINY_BITS
+
+    integer(int64), parameter :: SMALLEST_SUBNORMAL_BITS = 1_int64
+        !! Bits of the smallest positive subnormal, 2**-1074, about 4.94e-324
+    integer(int64), parameter :: NINE_TENTHS_OF_TINY_BITS = int(z'000E666666666666', int64)
+        !! Bits of the subnormal nearest to 0.9*tiny, about 2.0e-308
 
 contains
 
@@ -46,5 +56,24 @@ contains
             end do
         end do
     end subroutine fill_linear_trend
+
+    !> The real64 whose bits are `bits`, read at run time through a volatile copy, so that no
+    !| compiler can fold a subnormal input or what is computed from it.
+    real(real64) function subnormal_from_bits(bits)
+        integer(int64), intent(in) :: bits
+            !! IEEE 754 binary64 bit pattern
+
+        integer(int64), volatile :: runtime_bits
+
+        runtime_bits = bits
+        subnormal_from_bits = transfer(runtime_bits, 1.0_real64)
+    end function subnormal_from_bits
+
+    !> Whether this build reads subnormal inputs as zero (denormals-are-zero, as a fast floating-
+    !| point model or the host program may set): the smallest subnormal times 2**600, which is
+    !| about 2e-143 exactly, then comes out as 0.
+    logical function flushes_subnormals()
+        flushes_subnormals = subnormal_from_bits(SMALLEST_SUBNORMAL_BITS)*2.0_real64**600 == 0.0_real64
+    end function flushes_subnormals
 
 end module mod_test_tox_normalization_fixtures

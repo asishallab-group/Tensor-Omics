@@ -16,10 +16,11 @@ module tox_get_outliers
     use tox_get_outliers_impl, only: detect_outliers_impl, identify_outliers_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
+    use tox_loess, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
-    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
-    use tox_errors, only: validate_dimension_size, validate_in_range_real
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_once
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -65,11 +66,15 @@ contains
         real(real64), dimension(n_families), intent(out) :: dscale
             !! Array of scaling factors per family (output)
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: indices_used
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         real(real64), intent(in), optional :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
@@ -80,6 +85,8 @@ contains
         integer(int32), intent(in), optional :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(int32), intent(in), optional :: mode
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
@@ -119,6 +126,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(span, ierr, arg_pos=9_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=10_int32, min=0_int32, max=2_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
         if (is_err(ierr)) return
 #endif
@@ -128,8 +136,18 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -222,7 +240,7 @@ contains
             !! Total number of gene families
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -231,7 +249,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -247,11 +265,15 @@ contains
         real(real64), dimension(n_families), intent(out) :: dscale
             !! Array of scaling factors per family (output)
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: indices_used
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         integer(int32), dimension(n_genes), intent(out) :: tmp_perm
             !! Permutation array for sorting gene distances
         integer(int32), dimension(n_genes), intent(out) :: tmp_stack_left
@@ -288,6 +310,8 @@ contains
         integer(int32), intent(in), optional :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(int32), intent(in), optional :: mode
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
@@ -315,6 +339,7 @@ contains
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=13_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=15_int32)
         call validate_in_range_real(span, ierr, arg_pos=24_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=25_int32, min=0_int32, max=2_int32)
         call validate_all_in_range_real(tmp_diagl, n_families, ierr, arg_pos=16_int32)
         call validate_all_in_range_real(tmp_eval_points, n_families * 1, ierr, arg_pos=18_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=26_int32); end if
@@ -482,8 +507,8 @@ contains
             perm,&
             is_outlier,&
             threshold,&
-            quantile,&
-            percentile,&
+            tail_probability,&
+            quantile_level,&
             ierr&
         )
         integer(int32), intent(in) :: n_genes
@@ -502,13 +527,13 @@ contains
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
+            !! upper-tail probability is used.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -518,7 +543,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -529,8 +554,8 @@ contains
             perm = perm,&
             is_outlier = is_outlier,&
             threshold = threshold,&
-            quantile = quantile,&
-            percentile = percentile&
+            tail_probability = tail_probability,&
+            quantile_level = quantile_level&
         )
     end subroutine identify_outliers
 
@@ -548,9 +573,9 @@ contains
             loess_x,&
             loess_y,&
             loess_n,&
-            quantile,&
-            ierr,&
-            percentile&
+            tail_probability,&
+            quantile_level,&
+            ierr&
         )
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -565,23 +590,27 @@ contains
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: loess_n
-            !! Indices of reference points used for smoothing.
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
-        integer(int32), intent(out) :: ierr
-            !! Error code
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+            !! upper-tail probability is used.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        integer(int32), intent(out) :: ierr
+            !! Error code
         integer(int32), dimension(:), allocatable :: tmp_perm
         integer(int32), dimension(:), allocatable :: tmp_stack_left
         integer(int32), dimension(:), allocatable :: tmp_stack_right
@@ -609,7 +638,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=11_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -618,8 +647,18 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -670,9 +709,9 @@ contains
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
-            quantile = quantile,&
-            ierr = ierr,&
-            percentile = percentile&
+            tail_probability = tail_probability,&
+            quantile_level = quantile_level,&
+            ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
     end subroutine detect_outliers
@@ -713,9 +752,9 @@ contains
             loess_x,&
             loess_y,&
             loess_n,&
-            quantile,&
-            ierr,&
-            percentile&
+            tail_probability,&
+            quantile_level,&
+            ierr&
         )
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -723,7 +762,7 @@ contains
             !! Total number of gene families
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -732,7 +771,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -788,23 +827,27 @@ contains
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: loess_n
-            !! Indices of reference points used for smoothing.
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
-        integer(int32), intent(out) :: ierr
-            !! Error code
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+            !! upper-tail probability is used.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -812,7 +855,7 @@ contains
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=33_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=32_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -847,9 +890,9 @@ contains
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
-            quantile = quantile,&
-            ierr = ierr,&
-            percentile = percentile&
+            tail_probability = tail_probability,&
+            quantile_level = quantile_level,&
+            ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
     end subroutine detect_outliers_expert

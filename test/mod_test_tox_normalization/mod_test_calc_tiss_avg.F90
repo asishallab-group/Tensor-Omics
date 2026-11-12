@@ -15,7 +15,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_calc_tiss_avg() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(10))
+    allocate(all_tests(9))
 
     all_tests(1) = test_case("test_calc_tiss_avg_three_tissues", test_calc_tiss_avg_three_tissues)
     all_tests(2) = test_case("test_calc_tiss_avg_single_tissue", test_calc_tiss_avg_single_tissue)
@@ -23,11 +23,9 @@ contains
     all_tests(4) = test_case("test_calc_tiss_avg_single_replicate", test_calc_tiss_avg_single_replicate)
     all_tests(5) = test_case("test_calc_tiss_avg_magnitudes_and_signs", test_calc_tiss_avg_magnitudes_and_signs)
     all_tests(6) = test_case("test_calc_tiss_avg_reps_bounds", test_calc_tiss_avg_reps_bounds)
-    all_tests(7) = test_case("test_calc_tiss_avg_reps_not_summing_to_the_replicates", &
-                             test_calc_tiss_avg_reps_not_summing_to_the_replicates)
-    all_tests(8) = test_case("test_calc_tiss_avg_dimensions", test_calc_tiss_avg_dimensions)
-    all_tests(9) = test_case("test_calc_tiss_avg_rejects_nan_and_inf", test_calc_tiss_avg_rejects_nan_and_inf)
-    all_tests(10) = test_case("test_calc_tiss_avg_extreme_magnitudes", test_calc_tiss_avg_extreme_magnitudes)
+    all_tests(7) = test_case("test_calc_tiss_avg_dimensions", test_calc_tiss_avg_dimensions)
+    all_tests(8) = test_case("test_calc_tiss_avg_rejects_nan_and_inf", test_calc_tiss_avg_rejects_nan_and_inf)
+    all_tests(9) = test_case("test_calc_tiss_avg_extreme_magnitudes", test_calc_tiss_avg_extreme_magnitudes)
   end function get_all_tests_calc_tiss_avg
 
   !> An average is never larger than its largest value, so it must not overflow where the sum
@@ -44,7 +42,7 @@ contains
     reps_per_tissue = [2]
     expected(1, :) = [huge(1d0), 0.75d0*huge(1d0)]
 
-    call calc_tiss_avg(2, 2, 1, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(2, 1, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_extreme_magnitudes: ierr")
     call assert_equal_array_real(averages, expected, 2, 0d0, "test_calc_tiss_avg_extreme_magnitudes: averages of huge values")
   end subroutine test_calc_tiss_avg_extreme_magnitudes
@@ -63,7 +61,7 @@ contains
     expected(:, 1) = [2d0, 3.5d0, 5d0]
     expected(:, 2) = [8d0, 9.5d0, 11d0]
 
-    call calc_tiss_avg(2, 6, 3, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(2, 3, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_three_tissues: ierr")
     call assert_equal_array_real(averages, expected, 6, 0d0, "test_calc_tiss_avg_three_tissues: averages")
   end subroutine test_calc_tiss_avg_three_tissues
@@ -81,7 +79,7 @@ contains
     reps_per_tissue = [2]
     expected(1, :) = [2.5d0, 3.5d0, 4.5d0]
 
-    call calc_tiss_avg(3, 2, 1, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(3, 1, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_single_tissue: ierr")
     call assert_equal_array_real(averages, expected, 3, 0d0, "test_calc_tiss_avg_single_tissue: averages")
   end subroutine test_calc_tiss_avg_single_tissue
@@ -100,7 +98,7 @@ contains
     expected(:, 1) = [2d0, 7d0, 12d0]
     expected(:, 2) = [3d0, 8d0, 13d0]
 
-    call calc_tiss_avg(2, 7, 3, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(2, 3, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_unequal_replicates: ierr")
     ! A few ulps: an optimizer may divide by 3 as a multiplication with the rounded 1/3 (ifx does),
     ! which the tissues of 2 replicates never see, 1/2 being exact.
@@ -117,7 +115,7 @@ contains
     expr(:, 2) = [4d0, 5d0, 6d0]
     reps_per_tissue = [1, 1, 1]
 
-    call calc_tiss_avg(2, 3, 3, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(2, 3, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_single_replicate: ierr")
     call assert_equal_array_real(averages, expr, 6, 0d0, "test_calc_tiss_avg_single_replicate: must equal the input")
   end subroutine test_calc_tiss_avg_single_replicate
@@ -138,7 +136,7 @@ contains
     expected(:, 2) = [1.000001d9, 1.000001d15]
     expected(:, 3) = [-2d0, 0d0]
 
-    call calc_tiss_avg(3, 4, 2, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(3, 2, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_magnitudes_and_signs: ierr")
     call assert_equal_array_real(averages, expected, 6, 0d0, "test_calc_tiss_avg_magnitudes_and_signs: averages")
   end subroutine test_calc_tiss_avg_magnitudes_and_signs
@@ -153,36 +151,15 @@ contains
     expr = 1d0
 
     reps_per_tissue = [2, 0]
-    call calc_tiss_avg(1, 2, 2, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(1, 2, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_reps_bounds: a tissue with 0 replicates")
 
     reps_per_tissue = [-1, 3]
-    call calc_tiss_avg(1, 2, 2, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(1, 2, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_reps_bounds: a tissue with -1 replicates")
   end subroutine test_calc_tiss_avg_reps_bounds
 
-  !> The replicates must add up to the rows of `expr`. Fewer would shift every gene after the
-  !| first onto the wrong rows; more would read past the end of the matrix.
-  subroutine test_calc_tiss_avg_reps_not_summing_to_the_replicates()
-    integer(int32) :: ierr
-    integer(int32), dimension(2) :: reps_per_tissue
-    real(real64), dimension(6, 2) :: expr
-    real(real64), dimension(2, 2) :: averages
-
-    expr = 1d0
-
-    reps_per_tissue = [3, 2]
-    call calc_tiss_avg(2, 6, 2, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "reps [3, 2] sum to 5, but expr has 6 rows")
-    reps_per_tissue = [3, 4]
-    call calc_tiss_avg(2, 6, 2, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "reps [3, 4] sum to 7, but expr has 6 rows")
-  end subroutine test_calc_tiss_avg_reps_not_summing_to_the_replicates
-
-  !> Each dimension on its own. n_genes = 0 is ERR_EMPTY_INPUT and a negative one ERR_INVALID_INPUT.
-  !| n_replicates is checked against sum(reps_per_tissue) instead of as a dimension (DM_MIN/DM_MAX,
-  !| until #203), so n_replicates = 0 is ERR_INVALID_INPUT, and so is n_tissues = 0: its empty sum
-  !| is 0, which n_replicates misses before n_tissues' own check runs.
+  !> Each dimension on its own: 0 is ERR_EMPTY_INPUT and a negative one ERR_INVALID_INPUT.
   subroutine test_calc_tiss_avg_dimensions()
     integer(int32) :: ierr
     integer(int32), dimension(1) :: reps_per_tissue
@@ -191,13 +168,11 @@ contains
     expr = 1d0
     reps_per_tissue = [1]
 
-    call calc_tiss_avg(0, 1, 1, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(0, 1, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_calc_tiss_avg_dimensions: n_genes = 0")
-    call calc_tiss_avg(1, 0, 1, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_dimensions: n_replicates = 0")
-    call calc_tiss_avg(1, 1, 0, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_dimensions: n_tissues = 0")
-    call calc_tiss_avg(-1, 1, 1, reps_per_tissue, expr, averages, ierr)
+    call calc_tiss_avg(1, 0, reps_per_tissue, expr, averages, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_calc_tiss_avg_dimensions: n_tissues = 0")
+    call calc_tiss_avg(-1, 1, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_dimensions: n_genes = -1")
   end subroutine test_calc_tiss_avg_dimensions
 
@@ -215,7 +190,7 @@ contains
 
     do i_bad = 1, size(bad)
       expr(1, 1) = bad(i_bad)
-      call calc_tiss_avg(2, 6, 2, reps_per_tissue, expr, averages, ierr)
+      call calc_tiss_avg(2, 2, reps_per_tissue, expr, averages, ierr)
       call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
                             "test_calc_tiss_avg_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
     end do

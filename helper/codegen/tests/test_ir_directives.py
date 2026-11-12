@@ -19,6 +19,7 @@ from codegen.ir.directives import (
     DirectiveError,
     DirectiveParser,
     Directives,
+    Equals,
     Maximum,
     Minimum,
     OutputFrom,
@@ -217,6 +218,52 @@ class TestRange:
     def test_duplicate_minimum_is_rejected(self, macros, parser):
         with pytest.raises(DirectiveError, match="duplicate DM_MIN directive"):
             parser.parse(documented(macros, "DM_MIN(1)", "DM_MIN(2)"))
+
+
+class TestEquals:
+    """`DM_EQUALS(EXPR)`: an integer that must equal what `EXPR` computes (#203)."""
+
+    @pytest.mark.parametrize(
+        "expression",
+        ["sum(reps_per_tissue)", "product(arr_shape(2:))", "sum(x(:, 1)) + max(1_int32, 2_int32)",
+         "size(x, dim=2, kind=int32)", "merge(a, b, c > 0_int32 .or. d <= 1_int32)"],
+    )
+    def test_the_expression_is_captured_verbatim(self, macros, parser, expression):
+        directives = parser.parse(documented(macros, f"DM_EQUALS({expression})"))
+
+        assert directives.equals == Equals(expression, line_number=None)
+
+    def test_it_documents_itself_in_fortran(self, macros):
+        # the sentence Ford, the C wrapper and an argument's own Python/R doc carry
+        assert macros.expand("DM_EQUALS(sum(reps_per_tissue))").strip() == (
+            "Must equal `sum(reps_per_tissue)`."
+        )
+
+    def test_prose_after_it_stays_out_of_the_expression(self, macros, parser):
+        line = macros.expand("DM_EQUALS(sum(counts))") + " Same as `n_total`."
+
+        assert parser.parse(Doc.parse([line])).equals.expression == "sum(counts)"
+
+    def test_it_is_not_a_range(self, macros, parser):
+        # a range replaces an extent's dimension check; an equality comes on top of it
+        directives = parser.parse(documented(macros, "DM_EQUALS(sum(counts))"))
+
+        assert not directives.has_range
+        assert directives.equals in directives.all
+
+    def test_a_duplicate_is_rejected_by_its_name(self, macros, parser):
+        with pytest.raises(DirectiveError, match="duplicate DM_EQUALS directive"):
+            parser.parse(documented(macros, "DM_EQUALS(n_a)", "DM_EQUALS(n_b)"))
+
+    def test_a_header_without_it_is_rejected(self, tmp_path, macros):
+        text = (REPO_ROOT / "src/macros.h").read_text()
+        header = tmp_path / "macros.h"
+        header.write_text("\n".join(
+            line for line in text.splitlines() if not line.startswith("#define DM_EQUALS")
+        ))
+
+        with pytest.raises(MissingMacroError, match=r"does not define: DM_EQUALS$"):
+            build_directive_patterns(MacroTable(header, include_paths=(REPO_ROOT,)))
 
 
 class TestFiniteness:

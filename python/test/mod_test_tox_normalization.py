@@ -26,6 +26,8 @@ from tensor_omics.error_handling import (
     ERR_DIVISION_BY_ZERO,
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
+    ERR_SIZE_MISMATCH,
+    ToxError,
 )
 
 N_REPLICATES, N_GENES = 6, 10
@@ -54,6 +56,15 @@ def test_normalize_unit_length():
     assert np.isclose(np.linalg.norm(vector), 1.0), "the caller's array was not normalized in place"
 
 
+def test_normalize_unit_length_smallest_subnormal():
+    # [s, s] for the smallest subnormal s still has a direction; the values themselves are the
+    # Fortran suite's job
+    smallest_subnormal = np.nextafter(0.0, 1.0)
+    vector = np.array([smallest_subnormal, smallest_subnormal], dtype=np.float64)
+    normalize_unit_length(vector)
+    assert np.all(np.isfinite(vector)), "non-finite values in the result"
+
+
 def test_normalize_unit_length_rejects_zero_vector():
     assert_error(lambda: normalize_unit_length(np.zeros(3, dtype=np.float64)),
                  "a zero vector has no direction", ERR_DIVISION_BY_ZERO)
@@ -72,7 +83,25 @@ def test_normalization_pipeline():
 
 def test_normalization_pipeline_rejects_reps_not_summing_to_the_replicates():
     assert_error(lambda: normalization_pipeline(_expr(), np.array([3, 2], dtype=np.int32)),
-                 "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_INVALID_INPUT)
+                 "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_SIZE_MISMATCH)
+    try:
+        normalization_pipeline(_expr(), np.array([3, 2], dtype=np.int32))
+    except ToxError as error:
+        # the message says what the hidden n_replicates had to equal, and blames the array
+        # it is read off
+        assert error.argument == "expr", error.argument
+        assert str(error).endswith(
+            "(argument 'expr', via 'n_replicates'); 'n_replicates' must equal sum(reps_per_tissue)"
+        ), str(error)
+
+
+def test_normalization_pipeline_checks_the_counts():
+    # a count below one is reps_per_tissue's own error, though [5, -3] sums to the two rows
+    assert_error(lambda: normalization_pipeline(_expr()[:2], np.array([5, -3], dtype=np.int32)),
+                 "reps_per_tissue [5, -3] has a negative count", ERR_INVALID_INPUT)
+    # no tissues: an empty input, not a mismatch
+    assert_error(lambda: normalization_pipeline(_expr(), np.array([], dtype=np.int32)),
+                 "reps_per_tissue is empty", ERR_EMPTY_INPUT)
 
 
 def test_normalize_by_std_dev():
@@ -96,6 +125,14 @@ def test_quantile_normalization():
     assert set(result) == {"normalized_expr", "rank_means"}, f"unexpected keys {sorted(result)}"
     _assert_matrix(result["normalized_expr"], (N_REPLICATES, N_GENES), "normalized_expr")
     _assert_matrix(result["rank_means"], (N_GENES,), "rank_means")
+
+
+def test_quantile_normalization_near_huge():
+    # one replicate [1e308, 1e308], a tie near the largest float64; the values themselves are the
+    # Fortran suite's job
+    result = quantile_normalization(np.full((1, 2), 1e308, dtype=np.float64))
+    _assert_matrix(result["normalized_expr"], (1, 2), "normalized_expr")
+    _assert_matrix(result["rank_means"], (2,), "rank_means")
 
 
 def test_log2_transformation():
@@ -130,7 +167,7 @@ def test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates():
     # rows, 7 would read past the end of the matrix
     for reps_per_tissue in ([3, 2], [3, 4]):
         assert_error(lambda: calc_tiss_avg(np.array(reps_per_tissue, dtype=np.int32), _expr()),
-                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_INVALID_INPUT)
+                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_SIZE_MISMATCH)
 
 
 def test_calc_fchange():

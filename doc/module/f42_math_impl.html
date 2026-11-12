@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for modules and submodules.">142 statements</a>
+                 title=" 1.0% of total for modules and submodules.">193 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -166,10 +166,12 @@
       </a>
       <div id="funcs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_math_impl.html#proc-scaling_exponent">scaling_exponent</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-mean">mean</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-std_dev">std_dev</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-clamp_real">clamp_real</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-clamp_int">clamp_int</a>
+            <a class="list-group-item" href="../module/f42_math_impl.html#proc-log1p">log1p</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-below">below</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-above">above</a>
             <a class="list-group-item" href="../module/f42_math_impl.html#proc-is_close_default">is_close_default</a>
@@ -217,10 +219,10 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -338,7 +340,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val"></span>
+              <span class="anchor" id="variable-val~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -353,7 +355,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min_val~2"></span>
+              <span class="anchor" id="variable-min_val"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -368,7 +370,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_val~2"></span>
+              <span class="anchor" id="variable-max_val"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -416,7 +418,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~2"></span>
+              <span class="anchor" id="variable-val~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -431,7 +433,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min_val~3"></span>
+              <span class="anchor" id="variable-min_val~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -446,7 +448,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_val~3"></span>
+              <span class="anchor" id="variable-max_val~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -511,7 +513,7 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~3"></span>
+              <span class="anchor" id="variable-a"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -526,7 +528,7 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~3"></span>
+              <span class="anchor" id="variable-b"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -570,7 +572,7 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~4"></span>
+              <span class="anchor" id="variable-a~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -585,7 +587,7 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~4"></span>
+              <span class="anchor" id="variable-b~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -664,7 +666,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~3"></span>
+              <span class="anchor" id="variable-a"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -679,7 +681,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~3"></span>
+              <span class="anchor" id="variable-b"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -713,7 +715,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         <section>
           <h2>Functions</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-mean"></span> <h3>public pure function <a href='../proc/mean.html'>mean</a>(vec)  
+    <div class="card-header codesum"><span class="anchor" id="proc-scaling_exponent"></span> <h3>public pure function <a href='../proc/scaling_exponent.html'>scaling_exponent</a>(values) result(exponent)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -721,7 +723,12 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Calculates the arithmetic mean of vector</p>
+  <p>The power of two a set of values is scaled by, as <code>scale(value, exponent)</code>, before their sum
+or their sum of squares is formed, so that neither overflows nor underflows: 0 while the
+largest magnitude lies in <script type="math/tex">[2^{-470}, 2^{496}]</script>, so ordinary data is not scaled at all;
+<code>-600</code> above that range, and <code>600</code> below it, the zero set included. Scaling by a power of two
+is exact, and <code>scale(result, -exponent)</code> brings a sum, a mean or a length back to the values'
+own magnitude.</p><a href="../proc/scaling_exponent.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -736,7 +743,58 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~4"></span>
+              <span class="anchor" id="variable-values~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>values</strong></td>
+            <td>
+<p>The set of values, of any magnitude</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-mean"></span> <h3>public pure function <a href='../proc/mean.html'>mean</a>(vec)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculates the arithmetic mean of vector. The values are summed scaled by the power of two
+<a href="../proc/scaling_exponent.html">scaling_exponent</a> picks, so the sum overflows for no
+finite values: the mean of <code>[huge, huge, huge]</code> is <code>huge</code>. Ordinary data is summed unscaled.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -770,7 +828,15 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Calculates the standard deviation of vector, with or without Bessel's correction</p>
+  <p>Calculates the standard deviation of vector, with or without Bessel's correction, in the
+centered two-pass form: the mean first, then the squared distances from it. The mean is
+computed with the values scaled by the power of two
+<a href="../proc/scaling_exponent.html">scaling_exponent</a> picks for them, and the squares with the
+distances scaled once more, by the power of two picked for the largest distance. So no sum
+overflows for finite values, and the squares of distances far smaller than the values, as
+between distinct values close together, do not underflow even where the build flushes
+subnormal numbers to zero. The result is Inf only where the true spread exceeds <code>huge</code>, as
+Bessel's correction gives for <code>[huge, -huge]</code>.</p><a href="../proc/std_dev.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -785,7 +851,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~5"></span>
+              <span class="anchor" id="variable-vec~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -810,7 +876,8 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
             <td>::</td>
             <td><strong>do_bessel_correction</strong></td>
             <td>
-<p>Tells whether to apply the bessel's correction or not, default: <code>.false.</code></p><a href="../proc/std_dev.html#variable-do_bessel_correction" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>Tells whether to apply the bessel's correction or not, default: <code>.false.</code>. With
+<script type="math/tex">n = \texttt{size}(vec)</script> and <script type="math/tex">\bar{x} = \texttt{mean}(vec)</script>:</p><a href="../proc/std_dev.html#variable-do_bessel_correction" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
     </tbody>
@@ -849,7 +916,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val"></span>
+              <span class="anchor" id="variable-val~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -864,7 +931,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min_val~2"></span>
+              <span class="anchor" id="variable-min_val"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -879,7 +946,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_val~2"></span>
+              <span class="anchor" id="variable-max_val"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -928,7 +995,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~2"></span>
+              <span class="anchor" id="variable-val~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -943,7 +1010,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min_val~3"></span>
+              <span class="anchor" id="variable-min_val~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -958,7 +1025,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_val~3"></span>
+              <span class="anchor" id="variable-max_val~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -977,6 +1044,59 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <h4>
     Return Value
     <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-log1p"></span> <h3>public pure function <a href='../proc/log1p.html'>log1p</a>(x)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p><code>log(1 + x)</code>, accurate for tiny <code>x</code> as well. Forming <code>1 + x</code> first rounds away most digits of
+a tiny <code>x</code> -- <code>1 + 1e-15</code> is <code>1.00000000000000111</code> -- so <code>log(1 + x)</code> is 11% off there.
+Fortran has no <code>log1p</code> intrinsic. This takes the rounded <code>u = 1 + x</code> and corrects for the
+rounding it suffered, <code>log(u)*x/(u - 1)</code> (Goldberg, "What Every Computer Scientist Should Know
+About Floating-Point Arithmetic", Theorem 4), exact to a few ulps.</p><a href="../proc/log1p.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x~15"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>x</strong></td>
+            <td>
+<p>Argument, must be <code>&gt; -1</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>real(kind=real64)</small>
     </h4>
     
 
@@ -1007,7 +1127,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~5"></span>
+              <span class="anchor" id="variable-val~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1056,7 +1176,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~6"></span>
+              <span class="anchor" id="variable-val~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1105,7 +1225,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~3"></span>
+              <span class="anchor" id="variable-a"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1120,7 +1240,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~3"></span>
+              <span class="anchor" id="variable-b"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1165,7 +1285,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a~4"></span>
+              <span class="anchor" id="variable-a~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1180,7 +1300,7 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b~4"></span>
+              <span class="anchor" id="variable-b~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1399,7 +1519,7 @@ to compare on that domain's terms rather than the arithmetic's.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~3"></span>
+              <span class="anchor" id="variable-val~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1429,7 +1549,7 @@ to compare on that domain's terms rather than the arithmetic's.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-exponent"></span>
+              <span class="anchor" id="variable-exponent~10"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1444,7 +1564,7 @@ to compare on that domain's terms rather than the arithmetic's.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~132"></span>
+              <span class="anchor" id="variable-ierr~266"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1489,7 +1609,7 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~4"></span>
+              <span class="anchor" id="variable-val~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1519,7 +1639,7 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-exponent~2"></span>
+              <span class="anchor" id="variable-exponent~11"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1562,7 +1682,7 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>

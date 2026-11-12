@@ -126,6 +126,39 @@ class TestArgumentPositions:
         assert "(argument" not in str(excinfo.value)
 
 
+@pytest.fixture(scope="module")
+def sized(tmp_path_factory):
+    """An error module whose catalogue has ERR_SIZE_MISMATCH, imported."""
+    bag = DiagnosticBag()
+    source = b.module("tox_errors", parameters=(
+        code("ERR_INVALID_INPUT", 201, "invalid input arguments"),
+        code("ERR_SIZE_MISMATCH", 206, "Array size mismatch"),
+    ))
+    path = tmp_path_factory.mktemp("sized") / "error_handling.py"
+    path.write_text(PythonErrorEmitter(ErrorCatalogue.from_module(source, bag)).module())
+    spec = importlib.util.spec_from_file_location("error_handling_sized", path)
+    emitted = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(emitted)
+    return emitted
+
+
+class TestASizeMismatchStatesTheDeclaredShape:
+    """The C wrapper's ERR_SIZE_MISMATCH carries no text; the binding knows the declaration (#221)."""
+
+    def test_the_shape_follows_the_argument(self, sized):
+        with pytest.raises(sized.ToxInputError) as caught:
+            sized.check_err_code(10000 * 2 + 206, ("n", "x"), shapes=(None, "n + 1"))
+
+        assert str(caught.value) == (
+            "Array size mismatch (argument 'x'); 'x' is declared with shape (n + 1)")
+
+    def test_another_code_at_that_argument_is_left_alone(self, sized):
+        with pytest.raises(sized.ToxInputError) as caught:
+            sized.check_err_code(10000 * 2 + 201, ("n", "x"), shapes=(None, "n + 1"))
+
+        assert str(caught.value) == "invalid input arguments (argument 'x')"
+
+
 class TestExceptionHierarchy:
     @pytest.mark.parametrize(
         "code, expected",
@@ -151,6 +184,24 @@ class TestExceptionHierarchy:
 
     def test_they_are_runtime_errors(self, module):
         assert issubclass(module.ToxError, RuntimeError)
+
+    def test_a_binding_refusal_is_an_input_error_without_a_code(self, module):
+        # the binding's own refusals carry no tox code, as on main, and stay catchable as the
+        # TypeError / ValueError they used to be (#221)
+        error = module.ToxArgumentError("'x' must have 1 dimension", argument="x")
+        assert isinstance(error, module.ToxInputError)
+        assert isinstance(error, TypeError) and isinstance(error, ValueError)
+        assert isinstance(error, RuntimeError)
+        assert (error.code, error.name, error.argument) == (None, None, "x")
+        assert str(error) == "'x' must have 1 dimension"
+
+    def test_a_catalogue_without_input_codes_still_has_the_argument_error(self):
+        # every generated binding imports it, so it cannot depend on the catalogue
+        bag = DiagnosticBag()
+        source = b.module("tox_errors", parameters=(code("ERR_FILE_OPEN", 101, "no file"),))
+        text = PythonErrorEmitter(ErrorCatalogue.from_module(source, bag)).module()
+
+        assert "class ToxArgumentError(ToxError, TypeError, ValueError):" in text
 
     def test_only_the_groups_present_get_a_class(self, tmp_path):
         bag = DiagnosticBag()
@@ -209,3 +260,54 @@ class TestAgainstTheRealCatalogue:
 
         with pytest.raises(module.ToxError, match="null pointer dereference"):
             module.check_err_code(module.ERR_POINTER_NULL)
+
+
+class TestAProducersErrorInItsConsumersWords:
+    """`_consumer_error`: a DM_OUTPUT_FROM producer's error, raised again by the function that
+    called it, naming that function's argument -- the one the caller actually wrote."""
+
+    def producer_error(self, module, ierr, arguments):
+        try:
+            module.check_err_code(ierr, arguments=arguments)
+        except module.ToxError as error:
+            return error
+        raise AssertionError("the producer did not raise")
+
+    def test_the_argument_that_supplied_it_is_named(self, module):
+        # the producer's `factor` (its 2nd) is the consumer's `scale` (its 3rd)
+        error = self.producer_error(module, 10000 * 2 + 201, ("n_items", "factor"))
+
+        again = module._consumer_error(error, {"n_items": 1, "factor": 3},
+                                      ("n_items", "x", "scale", "ierr"))
+
+        assert type(again) is type(error)
+        assert (again.code, again.argument) == (201, "scale")
+        assert str(again) == "invalid input arguments (argument 'scale')"
+
+    def test_a_derived_argument_is_named_by_what_the_caller_passed(self, module):
+        error = self.producer_error(module, 10000 * 1 + 201, ("n_items", "factor"))
+
+        # the consumer's `n_items` is read off its `x`
+        again = module._consumer_error(error, {"n_items": 1}, ("n_items", "x", "ierr"),
+                                      ("x", None, None))
+
+        assert again.argument == "x"
+        assert str(again).endswith("(argument 'x', via 'n_items')")
+
+    def test_an_input_nothing_the_caller_passed_supplied_names_no_argument(self, module):
+        # a constant the consumer's table gave the producer
+        error = self.producer_error(module, 10000 * 2 + 201, ("n_items", "factor"))
+
+        again = module._consumer_error(error, {"n_items": 1}, ("n_items", "x", "ierr"))
+
+        assert again.argument is None
+        assert str(again) == "invalid input arguments"
+
+    def test_a_refusal_by_the_producer_s_binding_keeps_its_class_and_message(self, module):
+        error = module.ToxArgumentError("'factor' must be an integer", argument="factor")
+
+        again = module._consumer_error(error, {"factor": 3}, ("n_items", "x", "scale", "ierr"))
+
+        assert type(again) is module.ToxArgumentError
+        assert (again.code, again.argument, str(again)) == (
+            None, "scale", "'factor' must be an integer")

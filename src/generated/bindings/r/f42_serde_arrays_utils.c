@@ -3,50 +3,50 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void get_array_metadata_c(const char*, const int*, int*, const int*, int*, int*, int*);
 
 SEXP get_array_metadata_call(SEXP filename, SEXP dims_out_capacity) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int filename_strlen = tox_max_strlen(filename);
 
     // scalar inputs, pulled from their length-1 vectors
-    int dims_out_capacity_v = Rf_asInteger(dims_out_capacity);
+    int _v_dims_out_capacity = Rf_asInteger(dims_out_capacity);
 
     // convert what Fortran cannot take from R directly
-    char* filename_c = tox_char_in(filename, filename_strlen);
+    char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
-    SEXP dims_out = PROTECT(Rf_allocVector(INTSXP, dims_out_capacity_v)); nprot++;
+    SEXP dims_out = PROTECT(Rf_allocVector(INTSXP, _v_dims_out_capacity)); _nprot++;
     int ndims = 0;
     int type_code = 0;
     int ierr = 0;
 
     get_array_metadata_c(
-        filename_c,
+        _c_filename,
         &filename_strlen,
         INTEGER(dims_out),
-        &dims_out_capacity_v,
+        &_v_dims_out_capacity,
         &ndims,
         &type_code,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, dims_out);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ndims));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(type_code));
     SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("dims_out"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ndims"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("type_code"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 

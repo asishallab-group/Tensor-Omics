@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.9% of total for procedures.">159 statements</a>
+                 title=" 0.8% of total for procedures.">159 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -182,7 +182,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~36"></span>
+              <span class="anchor" id="variable-n_genes~99"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -197,7 +197,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_replicates~2"></span>
+              <span class="anchor" id="variable-n_replicates~16"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -207,12 +207,13 @@
             <td>::</td>
             <td><strong>n_replicates</strong></td>
             <td>
-                <p>Number of replicates per gene</p>
+                <p>Number of replicates per gene, the rows of <code>expr</code>
+Must equal <code>sum(reps_per_tissue)</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~4"></span>
+              <span class="anchor" id="variable-expr~29"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -222,14 +223,12 @@
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-                <p>Gene Expression matrix
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+                <p>Gene Expression matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-log_transformed_expr~2"></span>
+              <span class="anchor" id="variable-log_transformed_expr~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -244,7 +243,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-reps_per_tissue~2"></span>
+              <span class="anchor" id="variable-reps_per_tissue~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -255,12 +254,13 @@ Infinite values are permitted for this value.</p>
             <td><strong>reps_per_tissue</strong></td>
             <td>
                 <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.</p>
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+The minimum valid value is <code>1_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~6"></span>
+              <span class="anchor" id="variable-n_tissues~18"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -275,7 +275,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_expr_copy"></span>
+              <span class="anchor" id="variable-tmp_expr_copy~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -290,7 +290,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_loess_y"></span>
+              <span class="anchor" id="variable-tmp_loess_y~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -305,7 +305,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_indices_used"></span>
+              <span class="anchor" id="variable-tmp_indices_used~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -320,7 +320,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_yhat_global"></span>
+              <span class="anchor" id="variable-tmp_yhat_global~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -335,7 +335,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~9"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~24"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -350,7 +350,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the firs
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~9"></span>
+              <span class="anchor" id="variable-int_workspace_size~30"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -388,7 +388,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~9"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~24"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -403,7 +403,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~9"></span>
+              <span class="anchor" id="variable-real_workspace_size~30"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -441,7 +441,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~7"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -456,7 +456,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_loess_weights"></span>
+              <span class="anchor" id="variable-tmp_loess_weights~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -471,7 +471,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~3"></span>
+              <span class="anchor" id="variable-tmp_eval_points~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -486,7 +486,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~6"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~20"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -501,7 +501,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~6"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~20"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -516,7 +516,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~6"></span>
+              <span class="anchor" id="variable-tmp_residuals~20"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -531,7 +531,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~6"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -546,7 +546,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~11"></span>
+              <span class="anchor" id="variable-span~25"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -557,12 +557,14 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
             <td><strong>span</strong></td>
             <td>
                 <p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.</p>
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~11"></span>
+              <span class="anchor" id="variable-degree~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -573,12 +575,14 @@ The default value is <code>0.7_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
                 <p>LOESS degree parameter.
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-use_quantile~2"></span>
+              <span class="anchor" id="variable-use_quantile~5"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -594,7 +598,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~152"></span>
+              <span class="anchor" id="variable-ierr~393"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -641,7 +645,7 @@ The default value is <code>.false.</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-11-12 21:22 +0000             </p>
           </div>
         </div>
         <br>
