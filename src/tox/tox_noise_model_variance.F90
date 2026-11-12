@@ -68,8 +68,18 @@ module noise_model_variance
                                  compute_pvalue, compute_gene_centres_helper, compute_log2fc_helper, &
                                  median_of_finite_helper, NOISE_LOG_OFFSET, &
                                  BETA_CENTRE_NONE, BETA_CENTRE_MEDIAN
+    ! The Monte Carlo difference-of-means null of the bootstrap model, reused as is.
+    use noise_model, only: compute_pvalue_bootstrap_mean_helper, RNG_BUFFER_MAX, N_BOOTSTRAP_DRAWS
+    use f42_utils, only: init_random, sort_real_heapsort_expl_size
     implicit none
 
+    integer(int32), parameter :: NULL_EXACT = 0_int32
+        !! `null_construction`: every case x control residual pair, scaled 1/sqrt(n) per
+        !! side, exact tail count (the exact model's null; default).
+    integer(int32), parameter :: NULL_BOOTSTRAP = 1_int32
+        !! `null_construction`: Monte Carlo difference of means -- `n_boot` draws of
+        !! n residuals per side from the (scaled) pools, averaged (the bootstrap
+        !! model's pooled null); p floor 1/(n_boot + 1).
     integer(int32), parameter :: VARIANCE_MODE_MEAN = 0_int32
         !! `variance_mode`: plain mean-matched kNN of the exact model.
     integer(int32), parameter :: VARIANCE_MODE_BAND = 1_int32
@@ -918,6 +928,67 @@ contains
     end subroutine gather_residuals_ellipse_helper
 
     ! =========================================================================
+    ! diagnostics: neighbour genes and expression spread
+    ! =========================================================================
+
+    !> The genes of a mean-mode pool, in the order `gather_residuals_helper` took
+    !| them (nearest mean first, own gene first). Replays its walk with the same
+    !| `find_closest_helper` / `choose_index`; the number of genes follows from the
+    !| pool size (every gene contributes `max_resid_per_gene` residuals; a pool cut
+    !| by `max_pool_size` counts its last gene). Writes original gene indices to
+    !| `ids(1:min(n, size(ids)))`; the rest is left untouched.
+    pure subroutine neighbour_genes_helper(target_mean, sorted_data, n_pool, ids)
+        real(real64), intent(in) :: target_mean
+        !! Mean the pool was gathered around
+        type(sorted_data_t), intent(in) :: sorted_data
+        !! Sorted structure of the side
+        integer(int32), intent(in) :: n_pool
+        !! Residuals in the pool
+        integer(int32), intent(inout) :: ids(:)
+        !! Output: original gene indices
+        integer(int32) :: n, j, pos, idx, left_cand, right_cand
+
+        n = min(int(size(ids), int32), (n_pool + sorted_data%max_resid_per_gene - 1) / sorted_data%max_resid_per_gene)
+        pos = find_closest_helper(target_mean, sorted_data%means_sorted, sorted_data%n_genes)
+        if (pos == 0 .or. n < 1) return
+        ids(1) = sorted_data%original_indices(pos)
+        left_cand = pos - 1
+        right_cand = pos + 1
+        do j = 2, n
+            call choose_index(sorted_data%means_sorted, sorted_data%n_genes, target_mean, idx, left_cand, right_cand)
+            ids(j) = sorted_data%original_indices(idx)
+        end do
+    end subroutine neighbour_genes_helper
+
+    !> Expression spread of a gene relative to its neighbourhood:
+    !| `(max(own) - min(own)) / (Q95(pool) - Q05(pool))`, nearest-rank quantiles,
+    !| -1 when the pool has no spread. `own` and `pool` must be on the same scale.
+    subroutine spread_helper(own, n_own, pool, n_pool, perm, spread)
+        integer(int32), intent(in) :: n_own
+        !! Own residuals
+        real(real64), intent(in) :: own(n_own)
+        !! The gene's residuals (both sides)
+        integer(int32), intent(in) :: n_pool
+        !! Pool residuals
+        real(real64), intent(in) :: pool(n_pool)
+        !! Neighbourhood residuals (both sides)
+        integer(int32), intent(inout) :: perm(:)
+        !! Work array, size >= n_pool
+        real(real64), intent(out) :: spread
+        !! Output: spread, or -1
+        integer(int32) :: i
+        real(real64) :: q05, q95
+
+        spread = -1.0_real64
+        if (n_pool < 2 .or. n_own < 2) return
+        perm(1:n_pool) = [(i, i = 1, n_pool)]
+        call sort_real_heapsort_expl_size(pool, perm(1:n_pool), n_pool)
+        q05 = pool(perm(1 + nint(0.05_real64 * real(n_pool - 1, real64))))
+        q95 = pool(perm(1 + nint(0.95_real64 * real(n_pool - 1, real64))))
+        if (q95 > q05) spread = (maxval(own) - minval(own)) / (q95 - q05)
+    end subroutine spread_helper
+
+    ! =========================================================================
     ! pipeline
     ! =========================================================================
 
@@ -938,6 +1009,14 @@ contains
     !| `n_accepted`, `radius`, `stop`); `s2s_pool` is 0 when no variance quantity is
     !| computed (`scaling = none` with mean mode or a raw band); `shrink_diag` is 0
     !| then. `match_u` is 0 in mean mode.
+    !|
+    !| Optional (all absent = the exact null, no diagnostics): `null_construction`
+    !| (`NULL_EXACT` / `NULL_BOOTSTRAP`) with `n_boot` draws (default
+    !| `N_BOOTSTRAP_DRAWS`; the RNG is seeded with 42 per call, the gene loop is
+    !| sequential); `expr_spread_own` (per gene, see `spread_helper`; own residuals
+    !| and pools as the test uses them, before the per-side 1/sqrt(n); -1 if not
+    !| computed); `neighbours_own_case` / `_control` (k_cap x n_genes, original gene
+    !| indices, 0-padded; MEAN MODE ONLY, zeros in the other modes).
     subroutine compute_noise_pvalue_pipeline_variance( &
         replicates_case, n_genes_case, n_replicates_case, &
         replicates_control, n_genes_control, n_replicates_control, &
@@ -952,7 +1031,8 @@ contains
         n_accepted_own_case, n_accepted_own_control, &
         radius_own_case, radius_own_control, stop_own_case, stop_own_control, &
         match_u, s2s_pool, tau_var, scatter, shrink_diag, n_floored, ierr, &
-        lambda_fixed, target_fixed)
+        lambda_fixed, target_fixed, null_construction, n_boot, expr_spread_own, &
+        neighbours_own_case, neighbours_own_control)
 
         integer(int32), intent(in) :: n_genes_case
         !! Number of genes in the case group
@@ -1069,6 +1149,16 @@ contains
         !! Tests only: fixed lambda for all shrinkages
         real(real64), intent(in), optional :: target_fixed
         !! Tests only: fixed constant shrinkage target
+        integer(int32), intent(in), optional :: null_construction
+        !! `NULL_EXACT` (default) or `NULL_BOOTSTRAP`
+        integer(int32), intent(in), optional :: n_boot
+        !! Bootstrap draws per gene (>= 1; default `N_BOOTSTRAP_DRAWS`)
+        real(real64), dimension(:), intent(out), optional :: expr_spread_own
+        !! Output: expression spread per gene (size n_genes; -1 if not computed)
+        integer(int32), dimension(:, :), intent(out), optional :: neighbours_own_case
+        !! Output: case neighbour genes (k_cap x n_genes; mean mode; 0-padded)
+        integer(int32), dimension(:, :), intent(out), optional :: neighbours_own_control
+        !! Output: control neighbour genes (k_cap x n_genes; mean mode; 0-padded)
 
         type(sorted_data_t) :: sorted_case, sorted_control
         real(real64), allocatable :: means_case(:), means_control(:), centres_control(:)
@@ -1080,6 +1170,9 @@ contains
         integer(int32) :: n_pool_case, n_pool_control, n_gp_case, n_gp_control
         real(real64) :: scale_case, scale_control, mad
         logical :: need_vars, band_like
+        integer(int32) :: null_c, nb, per_iter
+        real(real64), allocatable :: rbuf(:), own_work(:), spread_work(:)
+        integer(int32), allocatable :: pos_case(:), pos_control(:), spread_perm(:)
 
         call set_ok(ierr)
         pvalues_own = -1.0_real64
@@ -1103,6 +1196,13 @@ contains
         scatter = 0.0_real64
         shrink_diag = 0.0_real64
         n_floored = 0
+        null_c = NULL_EXACT
+        if (present(null_construction)) null_c = null_construction
+        nb = N_BOOTSTRAP_DRAWS
+        if (present(n_boot)) nb = n_boot
+        if (present(expr_spread_own)) expr_spread_own = -1.0_real64
+        if (present(neighbours_own_case)) neighbours_own_case = 0
+        if (present(neighbours_own_control)) neighbours_own_control = 0
 
         call validate_dimension_size(n_genes_case, ierr)
         call validate_dimension_size(n_replicates_case, ierr)
@@ -1135,6 +1235,17 @@ contains
         if (.not. (a_min >= 0.0_real64 .and. a_min <= 1.0_real64)) call set_err(ierr, ERR_INVALID_INPUT)
         if (loess_robust /= 0 .and. loess_robust /= 1) call set_err(ierr, ERR_INVALID_INPUT)
         if (shrink_loess_robust /= 0 .and. shrink_loess_robust /= 1) call set_err(ierr, ERR_INVALID_INPUT)
+        if (null_c /= NULL_EXACT .and. null_c /= NULL_BOOTSTRAP) call set_err(ierr, ERR_INVALID_INPUT)
+        call validate_dimension_size(nb, ierr)
+        if (present(expr_spread_own)) then
+            if (size(expr_spread_own) /= n_genes) call set_err(ierr, ERR_DIM_MISMATCH)
+        end if
+        if (present(neighbours_own_case)) then
+            if (size(neighbours_own_case, 2) /= n_genes) call set_err(ierr, ERR_DIM_MISMATCH)
+        end if
+        if (present(neighbours_own_control)) then
+            if (size(neighbours_own_control, 2) /= n_genes) call set_err(ierr, ERR_DIM_MISMATCH)
+        end if
         if (is_err(ierr)) return
         ! One gene index for both matrices and every per-gene array (see eval doc §18).
         if (n_genes_case /= n_genes .or. n_genes_control /= n_genes) then
@@ -1253,6 +1364,25 @@ contains
         M_ALLOCATE(pool_case(max_pool_size * 2))
         M_ALLOCATE(pool_control(max_pool_size * 2))
 
+        if (null_c == NULL_BOOTSTRAP) then
+            ! as the bootstrap model: seeded once, one buffer reused across genes
+            call init_random(42_int32)
+            per_iter = n_replicates_case + n_replicates_control
+            M_ALLOCATE(rbuf(per_iter * max(1_int32, min(nb, RNG_BUFFER_MAX / per_iter))))
+        end if
+        if (present(expr_spread_own)) then
+            ! sorted position of every gene, for its own residuals
+            M_ALLOCATE(pos_case(n_genes))
+            M_ALLOCATE(pos_control(n_genes))
+            M_ALLOCATE(own_work(n_replicates_case + n_replicates_control))
+            M_ALLOCATE(spread_work(max_pool_size * 4))
+            M_ALLOCATE(spread_perm(max_pool_size * 4))
+            do idx = 1, n_genes
+                pos_case(sorted_case%original_indices(idx)) = idx
+                pos_control(sorted_control%original_indices(idx)) = idx
+            end do
+        end if
+
         scan_max = int(min(int(BAND_MAX_SCAN_FACTOR, int64) * int(k, int64), int(huge(1_int32), int64)), int32)
         ! Per-side 1/sqrt(n): the noise_model_exact null, unchanged.
         scale_case = 1.0_real64 / sqrt(real(n_replicates_case, real64))
@@ -1319,12 +1449,38 @@ contains
 
             if (compute_pvalue_own(i_gene) /= 1) cycle
 
-            pool_case(1:n_pool_case) = pool_case(1:n_pool_case) * scale_case
-            pool_control(1:n_pool_control) = pool_control(1:n_pool_control) * scale_control
-            call compute_pvalue(pool_case(1:n_pool_case), n_pool_case, &
-                                pool_control(1:n_pool_control), n_pool_control, &
-                                obs_test(i_gene), pvalues_own(i_gene), ierr)
-            if (is_err(ierr)) return
+            if (present(expr_spread_own)) then
+                own_work(1:n_replicates_case) = sorted_case%residuals_packed(1:n_replicates_case, pos_case(i_gene))
+                own_work(n_replicates_case + 1:) = &
+                    sorted_control%residuals_packed(1:n_replicates_control, pos_control(i_gene))
+                spread_work(1:n_pool_case) = pool_case(1:n_pool_case)
+                spread_work(n_pool_case + 1:n_pool_case + n_pool_control) = pool_control(1:n_pool_control)
+                call spread_helper(own_work, size(own_work, kind=int32), &
+                                   spread_work(1:n_pool_case + n_pool_control), n_pool_case + n_pool_control, &
+                                   spread_perm, expr_spread_own(i_gene))
+            end if
+            if (variance_mode == VARIANCE_MODE_MEAN) then
+                if (present(neighbours_own_case)) &
+                    call neighbour_genes_helper(means_case(i_gene), sorted_case, n_pool_case, &
+                                                neighbours_own_case(:, i_gene))
+                if (present(neighbours_own_control)) &
+                    call neighbour_genes_helper(means_control(i_gene), sorted_control, n_pool_control, &
+                                                neighbours_own_control(:, i_gene))
+            end if
+
+            if (null_c == NULL_BOOTSTRAP) then
+                call compute_pvalue_bootstrap_mean_helper(pool_case(1:n_pool_case), n_pool_case, &
+                                                          pool_control(1:n_pool_control), n_pool_control, &
+                                                          n_replicates_case, n_replicates_control, &
+                                                          abs(obs_test(i_gene)), nb, rbuf, pvalues_own(i_gene))
+            else
+                pool_case(1:n_pool_case) = pool_case(1:n_pool_case) * scale_case
+                pool_control(1:n_pool_control) = pool_control(1:n_pool_control) * scale_control
+                call compute_pvalue(pool_case(1:n_pool_case), n_pool_case, &
+                                    pool_control(1:n_pool_control), n_pool_control, &
+                                    obs_test(i_gene), pvalues_own(i_gene), ierr)
+                if (is_err(ierr)) return
+            end if
 
             neighborhood_size_own_case(i_gene) = n_pool_case
             neighborhood_size_own_control(i_gene) = n_pool_control
@@ -1343,7 +1499,9 @@ end module noise_model_variance
 !| A separate entry point (not ABI-compatible with the plain scalar models): it
 !| carries the variance-aware controls and diagnostics. Null-pointer checks only;
 !| everything else is validated in Fortran. The test-only `lambda_fixed` /
-!| `target_fixed` are not exposed.
+!| `target_fixed` are not exposed. `null_construction` / `n_boot` select the null;
+!| `expr_spread_own` is always filled; the neighbour arrays are
+!| `max(1, neighbour_cap) x n_genes` and meaningful only when `neighbour_cap > 0`.
 subroutine compute_noise_pvalues_pipeline_variance_c( &
     replicates_case, n_genes_case, n_replicates_case, &
     replicates_control, n_genes_control, n_replicates_control, &
@@ -1357,7 +1515,8 @@ subroutine compute_noise_pvalues_pipeline_variance_c( &
     n_scanned_own_case, n_scanned_own_control, &
     n_accepted_own_case, n_accepted_own_control, &
     radius_own_case, radius_own_control, stop_own_case, stop_own_control, &
-    match_u, s2s_pool, tau_var, scatter, shrink_diag, n_floored, ierr) &
+    match_u, s2s_pool, tau_var, scatter, shrink_diag, n_floored, &
+    null_construction, n_boot, neighbour_cap, expr_spread_own, neighbours_own_case, neighbours_own_control, ierr) &
     bind(C, name="compute_noise_pvalues_pipeline_variance_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
@@ -1474,6 +1633,18 @@ subroutine compute_noise_pvalues_pipeline_variance_c( &
     !! Output: lambdas, unclipped ratios, p_hat, participation ratio
     integer(c_int), intent(out), target :: n_floored
     !! Output: genes at the variance floor
+    integer(c_int), intent(in), target :: null_construction
+    !! 0 = exact pairwise null; 1 = bootstrap difference of means
+    integer(c_int), intent(in), target :: n_boot
+    !! Bootstrap draws per gene
+    integer(c_int), intent(in), target :: neighbour_cap
+    !! Neighbour genes exported per gene and side (0 = none)
+    real(c_double), dimension(n_genes), intent(out), target :: expr_spread_own
+    !! Output: expression spread per gene
+    integer(c_int), dimension(max(1, neighbour_cap), n_genes), intent(out), target :: neighbours_own_case
+    !! Output: case neighbour genes (mean mode)
+    integer(c_int), dimension(max(1, neighbour_cap), n_genes), intent(out), target :: neighbours_own_control
+    !! Output: control neighbour genes (mean mode)
     integer(c_int), intent(out), target :: ierr
     !! Error code
 
@@ -1532,6 +1703,12 @@ subroutine compute_noise_pvalues_pipeline_variance_c( &
     M_CHECK_NON_NULL(scatter)
     M_CHECK_NON_NULL(shrink_diag)
     M_CHECK_NON_NULL(n_floored)
+    M_CHECK_NON_NULL(null_construction)
+    M_CHECK_NON_NULL(n_boot)
+    M_CHECK_NON_NULL(neighbour_cap)
+    M_CHECK_NON_NULL(expr_spread_own)
+    M_CHECK_NON_NULL(neighbours_own_case)
+    M_CHECK_NON_NULL(neighbours_own_control)
 
     call compute_noise_pvalue_pipeline_variance( &
         replicates_case, n_genes_case, n_replicates_case, &
@@ -1546,5 +1723,7 @@ subroutine compute_noise_pvalues_pipeline_variance_c( &
         n_scanned_own_case, n_scanned_own_control, &
         n_accepted_own_case, n_accepted_own_control, &
         radius_own_case, radius_own_control, stop_own_case, stop_own_control, &
-        match_u, s2s_pool, tau_var, scatter, shrink_diag, n_floored, ierr)
+        match_u, s2s_pool, tau_var, scatter, shrink_diag, n_floored, ierr, &
+        null_construction=null_construction, n_boot=n_boot, expr_spread_own=expr_spread_own, &
+        neighbours_own_case=neighbours_own_case, neighbours_own_control=neighbours_own_control)
 end subroutine compute_noise_pvalues_pipeline_variance_c

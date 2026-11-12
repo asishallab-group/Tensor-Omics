@@ -21,12 +21,18 @@
 !|   8. Scale invariance (linear branch), the floor path, validation.
 !|   9. 2-D ellipse gather: equals a brute-force search for the k nearest in the
 !|      joint distance; its stop reasons; a pipeline run.
+!|  10. Bootstrap null: mean mode, no scaling, `NULL_BOOTSTRAP` == the bootstrap
+!|      model's pooled null bit-for-bit (same pools, same seed, same draws).
+!|  11. Diagnostics: exported neighbours (own gene first, distinct, genes x n =
+!|      pool size), expression spread recomputed independently, p-values unchanged
+!|      by the diagnostics, validation of the new arguments.
 module mod_test_noise_model_variance
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_is_finite
-    use noise_model_exact, only: sorted_data_t, prepare_sorted_data, &
+    use noise_model_exact, only: sorted_data_t, prepare_sorted_data, compute_gene_centres_helper, &
                                  pipeline_exact => compute_noise_pvalue_pipeline, BETA_CENTRE_NONE
+    use noise_model, only: pipeline_boot => compute_noise_pvalue_pipeline, NULL_METHOD_POOLED
     use noise_model_variance
     use tox_errors
     use test_suite, only: test_case
@@ -60,7 +66,9 @@ contains
     function get_all_tests_noise_model_variance() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(15))
+        allocate(all_tests(17))
+        all_tests(16) = test_case("test_bootstrap_parity",            test_bootstrap_parity)
+        all_tests(17) = test_case("test_neighbours_and_spread",       test_neighbours_and_spread)
         all_tests(14) = test_case("test_ellipse_brute_force",         test_ellipse_brute_force)
         all_tests(15) = test_case("test_ellipse_stops_and_pipeline",  test_ellipse_stops_and_pipeline)
         all_tests(1)  = test_case("test_trigamma_and_tau_rule",       test_trigamma_and_tau_rule)
@@ -113,12 +121,15 @@ contains
     end subroutine rnorm
 
     !> Run the variance pipeline with `cfg`; allocates every output in `o`.
-    subroutine run_v(cfg, G, nc, nt, rc, rt, o, lambda_fixed, target_fixed)
+    subroutine run_v(cfg, G, nc, nt, rc, rt, o, lambda_fixed, target_fixed, null_c, nboot, spread, nbr_c, nbr_t)
         type(vcfg), intent(in) :: cfg
         integer(int32), intent(in) :: G, nc, nt
         real(real64), intent(in) :: rc(nc, G), rt(nt, G)
         type(vout), intent(out) :: o
         real(real64), intent(in), optional :: lambda_fixed, target_fixed
+        integer(int32), intent(in), optional :: null_c, nboot
+        real(real64), intent(out), optional :: spread(:)
+        integer(int32), intent(out), optional :: nbr_c(:, :), nbr_t(:, :)
         integer(int32) :: valid(G)
         valid = 1
         allocate(o%p(G), o%obs(G), o%l2(G), o%u(G), o%s2s(G), o%radc(G), o%radt(G))
@@ -130,7 +141,7 @@ contains
             0.3_real64, 1, cfg%robust, cfg%srobust, 5000, &
             o%p, o%obs, o%l2, o%dh, o%nwp, o%nbc, o%nbt, o%nsc, o%nst, o%nac, o%nat, &
             o%radc, o%radt, o%stc, o%stt, o%u, o%s2s, o%tau_var, o%scatter, o%diag, o%nf, o%ierr, &
-            lambda_fixed, target_fixed)
+            lambda_fixed, target_fixed, null_c, nboot, spread, nbr_c, nbr_t)
     end subroutine run_v
 
     !> The plain exact model.
@@ -827,5 +838,104 @@ contains
         call run_v(cfg, GP, N, N, rc, rt, o)
         call assert_equal_int(o%ierr, ERR_OK, "ellipse pipeline: JS + cross-fit ierr")
     end subroutine test_ellipse_stops_and_pipeline
+
+    ! =========================================================================
+    ! 10. bootstrap null
+    ! =========================================================================
+    subroutine test_bootstrap_parity()
+        integer(int32), parameter :: G = 300, N = 3
+        real(real64) :: rc(N, G), rt(N, G), pb(G), obs(G), l2(G), dh
+        integer(int32) :: valid(G), nbc(G), nbt(G), nb3(G), nwb, ierrb
+        type(vcfg) :: cfg
+        type(vout) :: o
+
+        call make_hetero(G, N, 0.0_real64, 30.0_real64, rc)
+        call make_hetero(G, N, 1.7_real64, 0.0_real64, rt)
+        valid = 1
+        call run_v(cfg, G, N, N, rc, rt, o, null_c=NULL_BOOTSTRAP, nboot=N_BOOTSTRAP_DRAWS)
+        call pipeline_boot(rc, G, N, rt, G, N, valid, BETA_CENTRE_NONE, G, 1, 20, 1, 50, 0.1_real64, &
+                           NULL_METHOD_POOLED, pb, obs, l2, dh, nwb, 5000, nbc, nbt, nb3, ierrb)
+        call assert_equal_int(o%ierr, ERR_OK, "bootstrap parity: ierr")
+        call assert_equal_int(ierrb, ERR_OK, "bootstrap parity: bootstrap model ierr")
+        call assert_true(o%nwp > 0, "bootstrap parity: p-values computed")
+        call assert_equal_int(o%nwp, nwb, "bootstrap parity: same tested genes")
+        call assert_equal_array_real(o%p, pb, G, EXACT, "bootstrap parity: identical to the bootstrap model")
+        call assert_true(minval(o%p, mask=o%p > 0) >= 1.0_real64 / real(N_BOOTSTRAP_DRAWS + 1, real64) - TOL, &
+                         "bootstrap parity: floor 1/(n_boot+1)")
+    end subroutine test_bootstrap_parity
+
+    ! =========================================================================
+    ! 11. neighbours and expression spread
+    ! =========================================================================
+    subroutine test_neighbours_and_spread()
+        integer(int32), parameter :: G = 300, N = 3, CAP = 60
+        real(real64) :: rc(N, G), rt(N, G), spread(G), mc(G), cc(G), mt(G), ct(G)
+        real(real64) :: own(2 * N), pool(2 * N * CAP), q05, q95, expect
+        integer(int32) :: nbr_c(CAP, G), nbr_t(CAP, G), perm(2 * N * CAP), jg, j, n_c, n_t, np, ierr, i
+        type(sorted_data_t) :: sc, st
+        type(vcfg) :: cfg
+        type(vout) :: o, o0
+        logical :: ok_first, ok_count, ok_distinct
+
+        call make_hetero(G, N, 0.0_real64, 30.0_real64, rc)
+        call make_hetero(G, N, 1.7_real64, 0.0_real64, rt)
+
+        ! diagnostics must not change any p-value (cross-fit JS, the benchmark arm)
+        cfg%scaling = SCALING_XFIT_JS
+        call run_v(cfg, G, N, N, rc, rt, o0)
+        call run_v(cfg, G, N, N, rc, rt, o, spread=spread, nbr_c=nbr_c, nbr_t=nbr_t)
+        call assert_equal_int(o%ierr, ERR_OK, "diagnostics: ierr")
+        call assert_equal_array_real(o%p, o0%p, G, EXACT, "diagnostics: p-values unchanged")
+
+        ok_first = .true.; ok_count = .true.; ok_distinct = .true.
+        do jg = 1, G
+            if (o%p(jg) < 0) cycle
+            n_c = count(nbr_c(:, jg) > 0); n_t = count(nbr_t(:, jg) > 0)
+            ok_first = ok_first .and. nbr_c(1, jg) == jg .and. nbr_t(1, jg) == jg
+            ok_count = ok_count .and. n_c * N == o%nbc(jg) .and. n_t * N == o%nbt(jg)
+            do j = 2, n_c
+                ok_distinct = ok_distinct .and. all(nbr_c(1:j - 1, jg) /= nbr_c(j, jg))
+            end do
+        end do
+        call assert_true(ok_first, "neighbours: own gene first")
+        call assert_true(ok_count, "neighbours: genes x n = pool size")
+        call assert_true(ok_distinct, "neighbours: distinct genes")
+        call assert_true(all(pack(spread, o%p >= 0) > 0) .and. all(pack(spread, o%p < 0) == -1.0_real64), &
+                         "spread: positive when tested, -1 otherwise")
+
+        ! independent recomputation without scaling: own residuals of jg, pooled
+        ! residuals of the exported neighbours, nearest-rank Q05 / Q95
+        cfg%scaling = SCALING_NONE
+        call run_v(cfg, G, N, N, rc, rt, o, spread=spread, nbr_c=nbr_c, nbr_t=nbr_t)
+        call compute_gene_centres_helper(rc, N, G, 1, mc, cc)
+        call compute_gene_centres_helper(rt, N, G, 1, mt, ct)
+        call prepare_sorted_data(mc, rc, N, G, 1, sc, ierr)
+        call prepare_sorted_data(mt, rt, N, G, 1, st, ierr)
+        do jg = 50, 250, 50
+            own(1:N) = sc%residuals_packed(1:N, findloc(sc%original_indices, jg, dim=1))
+            own(N + 1:) = st%residuals_packed(1:N, findloc(st%original_indices, jg, dim=1))
+            np = 0
+            do j = 1, count(nbr_c(:, jg) > 0)
+                pool(np + 1:np + N) = sc%residuals_packed(1:N, findloc(sc%original_indices, nbr_c(j, jg), dim=1))
+                np = np + N
+            end do
+            do j = 1, count(nbr_t(:, jg) > 0)
+                pool(np + 1:np + N) = st%residuals_packed(1:N, findloc(st%original_indices, nbr_t(j, jg), dim=1))
+                np = np + N
+            end do
+            perm(1:np) = [(i, i = 1, np)]
+            call sort_by(pool(1:np), perm(1:np), np)
+            q05 = pool(perm(1 + nint(0.05_real64 * real(np - 1, real64))))
+            q95 = pool(perm(1 + nint(0.95_real64 * real(np - 1, real64))))
+            expect = (maxval(own) - minval(own)) / (q95 - q05)
+            call assert_equal_real(spread(jg), expect, TOL, "spread: recomputed for gene " // str(jg))
+        end do
+
+        ! validation of the new arguments
+        call run_v(cfg, G, N, N, rc, rt, o, null_c=2_int32)
+        call assert_equal_int(o%ierr, ERR_INVALID_INPUT, "validation: null_construction = 2")
+        call run_v(cfg, G, N, N, rc, rt, o, null_c=NULL_BOOTSTRAP, nboot=0_int32)
+        call assert_true(o%ierr /= ERR_OK, "validation: n_boot = 0")
+    end subroutine test_neighbours_and_spread
 
 end module mod_test_noise_model_variance

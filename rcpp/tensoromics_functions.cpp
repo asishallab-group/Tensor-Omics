@@ -1286,6 +1286,12 @@ void compute_noise_pvalues_pipeline_variance_c(
   double* scatter,
   double* shrink_diag,
   int* n_floored,
+  const int* null_construction,
+  const int* n_boot,
+  const int* neighbour_cap,
+  double* expr_spread_own,
+  int* neighbours_own_case,
+  int* neighbours_own_control,
   int* ierr
 );
 
@@ -5035,9 +5041,15 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
 //' @param loess_robust Integer 1 = robust note-A trend LOESS
 //' @param shrink_loess_robust Integer 1 = robust LOESS shrinkage target
 //' @param max_pool_size Integer maximum residual pool size
+//' @param null_construction Integer 0 = exact pairwise null, 1 = bootstrap
+//'   difference of means
+//' @param n_boot Integer bootstrap draws per gene
+//' @param neighbour_cap Integer neighbour genes returned per gene and side
+//'   (mean mode; 0 = none)
 //'
 //' @return List with the p-values, statistic, effect size, pool and band
-//'   diagnostics, the shrinkage diagnostics and ierr.
+//'   diagnostics, the shrinkage diagnostics, expr_spread_own, the neighbour
+//'   matrices (when neighbour_cap > 0) and ierr.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
     Rcpp::NumericMatrix case_replicates,
@@ -5067,7 +5079,10 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
     int loess_degree,
     int loess_robust,
     int shrink_loess_robust,
-    int max_pool_size) {
+    int max_pool_size,
+    int null_construction,
+    int n_boot,
+    int neighbour_cap) {
 
     int case_n_samples = case_replicates.nrow();
     int case_n_genes   = case_replicates.ncol();
@@ -5085,6 +5100,9 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
         acc_case(n_genes), acc_control(n_genes), stop_case(n_genes), stop_control(n_genes);
     double delta_hat = 0.0, tau_var = 0.0, scatter = 0.0;
     int n_success = 0, n_floored = 0, ierr = 0;
+    int cap_rows = neighbour_cap > 0 ? neighbour_cap : 1;
+    Rcpp::NumericVector expr_spread(n_genes);
+    Rcpp::IntegerMatrix nbr_case(cap_rows, n_genes), nbr_control(cap_rows, n_genes);
 
     compute_noise_pvalues_pipeline_variance_c(
         case_replicates.begin(), &case_n_genes, &case_n_samples,
@@ -5098,7 +5116,9 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
         nb_case.begin(), nb_control.begin(), scan_case.begin(), scan_control.begin(),
         acc_case.begin(), acc_control.begin(), radius_case.begin(), radius_control.begin(),
         stop_case.begin(), stop_control.begin(),
-        match_u.begin(), s2s_pool.begin(), &tau_var, &scatter, shrink_diag.begin(), &n_floored, &ierr);
+        match_u.begin(), s2s_pool.begin(), &tau_var, &scatter, shrink_diag.begin(), &n_floored,
+        &null_construction, &n_boot, &neighbour_cap, expr_spread.begin(),
+        nbr_case.begin(), nbr_control.begin(), &ierr);
 
     // List::create takes at most 20 entries: build in two parts.
     Rcpp::List out = Rcpp::List::create(
@@ -5130,6 +5150,11 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
     out["p_hat"] = shrink_diag[6];
     out["participation_ratio"] = shrink_diag[7];
     out["n_floored"] = n_floored;
+    out["expr_spread_own"] = expr_spread;
+    if (neighbour_cap > 0) {
+        out["neighbours_own_case"] = nbr_case;
+        out["neighbours_own_control"] = nbr_control;
+    }
     out["ierr"] = ierr;
     return out;
 }

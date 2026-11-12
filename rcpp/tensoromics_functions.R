@@ -3783,6 +3783,12 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #' @param loess_robust Robust note-A trend LOESS (\code{family = "symmetric"}).
 #' @param shrink_loess_robust Robust LOESS shrinkage target (default non-robust).
 #' @param max_pool_size Integer maximum residual pool size.
+#' @param null_construction \code{"exact"} (every case x control residual pair,
+#'   the exact model's null) or \code{"bootstrap"} (Monte Carlo difference of
+#'   means, the bootstrap model's pooled null; p floor \code{1 / (n_boot + 1)}).
+#' @param n_boot Bootstrap draws per gene (\code{"bootstrap"} only).
+#' @param neighbour_cap Neighbour genes returned per gene and side (mean mode;
+#'   0 = none).
 #'
 #' @return A list with \code{pvalues_own} (-1 = not computed), \code{obs_own} (the
 #'   UNSCALED statistic; the tested one is \code{obs_own / sqrt(s2s_pool)} under a
@@ -3795,8 +3801,12 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #'   \code{s2s_pool}, \code{tau_var}, \code{scatter}, \code{lambda_pool},
 #'   \code{lambda_case}, \code{lambda_control} (as used; \code{xfit_raw} uses 0 but
 #'   reports the estimates), their \code{*_unclipped} ratios, \code{p_hat}
-#'   (effective dimension), \code{participation_ratio}, \code{n_floored} and
-#'   \code{ierr}.
+#'   (effective dimension), \code{participation_ratio}, \code{n_floored},
+#'   \code{expr_spread_own} (per gene: range of its own residuals over the
+#'   Q05-Q95 range of its pool, both as the test uses them; -1 = not computed),
+#'   \code{neighbours_own_case} / \code{_control} (\code{neighbour_cap x n_genes}
+#'   original gene indices, 0-padded, mean mode only; returned when
+#'   \code{neighbour_cap > 0}) and \code{ierr}.
 #' @export
 tox_compute_noise_pvalues_pipeline_variance <- function(
     case_replicates,
@@ -3826,7 +3836,10 @@ tox_compute_noise_pvalues_pipeline_variance <- function(
     loess_degree = 1L,
     loess_robust = TRUE,
     shrink_loess_robust = FALSE,
-    max_pool_size
+    max_pool_size,
+    null_construction = c("exact", "bootstrap"),
+    n_boot = 10000L,
+    neighbour_cap = 0L
 ) {
     code <- function(x, levels, codes) {
         if (is.character(x)) codes[match(match.arg(x, levels), levels)] else as.integer(x)
@@ -3836,6 +3849,7 @@ tox_compute_noise_pvalues_pipeline_variance <- function(
     scaling_int <- code(scaling, c("none", "xfit_raw", "xfit_js", "same_group"), 0:3)
     target_int  <- code(shrink_target, c("median", "loess"), 0:1)
     lscale_int  <- code(lambda_scale, c("relative", "absolute"), 0:1)
+    null_int    <- code(null_construction, c("exact", "bootstrap"), 0:1)
 
     case_replicates <- as.matrix(case_replicates)
     control_replicates <- as.matrix(control_replicates)
@@ -3869,7 +3883,10 @@ tox_compute_noise_pvalues_pipeline_variance <- function(
         loess_degree = as.integer(loess_degree),
         loess_robust = as.integer(as.logical(loess_robust)),
         shrink_loess_robust = as.integer(as.logical(shrink_loess_robust)),
-        max_pool_size = as.integer(max_pool_size)
+        max_pool_size = as.integer(max_pool_size),
+        null_construction = null_int,
+        n_boot = as.integer(n_boot),
+        neighbour_cap = as.integer(neighbour_cap)
     )
 }
 
