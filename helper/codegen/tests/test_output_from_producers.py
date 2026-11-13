@@ -91,6 +91,31 @@ def split_producer(pure=True):
     )
 
 
+def root_producer(is_pure=True, statement_prefix="M_OMP_PURE"):
+    """`root_size_impl`, an OpenMP root: its generated wrapper `root_size` is `M_OMP_PURE`."""
+    return procedure(
+        "root_size_impl",
+        integer("n_items", doc="items"),
+        integer("root_size", Intent.OUT, doc="the size"),
+        integer("n_omp_threads"),
+        meta=IMPL, is_pure=is_pure, statement_prefix=statement_prefix,
+    )
+
+
+def root_consumer(is_pure=True):
+    """`work_total_impl`, sizing its scratch by the root's wrapper, its thread count a constant."""
+    return module("tox_cons_impl", procedure(
+        "work_total_impl",
+        integer("n_items", doc="items"),
+        real("x", Intent.IN, "(n_items)", doc="values"),
+        integer("work_size", doc=table(("n_omp_threads", "1_int32")),
+                directives=auto("root_size", "root_size", "tox_prod")),
+        real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+        real("total", Intent.OUT, doc="the result"),
+        meta=IMPL, is_pure=is_pure,
+    ))
+
+
 def consumer(name, *arguments, module_name="tox_cons_impl"):
     """An implementation module holding one consumer implementation."""
     return module(module_name, procedure(name, *arguments, meta=IMPL, is_pure=True))
@@ -436,7 +461,7 @@ class TestTheBindingsNameTheirOwnArgument:
 
 
 class TestPurity:
-    """Rule 4: a generated producer is as pure as `_is_pure` emits it, asked recursively."""
+    """Rule 4: a generated producer is as pure as `_purity` emits it, asked recursively."""
 
     def test_a_pure_generated_producer_leaves_its_consumer_pure(self):
         synthesis, _ = analysed(producers(), work_consumer())
@@ -476,6 +501,49 @@ class TestPurity:
 
         text = fortran(synthesis)  # no RecursionError
         assert "pure subroutine work_total(" not in text
+
+    def test_a_producer_that_is_an_openmp_root_makes_it_omp_pure(self):
+        # the root's wrapper is pure only without OpenMP, so a plain `pure` consumer would
+        # not compile with it ("Subroutine call to 'root_size' is not PURE")
+        synthesis, bag = analysed(producers(root_producer()), root_consumer())
+        assert bag.errors == (), bag.render()
+        text = fortran(synthesis)
+
+        assert "M_OMP_PURE subroutine root_size(" in fortran(synthesis, "tox_prod")
+        assert "M_OMP_PURE subroutine work_total(" in text
+        assert "    pure subroutine work_total(" not in text
+
+    def test_so_does_one_that_reaches_a_root_through_its_own_producer(self):
+        # tox_prod's middle sizes its scratch by the root; tox_cons's work_total by middle
+        middle = procedure(
+            "middle_impl",
+            integer("n_items", doc="items"),
+            integer("work_size", doc=table(("n_omp_threads", "1_int32")),
+                    directives=auto("root_size", "root_size", "tox_prod")),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            integer("middle_size", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        )
+        cons = work_consumer("middle", "tox_prod", "middle_size", doc=table())
+        synthesis, bag = analysed(producers(root_producer(), middle), cons)
+        assert bag.errors == (), bag.render()
+
+        assert "M_OMP_PURE subroutine middle(" in fortran(synthesis, "tox_prod")
+        assert "M_OMP_PURE subroutine work_total(" in fortran(synthesis)
+
+    def test_impure_beats_omp_pure(self):
+        # an impure root, and a pure root beside an impure implementation: neither is pure
+        for root_is_pure, consumer_is_pure in ((False, True), (True, False)):
+            prefix = "M_OMP_PURE" if root_is_pure else ""
+            synthesis, bag = analysed(
+                producers(root_producer(is_pure=root_is_pure, statement_prefix=prefix)),
+                root_consumer(is_pure=consumer_is_pure),
+            )
+            assert bag.errors == (), bag.render()
+            text = fortran(synthesis)
+
+            assert "\n    subroutine work_total(" in text
+            assert "pure subroutine work_total" not in text.lower()
 
     def test_a_mode_split_producer_in_another_module_is_seen_through(self):
         # its implementation is named by the mode table, not by the wrapper's name, so it is

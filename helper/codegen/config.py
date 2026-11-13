@@ -36,6 +36,27 @@ class Conventions:
     #: The doc macro an author writes to mark a procedure for export. The category above is
     #: read from it, so this is the name the diagnostics quote back.
     export_marker: str = "M_EXPORT_C"
+    #: The macro an OpenMP root procedure is declared with where `pure` would be: `pure`
+    #: without OpenMP, `impure` with it, as an OpenMP directive is not allowed in a pure
+    #: procedure. Like the one below, it has to be defined in both branches of the header's
+    #: `#ifdef _OPENMP`, and the frontend refuses a header without it
+    #: (`frontend.require_omp_macros`).
+    omp_pure_macro: str = "M_OMP_PURE"
+    #: The macro giving the thread count an allocating wrapper sizes the per-thread work arrays
+    #: with: the caller's count with OpenMP, one without.
+    omp_n_threads_macro: str = "M_OMP_N_THREADS"
+    #: The macro a root writes its parallel loop with, as the comment line
+    #: `!M_OMP_PARALLEL(CONDITION) <clauses>`. Defined once, outside the `#ifdef`; the frontend
+    #: requires it all the same (`frontend.require_omp_macros`), since without it the line stays
+    #: a comment and the loop serial. The generator otherwise only looks for where it is written
+    #: (`validate._check_omp_macros`).
+    omp_parallel_macro: str = "M_OMP_PARALLEL"
+    #: The argument an OpenMP root takes: the most threads its parallel loop may use, and the
+    #: last extent of its per-thread work arrays. Only an implementation may take it; its
+    #: wrappers check that it is at least 1, document it and carry `omp_pure_macro`
+    #: (`validate`, `synthesize.published_arguments`). `M_OMP_PARALLEL`'s body names it too,
+    #: so it is spelled in `src/macros.h` as well as here.
+    omp_threads_arg: str = "n_omp_threads"
 
     #: Suffix of the allocating half of a *hand-written* procedure pair -- the shape the
     #: framework used before any wrapper was generated (`compute_edf` / `compute_edf_alloc`).
@@ -127,6 +148,10 @@ class Conventions:
 
     #: Name of the error argument every C wrapper carries, synthesised when absent
     error_arg: str = "ierr"
+
+    def is_omp_threads_arg(self, name: str) -> bool:
+        """Whether `name` is the OpenMP thread-count argument, compared as Fortran compares."""
+        return name.lower() == self.omp_threads_arg.lower()
 
     def mode_alias_of(self, name: str) -> str | None:
         """Return the mode alias `name` uses, or None if it is not a mode argument.

@@ -22,6 +22,12 @@ from ..diagnostics import SourceLocation
 #: subroutine`, `pure integer(int32) function`, `recursive function`, and so on.
 _PROCEDURE_PREFIX = r"(?:[\w()=*:,\s]*?\s)??"
 
+#: Any subroutine or function statement, naming what it declares
+_ANY_PROCEDURE_RE = re.compile(
+    rf"^\s*{_PROCEDURE_PREFIX}\b(?:subroutine|function)\s+(?P<name>\w+)\s*[(\s]",
+    re.IGNORECASE,
+)
+
 _END_RE = re.compile(r"^\s*end\s+(?:subroutine|function|module)\b", re.IGNORECASE)
 _COMMENT_RE = re.compile(r"^\s*!")
 
@@ -51,6 +57,8 @@ class SourceFile:
         self._procedure_spans: dict[str, tuple[int, int] | None] = {}
         self._argument_lines: dict[tuple[str, str], int | None] = {}
         self._variable_lines: dict[str, int | None] = {}
+        #: the line ranges of every procedure, from statement to `end`, found once on demand
+        self._containers: list[tuple[int, int]] | None = None
 
     def location(self, line: int | None = None) -> SourceLocation:
         return SourceLocation(self.path, line)
@@ -64,28 +72,120 @@ class SourceFile:
 
         Anchored on `subroutine`/`function` immediately followed by the name, so a call
         to the procedure elsewhere in the file cannot be mistaken for its declaration.
+        Where several statements declare it, the first that no other procedure holds: a
+        procedure contained in another may share a module procedure's name, and the module
+        procedure is the one asked about. Only where every one is contained is it the first.
         """
         if name in self._procedure_lines:
             return self._procedure_lines[name]
 
-        pattern = re.compile(
+        pattern = self._statement_pattern(name)
+        found = [number for number, line in self._statement_lines() if pattern.match(line)]
+        outermost = [number for number in found if not self._is_contained(number)]
+        line = (outermost or found or [None])[0]
+        self._procedure_lines[name] = line
+        return line
+
+    @staticmethod
+    def _statement_pattern(name: str) -> re.Pattern:
+        return re.compile(
             rf"^\s*{_PROCEDURE_PREFIX}\b(?:subroutine|function)\s+{_word(name)}\s*[(\s]",
             re.IGNORECASE,
         )
-        found = None
+
+    def _statement_lines(self):
+        """The lines that may be a subroutine or function statement, with their numbers."""
         for number, line in enumerate(self.lines, start=1):
             lowered = line.lower()
             if not any(word in lowered for word in _PROCEDURE_WORDS):
                 continue
-            if _COMMENT_RE.match(line):
+            if _COMMENT_RE.match(line) or _END_RE.match(line):
                 continue
-            if _END_RE.match(line):
+            yield number, line
+
+    def _is_contained(self, number: int) -> bool:
+        """Whether line `number` lies inside a procedure whose statement is above it."""
+        if self._containers is None:
+            self._containers = [
+                (start, self._end_of(start, match.group("name")))
+                for start, line in self._statement_lines()
+                if (match := _ANY_PROCEDURE_RE.match(line)) is not None
+            ]
+        return any(start < number <= end for start, end in self._containers)
+
+    def _end_of(self, start: int, name: str) -> int:
+        """The line of the `end` that closes the procedure `name` declared on line `start`."""
+        end_pattern = re.compile(
+            rf"^\s*end\s+(?:subroutine|function)(?:\s+{_word(name)})?\s*$", re.IGNORECASE
+        )
+        for number in range(start + 1, len(self.lines) + 1):
+            if end_pattern.match(self.lines[number - 1]):
+                return number
+        return len(self.lines)
+
+    def procedure_prefix(self, name: str) -> str | None:
+        """What the statement of `name` says before `subroutine`/`function`, as written.
+
+        `M_OMP_PURE`, `pure`, `impure elemental`, or "" for nothing. None where the statement
+        is not found, or where it is continued from the line above (`pure &`), whose prefix
+        this line does not hold: a rule reading the prefix must not take a part for the whole.
+        """
+        number = self.procedure_line(name)
+        if number is None or self.statement_start(number) != number:
+            return None
+        match = re.match(
+            rf"^\s*(?P<prefix>{_PROCEDURE_PREFIX})\b(?:subroutine|function)\s+{_word(name)}",
+            self.lines[number - 1],
+            re.IGNORECASE,
+        )
+        return None if match is None else match.group("prefix").strip()
+
+    def statement_start(self, number: int) -> int:
+        """The first line of the statement on line `number`: the earliest of the lines above it,
+        each ending in `&`, that it continues. Blank and comment lines in between are skipped."""
+        start = number
+        for previous in range(number - 1, 0, -1):
+            line = self.lines[previous - 1]
+            if not line.strip() or _COMMENT_RE.match(line):
                 continue
-            if pattern.match(line):
-                found = number
+            if not line.split("!")[0].rstrip().endswith("&"):
                 break
-        self._procedure_lines[name] = found
+            start = previous
+        return start
+
+    def module_span(self, name: str) -> tuple[int, int] | None:
+        """The inclusive line range of a module, from its statement to its `end`."""
+        start = self.module_line(name)
+        if start is None:
+            return None
+        end_pattern = re.compile(
+            rf"^\s*end\s+module(?:\s+{_word(name)})?\s*$", re.IGNORECASE
+        )
+        for number in range(start + 1, len(self.lines) + 1):
+            if end_pattern.match(self.lines[number - 1]):
+                return start, number
+        return start, len(self.lines)
+
+    def macro_lines(self, macro: str, span: tuple[int, int] | None = None) -> list[int]:
+        """The lines within `span` whose code names `macro`: not a comment, not a directive."""
+        pattern = re.compile(_word(macro))
+        found = []
+        for number in self._numbers(span):
+            line = self.lines[number - 1]
+            if _COMMENT_RE.match(line) or line.lstrip().startswith("#"):
+                continue
+            if pattern.search(line.split("!")[0]):
+                found.append(number)
         return found
+
+    def comment_macro_lines(self, macro: str, span: tuple[int, int] | None = None) -> list[int]:
+        """The lines within `span` that open with `!<macro>(`: a directive a macro writes."""
+        pattern = re.compile(rf"^\s*!{re.escape(macro)}\s*\(")
+        return [number for number in self._numbers(span) if pattern.match(self.lines[number - 1])]
+
+    def _numbers(self, span: tuple[int, int] | None) -> range:
+        start, end = span if span is not None else (1, len(self.lines))
+        return range(start, end + 1)
 
     def argument_line(self, procedure: str, argument: str) -> int | None:
         """The line declaring `argument` inside `procedure`.
@@ -133,14 +233,7 @@ class SourceFile:
             self._procedure_spans[name] = None
             return None
 
-        end_pattern = re.compile(
-            rf"^\s*end\s+(?:subroutine|function)(?:\s+{_word(name)})?\s*$", re.IGNORECASE
-        )
-        span = (start, len(self.lines))
-        for number in range(start + 1, len(self.lines) + 1):
-            if end_pattern.match(self.lines[number - 1]):
-                span = (start, number)
-                break
+        span = (start, self._end_of(start, name))
         self._procedure_spans[name] = span
         return span
 
@@ -206,6 +299,10 @@ class SourceIndex:
     def procedure(self, path: Path, name: str) -> SourceLocation:
         return self._locate(path, lambda f: f.procedure_line(name))
 
+    def procedure_prefix(self, path: Path, name: str) -> str | None:
+        source = self.file(path)
+        return None if source is None else source.procedure_prefix(name)
+
     def argument(self, path: Path, procedure: str, name: str) -> SourceLocation:
         return self._locate(path, lambda f: f.argument_line(procedure, name))
 
@@ -219,6 +316,10 @@ class SourceIndex:
     def variable_doc(self, path: Path, name: str) -> int | None:
         source = self.file(path)
         return None if source is None else source.variable_doc_line(name)
+
+    def at(self, path: Path, line: int | None) -> SourceLocation:
+        """A location in `path` at a line found some other way, the path as the author writes it."""
+        return SourceLocation(self._relative(path), line)
 
     def _locate(self, path: Path, find) -> SourceLocation:
         source = self.file(path)

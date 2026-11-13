@@ -63,7 +63,7 @@ def alloc_body():
 class TestPurity:
     """A wrapper is `pure` exactly when everything it calls is.
 
-    So a caller who wants one inside `do concurrent` does not have to reach past the
+    So a caller whose own pure code calls one does not have to reach past the
     wrapper to the implementation, giving up validation to get it.
     """
 

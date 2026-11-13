@@ -75,6 +75,7 @@ SEXP kd_knn_query_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP kd_range_query_mask_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP kd_range_query_list_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP kd_range_query_count_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP max_omp_threads_call(void);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
 SEXP deserialize_complex_helper_call(SEXP, SEXP);
 SEXP deserialize_int_helper_call(SEXP, SEXP);
@@ -193,6 +194,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"kd_range_query_mask_call", (DL_FUNC) &kd_range_query_mask_call, 5},
     {"kd_range_query_list_call", (DL_FUNC) &kd_range_query_list_call, 5},
     {"kd_range_query_count_call", (DL_FUNC) &kd_range_query_count_call, 5},
+    {"max_omp_threads_call", (DL_FUNC) &max_omp_threads_call, 0},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},
     {"deserialize_complex_helper_call", (DL_FUNC) &deserialize_complex_helper_call, 2},
     {"deserialize_int_helper_call", (DL_FUNC) &deserialize_int_helper_call, 2},
