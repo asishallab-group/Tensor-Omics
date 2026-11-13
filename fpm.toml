@@ -39,6 +39,10 @@ default.linux.flags = "-fPIC"
 # references.
 default.linux.link-time-flags = "-Wl,--as-needed"
 default.macos.link-time-flags = "-Wl,-dead_strip_dylibs"
+# ifx's -traceback prints its frames through libgcc_s's unwinder, which no object references, so
+# --as-needed drops it: a runtime error then prints "You must link with libunwind" instead of the
+# file and line. So the diagnostics build links it outside --as-needed.
+diagnostics.ifx.linux.link-time-flags = "-Wl,--push-state,--no-as-needed -lgcc_s -Wl,--pop-state"
 
 # Above -O0, ifx reassociates floating-point expressions by default, across parentheses too. Code
 # whose accuracy depends on evaluation order then silently loses it: f42's log1p came out as the
