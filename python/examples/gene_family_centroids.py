@@ -33,7 +33,7 @@ import numpy as np
 
 from example_data import (UNASSIGNED, build_gene_to_family, read_expression,
                           read_families, read_ortholog_mask, write_labeled_matrix)
-from tensor_omics import group_centroid_all, group_centroid_orthologs
+from tensor_omics import group_centroid_all, group_centroid_orthologs, max_omp_threads
 
 DEFAULT_FAMILIES = Path("material/filtered_families.tsv")
 DEFAULT_EXPRESSION = Path("material/normalization.tsv")
@@ -65,13 +65,13 @@ def main(argv=None):
         print(f"note: {n_missing} family members have no expression row and were skipped")
 
     if args.orthologs is None:
-        centroids = group_centroid_all(expression_vectors, gene_to_family, n_families)
+        centroids = group_centroid_all(expression_vectors, gene_to_family, n_families, max_omp_threads())
         contributing = gene_to_family != UNASSIGNED
         print("centroids taken over ALL genes of each family")
     else:
         ortholog_mask = read_ortholog_mask(args.orthologs, gene_ids)
         centroids = group_centroid_orthologs(
-            expression_vectors, gene_to_family, n_families, ortholog_mask
+            expression_vectors, gene_to_family, n_families, max_omp_threads(), ortholog_mask
         )
         contributing = (gene_to_family != UNASSIGNED) & ortholog_mask
         print(f"centroids taken over ORTHOLOGS only "

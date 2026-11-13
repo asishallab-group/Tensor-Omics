@@ -28,7 +28,7 @@ from tensor_omics import (
     serialize_int_helper, serialize_real_helper, serialize_char_helper,
     deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
 )
-from test_helpers import run_all_tests, assert_error
+from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
 from tensor_omics.error_handling import ERR_FILE_OPEN, ERR_INVALID_INPUT
 
 
@@ -114,7 +114,7 @@ def test_calls():
     validate_string_array_uniqueness(family_ids)
     validate_expression_data(kallisto_expr, True)
 
-    centroids = group_centroid_all(filtered_kallisto_expr, filtered_gene_to_fam, n_families)
+    centroids = group_centroid_all(filtered_kallisto_expr, filtered_gene_to_fam, n_families, TEST_N_OMP_THREADS)
 
     validate_family_centroids(centroids)
 

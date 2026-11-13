@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, TEST_N_OMP_THREADS
 from tensor_omics import euclidean_distance, distance_to_centroid
 
 # Import your functions
@@ -140,7 +140,7 @@ def test_construct_neighborhoods():
     neighborhood_size = 50  # Explicit size
 
     expected_n_neighbors = calc_neighborhood_size(n_pool, n_points, mean_S, neighborhood_size)
-    result = construct_neighborhoods(x_star, mean_S, resid_S, expected_n_neighbors)
+    result = construct_neighborhoods(x_star, mean_S, resid_S, expected_n_neighbors, TEST_N_OMP_THREADS)
 
     # Basic assertions
     assert result['neighborhood_residuals'].shape[2] == n_points
@@ -156,7 +156,7 @@ def test_construct_neighborhoods():
 
     # Test with automatic neighborhood size
     expected_n_neighbors = calc_neighborhood_size(n_pool, n_points, mean_S)
-    result_auto = construct_neighborhoods(x_star, mean_S, resid_S, expected_n_neighbors)
+    result_auto = construct_neighborhoods(x_star, mean_S, resid_S, expected_n_neighbors, TEST_N_OMP_THREADS)
     assert result_auto['neighborhood_residuals'].shape[1] == expected_n_neighbors
 
 
@@ -201,7 +201,7 @@ def test_integration():
     n_neighbors = calc_neighborhood_size(
         pool_result['n_pool'], n_points, means_S1, desired_size=50)
     neighborhoods = construct_neighborhoods(
-        pool_result['x_star'], means_S1, resid_S1, n_neighbors
+        pool_result['x_star'], means_S1, resid_S1, n_neighbors, TEST_N_OMP_THREADS
     )
 
 

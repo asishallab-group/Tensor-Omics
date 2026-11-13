@@ -21,6 +21,11 @@ module tox_gene_centroids_impl
     integer(int32), parameter :: MODE_GROUP_ALL = 1_int32
         !! Mode code for taking all genes as a group
 
+! The fewest families group_centroid_impl shares between threads: from four on, the team pays for
+! its start (#218, measured against the serial build with 2000 and 20000 genes, gfortran and ifx
+! --max-performance; with 2000 genes, gfortran was 1.5x slower at two families).
+#define CM_GROUP_CENTROID_MIN_PARALLEL 4_int32
+
 contains
 
     !> summary: Computes the element-wise mean of the selected gene vectors.
@@ -72,8 +77,9 @@ contains
     !> summary: Computes one centroid per gene family, of all its genes or of its orthologs only.
     !| AUTHOR_LUKA_FAENSEN
     !| A family without selected genes gets the zero vector.
-    pure subroutine group_centroid_impl(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
-                                   centroid_matrix, mode, tmp_family_genes, ortholog_set)
+    M_OMP_PURE subroutine group_centroid_impl(expression_vectors, n_axes, n_genes, gene_to_family, n_families, &
+                                   centroid_matrix, mode, tmp_family_genes, n_omp_threads, ortholog_set)
+        !$ use omp_lib, only: omp_get_thread_num
         integer(int32), intent(in) :: n_axes
             !! Number of axes (tissues/dimensions).
         integer(int32), intent(in) :: n_genes
@@ -96,26 +102,32 @@ contains
             !! | Group all | [[tox_gene_centroids_impl(module):MODE_GROUP_ALL(variable)]] | group_centroid_all |
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        logical(c_bool), dimension(n_genes), intent(out) :: tmp_family_genes
-            !! Work array: `.true.` for the genes of the family being averaged.
+        integer(int32), intent(in) :: n_omp_threads
+        logical(c_bool), dimension(n_genes, n_omp_threads), intent(out) :: tmp_family_genes
+            !! Work array: `.true.` for the genes of the family being averaged, one column per thread.
         logical(c_bool), dimension(n_genes), intent(in), optional :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
             !! DM_REQUIRED_IF_MODE(mode, tox_gene_centroids_impl, MODE_GROUP_ORTHOLOGS)
 
-        integer(int32) :: i_gene, i_family, n_selected
+        integer(int32) :: i_gene, i_family, n_selected, i_thread
 
+        !M_OMP_PARALLEL(n_families >= CM_GROUP_CENTROID_MIN_PARALLEL) schedule(dynamic) shared(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_family_genes, ortholog_set) private(i_gene, n_selected, i_thread)
         do i_family = 1, n_families
+            i_thread = 1
+            !$ i_thread = omp_get_thread_num() + 1
+
             ! select the genes of the current family and, if required, only its orthologs
             n_selected = 0
             do i_gene = 1, n_genes
-                tmp_family_genes(i_gene) = gene_to_family(i_gene) == i_family
-                if (mode == MODE_GROUP_ORTHOLOGS .and. tmp_family_genes(i_gene)) then
-                    tmp_family_genes(i_gene) = ortholog_set(i_gene)
+                tmp_family_genes(i_gene, i_thread) = gene_to_family(i_gene) == i_family
+                if (mode == MODE_GROUP_ORTHOLOGS .and. tmp_family_genes(i_gene, i_thread)) then
+                    tmp_family_genes(i_gene, i_thread) = ortholog_set(i_gene)
                 end if
-                if (tmp_family_genes(i_gene)) n_selected = n_selected + 1
+                if (tmp_family_genes(i_gene, i_thread)) n_selected = n_selected + 1
             end do
 
-            call mean_vector_impl(expression_vectors, n_axes, n_genes, tmp_family_genes, n_selected, centroid_matrix(:, i_family))
+            call mean_vector_impl(expression_vectors, n_axes, n_genes, tmp_family_genes(:, i_thread), n_selected, &
+                                  centroid_matrix(:, i_family))
         end do
     end subroutine group_centroid_impl
 

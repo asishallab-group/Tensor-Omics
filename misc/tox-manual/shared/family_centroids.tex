@@ -57,7 +57,8 @@
 \begin{codefragment}[language=Python,caption={Fragments to edit: the mapping, and which members define the centroid}]
 import numpy as np
 from tensor_omics import (group_centroid_all,
-                          group_centroid_orthologs)
+                          group_centroid_orthologs,
+                          max_omp_threads)
 
 # --- one gene per COLUMN, as normalization produced it -----
 expr = np.asfortranarray(normalized)   # (n_axes, n_genes)
@@ -68,12 +69,13 @@ n_families = 2
 
 # --- (a) the family's actual mean, paralogs included -------
 centroids = group_centroid_all(
-    expr, gene_to_family, n_families)
+    expr, gene_to_family, n_families, max_omp_threads())
 
 # --- (b) a conserved reference: orthologs only -------------
 ortholog_set = np.array([True, False, True, False, True])
 centroids = group_centroid_orthologs(
-    expr, gene_to_family, n_families, ortholog_set)
+    expr, gene_to_family, n_families, max_omp_threads(),
+    ortholog_set)
 #   -> (n_axes, n_families), one centroid per column
 \end{codefragment}
 
@@ -92,6 +94,9 @@ centroids = group_centroid_orthologs(
     columns of the result}{Must be at least as large as the largest index in
     \code{gene\_to\_family}. Indices above it fail the call; families with no
     genes below it come back as zero centroids}
+  \param{n\_omp\_threads}{The most threads the call may share the families
+    between}{At least \code{1}; \code{max\_omp\_threads()} is the build's
+    default. A build without OpenMP runs on one thread whatever is passed}
   \param{ortholog\_set}{Which genes contribute when the orthologs-only
     centroid is taken}{Required by \code{group\_centroid\_orthologs}, one
     boolean per gene. A family with no ortholog among its members gets a zero

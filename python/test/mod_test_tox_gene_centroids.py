@@ -21,7 +21,7 @@ from tensor_omics import (
     group_centroid_orthologs,
     mean_vector,
 )
-from test_helpers import run_all_tests, assert_error
+from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
 from tensor_omics.error_handling import (
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
@@ -98,7 +98,7 @@ def test_group_centroid_orthologs():
     # gene 2 is unassigned (0); gene 4 is in family 2 but not an ortholog
     gene_to_family = [2, 0, 1, 2]
     ortholog_set = [True, True, True, False]
-    centroid_matrix = group_centroid_orthologs(_expression_vectors(), gene_to_family, 2, ortholog_set)
+    centroid_matrix = group_centroid_orthologs(_expression_vectors(), gene_to_family, 2, TEST_N_OMP_THREADS, ortholog_set)
     _assert_result_array(centroid_matrix, (N_AXES, 2), np.float64, "centroid_matrix", fortran_order=True)
     # the one value: each family keeps exactly one ortholog, so its centroid is that gene's column --
     # family 1 is gene 3, family 2 is gene 1
@@ -107,20 +107,20 @@ def test_group_centroid_orthologs():
 
 def test_group_centroid_orthologs_rejects_a_family_out_of_range():
     ortholog_set = np.ones(N_GENES, dtype=bool)
-    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), [1, 3, 1, 1], 2, ortholog_set),
+    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), [1, 3, 1, 1], 2, TEST_N_OMP_THREADS, ortholog_set),
                  "family id n_families + 1", ERR_INVALID_INPUT)
-    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), [1, -1, 1, 1], 2, ortholog_set),
+    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), [1, -1, 1, 1], 2, TEST_N_OMP_THREADS, ortholog_set),
                  "a negative family id", ERR_INVALID_INPUT)
 
 
 def test_group_centroid_orthologs_rejects_no_families():
-    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), np.zeros(N_GENES, dtype=np.int32), 0,
+    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), np.zeros(N_GENES, dtype=np.int32), 0, TEST_N_OMP_THREADS,
                                                   np.ones(N_GENES, dtype=bool)),
                  "no families", ERR_EMPTY_INPUT)
 
 
 def test_group_centroid_orthologs_rejects_no_genes():
-    assert_error(lambda: group_centroid_orthologs(np.empty((N_AXES, 0)), np.empty(0, dtype=np.int32), 1,
+    assert_error(lambda: group_centroid_orthologs(np.empty((N_AXES, 0)), np.empty(0, dtype=np.int32), 1, TEST_N_OMP_THREADS,
                                                   np.empty(0, dtype=bool)),
                  "no genes", ERR_EMPTY_INPUT)
 
@@ -128,14 +128,14 @@ def test_group_centroid_orthologs_rejects_no_genes():
 def test_group_centroid_orthologs_rejects_infinity():
     expression_vectors = _expression_vectors()
     expression_vectors[0, 3] = np.inf
-    assert_error(lambda: group_centroid_orthologs(expression_vectors, np.ones(N_GENES, dtype=np.int32), 1,
+    assert_error(lambda: group_centroid_orthologs(expression_vectors, np.ones(N_GENES, dtype=np.int32), 1, TEST_N_OMP_THREADS,
                                                   np.ones(N_GENES, dtype=bool)),
                  "an infinite expression", ERR_NAN_INF)
 
 
 def test_group_centroid_orthologs_rejects_a_short_ortholog_set():
     # the binding's own extent check, before the library is called
-    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), np.ones(N_GENES, dtype=np.int32), 1,
+    assert_error(lambda: group_centroid_orthologs(_expression_vectors(), np.ones(N_GENES, dtype=np.int32), 1, TEST_N_OMP_THREADS,
                                                   np.ones(N_GENES - 1, dtype=bool)),
                  "ortholog_set shorter than n_genes")
 
@@ -146,7 +146,7 @@ def test_group_centroid_orthologs_rejects_a_short_ortholog_set():
 
 def test_group_centroid_all():
     # genes 2 and 4 are unassigned (0)
-    centroid_matrix = group_centroid_all(_expression_vectors(), [2, 0, 1, 0], 2)
+    centroid_matrix = group_centroid_all(_expression_vectors(), [2, 0, 1, 0], 2, TEST_N_OMP_THREADS)
     _assert_result_array(centroid_matrix, (N_AXES, 2), np.float64, "centroid_matrix", fortran_order=True)
     # the one value: each family holds one gene, so its centroid is that gene's column --
     # family 1 is gene 3, family 2 is gene 1
@@ -154,30 +154,30 @@ def test_group_centroid_all():
 
 
 def test_group_centroid_all_rejects_a_family_out_of_range():
-    assert_error(lambda: group_centroid_all(_expression_vectors(), [1, 1, 3, 1], 2),
+    assert_error(lambda: group_centroid_all(_expression_vectors(), [1, 1, 3, 1], 2, TEST_N_OMP_THREADS),
                  "family id n_families + 1", ERR_INVALID_INPUT)
 
 
 def test_group_centroid_all_rejects_no_families():
-    assert_error(lambda: group_centroid_all(_expression_vectors(), np.zeros(N_GENES, dtype=np.int32), 0),
+    assert_error(lambda: group_centroid_all(_expression_vectors(), np.zeros(N_GENES, dtype=np.int32), 0, TEST_N_OMP_THREADS),
                  "no families", ERR_EMPTY_INPUT)
 
 
 def test_group_centroid_all_rejects_no_axes():
-    assert_error(lambda: group_centroid_all(np.empty((0, N_GENES)), np.ones(N_GENES, dtype=np.int32), 1),
+    assert_error(lambda: group_centroid_all(np.empty((0, N_GENES)), np.ones(N_GENES, dtype=np.int32), 1, TEST_N_OMP_THREADS),
                  "no axes", ERR_EMPTY_INPUT)
 
 
 def test_group_centroid_all_rejects_nan():
     expression_vectors = _expression_vectors()
     expression_vectors[1, 0] = np.nan
-    assert_error(lambda: group_centroid_all(expression_vectors, np.ones(N_GENES, dtype=np.int32), 1),
+    assert_error(lambda: group_centroid_all(expression_vectors, np.ones(N_GENES, dtype=np.int32), 1, TEST_N_OMP_THREADS),
                  "a NaN expression", ERR_NAN_INF)
 
 
 def test_group_centroid_all_rejects_a_long_gene_to_family():
     # the binding's own extent check, before the library is called
-    assert_error(lambda: group_centroid_all(_expression_vectors(), np.ones(N_GENES + 1, dtype=np.int32), 1),
+    assert_error(lambda: group_centroid_all(_expression_vectors(), np.ones(N_GENES + 1, dtype=np.int32), 1, TEST_N_OMP_THREADS),
                  "gene_to_family longer than n_genes")
 
 

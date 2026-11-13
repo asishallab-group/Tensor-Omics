@@ -80,7 +80,7 @@ test_group_centroid_orthologs <- function() {
   # gene 2 is unassigned (0); gene 4 is in family 2 but not an ortholog
   gene_to_family <- c(2L, 0L, 1L, 2L)
   ortholog_set <- c(TRUE, TRUE, TRUE, FALSE)
-  centroid_matrix <- group_centroid_orthologs(.expression_vectors(), gene_to_family, 2L, ortholog_set)
+  centroid_matrix <- group_centroid_orthologs(.expression_vectors(), gene_to_family, 2L, TEST_N_OMP_THREADS, ortholog_set)
   .assert_double_matrix(centroid_matrix, c(N_AXES, 2L), "centroid_matrix")
   # the one value: each family keeps exactly one ortholog, so its centroid is that gene's column --
   # family 1 is gene 3, family 2 is gene 1
@@ -90,38 +90,38 @@ test_group_centroid_orthologs <- function() {
 
 test_group_centroid_orthologs_rejects_a_family_out_of_range <- function() {
   ortholog_set <- rep(TRUE, N_GENES)
-  assert_error(group_centroid_orthologs(.expression_vectors(), c(1L, 3L, 1L, 1L), 2L, ortholog_set),
+  assert_error(group_centroid_orthologs(.expression_vectors(), c(1L, 3L, 1L, 1L), 2L, TEST_N_OMP_THREADS, ortholog_set),
                "family id n_families + 1", ERR_INVALID_INPUT)
-  assert_error(group_centroid_orthologs(.expression_vectors(), c(1L, -1L, 1L, 1L), 2L, ortholog_set),
+  assert_error(group_centroid_orthologs(.expression_vectors(), c(1L, -1L, 1L, 1L), 2L, TEST_N_OMP_THREADS, ortholog_set),
                "a negative family id", ERR_INVALID_INPUT)
 }
 
 test_group_centroid_orthologs_rejects_no_families <- function() {
-  assert_error(group_centroid_orthologs(.expression_vectors(), rep(0L, N_GENES), 0L, rep(TRUE, N_GENES)),
+  assert_error(group_centroid_orthologs(.expression_vectors(), rep(0L, N_GENES), 0L, TEST_N_OMP_THREADS, rep(TRUE, N_GENES)),
                "no families", ERR_EMPTY_INPUT)
 }
 
 test_group_centroid_orthologs_rejects_no_genes <- function() {
-  assert_error(group_centroid_orthologs(matrix(numeric(0), nrow = N_AXES, ncol = 0), integer(0), 1L, logical(0)),
+  assert_error(group_centroid_orthologs(matrix(numeric(0), nrow = N_AXES, ncol = 0), integer(0), 1L, TEST_N_OMP_THREADS, logical(0)),
                "no genes", ERR_EMPTY_INPUT)
 }
 
 test_group_centroid_orthologs_rejects_infinity <- function() {
   expression_vectors <- .expression_vectors()
   expression_vectors[1, 4] <- Inf
-  assert_error(group_centroid_orthologs(expression_vectors, rep(1L, N_GENES), 1L, rep(TRUE, N_GENES)),
+  assert_error(group_centroid_orthologs(expression_vectors, rep(1L, N_GENES), 1L, TEST_N_OMP_THREADS, rep(TRUE, N_GENES)),
                "an infinite expression", ERR_NAN_INF)
 }
 
 test_group_centroid_orthologs_rejects_a_missing_ortholog_flag <- function() {
   # the binding's own NA check, before the library is called
-  assert_error(group_centroid_orthologs(.expression_vectors(), rep(1L, N_GENES), 1L, c(TRUE, NA, TRUE, TRUE)),
+  assert_error(group_centroid_orthologs(.expression_vectors(), rep(1L, N_GENES), 1L, TEST_N_OMP_THREADS, c(TRUE, NA, TRUE, TRUE)),
                "an NA in ortholog_set")
 }
 
 test_group_centroid_orthologs_rejects_a_short_ortholog_set <- function() {
   # the binding's own extent check, before the library is called
-  assert_error(group_centroid_orthologs(.expression_vectors(), rep(1L, N_GENES), 1L, rep(TRUE, N_GENES - 1L)),
+  assert_error(group_centroid_orthologs(.expression_vectors(), rep(1L, N_GENES), 1L, TEST_N_OMP_THREADS, rep(TRUE, N_GENES - 1L)),
                "ortholog_set shorter than n_genes")
 }
 
@@ -131,7 +131,7 @@ test_group_centroid_orthologs_rejects_a_short_ortholog_set <- function() {
 
 test_group_centroid_all <- function() {
   # genes 2 and 4 are unassigned (0)
-  centroid_matrix <- group_centroid_all(.expression_vectors(), c(2L, 0L, 1L, 0L), 2L)
+  centroid_matrix <- group_centroid_all(.expression_vectors(), c(2L, 0L, 1L, 0L), 2L, TEST_N_OMP_THREADS)
   .assert_double_matrix(centroid_matrix, c(N_AXES, 2L), "centroid_matrix")
   # the one value: each family holds one gene, so its centroid is that gene's column --
   # family 1 is gene 3, family 2 is gene 1
@@ -140,28 +140,28 @@ test_group_centroid_all <- function() {
 }
 
 test_group_centroid_all_rejects_a_family_out_of_range <- function() {
-  assert_error(group_centroid_all(.expression_vectors(), c(1L, 1L, 3L, 1L), 2L),
+  assert_error(group_centroid_all(.expression_vectors(), c(1L, 1L, 3L, 1L), 2L, TEST_N_OMP_THREADS),
                "family id n_families + 1", ERR_INVALID_INPUT)
 }
 
 test_group_centroid_all_rejects_no_families <- function() {
-  assert_error(group_centroid_all(.expression_vectors(), rep(0L, N_GENES), 0L), "no families", ERR_EMPTY_INPUT)
+  assert_error(group_centroid_all(.expression_vectors(), rep(0L, N_GENES), 0L, TEST_N_OMP_THREADS), "no families", ERR_EMPTY_INPUT)
 }
 
 test_group_centroid_all_rejects_no_axes <- function() {
-  assert_error(group_centroid_all(matrix(numeric(0), nrow = 0, ncol = N_GENES), rep(1L, N_GENES), 1L),
+  assert_error(group_centroid_all(matrix(numeric(0), nrow = 0, ncol = N_GENES), rep(1L, N_GENES), 1L, TEST_N_OMP_THREADS),
                "no axes", ERR_EMPTY_INPUT)
 }
 
 test_group_centroid_all_rejects_nan <- function() {
   expression_vectors <- .expression_vectors()
   expression_vectors[2, 1] <- NaN
-  assert_error(group_centroid_all(expression_vectors, rep(1L, N_GENES), 1L), "a NaN expression", ERR_NAN_INF)
+  assert_error(group_centroid_all(expression_vectors, rep(1L, N_GENES), 1L, TEST_N_OMP_THREADS), "a NaN expression", ERR_NAN_INF)
 }
 
 test_group_centroid_all_rejects_a_long_gene_to_family <- function() {
   # the binding's own extent check, before the library is called
-  assert_error(group_centroid_all(.expression_vectors(), rep(1L, N_GENES + 1L), 1L),
+  assert_error(group_centroid_all(.expression_vectors(), rep(1L, N_GENES + 1L), 1L, TEST_N_OMP_THREADS),
                "gene_to_family longer than n_genes")
 }
 

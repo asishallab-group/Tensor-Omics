@@ -340,6 +340,7 @@ contains
             neighborhood_residuals,&
             neighborhood_indices,&
             n_neighbors,&
+            n_omp_threads,&
             ierr&
         ) bind(C, name="construct_neighborhoods_c")
         use tox_data_integration_preprocessing, only: construct_neighborhoods
@@ -370,6 +371,12 @@ contains
             !! Collection of residual vectors for each neighborhood
         integer(c_int), dimension(n_neighbors, n_points), intent(out), target :: neighborhood_indices
             !! Indices of selected neighborhood genes
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -379,6 +386,7 @@ contains
         M_CHECK_NON_NULL(n_genes_S)
         M_CHECK_NON_NULL(n_reps_S)
         M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(x_star, n_points)
         M_CHECK_ARRAY_NON_NULL(mean_S, n_genes_S)
         M_CHECK_ARRAY_NON_NULL(resid_S, n_reps_S * n_genes_S)
@@ -395,6 +403,7 @@ contains
             neighborhood_residuals = neighborhood_residuals,&
             neighborhood_indices = neighborhood_indices,&
             n_neighbors = n_neighbors,&
+            n_omp_threads = n_omp_threads,&
             ierr = ierr&
         )
     end subroutine construct_neighborhoods_c
@@ -412,6 +421,7 @@ contains
             neighborhood_residuals,&
             neighborhood_indices,&
             n_neighbors,&
+            n_omp_threads,&
             ierr&
         ) bind(C, name="construct_neighborhoods_expert_c")
         use tox_data_integration_preprocessing, only: construct_neighborhoods_expert
@@ -429,6 +439,12 @@ contains
             !! The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
             !! It is recommended to compute this with
             !! [[tox_data_integration_preprocessing_impl(module):calc_neighborhood_size(function)]].
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_points), intent(in), target :: x_star
             !! Mean-expression reference points
             !! NaN is permitted for this value.
@@ -438,10 +454,10 @@ contains
         real(c_double), dimension(n_reps_S, n_genes_S), intent(in), target :: resid_S
             !! Matrix of signed residuals
             !! NaN is permitted for this value.
-        real(c_double), dimension(n_genes_S), intent(out), target :: tmp_distances
-            !! Distances work array
-        integer(c_int), dimension(n_genes_S), intent(out), target :: tmp_distances_perm
-            !! Work array for the permutation that sorts `tmp_distances`
+        real(c_double), dimension(n_genes_S, n_omp_threads), intent(out), target :: tmp_distances
+            !! Distances work array, one column per thread
+        integer(c_int), dimension(n_genes_S, n_omp_threads), intent(out), target :: tmp_distances_perm
+            !! Work array for the permutation that sorts `tmp_distances`, one column per thread
         real(c_double), dimension(n_reps_S, n_neighbors, n_points), intent(out), target :: neighborhood_residuals
             !! Collection of residual vectors for each neighborhood
         integer(c_int), dimension(n_neighbors, n_points), intent(out), target :: neighborhood_indices
@@ -455,11 +471,12 @@ contains
         M_CHECK_NON_NULL(n_genes_S)
         M_CHECK_NON_NULL(n_reps_S)
         M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(x_star, n_points)
         M_CHECK_ARRAY_NON_NULL(mean_S, n_genes_S)
         M_CHECK_ARRAY_NON_NULL(resid_S, n_reps_S * n_genes_S)
-        M_CHECK_ARRAY_NON_NULL(tmp_distances, n_genes_S)
-        M_CHECK_ARRAY_NON_NULL(tmp_distances_perm, n_genes_S)
+        M_CHECK_ARRAY_NON_NULL(tmp_distances, n_genes_S * n_omp_threads)
+        M_CHECK_ARRAY_NON_NULL(tmp_distances_perm, n_genes_S * n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals, n_reps_S * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points)
 
@@ -475,6 +492,7 @@ contains
             neighborhood_residuals = neighborhood_residuals,&
             neighborhood_indices = neighborhood_indices,&
             n_neighbors = n_neighbors,&
+            n_omp_threads = n_omp_threads,&
             ierr = ierr&
         )
     end subroutine construct_neighborhoods_expert_c

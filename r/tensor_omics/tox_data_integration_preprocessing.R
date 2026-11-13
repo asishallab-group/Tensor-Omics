@@ -164,21 +164,27 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 #'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
 #'   It is recommended to compute this with
 #'   \code{\link{calc_neighborhood_size}}.
+#' @param n_omp_threads a integer scalar. The most threads the parallel loop may use (OpenMP): it caps the team size.
+#'   It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+#'   It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+#'   Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+#'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{neighborhood_residuals}{a numeric array of rank 3. Collection of residual vectors for each neighborhood}
 #'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes}
 #' @export
-construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
+construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors, n_omp_threads) {
     x_star <- .tox_as_double_vector(x_star, "x_star")
     mean_S <- .tox_as_double_vector(mean_S, "mean_S")
     resid_S <- .tox_as_double_matrix(resid_S, "resid_S")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    n_omp_threads <- .tox_as_integer_scalar(n_omp_threads, "n_omp_threads")
     if (dim(resid_S)[2] != length(mean_S))
         .tox_shape_error("resid_S", 2L, dim(resid_S)[2], "'mean_S' implies n_genes_S == ", length(mean_S), "n_reps_S, n_genes_S")
 
-    .result <- .Call("construct_neighborhoods_call", x_star, mean_S, resid_S, n_neighbors)
-    .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr")
-    .sources <- c("x_star", NA_character_, "mean_S", NA_character_, "resid_S", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("construct_neighborhoods_call", x_star, mean_S, resid_S, n_neighbors, n_omp_threads)
+    .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "n_omp_threads", "ierr")
+    .sources <- c("x_star", NA_character_, "mean_S", NA_character_, "resid_S", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

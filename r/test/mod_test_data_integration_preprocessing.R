@@ -98,7 +98,7 @@ test_construct_neighborhoods_basic <- function() {
   
   # the routine takes the actual neighbour count now, not a desired size
   n_neighbors <- calc_neighborhood_size(n_pool, length(x_star), mean_S, n_pool)
-  result <- construct_neighborhoods(x_star, mean_S, resid_S, n_neighbors)
+  result <- construct_neighborhoods(x_star, mean_S, resid_S, n_neighbors, TEST_N_OMP_THREADS)
   force(result)
 }
 
@@ -134,7 +134,7 @@ test_construct_neighborhoods_explicit <- function() {
   
   # Test with explicit size
   n_neighbors <- calc_neighborhood_size(n_pool, n_points, mean_S, explicit_size)
-  result <- construct_neighborhoods(x_star, mean_S, resid_S, n_neighbors)
+  result <- construct_neighborhoods(x_star, mean_S, resid_S, n_neighbors, TEST_N_OMP_THREADS)
   
   assert_true(dim(result$neighborhood_residuals)[2] == explicit_size)  # Should use the explicit size
   

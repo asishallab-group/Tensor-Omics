@@ -17,7 +17,7 @@ module mod_test_group_centroid
     use tox_gene_centroids, only: group_centroid_all, group_centroid_all_expert, &
                                   group_centroid_orthologs, group_centroid_orthologs_expert
     use tox_errors
-    use test_suite, only: test_case
+    use test_suite, only: test_case, TEST_N_OMP_THREADS
     implicit none
     private
     public :: get_all_tests_group_centroid
@@ -378,18 +378,19 @@ contains
         integer(int32), intent(in) :: gene_to_family(n_genes)
         character(*), intent(in) :: label
         real(real64) :: centroids(n_axes, n_families)
-        logical(c_bool) :: work(n_genes)
+        logical(c_bool) :: work(n_genes, TEST_N_OMP_THREADS)
         integer(int32) :: ierr
 
         centroids = UNWRITTEN
-        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, TEST_N_OMP_THREADS, ierr)
         call assert_err(ierr, ERR_OK, label//": group_centroid_all, ierr")
         call assert_equal_array_real(centroids, expected, n_axes*n_families, tol, &
                                      label//": group_centroid_all, centroids", n_rows=n_axes)
 
         centroids = UNWRITTEN
         work = UNWRITTEN_MASK
-        call group_centroid_all_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, work, ierr)
+        call group_centroid_all_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, work, &
+                                       TEST_N_OMP_THREADS, ierr)
         call assert_err(ierr, ERR_OK, label//": group_centroid_all_expert, ierr")
         call assert_equal_array_real(centroids, expected, n_axes*n_families, tol, &
                                      label//": group_centroid_all_expert, centroids", n_rows=n_axes)
@@ -405,12 +406,12 @@ contains
         logical(c_bool), intent(in) :: ortholog_set(n_genes)
         character(*), intent(in) :: label
         real(real64) :: centroids(n_axes, n_families)
-        logical(c_bool) :: work(n_genes)
+        logical(c_bool) :: work(n_genes, TEST_N_OMP_THREADS)
         integer(int32) :: ierr
 
         centroids = UNWRITTEN
         call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, &
-                                      ortholog_set, ierr)
+                                      TEST_N_OMP_THREADS, ortholog_set, ierr)
         call assert_err(ierr, ERR_OK, label//": group_centroid_orthologs, ierr")
         call assert_equal_array_real(centroids, expected, n_axes*n_families, tol, &
                                      label//": group_centroid_orthologs, centroids", n_rows=n_axes)
@@ -418,7 +419,7 @@ contains
         centroids = UNWRITTEN
         work = UNWRITTEN_MASK
         call group_centroid_orthologs_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, &
-                                             work, ortholog_set, ierr)
+                                             work, TEST_N_OMP_THREADS, ortholog_set, ierr)
         call assert_err(ierr, ERR_OK, label//": group_centroid_orthologs_expert, ierr")
         call assert_equal_array_real(centroids, expected, n_axes*n_families, tol, &
                                      label//": group_centroid_orthologs_expert, centroids", n_rows=n_axes)
@@ -436,18 +437,19 @@ contains
         logical(c_bool), contiguous, intent(in) :: ortholog_set(:)
         character(*), intent(in) :: label
         real(real64) :: centroids(size(vectors, 1), max(n_families, 1))
-        logical(c_bool) :: work(size(vectors, 2))
+        logical(c_bool) :: work(size(vectors, 2), TEST_N_OMP_THREADS)
         integer(int32) :: ierr
 
-        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, TEST_N_OMP_THREADS, ierr)
         call assert_err(ierr, expected_code, label//": group_centroid_all", arg_pos)
-        call group_centroid_all_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, work, ierr)
+        call group_centroid_all_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, work, &
+                                       TEST_N_OMP_THREADS, ierr)
         call assert_err(ierr, expected_code, label//": group_centroid_all_expert", arg_pos)
         call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, &
-                                      ortholog_set, ierr)
+                                      TEST_N_OMP_THREADS, ortholog_set, ierr)
         call assert_err(ierr, expected_code, label//": group_centroid_orthologs", arg_pos)
         call group_centroid_orthologs_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, &
-                                             work, ortholog_set, ierr)
+                                             work, TEST_N_OMP_THREADS, ortholog_set, ierr)
         call assert_err(ierr, expected_code, label//": group_centroid_orthologs_expert", arg_pos)
     end subroutine check_error
 
