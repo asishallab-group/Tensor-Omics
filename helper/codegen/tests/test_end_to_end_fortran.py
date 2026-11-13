@@ -34,9 +34,8 @@ pytestmark = pytest.mark.skipif(GFORTRAN is None, reason="gfortran is not instal
 WRAPPER_FLAGS = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-g", "-fcheck=all"]
 
 #: The same without -std=f2018. The f42 sources are compiled the way fpm compiles them (it
-#: passes no -std at all): f42_math uses the F2023 `reduce()` locality spec and f42_sort
-#: declares `array(n)` before `n` is typed, a GNU extension. Neither is generated code, so
-#: holding them to the generator's conformance bar would only break this test.
+#: passes no -std at all). They are not generated code, so the generator's conformance bar
+#: is not theirs to meet.
 DEPENDENCY_FLAGS = [flag for flag in WRAPPER_FLAGS if flag != "-std=f2018"]
 
 #: Every module the wrapper `use`s, in dependency order. The real sources, not stubs: a stub

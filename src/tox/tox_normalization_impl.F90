@@ -58,7 +58,7 @@ contains
             return
         end if
 
-        do concurrent (i_dim = 1:n_dims) shared(vector, exponent, scaled_norm)
+        do i_dim = 1, n_dims
             vector(i_dim) = scale(vector(i_dim), exponent)/scaled_norm
         end do
     end subroutine normalize_unit_length_impl
@@ -429,7 +429,7 @@ contains
         if (is_err(ierr)) return
 
         ! Step 3: apply normalization
-        do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
+        do i_valid = 1, n_valid
             fitted_sd = tmp_yhat_global(i_valid)
             ! A LOESS fit can dip below zero even on non-negative data, and dividing by a negative
             ! fitted sd would flip the gene's sign. So a fit at or below zero falls back to the
@@ -438,7 +438,7 @@ contains
             if (fitted_sd <= 0.0_real64) fitted_sd = tmp_loess_y(i_valid)
 
             gene_idx = tmp_indices_used(i_valid)
-            do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)
+            do i_tissue = 1, n_replicates
                 expr(i_tissue, gene_idx) = expr(i_tissue, gene_idx) / fitted_sd
             end do
         end do
@@ -484,7 +484,7 @@ contains
         real(real64) :: scaled_norm, scaled_rms
 
         ! Loop over each gene
-        do concurrent (i_gene = 1:n_genes) local(exponent, scaled_norm, scaled_rms) shared(n_replicates, expr)
+        do i_gene = 1, n_genes
             ! sqrt(mean(x**2)) is the gene's length over sqrt(n). The division happens in scaled
             ! coordinates: for values near huge the rms itself overflows, or its reciprocal is
             ! subnormal, and dividing by either zeroed the gene.
@@ -493,7 +493,7 @@ contains
             ! A length is never negative, so `>` is the exact test for non-zero.
             if (scaled_norm > 0.0_real64) then
                 scaled_rms = scaled_norm/sqrt(real(n_replicates, real64))
-                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, exponent, scaled_rms)
+                do i_tissue = 1, n_replicates
                     expr(i_tissue, i_gene) = scale(expr(i_tissue, i_gene), exponent)/scaled_rms
                 end do
             end if
@@ -560,7 +560,7 @@ contains
         ! Initialize rank means
         rank_means = 0.0_real64
 
-        do concurrent (i_gene = 1:n_genes) shared(tmp_perm)
+        do i_gene = 1, n_genes
             tmp_perm(i_gene) = i_gene
         end do
 
@@ -568,7 +568,7 @@ contains
         do i_tissue = 1, n_replicates
             ! The sort is indirect: it reorders tmp_perm, which only needs to hold a permutation on
             ! entry -- the previous replicate's order is as good as the identity set above.
-            do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
+            do i_gene = 1, n_genes
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
 
@@ -585,13 +585,13 @@ contains
 
         ! The divided terms can still round past huge where every one of them lies within about
         ! n_replicates*epsilon of it; such a rank mean is huge, with its sign.
-        do concurrent (i_gene = 1:n_genes) shared(rank_means)
+        do i_gene = 1, n_genes
             if (.not. ieee_is_finite(rank_means(i_gene))) rank_means(i_gene) = sign(huge(1.0_real64), rank_means(i_gene))
         end do
 
         ! === Second pass: give each value the mean of its rank ===
         do i_tissue = 1, n_replicates
-            do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
+            do i_gene = 1, n_genes
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
 
@@ -615,7 +615,7 @@ contains
                 else
                     tied_mean = mean(rank_means(first_rank:last_rank))
                 end if
-                do concurrent (i_rank = first_rank:last_rank) shared(expr, tmp_perm, i_tissue, tied_mean)
+                do i_rank = first_rank, last_rank
                     expr(i_tissue, tmp_perm(i_rank)) = tied_mean
                 end do
 
@@ -668,14 +668,14 @@ contains
 
         ! Validate every element up front (sequentially, as `ierr` is a shared scalar here) so that
         ! `log2(x + 1)` is only ever evaluated for `x + 1 > 0`, i.e. `x > -1`. With the inputs
-        ! guaranteed valid, the transformation itself can run as a race-free `do concurrent` calling
+        ! guaranteed valid, the transformation itself runs as a loop of independent iterations calling
         ! the non-validating `log1p` -- no per-iteration write to the shared `ierr` is needed.
         call validate_all_in_range_real(expr, n_genes*n_tissues, ierr, min=above(-1.0_real64))
         if (is_err(ierr)) return
 
         ! Apply the log2(x + 1) transformation to every element in the flattened input matrix
-        do concurrent(i_gene=1:n_genes) shared(expr, n_tissues)
-            do concurrent(i_group=1:n_tissues) shared(expr, i_gene)
+        do i_gene = 1, n_genes
+            do i_group = 1, n_tissues
                 expr(i_group, i_gene) = log1p(expr(i_group, i_gene))/LOG_2
             end do
         end do
@@ -705,7 +705,7 @@ contains
         integer(int32) :: start_idx, stop_idx
 
         ! === Loop over each group ===
-        do concurrent (i_gene = 1:n_genes) shared(n_tissues, reps_per_tissue, expr, tissue_averages)
+        do i_gene = 1, n_genes
             start_idx = 1
             do i_group = 1, n_tissues
                 stop_idx = start_idx + reps_per_tissue(i_group) - 1
@@ -713,8 +713,7 @@ contains
                 ! Each replicate is divided before it is added, so every partial sum stays within the
                 ! largest value's magnitude: the average cannot overflow where the plain sum would.
                 sum_val = 0.0_real64
-                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene, i_group, reps_per_tissue) &
-                        reduce(+:sum_val)
+                do i_tissue = start_idx, stop_idx
                     sum_val = sum_val + expr(i_tissue, i_gene)/real(reps_per_tissue(i_group), real64)
                 end do
 
@@ -768,8 +767,8 @@ contains
         call set_ok(ierr)
 
         ! === Loop over each pair ===
-        do concurrent (i_gene = 1:n_genes) shared(n_pairs, control_tissues, condition_tissues, expr, fold_changes)
-            do concurrent (i_pair = 1:n_pairs) local(control_group, cond_group) shared(i_gene, control_tissues, condition_tissues, expr, fold_changes)
+        do i_gene = 1, n_genes
+            do i_pair = 1, n_pairs
                 control_group = control_tissues(i_pair)
                 cond_group = condition_tissues(i_pair)
                 fold_changes(i_pair, i_gene) = expr(cond_group, i_gene) - expr(control_group, i_gene)

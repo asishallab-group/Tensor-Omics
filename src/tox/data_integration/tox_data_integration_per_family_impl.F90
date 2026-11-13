@@ -90,8 +90,8 @@ contains
         integer(int32) :: i_point, i_neighbor
 
         ! Set up mask for filtered analysis -> only include neighbors being part of the family
-        do concurrent(i_point=1:n_points)
-            do concurrent(i_neighbor=1:n_neighbors) shared(family_idx, tmp_neighbor_mask_S1, tmp_neighbor_mask_S2, gene_to_family_S1, neighborhood_genes_S1, gene_to_family_S2, neighborhood_genes_S2)
+        do i_point = 1, n_points
+            do i_neighbor = 1, n_neighbors
                 tmp_neighbor_mask_S1(i_neighbor, i_point) = gene_to_family_S1(neighborhood_genes_S1(i_neighbor, i_point)) == family_idx
                 tmp_neighbor_mask_S2(i_neighbor, i_point) = gene_to_family_S2(neighborhood_genes_S2(i_neighbor, i_point)) == family_idx
             end do
@@ -189,7 +189,7 @@ contains
             return
         end if
 
-        do concurrent(i_family=1:k_families) shared(support_weights, total_included_n_reps_per_f, total_included_n_reps, contribution_scores, global_js_divergences)
+        do i_family = 1, k_families
             support_weights(i_family) = real(total_included_n_reps_per_f(i_family), kind=real64)/total_included_n_reps
 
             contribution_scores(i_family) = support_weights(i_family)*global_js_divergences(i_family)

@@ -24,7 +24,7 @@
 !| without a copy.
 !|
 !| **Parallel loops write whole words.** Two iterations that set flags in the same word race, so
-!| a `do concurrent` over flags may only read a mask; one that writes runs over words or columns.
+!| a parallel loop over flags may only read a mask; one that writes runs over words or columns.
 !|
 !| **Hot loops** use the whole-mask procedures, or step from one set flag to the next with
 !| [[f42_bit_masks_impl(module):bit_mask_next(function)]]. A procedure call per flag costs more
@@ -105,7 +105,7 @@ contains
 
         integer(int32) :: i_word, first_flag
 
-        do concurrent(i_word=1:n_words) shared(flags, bit_mask) local(first_flag)
+        do i_word = 1, n_words
             first_flag = (i_word - 1_int32)*M_BIT_MASK_WORD_BITS + 1_int32
             bit_mask(i_word) = packed_word(min(M_BIT_MASK_WORD_BITS, n_bits - first_flag + 1_int32), &
                                            flags(first_flag:))
@@ -129,7 +129,7 @@ contains
 
         integer(int32) :: i_bit
 
-        do concurrent(i_bit=1:n_bits) shared(bit_mask, flags)
+        do i_bit = 1, n_bits
             flags(i_bit) = M_BIT_MASK_TEST(bit_mask, i_bit)
         end do
     end subroutine bit_mask_to_logical_impl
@@ -153,8 +153,6 @@ contains
 
         integer(int32) :: i_mask
 
-        ! a plain do: gfortran 16.1 dies with an internal compiler error (gfc_resolve_forall) on a
-        ! do concurrent whose body calls a procedure of the same module that has one of its own
         do i_mask = 1, n_masks
             call bit_mask_from_logical_impl(n_bits, n_words, flags(:, i_mask), bit_masks(:, i_mask))
         end do
@@ -179,7 +177,6 @@ contains
 
         integer(int32) :: i_mask
 
-        ! a plain do, for the gfortran internal compiler error described in bit_masks_from_logical_2D_impl
         do i_mask = 1, n_masks
             call bit_mask_to_logical_impl(n_bits, n_words, bit_masks(:, i_mask), flags(:, i_mask))
         end do
@@ -188,7 +185,7 @@ contains
     ! ------------------------------------------------------------------ single flags
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Sets flag `i_bit`. Not for `do concurrent` over flags: see the module's note on parallel loops.
+    !| Sets flag `i_bit`. Not for a parallel loop over flags: see the module's note on parallel loops.
     pure subroutine bit_mask_set(n_words, bit_mask, i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
@@ -201,7 +198,7 @@ contains
     end subroutine bit_mask_set
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Clears flag `i_bit`. Not for `do concurrent` over flags: see the module's note on parallel loops.
+    !| Clears flag `i_bit`. Not for a parallel loop over flags: see the module's note on parallel loops.
     pure subroutine bit_mask_clear(n_words, bit_mask, i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
@@ -327,7 +324,7 @@ contains
         integer(int32) :: i_word
 
         n_set = 0_int32
-        do concurrent(i_word=1:n_words) shared(bit_mask) reduce(+:n_set)
+        do i_word = 1, n_words
             n_set = n_set + int(popcnt(bit_mask(i_word)), int32)
         end do
     end function bit_mask_count
@@ -345,7 +342,7 @@ contains
         integer(int32) :: i_word
 
         n_set = 0_int32
-        do concurrent(i_word=1:n_words) shared(left_bit_mask, right_bit_mask) reduce(+:n_set)
+        do i_word = 1, n_words
             n_set = n_set + int(popcnt(iand(left_bit_mask(i_word), right_bit_mask(i_word))), int32)
         end do
     end function bit_mask_and_count
