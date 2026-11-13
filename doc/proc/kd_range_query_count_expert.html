@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>partial_sort_by_dimension_helper &ndash; TensorOmics</title>
+    <title>kd_range_query_count_expert &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>partial_sort_by_dimension_helper
+    <h1>kd_range_query_count_expert
       <small>Subroutine</small>
       
     </h1>
@@ -85,26 +85,25 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">26 statements</a>
+                 title=" 0.1% of total for procedures.">22 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_kd_tree_impl.F90"> Source File</a>
+              <a href="../src/f42_kd_tree.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_kd_tree_impl.f90.html'>f42_kd_tree_impl.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></li>
-            <li class="breadcrumb-item active" aria-current="page">partial_sort_by_dimension_helper</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></li>
+            <li class="breadcrumb-item active" aria-current="page">kd_range_query_count_expert</li>
           </ol>
         </nav>
       </div>
@@ -151,12 +150,14 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine partial_sort_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, dim, tmp_workspace, tmp_value_buffer, tmp_permutation)  
+    <h2>public pure subroutine kd_range_query_count_expert(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, neighbor_count, ierr)  
 </h2>
     
 
-    <p>Sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)). Internal to the
-index build, which has already validated everything this reads.</p>
+    <p>Same traversal and pruning as
+<a href="../proc/kd_range_query_mask_impl.html">kd_range_query_mask_impl</a>, but writes no index
+buffer at all -- only a scalar count. The right choice when the identities of the
+points found are never needed, e.g. a per-point local-density label.</p>
 
 
     <h3>Arguments</h3>
@@ -172,7 +173,7 @@ index build, which has already validated everything this reads.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~10"></span>
+              <span class="anchor" id="variable-points~21"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -182,27 +183,12 @@ index build, which has already validated everything this reads.</p>
             <td>::</td>
             <td><strong>points</strong></td>
             <td>
-                <p>Input points array</p>
+                <p>Original points dataset</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~52"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-                <p>size of points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dimensions~10"></span>
+              <span class="anchor" id="variable-n_dimensions~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -217,107 +203,127 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~10"></span>
+              <span class="anchor" id="variable-n_points~64"></span>
               integer(kind=int32),
             </td>
-<td>intent(out),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              dimension(:)
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+                <p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~21"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
             </td>
             <td>::</td>
             <td><strong>kd_indices</strong></td>
             <td>
-                <p>Index array to modify</p>
+                <p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-left_idx~2"></span>
+              <span class="anchor" id="variable-dimension_order~18"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_dimensions)
             </td>
             <td>::</td>
-            <td><strong>left_idx</strong></td>
+            <td><strong>dimension_order</strong></td>
             <td>
-                <p>Left index of subarray</p>
+                <p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-right_idx~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>right_idx</strong></td>
-            <td>
-                <p>Right index of subarray</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dim"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>dim</strong></td>
-            <td>
-                <p>Dimension to sort by</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_workspace~8"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_workspace</strong></td>
-            <td>
-                <p>Workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_value_buffer~8"></span>
+              <span class="anchor" id="variable-query_point~12"></span>
               real(kind=real64),
             </td>
-<td>intent(out),</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              dimension(:)
+              dimension(n_dimensions)
             </td>
             <td>::</td>
-            <td><strong>tmp_value_buffer</strong></td>
+            <td><strong>query_point</strong></td>
             <td>
-                <p>Buffer for dimension values</p>
+                <p>Query point coordinates</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~8"></span>
+              <span class="anchor" id="variable-radius~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+                <p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(:)
+              dimension(3, n_points)
             </td>
             <td>::</td>
-            <td><strong>tmp_permutation</strong></td>
+            <td><strong>tmp_range_stack</strong></td>
             <td>
-                <p>Permutation array</p>
+                <p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_count~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_count</strong></td>
+            <td>
+                <p>Output: number of points within <code>radius</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~252"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -354,7 +360,7 @@ index build, which has already validated everything this reads.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:27 +0000             </p>
           </div>
         </div>
         <br>

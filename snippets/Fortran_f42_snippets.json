@@ -93,7 +93,7 @@
     "prefix": "f42:kd_tree.use",
     "description": "use f42_kd_tree, only: ...",
     "body": [
-      "use f42_kd_tree, only: ${1|build_kd_index,build_spherical_kd|}"
+      "use f42_kd_tree, only: ${1|build_kd_index,build_spherical_kd,kd_knn_query,kd_range_query_mask,kd_range_query_list,kd_range_query_count|}"
     ]
   },
   "build_kd_index (call)": {
@@ -147,6 +147,142 @@
       "    kd_indices=${4:kd_indices}, &",
       "    dimension_order=${5:dimension_order}, &",
       "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "kd_knn_query (call)": {
+    "prefix": "f42:kd_knn_query",
+    "description": "Via a bounded max-heap kept directly in `neighbors`/`distances` and splitting-plane",
+    "body": [
+      "call kd_knn_query( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    k_neighbors=${7:k_neighbors}, &",
+      "    neighbors=${8:neighbors}, &",
+      "    distances=${9:distances}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "kd_knn_query (call, checked)": {
+    "prefix": "f42:kd_knn_query.checked",
+    "description": "Via a bounded max-heap kept directly in `neighbors`/`distances` and splitting-plane (with error check)",
+    "body": [
+      "call kd_knn_query( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    k_neighbors=${7:k_neighbors}, &",
+      "    neighbors=${8:neighbors}, &",
+      "    distances=${9:distances}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "kd_range_query_mask (call)": {
+    "prefix": "f42:kd_range_query_mask",
+    "description": "Same iterative, stack-based traversal and splitting-plane pruning as",
+    "body": [
+      "call kd_range_query_mask( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    radius=${7:radius}, &",
+      "    in_radius_mask=${8:in_radius_mask}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "kd_range_query_mask (call, checked)": {
+    "prefix": "f42:kd_range_query_mask.checked",
+    "description": "Same iterative, stack-based traversal and splitting-plane pruning as (with error check)",
+    "body": [
+      "call kd_range_query_mask( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    radius=${7:radius}, &",
+      "    in_radius_mask=${8:in_radius_mask}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "kd_range_query_list (call)": {
+    "prefix": "f42:kd_range_query_list",
+    "description": "Same traversal and pruning as [[f42_kd_tree_impl(module):kd_range_query_mask_impl(subroutine)]],",
+    "body": [
+      "call kd_range_query_list( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    radius=${7:radius}, &",
+      "    neighbors=${8:neighbors}, &",
+      "    n_found=${9:n_found}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "kd_range_query_list (call, checked)": {
+    "prefix": "f42:kd_range_query_list.checked",
+    "description": "Same traversal and pruning as [[f42_kd_tree_impl(module):kd_range_query_mask_impl(subroutine)]], (with error check)",
+    "body": [
+      "call kd_range_query_list( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    radius=${7:radius}, &",
+      "    neighbors=${8:neighbors}, &",
+      "    n_found=${9:n_found}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "kd_range_query_count (call)": {
+    "prefix": "f42:kd_range_query_count",
+    "description": "Same traversal and pruning as",
+    "body": [
+      "call kd_range_query_count( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    radius=${7:radius}, &",
+      "    neighbor_count=${8:neighbor_count}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "kd_range_query_count (call, checked)": {
+    "prefix": "f42:kd_range_query_count.checked",
+    "description": "Same traversal and pruning as (with error check)",
+    "body": [
+      "call kd_range_query_count( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    query_point=${6:query_point}, &",
+      "    radius=${7:radius}, &",
+      "    neighbor_count=${8:neighbor_count}, &",
+      "    ierr=${9:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

@@ -1217,13 +1217,13 @@
   },
   "mean_vector (call)": {
     "prefix": "tox:mean_vector",
-    "description": "mean_vector",
+    "description": "A selection without genes gives the zero vector.",
     "body": [
       "call mean_vector( &",
       "    expression_vectors=${1:expression_vectors}, &",
       "    n_axes=${2:n_axes}, &",
       "    n_genes=${3:n_genes}, &",
-      "    gene_indices=${4:gene_indices}, &",
+      "    genes_selection_mask=${4:genes_selection_mask}, &",
       "    n_selected_genes=${5:n_selected_genes}, &",
       "    centroid=${6:centroid}, &",
       "    ierr=${7:ierr})"
@@ -1231,13 +1231,13 @@
   },
   "mean_vector (call, checked)": {
     "prefix": "tox:mean_vector.checked",
-    "description": "mean_vector (with error check)",
+    "description": "A selection without genes gives the zero vector. (with error check)",
     "body": [
       "call mean_vector( &",
       "    expression_vectors=${1:expression_vectors}, &",
       "    n_axes=${2:n_axes}, &",
       "    n_genes=${3:n_genes}, &",
-      "    gene_indices=${4:gene_indices}, &",
+      "    genes_selection_mask=${4:genes_selection_mask}, &",
       "    n_selected_genes=${5:n_selected_genes}, &",
       "    centroid=${6:centroid}, &",
       "    ierr=${7:ierr})",
@@ -1246,7 +1246,7 @@
   },
   "group_centroid_orthologs (call)": {
     "prefix": "tox:group_centroid_orthologs",
-    "description": "group_centroid_orthologs",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "call group_centroid_orthologs( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1261,7 +1261,7 @@
   },
   "group_centroid_orthologs (call, checked)": {
     "prefix": "tox:group_centroid_orthologs.checked",
-    "description": "group_centroid_orthologs (with error check)",
+    "description": "A family without selected genes gets the zero vector. (with error check)",
     "body": [
       "call group_centroid_orthologs( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1277,7 +1277,7 @@
   },
   "group_centroid_all (call)": {
     "prefix": "tox:group_centroid_all",
-    "description": "group_centroid_all",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "call group_centroid_all( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1291,7 +1291,7 @@
   },
   "group_centroid_all (call, checked)": {
     "prefix": "tox:group_centroid_all.checked",
-    "description": "group_centroid_all (with error check)",
+    "description": "A family without selected genes gets the zero vector. (with error check)",
     "body": [
       "call group_centroid_all( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -2111,7 +2111,7 @@
   },
   "clock_hand_angle_between_vectors (call)": {
     "prefix": "tox:clock_hand_angle_between_vectors",
-    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying",
+    "description": "The unsigned angle is the one between the two directions; their lengths do not matter, so",
     "body": [
       "call clock_hand_angle_between_vectors( &",
       "    v1=${1:v1}, &",
@@ -2124,7 +2124,7 @@
   },
   "clock_hand_angle_between_vectors (call, checked)": {
     "prefix": "tox:clock_hand_angle_between_vectors.checked",
-    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying (with error check)",
+    "description": "The unsigned angle is the one between the two directions; their lengths do not matter, so (with error check)",
     "body": [
       "call clock_hand_angle_between_vectors( &",
       "    v1=${1:v1}, &",
@@ -2138,7 +2138,7 @@
   },
   "clock_hand_angles_for_shift_vectors (call)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors",
-    "description": "Each selected field is angled by the rule of",
+    "description": "Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from",
     "body": [
       "call clock_hand_angles_for_shift_vectors( &",
       "    fields=${1:fields}, &",
@@ -2153,7 +2153,7 @@
   },
   "clock_hand_angles_for_shift_vectors (call, checked)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors.checked",
-    "description": "Each selected field is angled by the rule of (with error check)",
+    "description": "Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from (with error check)",
     "body": [
       "call clock_hand_angles_for_shift_vectors( &",
       "    fields=${1:fields}, &",

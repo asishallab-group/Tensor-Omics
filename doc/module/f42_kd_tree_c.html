@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.1% of total for modules and submodules.">220 statements</a>
+                 title=" 3.6% of total for modules and submodules.">732 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -145,6 +145,14 @@
             <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-build_kd_index_expert_c">build_kd_index_expert_c</a>
             <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-build_spherical_kd_c">build_spherical_kd_c</a>
             <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-build_spherical_kd_expert_c">build_spherical_kd_expert_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_knn_query_c">kd_knn_query_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_knn_query_expert_c">kd_knn_query_expert_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_range_query_mask_c">kd_range_query_mask_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_range_query_mask_expert_c">kd_range_query_mask_expert_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_range_query_list_c">kd_range_query_list_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_range_query_list_expert_c">kd_range_query_list_expert_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_range_query_count_c">kd_range_query_count_c</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_c.html#proc-kd_range_query_count_expert_c">kd_range_query_count_expert_c</a>
         </div>
       </div>
     </div>
@@ -174,8 +182,8 @@ index array rather than as linked nodes.</p>
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -215,7 +223,7 @@ index array rather than as linked nodes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~5"></span>
+              <span class="anchor" id="variable-points~22"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -230,7 +238,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~5"></span>
+              <span class="anchor" id="variable-n_dimensions~21"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -245,7 +253,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~29"></span>
+              <span class="anchor" id="variable-n_points~70"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -260,7 +268,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~5"></span>
+              <span class="anchor" id="variable-kd_indices~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -275,7 +283,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~5"></span>
+              <span class="anchor" id="variable-dimension_order~19"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -292,7 +300,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~261"></span>
+              <span class="anchor" id="variable-ierr~356"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -332,7 +340,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~6"></span>
+              <span class="anchor" id="variable-points~23"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -347,7 +355,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~6"></span>
+              <span class="anchor" id="variable-n_dimensions~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -362,7 +370,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~30"></span>
+              <span class="anchor" id="variable-n_points~71"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -377,7 +385,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~6"></span>
+              <span class="anchor" id="variable-kd_indices~23"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -392,7 +400,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~6"></span>
+              <span class="anchor" id="variable-dimension_order~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -409,7 +417,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~5"></span>
+              <span class="anchor" id="variable-tmp_workspace~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -419,12 +427,14 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <td>::</td>
             <td><strong>tmp_workspace</strong></td>
             <td>
-<p>Workspace array</p>
+<p>Workspace array, touched only if
+<a href="../proc/median_select_by_dimension_helper.html">median_select_by_dimension_helper</a> falls
+back to a full sort of a subrange</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~5"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -434,12 +444,12 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <td>::</td>
             <td><strong>tmp_value_buffer</strong></td>
             <td>
-<p>Workspace for sorting</p>
+<p>Workspace for the fallback full sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~5"></span>
+              <span class="anchor" id="variable-tmp_permutation~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -449,12 +459,12 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <td>::</td>
             <td><strong>tmp_permutation</strong></td>
             <td>
-<p>Workspace for sorting</p>
+<p>Workspace for the fallback full sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~5"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -469,7 +479,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~262"></span>
+              <span class="anchor" id="variable-ierr~357"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -509,7 +519,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~7"></span>
+              <span class="anchor" id="variable-points~24"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -524,7 +534,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~7"></span>
+              <span class="anchor" id="variable-n_dimensions~23"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -539,7 +549,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~31"></span>
+              <span class="anchor" id="variable-n_points~72"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -554,7 +564,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~7"></span>
+              <span class="anchor" id="variable-kd_indices~24"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -569,7 +579,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~7"></span>
+              <span class="anchor" id="variable-dimension_order~21"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -586,7 +596,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~263"></span>
+              <span class="anchor" id="variable-ierr~358"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -626,7 +636,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~8"></span>
+              <span class="anchor" id="variable-points~25"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -641,7 +651,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~8"></span>
+              <span class="anchor" id="variable-n_dimensions~24"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -656,7 +666,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~32"></span>
+              <span class="anchor" id="variable-n_points~73"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -671,7 +681,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~8"></span>
+              <span class="anchor" id="variable-kd_indices~25"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -686,7 +696,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~8"></span>
+              <span class="anchor" id="variable-dimension_order~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -703,7 +713,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~6"></span>
+              <span class="anchor" id="variable-tmp_workspace~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -718,7 +728,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~6"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -733,7 +743,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~6"></span>
+              <span class="anchor" id="variable-tmp_permutation~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -748,7 +758,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~6"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -763,7 +773,1449 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~264"></span>
+              <span class="anchor" id="variable-ierr~359"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_knn_query_c"></span> <h3>public  subroutine <a href='../proc/kd_knn_query_c.html'>kd_knn_query_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, k_neighbors, neighbors, distances, ierr) bind(C, name="kd_knn_query_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_knn_query.html">kd_knn_query</a></p><a href="../proc/kd_knn_query_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~26"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~25"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~74"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~26"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index, see <a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~23"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~13"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-k_neighbors~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>k_neighbors</strong></td>
+            <td>
+<p>Number of neighbors to find
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~9"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(k_neighbors), target
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Output: indices of the k nearest neighbors (nearest-to-farthest order not guaranteed, max-heap order internally)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~34"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(k_neighbors), target
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Output: Euclidean distances to the k nearest neighbors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~360"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_knn_query_expert_c"></span> <h3>public  subroutine <a href='../proc/kd_knn_query_expert_c.html'>kd_knn_query_expert_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, k_neighbors, tmp_range_stack, neighbors, distances, ierr) bind(C, name="kd_knn_query_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_knn_query_expert.html">kd_knn_query_expert</a></p><a href="../proc/kd_knn_query_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~27"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~26"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~75"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~27"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index, see <a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~24"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~14"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-k_neighbors~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>k_neighbors</strong></td>
+            <td>
+<p>Number of neighbors to find
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~13"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~10"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(k_neighbors), target
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Output: indices of the k nearest neighbors (nearest-to-farthest order not guaranteed, max-heap order internally)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~35"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(k_neighbors), target
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Output: Euclidean distances to the k nearest neighbors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~361"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_mask_c"></span> <h3>public  subroutine <a href='../proc/kd_range_query_mask_c.html'>kd_range_query_mask_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, in_radius_mask, ierr) bind(C, name="kd_range_query_mask_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_range_query_mask.html">kd_range_query_mask</a></p><a href="../proc/kd_range_query_mask_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~28"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~27"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~76"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~28"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~25"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~15"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~10"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-in_radius_mask~4"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>in_radius_mask</strong></td>
+            <td>
+<p>Output: .true. for points within <code>radius</code> of <code>query_point</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~362"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_mask_expert_c"></span> <h3>public  subroutine <a href='../proc/kd_range_query_mask_expert_c.html'>kd_range_query_mask_expert_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, in_radius_mask, ierr) bind(C, name="kd_range_query_mask_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_range_query_mask_expert.html">kd_range_query_mask_expert</a></p><a href="../proc/kd_range_query_mask_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~29"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~28"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~77"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~29"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~26"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~16"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~11"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~14"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-in_radius_mask~5"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>in_radius_mask</strong></td>
+            <td>
+<p>Output: .true. for points within <code>radius</code> of <code>query_point</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~363"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_list_c"></span> <h3>public  subroutine <a href='../proc/kd_range_query_list_c.html'>kd_range_query_list_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, neighbors, n_found, ierr) bind(C, name="kd_range_query_list_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_range_query_list.html">kd_range_query_list</a></p><a href="../proc/kd_range_query_list_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~30"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~29"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~78"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~30"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~27"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~17"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~12"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~11"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Output: indices within <code>radius</code>, valid in <code>neighbors(1:n_found)</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_found~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_found</strong></td>
+            <td>
+<p>Output: number of points within <code>radius</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~364"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_list_expert_c"></span> <h3>public  subroutine <a href='../proc/kd_range_query_list_expert_c.html'>kd_range_query_list_expert_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, neighbors, n_found, ierr) bind(C, name="kd_range_query_list_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_range_query_list_expert.html">kd_range_query_list_expert</a></p><a href="../proc/kd_range_query_list_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~31"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~30"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~79"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~31"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~28"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~18"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~13"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~15"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~12"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Output: indices within <code>radius</code>, valid in <code>neighbors(1:n_found)</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_found~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_found</strong></td>
+            <td>
+<p>Output: number of points within <code>radius</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~365"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_count_c"></span> <h3>public  subroutine <a href='../proc/kd_range_query_count_c.html'>kd_range_query_count_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, neighbor_count, ierr) bind(C, name="kd_range_query_count_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_range_query_count.html">kd_range_query_count</a></p><a href="../proc/kd_range_query_count_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~32"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~31"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~80"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~32"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~29"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~19"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~14"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_count~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_count</strong></td>
+            <td>
+<p>Output: number of points within <code>radius</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~366"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_count_expert_c"></span> <h3>public  subroutine <a href='../proc/kd_range_query_count_expert_c.html'>kd_range_query_count_expert_c</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, neighbor_count, ierr) bind(C, name="kd_range_query_count_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/kd_range_query_count_expert.html">kd_range_query_count_expert</a></p><a href="../proc/kd_range_query_count_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~33"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~32"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~81"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~33"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~30"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~20"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions), target
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~15"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~16"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_count~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_count</strong></td>
+            <td>
+<p>Output: number of points within <code>radius</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~367"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -806,7 +2258,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:27 +0000             </p>
           </div>
         </div>
         <br>
