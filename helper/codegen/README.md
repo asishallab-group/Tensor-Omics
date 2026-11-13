@@ -536,7 +536,7 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   default), or a variable of the module around it (`empty_view_anchor`, where an array of
   strings is viewed). Read off the wrappers as emitted, after
   their macros are expanded (`emit/name_clashes.py`), so it is refused exactly where it collides:
-  `count` stays a good argument of `mask_chunk_count`, which counts nothing. The R shim and Python
+  `count` stays a good argument of a procedure that counts nothing. The R shim and Python
   have no such clash to refuse -- everything they bind beside the arguments starts with `_`
   (`_v_k`, `_nprot`, `_np`, `_error`), which no Fortran name can. All of these names are built in
   [`names.py`](names.py), and `tests/test_names.py` reads the generated Python, R shim, R wrapper
@@ -610,9 +610,8 @@ dropping the fixed directory they used to be scoped to:
   publishes an unvalidated twin beside it, under a name (`foo_impl`) a binding caller cannot
   tell apart from the validated `foo`. Support routines in the same module (the
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
-  implementation module can itself show up in the bindings — `tox_paralog_analysis_impl.py` is
-  the Python home of `mask_chunk_count`, `mask_check_state` and
-  `calc_work_arr_paralog_subsets_size`, and holds no implementation
+  implementation module can itself show up in the bindings — `tox_data_integration_preprocessing_impl.py`
+  is the Python home of `calc_neighborhood_size`, and holds no implementation
 - an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
   `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
   (it calls the producer itself). Either way it would discard what the implementation computes;
