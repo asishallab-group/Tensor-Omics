@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.2% of total for modules and submodules.">433 statements</a>
+                 title=" 2.1% of total for modules and submodules.">433 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -252,7 +252,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~23"></span>
+              <span class="anchor" id="variable-int_workspace_size~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -267,7 +267,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~23"></span>
+              <span class="anchor" id="variable-real_workspace_size~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -297,7 +297,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~245"></span>
+              <span class="anchor" id="variable-ierr~261"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -337,7 +337,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~16"></span>
+              <span class="anchor" id="variable-n~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -352,7 +352,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~11"></span>
+              <span class="anchor" id="variable-x~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -382,7 +382,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~12"></span>
+              <span class="anchor" id="variable-weights~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -412,7 +412,7 @@ routines themselves are not re-documented beyond their calling convention.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~18"></span>
+              <span class="anchor" id="variable-span~22"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -429,7 +429,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~19"></span>
+              <span class="anchor" id="variable-degree~23"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -508,7 +508,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~246"></span>
+              <span class="anchor" id="variable-ierr~262"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -548,7 +548,7 @@ The default value is <code>.false.</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~17"></span>
+              <span class="anchor" id="variable-n~16"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -563,7 +563,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~12"></span>
+              <span class="anchor" id="variable-x~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -593,7 +593,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~13"></span>
+              <span class="anchor" id="variable-weights~14"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -623,7 +623,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~19"></span>
+              <span class="anchor" id="variable-span~23"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -640,7 +640,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~20"></span>
+              <span class="anchor" id="variable-degree~24"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -704,7 +704,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~18"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -719,7 +719,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~24"></span>
+              <span class="anchor" id="variable-int_workspace_size~28"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -731,12 +731,12 @@ The default value is <code>.false.</code>.</p>
             <td>
 <p>Required size of the integer workspace array
 It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
-The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_fit_plain_expert_c.html#variable-int_workspace_size~24" class="pull-right"><emph>Read more&hellip;</emph></a>
+The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_fit_plain_expert_c.html#variable-int_workspace_size~28" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~18"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~22"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -751,7 +751,7 @@ The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_f
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~24"></span>
+              <span class="anchor" id="variable-real_workspace_size~28"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -763,12 +763,12 @@ The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_f
             <td>
 <p>Required size of the real workspace array
 It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
-The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_fit_plain_expert_c.html#variable-real_workspace_size~24" class="pull-right"><emph>Read more&hellip;</emph></a>
+The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_fit_plain_expert_c.html#variable-real_workspace_size~28" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~14"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -798,7 +798,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~247"></span>
+              <span class="anchor" id="variable-ierr~263"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -838,7 +838,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~18"></span>
+              <span class="anchor" id="variable-n~17"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -853,7 +853,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~13"></span>
+              <span class="anchor" id="variable-x~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -883,7 +883,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~14"></span>
+              <span class="anchor" id="variable-weights~15"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -913,7 +913,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~20"></span>
+              <span class="anchor" id="variable-span~24"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -930,7 +930,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~21"></span>
+              <span class="anchor" id="variable-degree~25"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1026,7 +1026,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~248"></span>
+              <span class="anchor" id="variable-ierr~264"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1066,7 +1066,7 @@ The default value is <code>3_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~19"></span>
+              <span class="anchor" id="variable-n~18"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1081,7 +1081,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~14"></span>
+              <span class="anchor" id="variable-x~12"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1111,7 +1111,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~15"></span>
+              <span class="anchor" id="variable-weights~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1141,7 +1141,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~21"></span>
+              <span class="anchor" id="variable-span~25"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1158,7 +1158,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~22"></span>
+              <span class="anchor" id="variable-degree~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1239,7 +1239,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~19"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~23"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1254,7 +1254,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~25"></span>
+              <span class="anchor" id="variable-int_workspace_size~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1266,12 +1266,12 @@ The default value is <code>3_int32</code>.</p>
             <td>
 <p>Required size of the integer workspace array
 It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
-The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_fit_robust_expert_c.html#variable-int_workspace_size~25" class="pull-right"><emph>Read more&hellip;</emph></a>
+The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_fit_robust_expert_c.html#variable-int_workspace_size~29" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~19"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~23"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1286,7 +1286,7 @@ The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_f
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~25"></span>
+              <span class="anchor" id="variable-real_workspace_size~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1298,12 +1298,12 @@ The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_f
             <td>
 <p>Required size of the real workspace array
 It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
-The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_fit_robust_expert_c.html#variable-real_workspace_size~25" class="pull-right"><emph>Read more&hellip;</emph></a>
+The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_fit_robust_expert_c.html#variable-real_workspace_size~29" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~15"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1318,7 +1318,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~15"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~19"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1333,7 +1333,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~15"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~19"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1348,7 +1348,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~15"></span>
+              <span class="anchor" id="variable-tmp_residuals~19"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1363,7 +1363,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~15"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~19"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1393,7 +1393,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~249"></span>
+              <span class="anchor" id="variable-ierr~265"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1436,7 +1436,7 @@ The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:30 +0000             </p>
           </div>
         </div>
         <br>

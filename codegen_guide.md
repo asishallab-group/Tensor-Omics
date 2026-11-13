@@ -426,15 +426,16 @@ appears in the Python and R documentation, because it was written as prose in th
 
 ### 5.2 A real that may be NaN or infinite
 
-**When** an argument legitimately carries non-finite values — a masked-out mean, a distance to
-something that is not there.
+**When** an argument legitimately carries non-finite values — a missing value in data that is
+still being prepared, such as data integration's NaN-as-missing. Only preprocessing inputs do:
+an analysis step refuses NaN and Inf.
 
 **Write** the opt-out. Finiteness is the *default*: every real argument is checked unless it
 says otherwise, and each failure mode opts out separately.
 
 ```fortran
-real(real64), intent(in) :: distances(n_genes)
-    !! Array of Euclidean distances for each gene
+real(real64), intent(in) :: expr(n_reps, n_genes)
+    !! Expression matrix
     !! DM_ALLOW_NAN
     !! DM_ALLOW_INFINITE
 ```
@@ -1178,7 +1179,7 @@ Because the procedure is not a numeric procedure of the pipeline:
   would do, and the answer was "validate what they were validating by hand, and allocate and sort
   what their callers were allocating and sorting" — so all three are implementations now.
 - **inside an implementation module** — a recommend/sizing routine (`calc_neighborhood_size`) or
-  a utility a caller genuinely needs (`mask_chunk_count`): a wrapper around either would validate
+  a utility a caller genuinely needs: a wrapper around either would validate
   nothing and prepare nothing, so there is nothing to generate. Being a `DM_OUTPUT_FROM` producer
   does not change that: a producer only has to be exported, by `M_EXPORT_C` or as an
   implementation's generated wrapper (Section 5.9), and the same test decides which.

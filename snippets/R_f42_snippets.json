@@ -51,6 +51,58 @@
       ")"
     ]
   },
+  "kd_knn_query (call)": {
+    "prefix": "f42:kd_knn_query",
+    "description": "Via a bounded max-heap kept directly in `neighbors`/`distances` and splitting-plane",
+    "body": [
+      "${1:result} <- kd_knn_query(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  k_neighbors = ${6:k_neighbors}",
+      ")"
+    ]
+  },
+  "kd_range_query_mask (call)": {
+    "prefix": "f42:kd_range_query_mask",
+    "description": "Same iterative, stack-based traversal and splitting-plane pruning as",
+    "body": [
+      "${1:result} <- kd_range_query_mask(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  radius = ${6:radius}",
+      ")"
+    ]
+  },
+  "kd_range_query_list (call)": {
+    "prefix": "f42:kd_range_query_list",
+    "description": "Same traversal and pruning as [[f42_kd_tree_impl(module):kd_range_query_mask_impl(subroutine)]],",
+    "body": [
+      "${1:result} <- kd_range_query_list(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  radius = ${6:radius}",
+      ")"
+    ]
+  },
+  "kd_range_query_count (call)": {
+    "prefix": "f42:kd_range_query_count",
+    "description": "Same traversal and pruning as",
+    "body": [
+      "${1:result} <- kd_range_query_count(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  radius = ${6:radius}",
+      ")"
+    ]
+  },
   "deserialize_char_helper (call)": {
     "prefix": "f42:deserialize_char_helper",
     "description": "deserialize_char_helper",
