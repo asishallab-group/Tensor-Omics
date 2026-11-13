@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for modules and submodules.">57 statements</a>
+                 title=" 0.3% of total for modules and submodules.">58 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -187,7 +187,6 @@ over is visible at the call site.</p>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='f42_vector_impl.html'>f42_vector_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -258,7 +257,7 @@ parameter
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-mean_vector_impl"></span> <h3>public pure subroutine <a href='../proc/mean_vector_impl.html'>mean_vector_impl</a>(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid)  
+    <div class="card-header codesum"><span class="anchor" id="proc-mean_vector_impl"></span> <h3>public pure subroutine <a href='../proc/mean_vector_impl.html'>mean_vector_impl</a>(expression_vectors, n_axes, n_genes, genes_selection_mask, n_selected_genes, centroid)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -266,7 +265,7 @@ parameter
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Computes the element-wise mean for a given set of vectors.</p><a href="../proc/mean_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Computes the element-wise mean of the selected gene vectors.</p><a href="../proc/mean_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -281,7 +280,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~24"></span>
+              <span class="anchor" id="variable-expression_vectors~21"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -296,7 +295,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~20"></span>
+              <span class="anchor" id="variable-n_axes~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -311,7 +310,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~69"></span>
+              <span class="anchor" id="variable-n_genes~65"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -326,19 +325,17 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_indices~2"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-genes_selection_mask~2"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_selected_genes)
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>gene_indices</strong></td>
+            <td><strong>genes_selection_mask</strong></td>
             <td>
-<p>An array containing the column indices of the selected genes in 'expression_vectors'.
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
+<p><code>.true.</code> for the genes (columns of <code>expression_vectors</code>) to average</p>
             </td>
         </tr>
         <tr>
@@ -353,9 +350,8 @@ The maximum valid value is <code>n_genes</code>.</p>
             <td>::</td>
             <td><strong>n_selected_genes</strong></td>
             <td>
-<p>The number of genes in the current family to be averaged.
-The minimum valid value is <code>0_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
+<p>count of <code>.true.</code> values in <code>genes_selection_mask</code>
+The minimum valid value is <code>0_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -381,7 +377,7 @@ The maximum valid value is <code>n_genes</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_impl"></span> <h3>public pure subroutine <a href='../proc/group_centroid_impl.html'>group_centroid_impl</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_group_indices, ortholog_set)  
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_impl"></span> <h3>public pure subroutine <a href='../proc/group_centroid_impl.html'>group_centroid_impl</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_family_genes, ortholog_set)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -389,7 +385,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Iterates over families, filters gene indices, and computes centroids.</p><a href="../proc/group_centroid_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Computes one centroid per gene family, of all its genes or of its orthologs only.</p><a href="../proc/group_centroid_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -404,7 +400,7 @@ The maximum valid value is <code>n_genes</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~25"></span>
+              <span class="anchor" id="variable-expression_vectors~22"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -419,7 +415,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~21"></span>
+              <span class="anchor" id="variable-n_axes~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -434,7 +430,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~70"></span>
+              <span class="anchor" id="variable-n_genes~66"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -449,7 +445,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~7"></span>
+              <span class="anchor" id="variable-gene_to_family~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -467,7 +463,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~29"></span>
+              <span class="anchor" id="variable-n_families~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -497,7 +493,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~6"></span>
+              <span class="anchor" id="variable-mode~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -507,22 +503,22 @@ The value <code>0_int32</code> is additionally accepted.</p>
             <td>::</td>
             <td><strong>mode</strong></td>
             <td>
-<p>used mode for grouping</p><a href="../proc/group_centroid_impl.html#variable-mode~6" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>used mode for grouping</p><a href="../proc/group_centroid_impl.html#variable-mode~3" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_group_indices~5"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-tmp_family_genes~5"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>tmp_group_indices</strong></td>
+            <td><strong>tmp_family_genes</strong></td>
             <td>
-<p>Work array for storing the indices of one family's genes.</p>
+<p>Work array: <code>.true.</code> for the genes of the family being averaged.</p>
             </td>
         </tr>
         <tr>
@@ -571,7 +567,7 @@ This optional argument needs to be passed if used mode (<code>mode</code>) is <a
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

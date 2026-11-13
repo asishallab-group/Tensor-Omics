@@ -30,6 +30,7 @@ _lib.cluster_factor_trajectories_k_means_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
@@ -40,6 +41,8 @@ _lib.cluster_factor_trajectories_k_means_c.argtypes = (
 _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS = ("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "max_iterations", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES = ("centroids", None, "trajectories", "trajectories", "trajectories", None, None, None, None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SHAPES = (None, None, None, None, None, "n_factors*n_timepoints, n_clusters", None, None, None, None,)
 
 _lib.k_means_clustering_c.restype = None
 _lib.k_means_clustering_c.argtypes = (
@@ -81,15 +84,23 @@ def cluster_factor_trajectories_k_means(
         centroids,
         max_iterations,
 ):
-    r"""Performs k-means clustering on factor trajectories, so factor evolution over time
+    r"""Performs k-means clustering on whole factor trajectories, so which samples evolve alike
+
+    One sample is one point: its trajectory is flattened over factors and time into a single
+    vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
+    samples follow a similar course. Clustering the individual `(sample, timepoint)` states
+    instead is :func:`tensor_omics.k_means_clustering` on the same
+    array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
 
     Parameters
     ----------
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
-        matrix with data points to cluster
-    centroids : np.ndarray[np.float64] of shape (n_factors, n_clusters,), column-major (order='F'), modified in place
+        matrix with the trajectories to cluster
+    centroids : np.ndarray[np.float64] of shape (n_factors*n_timepoints, n_clusters,), column-major (order='F'), modified in place
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
+
+        One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
 
         The final values will be the final centroids of the clusters
     max_iterations : int
@@ -100,13 +111,13 @@ def cluster_factor_trajectories_k_means(
     dict
         with keys:
 
-        labels : np.ndarray[np.int32] of shape (n_samples*n_timepoints,), read-only
-            array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+        labels : np.ndarray[np.int32] of shape (n_samples,), read-only
+            array of labels, one per sample, so the first label is the first sample's.
 
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`
             A result is a value; call `.copy()` to obtain a modifiable array.
         label_counts : np.ndarray[np.int32] of shape (n_clusters,), read-only
-            holds the number of points having the respective label assigned
+            holds the number of samples having the respective label assigned
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -137,13 +148,10 @@ def cluster_factor_trajectories_k_means(
     n_factors = trajectories.shape[0]
     n_samples = trajectories.shape[1]
     n_timepoints = trajectories.shape[2]
-
-    # Fortran cannot check that an array has the shape it is declared with; this can
-    if centroids.shape[0] != n_factors:
-        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'trajectories' implies n_factors == {n_factors}; 'centroids' is declared with shape (n_factors, n_clusters)", argument="centroids")
+    n_centroids_elements_dim_1 = centroids.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    labels = _np.empty((n_samples * n_timepoints,), dtype=_np.int32, order='C')
+    labels = _np.empty((n_samples,), dtype=_np.int32, order='C')
     label_counts = _np.empty((n_clusters,), dtype=_np.int32, order='C')
     ierr = _ctypes.c_int(0)
 
@@ -154,13 +162,14 @@ def cluster_factor_trajectories_k_means(
         _ctypes.byref(_ctypes.c_int(n_samples)),
         _ctypes.byref(_ctypes.c_int(n_timepoints)),
         centroids,
+        _ctypes.byref(_ctypes.c_int(n_centroids_elements_dim_1)),
         labels,
         label_counts,
         _ctypes.byref(_ctypes.c_int(max_iterations)),
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES, shapes=_CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SHAPES)
 
     # a result is a value: modify a copy, not this
     labels.flags.writeable = False

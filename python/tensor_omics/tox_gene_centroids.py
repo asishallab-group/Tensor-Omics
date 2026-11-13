@@ -26,16 +26,16 @@ _lib.mean_vector_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_MEAN_VECTOR_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "gene_indices", "n_selected_genes", "centroid", "ierr",)
+_MEAN_VECTOR_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "genes_selection_mask", "n_selected_genes", "centroid", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_MEAN_VECTOR_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "gene_indices", None, None,)
+_MEAN_VECTOR_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "genes_selection_mask", None, None,)
 
 _lib.group_centroid_orthologs_c.restype = None
 _lib.group_centroid_orthologs_c.argtypes = (
@@ -72,18 +72,18 @@ _GROUP_CENTROID_ALL_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_
 
 def mean_vector(
         expression_vectors,
-        gene_indices,
+        genes_selection_mask,
 ):
-    r"""Computes the element-wise mean for a given set of vectors.
+    r"""Computes the element-wise mean of the selected gene vectors.
+
+    A selection without genes gives the zero vector.
 
     Parameters
     ----------
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_genes,), column-major (order='F')
         The input matrix of all gene expression vectors (n_axes x n_genes).
-    gene_indices : np.ndarray[np.int32] of shape (n_selected_genes,)
-        An array containing the column indices of the selected genes in 'expression_vectors'.
-        The minimum valid value is `1`.
-        The maximum valid value is `n_genes`.
+    genes_selection_mask : np.ndarray[np.bool_] of shape (n_genes,)
+        `True` for the genes (columns of `expression_vectors`) to average
 
     Returns
     -------
@@ -106,12 +106,16 @@ def mean_vector(
     """
     # check every input by the input contract, converting only when C needs it
     expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
-    gene_indices = _contract.integers(gene_indices, "gene_indices", ndim=1)
+    genes_selection_mask = _contract.logicals(genes_selection_mask, "genes_selection_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
-    n_selected_genes = gene_indices.shape[0]
+    n_selected_genes = int(genes_selection_mask.sum())
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if genes_selection_mask.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'genes_selection_mask' has {genes_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'genes_selection_mask' is declared with shape (n_genes)", argument="genes_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     centroid = _np.empty((n_axes,), dtype=_np.float64, order='C')
@@ -121,7 +125,7 @@ def mean_vector(
         expression_vectors,
         _ctypes.byref(_ctypes.c_int(n_axes)),
         _ctypes.byref(_ctypes.c_int(n_genes)),
-        gene_indices,
+        genes_selection_mask,
         _ctypes.byref(_ctypes.c_int(n_selected_genes)),
         centroid,
         _ctypes.byref(ierr),
@@ -140,7 +144,9 @@ def group_centroid_orthologs(
         n_families,
         ortholog_set,
 ):
-    r"""Iterates over families, filters gene indices, and computes centroids.
+    r"""Computes one centroid per gene family, of all its genes or of its orthologs only.
+
+    A family without selected genes gets the zero vector.
 
     Parameters
     ----------
@@ -218,7 +224,9 @@ def group_centroid_all(
         gene_to_family,
         n_families,
 ):
-    r"""Iterates over families, filters gene indices, and computes centroids.
+    r"""Computes one centroid per gene family, of all its genes or of its orthologs only.
+
+    A family without selected genes gets the zero vector.
 
     Parameters
     ----------
