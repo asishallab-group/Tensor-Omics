@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">89 statements</a>
+                 title=" 0.4% of total for procedures.">89 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -181,7 +181,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor~2"></span>
+              <span class="anchor" id="variable-ancestor~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -196,7 +196,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~3"></span>
+              <span class="anchor" id="variable-genes~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -211,7 +211,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~28"></span>
+              <span class="anchor" id="variable-n_genes~58"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -226,7 +226,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~8"></span>
+              <span class="anchor" id="variable-n_dims~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -241,7 +241,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~2"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -256,7 +256,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~2"></span>
+              <span class="anchor" id="variable-n_mask_chunks~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -266,13 +266,13 @@
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
+                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bit_mask_n_words</code> computes it
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results~2"></span>
+              <span class="anchor" id="variable-n_results~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -287,7 +287,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_subset_size~2"></span>
+              <span class="anchor" id="variable-max_subset_size~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -300,7 +300,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
                 <p>maximum subset size of checked gene subsets. Too large a value is capped to the
 maximum valid size. The bindings cap it automatically while sizing the work
 array; a Fortran caller caps it by calling
-<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
+<a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a> first.
 Zero is in range and means there is no subset to check -- the sizing routine reports
 it whenever the filtered families hold a single gene each. It reports a work array
 of zero slots along with it, which this routine does not accept, so a caller that
@@ -310,7 +310,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~2"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -323,13 +323,13 @@ The minimum valid value is <code>0_int32</code>.</p>
                 <p>working array to hold bitmask encoded subsets for detection.</p>
 <div class="alert alert-info">
 <p class="alert-title h4">Note</p>
-<p>Each bitmask is built of 32 bit chunks. <code>(n_genes + 31) / 32</code> is equivalent to <code>ceil(n_genes / 32.0_real64)</code> and represents the number of chunks</p>
+<p>Each column is a bit mask of the <code>n_genes</code> genes, laid out as <a href="../module/f42_bit_masks_impl.html">f42_bit_masks_impl</a> describes.</p>
 </div>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets~2"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -345,7 +345,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_active_mask"></span>
+              <span class="anchor" id="variable-tmp_active_mask~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -360,7 +360,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_paralog_vector"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -375,7 +375,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_angle~2"></span>
+              <span class="anchor" id="variable-max_angle~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -393,7 +393,7 @@ The maximum valid value is <code>PI</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gain_gamma~2"></span>
+              <span class="anchor" id="variable-gain_gamma~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -410,7 +410,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~95"></span>
+              <span class="anchor" id="variable-ierr~260"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -457,7 +457,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

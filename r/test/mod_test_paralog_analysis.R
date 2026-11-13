@@ -15,12 +15,12 @@ test_paralog_functions <- function() {
   n_paralogs <- 5L
   i_paralog <- 2L
 
-  chunk_count <- mask_chunk_count(n_paralogs)
+  chunk_count <- bit_mask_n_words(n_paralogs)
   assert_true(chunk_count == 1L)
 
   bit_mask <- integer(chunk_count)
   bit_mask[(i_paralog %/% 32L) + 1L] <- bitwShiftL(1L, i_paralog %% 32L)
-  state <- mask_check_state(bit_mask, i_paralog + 1L)
+  state <- bit_mask_test(n_paralogs, bit_mask, i_paralog + 1L)
   assert_true(isTRUE(state))
 
   # Testing pattern filtering
@@ -96,12 +96,11 @@ test_paralog_functions <- function() {
 
   assert_true(subfunc_result$n_results == 0L)
 
-  # Edge cases. mask_chunk_count is pure arithmetic with no validation in Fortran --
-  # zero genes need zero chunks -- so it returns rather than raising. The old
-  # hand-written wrapper added a check of its own; the Python suite asserts no error too.
-  assert_true(mask_chunk_count(0L) == 0L)
+  # Edge cases. Zero genes need zero words, so bit_mask_n_words returns rather than
+  # raising; the Python suite asserts no error too.
+  assert_true(bit_mask_n_words(0L) == 0L)
 
-  single_mask <- mask_chunk_count(1L)
+  single_mask <- bit_mask_n_words(1L)
   assert_true(single_mask == 1L)
 
 }

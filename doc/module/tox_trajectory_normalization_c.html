@@ -244,7 +244,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~14"></span>
+              <span class="anchor" id="variable-n_points~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -269,12 +269,14 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <td>::</td>
             <td><strong>status</strong></td>
             <td>
-<p>Status code for specific warnings</p>
+<p><code>ERR_DIVISION_BY_ZERO</code> when the series is constant, a single time point included: it
+is then written as zeros. A warning for this series, not an error -- <code>ierr</code> stays OK,
+as a pipeline can reach a constant series from valid input.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~118"></span>
+              <span class="anchor" id="variable-ierr~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -314,7 +316,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory~2"></span>
+              <span class="anchor" id="variable-trajectory"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -344,7 +346,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~11"></span>
+              <span class="anchor" id="variable-n_factors~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -359,7 +361,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~15"></span>
+              <span class="anchor" id="variable-n_timepoints~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -384,12 +386,14 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <td>::</td>
             <td><strong>status</strong></td>
             <td>
-<p>Status code for specific warnings, one per factor</p>
+<p>One status per factor, as
+<a href="../proc/normalize_variable_timeseries_impl.html">normalize_variable_timeseries_impl</a>
+sets it</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~119"></span>
+              <span class="anchor" id="variable-ierr~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -429,7 +433,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~10"></span>
+              <span class="anchor" id="variable-trajectories~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -459,7 +463,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~12"></span>
+              <span class="anchor" id="variable-n_factors~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -474,7 +478,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~14"></span>
+              <span class="anchor" id="variable-n_samples~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -489,7 +493,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~16"></span>
+              <span class="anchor" id="variable-n_timepoints~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -514,12 +518,14 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <td>::</td>
             <td><strong>status</strong></td>
             <td>
-<p>Status code for specific warnings, one per factor per sample</p>
+<p>One status per factor and sample, as
+<a href="../proc/normalize_variable_timeseries_impl.html">normalize_variable_timeseries_impl</a>
+sets it</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~120"></span>
+              <span class="anchor" id="variable-ierr~28"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -559,7 +565,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~11"></span>
+              <span class="anchor" id="variable-trajectories~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -589,7 +595,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~13"></span>
+              <span class="anchor" id="variable-n_factors~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -604,7 +610,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~15"></span>
+              <span class="anchor" id="variable-n_samples~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -619,7 +625,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~17"></span>
+              <span class="anchor" id="variable-n_timepoints~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -674,12 +680,14 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <td>::</td>
             <td><strong>status</strong></td>
             <td>
-<p>Status code for specific warnings, one per factor per sample</p>
+<p>One status per factor and sample, as
+<a href="../proc/normalize_variable_timeseries_impl.html">normalize_variable_timeseries_impl</a>
+sets it</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~121"></span>
+              <span class="anchor" id="variable-ierr~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -722,7 +730,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

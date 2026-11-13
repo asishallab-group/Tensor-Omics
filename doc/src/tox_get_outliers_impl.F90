@@ -4,16 +4,17 @@
 !|
 !| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
 !| a relative distance index, scaled per family so families of different spread are comparable.
-!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
-!| applies the threshold and reports which genes exceed it.
+!| `compute_family_scaling` produces that scaling: it fits each family's spread -- the standard
+!| deviation of its members' distances -- against its mean distance with LOESS over all families,
+!| so that a family too small for a usable empirical estimate is scaled by the trend instead.
+!| `identify_outliers` applies the threshold and reports which genes exceed it.
 !|
 !| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_math_impl, only: logx_helper, above, is_close
+    use f42_math_impl, only: logx_helper, is_close
     use f42_sort_impl, only: sort_array, init_perm
     use f42_stats_impl, only: calc_quantile_impl, compute_scaled_distance_tail_probability_impl
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err, &
@@ -29,6 +30,8 @@ module tox_get_outliers_impl
 ! Fills the slots of loess_x / loess_y that no family occupies. They hold a mean and a standard
 ! deviation of distances, neither of which can be negative, so -1 cannot be mistaken for data.
 #define CM_LOESS_POINT_SENTINEL -1.0_real64
+
+    private :: require_finite_loess_points
 
     integer(int32), parameter, public :: MODE_PLAIN = 0_int32
         !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
@@ -52,10 +55,8 @@ contains
             !! Total number of gene families
         real(real64), intent(in) :: distances(n_genes)
             !! Array of Euclidean distances for each gene
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: gene_to_fam(n_genes)
-            !! Mapping of each gene to its family (1-based)
+            !! M_GENE_TO_FAM_DOC(distances)
 
         real(real64), intent(out) :: dscale(n_families)
             !! Array of scaling factors per family (output)
@@ -80,7 +81,10 @@ contains
         real(real64), intent(out) :: tmp_means_aux(n_families)
             !! Work array for saving raw means
         integer(int32), intent(out) :: excluded_low_sd(n_families)
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
 
         ! LOESS workspace
         integer(int32), intent(in)    :: int_workspace_size
@@ -126,7 +130,7 @@ contains
         real(real64), intent(in), optional     :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! DM_DEFAULT(CM_FAMILY_SPAN_DEFAULT)
             !! DM_MIN(EPS_LOESS)
             !! DM_MAX(1.0_real64)
@@ -169,11 +173,16 @@ contains
         loess_x = CM_LOESS_POINT_SENTINEL
         loess_y = CM_LOESS_POINT_SENTINEL
         indices_used = 0_int32
+        excluded_low_sd = 1_int32
         n_valid = 0
 
         ! Validate family indices; the -1 sentinel output on failure is part of the contract, so this
-        ! stays in the implementation rather than becoming a wrapper range check.
+        ! stays in the implementation rather than becoming a wrapper range check. A gene carrying
+        ! M_GENE_TO_FAM_SENTINEL belongs to no family and simply contributes to no family's spread:
+        ! rejecting it would make the whole call fail for the ordinary case of a dataset that has
+        ! genes outside the families under study.
         do i_gene = 1, n_genes
+            if (gene_to_fam(i_gene) == M_GENE_TO_FAM_SENTINEL) cycle
             if (gene_to_fam(i_gene) < 1 .or. gene_to_fam(i_gene) > n_families) then
                 dscale = -1.0_real64
                 call set_err_once(ierr, ERR_INVALID_INPUT)
@@ -192,6 +201,7 @@ contains
 
         do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
+            if (family_idx == M_GENE_TO_FAM_SENTINEL) cycle
             dist_val = abs(distances(i_gene))
 
             tmp_permutation_indices(family_idx) = tmp_permutation_indices(family_idx) + 1
@@ -223,8 +233,16 @@ contains
         tmp_robust_weights = 0.0_real64
         tmp_permutation_indices = 0
 
+        ! The caller's distances are finite, so a non-finite mean or standard deviation here means a
+        ! sum over a family overflowed. Checked before the exit for too few families, which returns
+        ! loess_x / loess_y as they stand, and before the LOESS fit, which cannot take such a point.
+        call require_finite_loess_points(n_valid, loess_x, loess_y, indices_used, excluded_low_sd, ierr)
+        if (is_err(ierr)) return
+
+        ! Too few families for a fit: the points stay as measured, with nothing dropped for low spread.
         if (n_valid <= 1) then
             low_sd_cutoff = 0.0_real64
+            excluded_low_sd(indices_used(1:n_valid)) = 0_int32
             return
         end if
 
@@ -257,17 +275,15 @@ contains
         ! multiplicatively with the mean distance, so a log/log relationship is closer to linear
         ! (homoscedastic) than the raw scale, which is what LOESS assumes.
         !
-        ! Validate the log2 arguments up front (sequentially, as `ierr` is a shared scalar), exactly as
-        ! `logx` would: `loess_x + eps_mean > 0` and `loess_y + eps_sd > 0`, rejecting NaN/Inf. This
-        ! does not assume the caller's `distances` are well-formed -- a NaN/Inf distance propagates into
-        ! `loess_x`/`loess_y` and is caught here. These same family means feed the second log2 loop
-        ! below via `tmp_means_aux` (identical values), so validating them here covers both loops.
-        ! With the arguments guaranteed valid, the transform runs as a race-free `do concurrent`
+        ! The log2 arguments `loess_x + eps_mean` and `loess_y + eps_sd` are valid, as `logx` would
+        ! demand (> 0, finite), without a check of their own: `loess_x`/`loess_y` were checked finite
+        ! above, they are non-negative (a mean of absolute distances, a square root), and `eps_mean`,
+        ! `eps_sd` are positive. Nor can a sum overflow: a family mean is at most huge/2 (its sum over
+        ! at least two members is finite), `eps_mean` at most the largest mean, and a standard
+        ! deviation at most sqrt(huge), which `eps_sd` cannot lift anywhere near huge. These same family
+        ! means feed the second log2 loop below via `tmp_means_aux` (identical values), so this covers
+        ! both loops. With the arguments valid, the transform runs as a race-free `do concurrent`
         ! calling the non-validating `logx_helper` -- no per-iteration write to the shared `ierr`.
-        call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr, min=above(-eps_mean))
-        call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr, min=above(-eps_sd))
-        if (is_err(ierr)) return
-
         do concurrent(i_valid=1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
             call logx_helper(loess_x(i_valid) + eps_mean, 2.0_real64, loess_x(i_valid))
             call logx_helper(loess_y(i_valid) + eps_sd, 2.0_real64, loess_y(i_valid))
@@ -283,7 +299,6 @@ contains
         ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)
         ! subset only. excluded_low_sd flags which families were dropped from the fit (they still get a
         ! dscale prediction from the resulting curve further below).
-        excluded_low_sd = 1_int32
         k = 0
 
         do i_valid = 1, n_valid
@@ -305,8 +320,13 @@ contains
         loess_y(n_valid + 1:) = CM_LOESS_POINT_SENTINEL
         indices_used(n_valid + 1:) = 0_int32
 
-        ! Trigger fallback case when having too few points
-        if (n_valid <= 1) then
+        ! Trigger fallback case when having too few points. Each local fit determines a
+        ! degree-`degree` polynomial from roughly `span * n_valid` neighbours, so it needs at least
+        ! `degree + 1` of them. Below that the netlib fit does not complete, and evaluating it
+        ! afterwards trips netlib's assertion, which `stop`s -- taking the calling process with it
+        ! rather than returning an error a caller could handle. So "too few points" is that bound,
+        ! not merely the degenerate `n_valid <= 1`, and both take the global-median fallback below.
+        if (n_valid <= 1 .or. int(actual_span*real(n_valid, real64)) < actual_degree + 1) then
             xmin = 0.0_real64
             xmax = xmin
         else
@@ -349,9 +369,9 @@ contains
 
             ! The `>= 0` branch feeds `tmp_means_aux(i_family) + eps_mean` to log2. Every such family had
             ! `n_in_family > 1` and therefore contributed exactly this mean to `loess_x`, whose
-            ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
-            ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
-            ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
+            ! `+ eps_mean` argument is valid (> 0, finite) for the reasons given before the first log2
+            ! loop above; skipped families keep the initial `tmp_means_aux = -1` and take the `else`
+            ! branch. So the argument here is valid by the same finiteness check, and the
             ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
             ! (each iteration writes only its own `tmp_eval_points` row).
             do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_eval_points, eps_mean, xmin, xmax)
@@ -390,6 +410,10 @@ contains
 
         low_sd_cutoff = max(2.0_real64**low_sd_cutoff - eps_sd, 0.0_real64)
 
+        ! The way back can overflow although every point was finite: a mean of huge/2 plus an
+        ! `eps_mean` as large is huge, whose log2 rounds to 1024, and 2**1024 is Inf.
+        call require_finite_loess_points(n_valid, loess_x, loess_y, indices_used, excluded_low_sd, ierr)
+
     end subroutine compute_family_scaling_impl
 
     !> summary: Compute the hybrid RDI (Relative Distance Index) for each gene
@@ -401,14 +425,10 @@ contains
             !! Total number of genes
         real(real64), intent(in) :: distances(n_genes)
             !! Array of Euclidean distances for each gene to its centroid
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: gene_to_fam(n_genes)
-            !! Gene-to-family mapping (1-based indexing)
+            !! M_GENE_TO_FAM_DOC(distances)
         real(real64), intent(in) :: dscale(:)
             !! Array of scaling factors for each family
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(out) :: rdi(n_genes)
             !! Output array of RDI values for each gene
         real(real64), intent(out) :: sorted_rdi(n_genes)
@@ -433,10 +453,7 @@ contains
                 cycle
             end if
 
-            ! Detect NaN input (portable)
-            if (ieee_is_nan(distances(i))) then
-                rdi(i) = distances(i)
-            else if (abs(dscale(family_idx)) < tol) then
+            if (abs(dscale(family_idx)) < tol) then
                 rdi(i) = 0.0_real64  ! If scaling is zero, set RDI to zero (not outlier)
             else
                 ! Calculate RDI
@@ -471,12 +488,8 @@ contains
             !! Total number of genes
         real(real64), intent(in) :: rdi(n_genes)
             !! Array of RDI values for each gene
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: sorted_rdi(n_genes)
             !! Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: perm(n_genes)
             !! Permutation array with sorted indices
         logical(c_bool), intent(out) :: is_outlier(n_genes)
@@ -494,8 +507,8 @@ contains
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail probability is used.
 
-        integer(int32) :: i, idx
-        real(real64) :: fractional_rank, actual_quantile_level
+        integer(int32) :: i, idx, n_usable
+        real(real64) :: fractional_rank, actual_quantile_level, tail_probability_rescale
 
         M_DEFAULT_VAL(quantile_level, actual_quantile_level, CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
 
@@ -509,24 +522,49 @@ contains
             return
         end if
 
-        ! Nearest-rank quantile: round the fractional rank up to the next integer index into the
-        ! ascending-sorted array, so `threshold` is always an observed RDI value rather than an
-        ! interpolated one. `actual_quantile_level` is a fraction in [0,1].
-        fractional_rank = n_genes*actual_quantile_level
+        ! Only the genes with a positive RDI are part of the distribution this threshold describes.
+        ! A gene belonging to no family, or one whose family spread could not be estimated, arrives
+        ! here as a non-positive RDI and is not a candidate outlier (see the `rdi > 0` test below);
+        ! counting such genes would drag the threshold towards zero -- on a dataset where most genes
+        ! belong to none of the families under study, far enough to flag most of the rest. `perm`
+        ! orders ascending, so those genes come first and the usable ones are a contiguous tail.
+        n_usable = 0
+        do i = 1, n_genes
+            if (sorted_rdi(i) > 0.0_real64) n_usable = n_usable + 1
+        end do
+
+        call compute_scaled_distance_tail_probability_impl(n_genes, rdi, sorted_rdi, perm, tail_probability, 1.0_real64)
+
+        if (n_usable < 1) then
+            threshold = 0.0_real64
+            return
+        end if
+
+        ! Nearest-rank quantile: round the fractional rank up to the next integer index into that
+        ! usable tail, so `threshold` is always an observed RDI value rather than an interpolated
+        ! one. `actual_quantile_level` is a fraction in [0,1].
+        fractional_rank = n_usable*actual_quantile_level
         idx = ceiling(fractional_rank)
         ! Clamp idx to valid range
         if (idx < 1) idx = 1
-        if (idx > n_genes) idx = n_genes
+        if (idx > n_usable) idx = n_usable
 
-        ! Get the threshold value from the sorted array (sorted_rdi must be ascending)
-        threshold = sorted_rdi(perm(idx))
+        ! Get the threshold value from the sorted array (perm orders sorted_rdi ascending)
+        threshold = sorted_rdi(perm(n_genes - n_usable + idx))
 
         ! Mark genes as outliers if their RDI exceeds the threshold (and is positive)
         do i = 1, n_genes
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        call compute_scaled_distance_tail_probability_impl(n_genes, rdi, sorted_rdi, perm, tail_probability, 1.0_real64)
+        ! The tail probability just computed counts every gene in its denominator, but only the usable ones
+        ! belong to the distribution it describes. No non-positive RDI can enter any gene's
+        ! numerator -- they all sort below every positive value -- so the correction is exactly a
+        ! change of denominator, and the clamp keeps the non-usable genes' own tail probability at 1.
+        tail_probability_rescale = (real(n_genes, real64) + 1.0_real64)/(real(n_usable, real64) + 1.0_real64)
+        do concurrent (i = 1:n_genes) shared(tail_probability, tail_probability_rescale)
+            tail_probability(i) = min(1.0_real64, tail_probability(i)*tail_probability_rescale)
+        end do
 
     end subroutine identify_outliers_impl
 
@@ -548,10 +586,8 @@ contains
             !! Total number of gene families
         real(real64), intent(in) :: distances(n_genes)
             !! Array of Euclidean distances for each gene to its centroid
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: gene_to_fam(n_genes)
-            !! Gene-to-family mapping (1-based indexing)
+            !! M_GENE_TO_FAM_DOC(distances)
 
         ! Shared sort scratch (n_genes), reused by the family-scaling and RDI phases
         integer(int32), intent(out) :: tmp_perm(n_genes)
@@ -654,4 +690,23 @@ contains
 
         call identify_outliers_impl(n_genes, tmp_rdi, tmp_sorted_rdi, tmp_perm, is_outlier, tmp_threshold, tail_probability, quantile_level)
     end subroutine detect_outliers_impl
+
+    ! ERR_NAN_INF unless the first n_valid LOESS points are finite. On failure the fit's outputs
+    ! describe a fit without points -- loess_x / loess_y hold the sentinel, indices_used 0 and every
+    ! family counts as left out -- so that no non-finite point is returned, on error either.
+    pure subroutine require_finite_loess_points(n_valid, loess_x, loess_y, indices_used, excluded_low_sd, ierr)
+        integer(int32), intent(in)    :: n_valid
+        real(real64), intent(inout)   :: loess_x(:), loess_y(:)
+        integer(int32), intent(inout) :: indices_used(:), excluded_low_sd(:)
+        integer(int32), intent(inout) :: ierr
+
+        call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr)
+        call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr)
+        if (is_err(ierr)) then
+            loess_x = CM_LOESS_POINT_SENTINEL
+            loess_y = CM_LOESS_POINT_SENTINEL
+            indices_used = 0_int32
+            excluded_low_sd = 1_int32
+        end if
+    end subroutine require_finite_loess_points
 end module tox_get_outliers_impl

@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for modules and submodules.">93 statements</a>
+                 title=" 2.1% of total for modules and submodules.">439 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -142,9 +142,16 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-build_kd_index_impl">build_kd_index_impl</a>
-            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-partial_sort_by_dimension_helper">partial_sort_by_dimension_helper</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-median_select_by_dimension_helper">median_select_by_dimension_helper</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-full_sort_fallback_by_dimension_helper">full_sort_fallback_by_dimension_helper</a>
             <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-build_spherical_kd_impl">build_spherical_kd_impl</a>
             <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-get_kd_point">get_kd_point</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-kd_knn_query_impl">kd_knn_query_impl</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-kd_knn_heapify_up">kd_knn_heapify_up</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-kd_knn_heapify_down">kd_knn_heapify_down</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-kd_range_query_mask_impl">kd_range_query_mask_impl</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-kd_range_query_list_impl">kd_range_query_list_impl</a>
+            <a class="list-group-item" href="../module/f42_kd_tree_impl.html#proc-kd_range_query_count_impl">kd_range_query_count_impl</a>
         </div>
       </div>
     </div>
@@ -175,8 +182,10 @@ index array rather than as linked nodes.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -219,7 +228,7 @@ index array rather than as linked nodes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~9"></span>
+              <span class="anchor" id="variable-points"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -234,7 +243,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~9"></span>
+              <span class="anchor" id="variable-n_dimensions"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -249,7 +258,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~51"></span>
+              <span class="anchor" id="variable-n_points~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -264,7 +273,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~9"></span>
+              <span class="anchor" id="variable-kd_indices"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -279,7 +288,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~9"></span>
+              <span class="anchor" id="variable-dimension_order"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -296,7 +305,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~7"></span>
+              <span class="anchor" id="variable-tmp_workspace"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -306,12 +315,14 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <td>::</td>
             <td><strong>tmp_workspace</strong></td>
             <td>
-<p>Workspace array</p>
+<p>Workspace array, touched only if
+<a href="../proc/median_select_by_dimension_helper.html">median_select_by_dimension_helper</a> falls
+back to a full sort of a subrange</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~7"></span>
+              <span class="anchor" id="variable-tmp_value_buffer"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -321,12 +332,12 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <td>::</td>
             <td><strong>tmp_value_buffer</strong></td>
             <td>
-<p>Workspace for sorting</p>
+<p>Workspace for the fallback full sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~7"></span>
+              <span class="anchor" id="variable-tmp_permutation"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -336,12 +347,12 @@ The maximum valid value is <code>n_dimensions</code>.</p>
             <td>::</td>
             <td><strong>tmp_permutation</strong></td>
             <td>
-<p>Workspace for sorting</p>
+<p>Workspace for the fallback full sort</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~7"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -362,16 +373,21 @@ The maximum valid value is <code>n_dimensions</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-partial_sort_by_dimension_helper"></span> <h3>public pure subroutine <a href='../proc/partial_sort_by_dimension_helper.html'>partial_sort_by_dimension_helper</a>(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, dim, tmp_workspace, tmp_value_buffer, tmp_permutation)  
+    <div class="card-header codesum"><span class="anchor" id="proc-median_select_by_dimension_helper"></span> <h3>public pure subroutine <a href='../proc/median_select_by_dimension_helper.html'>median_select_by_dimension_helper</a>(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, dim, target_idx, tmp_workspace, tmp_value_buffer, tmp_permutation)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)). Internal to the
-index build, which has already validated everything this reads.</p>
+  <p>Partitions <code>kd_indices(left_idx:right_idx)</code> around its median position (<code>target_idx</code>)
+along <code>points(dim, :)</code>, via iterative Hoare-partition quickselect: after this call, every
+element of <code>kd_indices(left_idx:target_idx)</code> is <code>&lt;=</code> <code>points(dim, kd_indices(target_idx))</code>
+and every element of <code>kd_indices(target_idx:right_idx)</code> is <code>&gt;=</code> it -- the only invariant
+<a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a> and every query traversal in
+this module actually rely on, so the two sides are left in whatever order quickselect
+happens to leave them, not fully sorted the way this partition used to be.</p><a href="../proc/median_select_by_dimension_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -386,7 +402,7 @@ index build, which has already validated everything this reads.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~10"></span>
+              <span class="anchor" id="variable-points~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -401,7 +417,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~52"></span>
+              <span class="anchor" id="variable-n_points~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -416,7 +432,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~10"></span>
+              <span class="anchor" id="variable-n_dimensions~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -431,7 +447,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~10"></span>
+              <span class="anchor" id="variable-kd_indices~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -486,12 +502,213 @@ index build, which has already validated everything this reads.</p>
             <td>::</td>
             <td><strong>dim</strong></td>
             <td>
+<p>Dimension to partition by</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-target_idx"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>target_idx</strong></td>
+            <td>
+<p>Position within [left_idx, right_idx] to correctly place the median at</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_workspace~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_workspace</strong></td>
+            <td>
+<p>Workspace array, used only on fallback</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_value_buffer~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_value_buffer</strong></td>
+            <td>
+<p>Buffer for dimension values, used only on fallback</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_permutation~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_permutation</strong></td>
+            <td>
+<p>Permutation array, used only on fallback</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-full_sort_fallback_by_dimension_helper"></span> <h3>public pure subroutine <a href='../proc/full_sort_fallback_by_dimension_helper.html'>full_sort_fallback_by_dimension_helper</a>(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, dim, tmp_workspace, tmp_value_buffer, tmp_permutation)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Fully sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)), by
+heapsort. Used as
+<a href="../proc/median_select_by_dimension_helper.html">median_select_by_dimension_helper</a>'s
+worst-case-safe fallback once its own quickselect has spent its round budget without
+finishing -- this is what that partition used to do unconditionally before quickselect,
+and remains correct (if <code>O(n log n)</code> rather than average-case <code>O(n)</code>) for placing a
+median at any position of the fully-sorted result, regardless of input order. Internal to
+the index build, which has already validated everything this reads.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Input points array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~15"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>size of points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Index array to modify</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-left_idx~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>left_idx</strong></td>
+            <td>
+<p>Left index of subarray</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-right_idx~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>right_idx</strong></td>
+            <td>
+<p>Right index of subarray</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dim~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>dim</strong></td>
+            <td>
 <p>Dimension to sort by</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~8"></span>
+              <span class="anchor" id="variable-tmp_workspace~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -506,7 +723,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~8"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -521,7 +738,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~8"></span>
+              <span class="anchor" id="variable-tmp_permutation~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -565,7 +782,7 @@ index build, which has already validated everything this reads.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~11"></span>
+              <span class="anchor" id="variable-points~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -580,7 +797,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~11"></span>
+              <span class="anchor" id="variable-n_dimensions~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -595,7 +812,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~53"></span>
+              <span class="anchor" id="variable-n_points~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -610,7 +827,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~11"></span>
+              <span class="anchor" id="variable-kd_indices~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -625,7 +842,7 @@ index build, which has already validated everything this reads.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~10"></span>
+              <span class="anchor" id="variable-dimension_order~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -642,7 +859,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~9"></span>
+              <span class="anchor" id="variable-tmp_workspace~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -657,7 +874,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~9"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -672,7 +889,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~9"></span>
+              <span class="anchor" id="variable-tmp_permutation~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -687,7 +904,7 @@ The maximum valid value is <code>n_dimensions</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~8"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -732,7 +949,7 @@ index, i.e. <code>point_values = points(:, kd_indices(position))</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~12"></span>
+              <span class="anchor" id="variable-points~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -747,7 +964,7 @@ index, i.e. <code>point_values = points(:, kd_indices(position))</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~12"></span>
+              <span class="anchor" id="variable-kd_indices~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -796,7 +1013,7 @@ The maximum valid value is <code>size(kd_indices, kind=int32)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~314"></span>
+              <span class="anchor" id="variable-ierr~56"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -807,6 +1024,862 @@ The maximum valid value is <code>size(kd_indices, kind=int32)</code>.</p>
             <td><strong>ierr</strong></td>
             <td>
 <p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_knn_query_impl"></span> <h3>public pure subroutine <a href='../proc/kd_knn_query_impl.html'>kd_knn_query_impl</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, k_neighbors, tmp_range_stack, neighbors, distances)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Find the k nearest neighbors of a query point in a pre-built k-d tree</p><a href="../proc/kd_knn_query_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index, see <a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-k_neighbors"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>k_neighbors</strong></td>
+            <td>
+<p>Number of neighbors to find
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(k_neighbors)
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Output: indices of the k nearest neighbors (nearest-to-farthest order not guaranteed, max-heap order internally)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(k_neighbors)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Output: Euclidean distances to the k nearest neighbors</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_knn_heapify_up"></span> <h3>public pure subroutine <a href='../proc/kd_knn_heapify_up.html'>kd_knn_heapify_up</a>(distances, neighbors, pos)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Bubble the element at <code>pos</code> up a max-heap on <code>distances</code>/<code>neighbors</code> in lockstep.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Heap keys</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Heap payload, reordered in lockstep with <code>distances</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pos"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>pos</strong></td>
+            <td>
+<p>Position to bubble up from</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_knn_heapify_down"></span> <h3>public pure subroutine <a href='../proc/kd_knn_heapify_down.html'>kd_knn_heapify_down</a>(distances, neighbors, heap_size)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Bubble the root down a max-heap of size <code>heap_size</code> on <code>distances</code>/<code>neighbors</code>, in
+lockstep, after its value has been overwritten.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Heap keys</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Heap payload, reordered in lockstep with <code>distances</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-heap_size"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>heap_size</strong></td>
+            <td>
+<p>Number of elements currently in the heap</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_mask_impl"></span> <h3>public pure subroutine <a href='../proc/kd_range_query_mask_impl.html'>kd_range_query_mask_impl</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, in_radius_mask)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Mark every point within <code>radius</code> of a query point in a pre-built k-d tree</p><a href="../proc/kd_range_query_mask_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~18"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~7"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-in_radius_mask"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>in_radius_mask</strong></td>
+            <td>
+<p>Output: .true. for points within <code>radius</code> of <code>query_point</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_list_impl"></span> <h3>public pure subroutine <a href='../proc/kd_range_query_list_impl.html'>kd_range_query_list_impl</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, neighbors, n_found)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>List every point within <code>radius</code> of a query point in a pre-built k-d tree</p><a href="../proc/kd_range_query_list_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~7"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~19"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbors~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighbors</strong></td>
+            <td>
+<p>Output: indices within <code>radius</code>, valid in <code>neighbors(1:n_found)</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_found"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_found</strong></td>
+            <td>
+<p>Output: number of points within <code>radius</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-kd_range_query_count_impl"></span> <h3>public pure subroutine <a href='../proc/kd_range_query_count_impl.html'>kd_range_query_count_impl</a>(points, n_dimensions, n_points, kd_indices, dimension_order, query_point, radius, tmp_range_stack, neighbor_count)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Count the points within <code>radius</code> of a query point in a pre-built k-d tree</p><a href="../proc/kd_range_query_count_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Original points dataset</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~20"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points in the pre-built index</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Pre-built k-d tree index
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order used to build <code>kd_indices</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-query_point~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>query_point</strong></td>
+            <td>
+<p>Query point coordinates</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-radius~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>radius</strong></td>
+            <td>
+<p>Search radius
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_range_stack~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(3, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_range_stack</strong></td>
+            <td>
+<p>Workspace: traversal stack for [left_idx, right_idx, depth] frames</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_count"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_count</strong></td>
+            <td>
+<p>Output: number of points within <code>radius</code></p>
             </td>
         </tr>
     </tbody>
@@ -839,7 +1912,7 @@ The maximum valid value is <code>size(kd_indices, kind=int32)</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>
