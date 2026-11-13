@@ -184,8 +184,8 @@ callers want. The individual routines are published for a caller assembling thei
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -225,7 +225,7 @@ callers want. The individual routines are published for a caller assembling thei
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vector~6"></span>
+              <span class="anchor" id="variable-vector~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -240,7 +240,7 @@ callers want. The individual routines are published for a caller assembling thei
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~14"></span>
+              <span class="anchor" id="variable-n_dims~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -255,7 +255,7 @@ callers want. The individual routines are published for a caller assembling thei
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~108"></span>
+              <span class="anchor" id="variable-ierr~194"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -295,7 +295,7 @@ callers want. The individual routines are published for a caller assembling thei
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~32"></span>
+              <span class="anchor" id="variable-n_genes~39"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -326,192 +326,7 @@ Must equal <code>sum(reps_per_tissue)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~14"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_replicates, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>expr</strong></td>
-            <td>
-<p>Gene Expression matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-log_transformed_expr~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_tissues, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>log_transformed_expr</strong></td>
-            <td>
-<p>Log-transformed grouped <code>expr</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-reps_per_tissue~3"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_tissues), target
-            </td>
-            <td>::</td>
-            <td><strong>reps_per_tissue</strong></td>
-            <td>
-<p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
-The minimum valid value is <code>1_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_tissues~7"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_tissues</strong></td>
-            <td>
-<p>Number of tissues</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-span~5"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>span</strong></td>
-            <td>
-<p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.
-The minimum valid value is <code>EPS_LOESS</code>.
-The maximum valid value is <code>1.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-degree~5"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>degree</strong></td>
-            <td>
-<p>LOESS degree parameter.
-The default value is <code>2_int32</code>.
-The minimum valid value is <code>0_int32</code>.
-The maximum valid value is <code>2_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-use_quantile~2"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>use_quantile</strong></td>
-            <td>
-<p>Use quantile normalization.
-The default value is <code>.false.</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~109"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalization_pipeline_expert_c"></span> <h3>public  subroutine <a href='../proc/normalization_pipeline_expert_c.html'>normalization_pipeline_expert_c</a>(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, tmp_expr_copy, tmp_loess_y, tmp_indices_used, tmp_yhat_global, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, tmp_loess_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, span, degree, use_quantile, ierr) bind(C, name="normalization_pipeline_expert_c")  
-</h3></div>
-    <div class="card-body">
-          
-  <p>C-wrapper for <a href="../proc/normalization_pipeline_expert.html">normalization_pipeline_expert</a></p><a href="../proc/normalization_pipeline_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~33"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Number of genes (rows)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_replicates~9"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_replicates</strong></td>
-            <td>
-<p>Number of replicates per gene, the rows of <code>expr</code>
-Must equal <code>sum(reps_per_tissue)</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expr~15"></span>
+              <span class="anchor" id="variable-expr~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -573,234 +388,7 @@ The minimum valid value is <code>1_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_expr_copy~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_replicates, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_expr_copy</strong></td>
-            <td>
-<p>Work matrix the pipeline normalizes in place</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_loess_y~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_loess_y</strong></td>
-            <td>
-<p>Work vector for the empirical standard deviations (Y-axis for LOESS)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_indices_used~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_indices_used</strong></td>
-            <td>
-<p>Work vector mapping the fitted points back to gene indices</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_yhat_global~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_yhat_global</strong></td>
-            <td>
-<p>Work vector for the fitted standard deviations (LOESS predictions)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_int_workspace~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(int_workspace_size), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_int_workspace</strong></td>
-            <td>
-<p>Integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace_size~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-<p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert_c.html#variable-int_workspace_size~6" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_real_workspace~6"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(real_workspace_size), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_real_workspace</strong></td>
-            <td>
-<p>Real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-<p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert_c.html#variable-real_workspace_size~6" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_hat_diag~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_hat_diag</strong></td>
-            <td>
-<p>Diagonal elements of the LOESS hat matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_loess_weights~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_loess_weights</strong></td>
-            <td>
-<p>Per-point weights handed to the LOESS fit</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_eval_points~6"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes, 1), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_eval_points</strong></td>
-            <td>
-<p>Points the fitted curve is evaluated at</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_robust_weights~6"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_robust_weights</strong></td>
-            <td>
-<p>Robust bisquare weights of the LOESS fit</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_combined_weights~6"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_combined_weights</strong></td>
-            <td>
-<p>Combined weights of the LOESS fit</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_residuals~6"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_residuals</strong></td>
-            <td>
-<p>Residuals of the LOESS fit</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation_indices</strong></td>
-            <td>
-<p>Permutation indices of the LOESS fit</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-span~6"></span>
+              <span class="anchor" id="variable-span~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -818,7 +406,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~6"></span>
+              <span class="anchor" id="variable-degree~17"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -852,7 +440,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~110"></span>
+              <span class="anchor" id="variable-ierr~195"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -873,11 +461,11 @@ The default value is <code>.false.</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_by_std_dev_c"></span> <h3>public  subroutine <a href='../proc/normalize_by_std_dev_c.html'>normalize_by_std_dev_c</a>(n_genes, n_replicates, expr, normalized_expr, span, degree, ierr) bind(C, name="normalize_by_std_dev_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-normalization_pipeline_expert_c"></span> <h3>public  subroutine <a href='../proc/normalization_pipeline_expert_c.html'>normalization_pipeline_expert_c</a>(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, tmp_expr_copy, tmp_loess_y, tmp_indices_used, tmp_yhat_global, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, tmp_loess_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, span, degree, use_quantile, ierr) bind(C, name="normalization_pipeline_expert_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/normalize_by_std_dev.html">normalize_by_std_dev</a></p><a href="../proc/normalize_by_std_dev_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/normalization_pipeline_expert.html">normalization_pipeline_expert</a></p><a href="../proc/normalization_pipeline_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -892,7 +480,7 @@ The default value is <code>.false.</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~34"></span>
+              <span class="anchor" id="variable-n_genes~40"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -907,7 +495,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_replicates~10"></span>
+              <span class="anchor" id="variable-n_replicates~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -917,12 +505,13 @@ The default value is <code>.false.</code>.</p>
             <td>::</td>
             <td><strong>n_replicates</strong></td>
             <td>
-<p>Number of replicates per gene</p>
+<p>Number of replicates per gene, the rows of <code>expr</code>
+Must equal <code>sum(reps_per_tissue)</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~16"></span>
+              <span class="anchor" id="variable-expr~14"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -937,7 +526,54 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-normalized_expr~4"></span>
+              <span class="anchor" id="variable-log_transformed_expr~4"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_tissues, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>log_transformed_expr</strong></td>
+            <td>
+<p>Log-transformed grouped <code>expr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-reps_per_tissue~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_tissues), target
+            </td>
+            <td>::</td>
+            <td><strong>reps_per_tissue</strong></td>
+            <td>
+<p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+The minimum valid value is <code>1_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_tissues~9"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_tissues</strong></td>
+            <td>
+<p>Number of tissues</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_expr_copy~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -945,160 +581,9 @@ The default value is <code>.false.</code>.</p>
               dimension(n_replicates, n_genes), target
             </td>
             <td>::</td>
-            <td><strong>normalized_expr</strong></td>
+            <td><strong>tmp_expr_copy</strong></td>
             <td>
-<p>Normalized <code>expr</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-span~7"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>span</strong></td>
-            <td>
-<p>LOESS span parameter.
-The default value is <code>0.7_real64</code>.
-The minimum valid value is <code>EPS_LOESS</code>.
-The maximum valid value is <code>1.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-degree~7"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>degree</strong></td>
-            <td>
-<p>LOESS degree parameter.
-The default value is <code>2_int32</code>.
-The minimum valid value is <code>0_int32</code>.
-The maximum valid value is <code>2_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~111"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_by_std_dev_expert_c"></span> <h3>public  subroutine <a href='../proc/normalize_by_std_dev_expert_c.html'>normalize_by_std_dev_expert_c</a>(n_genes, n_replicates, expr, normalized_expr, tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, tmp_loess_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, span, degree, ierr) bind(C, name="normalize_by_std_dev_expert_c")  
-</h3></div>
-    <div class="card-body">
-          
-  <p>C-wrapper for <a href="../proc/normalize_by_std_dev_expert.html">normalize_by_std_dev_expert</a></p><a href="../proc/normalize_by_std_dev_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~35"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Number of genes (rows)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_replicates~11"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_replicates</strong></td>
-            <td>
-<p>Number of replicates per gene</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expr~17"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_replicates, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>expr</strong></td>
-            <td>
-<p>Gene Expression matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-normalized_expr~5"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_replicates, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>normalized_expr</strong></td>
-            <td>
-<p>Normalized <code>expr</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_loess_x~3"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_loess_x</strong></td>
-            <td>
-<p>Work vector for the mean values (X-axis for LOESS)</p>
+<p>Work matrix the pipeline normalizes in place</p>
             </td>
         </tr>
         <tr>
@@ -1148,7 +633,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~7"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1163,7 +648,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~7"></span>
+              <span class="anchor" id="variable-int_workspace_size~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1174,12 +659,12 @@ The maximum valid value is <code>2_int32</code>.</p>
             <td><strong>int_workspace_size</strong></td>
             <td>
 <p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert_c.html#variable-int_workspace_size~7" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert_c.html#variable-int_workspace_size~20" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~7"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~15"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1194,7 +679,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~7"></span>
+              <span class="anchor" id="variable-real_workspace_size~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1205,12 +690,12 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
             <td><strong>real_workspace_size</strong></td>
             <td>
 <p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert_c.html#variable-real_workspace_size~7" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalization_pipeline_expert_c.html#variable-real_workspace_size~20" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~5"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1240,7 +725,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~7"></span>
+              <span class="anchor" id="variable-tmp_eval_points~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1255,7 +740,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~7"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1270,7 +755,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~7"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1285,7 +770,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~7"></span>
+              <span class="anchor" id="variable-tmp_residuals~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1300,7 +785,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~7"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1315,7 +800,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~8"></span>
+              <span class="anchor" id="variable-span~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1333,7 +818,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~8"></span>
+              <span class="anchor" id="variable-degree~18"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1351,7 +836,522 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~112"></span>
+              <span class="anchor" id="variable-use_quantile~4"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>use_quantile</strong></td>
+            <td>
+<p>Use quantile normalization.
+The default value is <code>.false.</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~196"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_by_std_dev_c"></span> <h3>public  subroutine <a href='../proc/normalize_by_std_dev_c.html'>normalize_by_std_dev_c</a>(n_genes, n_replicates, expr, normalized_expr, span, degree, ierr) bind(C, name="normalize_by_std_dev_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/normalize_by_std_dev.html">normalize_by_std_dev</a></p><a href="../proc/normalize_by_std_dev_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~41"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes (rows)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_replicates~10"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_replicates</strong></td>
+            <td>
+<p>Number of replicates per gene</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expr~15"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_replicates, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>expr</strong></td>
+            <td>
+<p>Gene Expression matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-normalized_expr~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_replicates, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>normalized_expr</strong></td>
+            <td>
+<p>Normalized <code>expr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-span~18"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>span</strong></td>
+            <td>
+<p>LOESS span parameter.
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-degree~19"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>degree</strong></td>
+            <td>
+<p>LOESS degree parameter.
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~197"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_by_std_dev_expert_c"></span> <h3>public  subroutine <a href='../proc/normalize_by_std_dev_expert_c.html'>normalize_by_std_dev_expert_c</a>(n_genes, n_replicates, expr, normalized_expr, tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, tmp_loess_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, span, degree, ierr) bind(C, name="normalize_by_std_dev_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/normalize_by_std_dev_expert.html">normalize_by_std_dev_expert</a></p><a href="../proc/normalize_by_std_dev_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~42"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes (rows)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_replicates~11"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_replicates</strong></td>
+            <td>
+<p>Number of replicates per gene</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expr~16"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_replicates, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>expr</strong></td>
+            <td>
+<p>Gene Expression matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-normalized_expr~7"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_replicates, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>normalized_expr</strong></td>
+            <td>
+<p>Normalized <code>expr</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_loess_x~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_loess_x</strong></td>
+            <td>
+<p>Work vector for the mean values (X-axis for LOESS)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_loess_y~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_loess_y</strong></td>
+            <td>
+<p>Work vector for the empirical standard deviations (Y-axis for LOESS)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_indices_used~6"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_indices_used</strong></td>
+            <td>
+<p>Work vector mapping the fitted points back to gene indices</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_yhat_global~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_yhat_global</strong></td>
+            <td>
+<p>Work vector for the fitted standard deviations (LOESS predictions)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_int_workspace~16"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(int_workspace_size), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_int_workspace</strong></td>
+            <td>
+<p>Integer workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-int_workspace_size~21"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>int_workspace_size</strong></td>
+            <td>
+<p>Length of integer workspace.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert_c.html#variable-int_workspace_size~21" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_real_workspace~16"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(real_workspace_size), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_real_workspace</strong></td>
+            <td>
+<p>Real workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-real_workspace_size~21"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>real_workspace_size</strong></td>
+            <td>
+<p>Length of real workspace.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/normalize_by_std_dev_expert_c.html#variable-real_workspace_size~21" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_hat_diag~10"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_hat_diag</strong></td>
+            <td>
+<p>Diagonal elements of the LOESS hat matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_loess_weights~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_loess_weights</strong></td>
+            <td>
+<p>Per-point weights handed to the LOESS fit</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_eval_points~12"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes, 1), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_eval_points</strong></td>
+            <td>
+<p>Points the fitted curve is evaluated at</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_robust_weights~14"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_robust_weights</strong></td>
+            <td>
+<p>Robust bisquare weights of the LOESS fit</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_combined_weights~14"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_combined_weights</strong></td>
+            <td>
+<p>Combined weights of the LOESS fit</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_residuals~14"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_residuals</strong></td>
+            <td>
+<p>Residuals of the LOESS fit</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_permutation_indices~14"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_permutation_indices</strong></td>
+            <td>
+<p>Permutation indices of the LOESS fit</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-span~19"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>span</strong></td>
+            <td>
+<p>LOESS span parameter.
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-degree~20"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>degree</strong></td>
+            <td>
+<p>LOESS degree parameter.
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~198"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1391,7 +1391,7 @@ The maximum valid value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~36"></span>
+              <span class="anchor" id="variable-n_genes~43"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1421,7 +1421,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~18"></span>
+              <span class="anchor" id="variable-expr~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1436,7 +1436,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-normalized_expr~6"></span>
+              <span class="anchor" id="variable-normalized_expr~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1451,7 +1451,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~113"></span>
+              <span class="anchor" id="variable-ierr~199"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1491,7 +1491,7 @@ The maximum valid value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~37"></span>
+              <span class="anchor" id="variable-n_genes~44"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1521,7 +1521,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~19"></span>
+              <span class="anchor" id="variable-expr~18"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1536,7 +1536,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-normalized_expr~7"></span>
+              <span class="anchor" id="variable-normalized_expr~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1566,7 +1566,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~114"></span>
+              <span class="anchor" id="variable-ierr~200"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1606,7 +1606,7 @@ The maximum valid value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~38"></span>
+              <span class="anchor" id="variable-n_genes~45"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1636,7 +1636,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~20"></span>
+              <span class="anchor" id="variable-expr~19"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1651,7 +1651,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-normalized_expr~8"></span>
+              <span class="anchor" id="variable-normalized_expr~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1696,7 +1696,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~5"></span>
+              <span class="anchor" id="variable-tmp_perm~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1711,7 +1711,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~115"></span>
+              <span class="anchor" id="variable-ierr~201"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1751,7 +1751,7 @@ The maximum valid value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~39"></span>
+              <span class="anchor" id="variable-n_genes~46"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1766,7 +1766,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~9"></span>
+              <span class="anchor" id="variable-n_tissues~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1781,7 +1781,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~21"></span>
+              <span class="anchor" id="variable-expr~20"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1811,7 +1811,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~116"></span>
+              <span class="anchor" id="variable-ierr~202"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1851,7 +1851,7 @@ The maximum valid value is <code>2_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~40"></span>
+              <span class="anchor" id="variable-n_genes~47"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1866,7 +1866,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~10"></span>
+              <span class="anchor" id="variable-n_tissues~11"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1881,7 +1881,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-reps_per_tissue~5"></span>
+              <span class="anchor" id="variable-reps_per_tissue~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1898,7 +1898,7 @@ The minimum valid value is <code>1_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~22"></span>
+              <span class="anchor" id="variable-expr~21"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1943,7 +1943,7 @@ The minimum valid value is <code>1_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~117"></span>
+              <span class="anchor" id="variable-ierr~203"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1983,7 +1983,7 @@ The minimum valid value is <code>1_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~41"></span>
+              <span class="anchor" id="variable-n_genes~48"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1998,7 +1998,7 @@ The minimum valid value is <code>1_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~11"></span>
+              <span class="anchor" id="variable-n_tissues~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -2062,7 +2062,7 @@ The maximum valid value is <code>n_tissues</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~23"></span>
+              <span class="anchor" id="variable-expr~22"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -2092,7 +2092,7 @@ The maximum valid value is <code>n_tissues</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~118"></span>
+              <span class="anchor" id="variable-ierr~204"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -2135,7 +2135,7 @@ The maximum valid value is <code>n_tissues</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 08:27 +0000             </p>
+ on 2026-11-13 08:28 +0000             </p>
           </div>
         </div>
         <br>
