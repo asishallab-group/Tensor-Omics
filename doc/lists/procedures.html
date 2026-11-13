@@ -150,6 +150,237 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><p>Function to find the position to place a value in a sorted array using binary search</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/bit_mask_all.html'>bit_mask_all</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether every flag is set. <code>.true.</code> for a mask without flags.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_and.html'>bit_mask_and</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .and. other_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_and_count.html'>bit_mask_and_count</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p><code>count(left .and. right)</code>, without building the conjunction.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_and_not.html'>bit_mask_and_not</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .and. .not. other_bit_mask</code>: clears every flag <code>other_bit_mask</code> sets.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_any.html'>bit_mask_any</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether any flag is set.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_any_and.html'>bit_mask_any_and</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p><code>any(left .and. right)</code>: whether the masks share a flag. Stops at the first shared word.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_clear.html'>bit_mask_clear</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Clears flag <code>i_bit</code>. Not for <code>do concurrent</code> over flags: see the module's note on parallel loops.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_copy.html'>bit_mask_copy</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = source_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_count.html'>bit_mask_count</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The number of set flags.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_equal.html'>bit_mask_equal</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether both masks set the same flags.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_fill.html'>bit_mask_fill</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sets every flag to <code>state</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_first.html'>bit_mask_first</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The index of the first set flag, or 0 if no flag is set.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_from_logical.html'>bit_mask_from_logical</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_from_logical_impl.html">bit_mask_from_logical_impl</a>.</p><a href="../proc/bit_mask_from_logical.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_from_logical_c.html'>bit_mask_from_logical_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_from_logical.html">bit_mask_from_logical</a></p><a href="../proc/bit_mask_from_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_from_logical_impl.html'>bit_mask_from_logical_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Packs a <code>logical(c_bool)</code> array into a bit mask.</p><a href="../proc/bit_mask_from_logical_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_indices.html'>bit_mask_indices</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>The indices of the set flags, in ascending order. With <code>n_set</code> from
+<a href="../proc/bit_mask_count.html">bit_mask_count</a> that is all of them; a smaller
+<code>n_set</code> gives the first <code>n_set</code>, and a larger one fills the rest of <code>indices</code> with 0.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_is_subset.html'>bit_mask_is_subset</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether every flag <code>subset_bit_mask</code> sets is also set in <code>superset_bit_mask</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_last.html'>bit_mask_last</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The index of the last set flag, or 0 if no flag is set.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_n_words.html'>bit_mask_n_words</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_n_words_impl.html">bit_mask_n_words_impl</a>.</p><a href="../proc/bit_mask_n_words.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_n_words_c.html'>bit_mask_n_words_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_n_words.html">bit_mask_n_words</a></p><a href="../proc/bit_mask_n_words_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_n_words_impl.html'>bit_mask_n_words_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>The number of words a mask of <code>n_bits</code> flags takes.</p><a href="../proc/bit_mask_n_words_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_next.html'>bit_mask_next</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The index of the first set flag after <code>after_bit</code>, or 0 if there is none. Stepping through
+the set flags of a mask:</p><a href="../proc/bit_mask_next.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_not.html'>bit_mask_not</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = .not. bit_mask</code>, the bits past <code>n_bits</code> kept zero.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_or.html'>bit_mask_or</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .or. other_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_set.html'>bit_mask_set</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sets flag <code>i_bit</code>. Not for <code>do concurrent</code> over flags: see the module's note on parallel loops.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_test.html'>bit_mask_test</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_test_impl.html">bit_mask_test_impl</a>.</p><a href="../proc/bit_mask_test.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_test_c.html'>bit_mask_test_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_test.html">bit_mask_test</a></p><a href="../proc/bit_mask_test_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_test_impl.html'>bit_mask_test_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Whether flag <code>i_bit</code> of a mask is set.</p><a href="../proc/bit_mask_test_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_to_logical.html'>bit_mask_to_logical</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_to_logical_impl.html">bit_mask_to_logical_impl</a>.</p><a href="../proc/bit_mask_to_logical.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_to_logical_c.html'>bit_mask_to_logical_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_to_logical.html">bit_mask_to_logical</a></p><a href="../proc/bit_mask_to_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_to_logical_impl.html'>bit_mask_to_logical_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Unpacks a bit mask into a <code>logical(c_bool)</code> array.</p><a href="../proc/bit_mask_to_logical_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_xor.html'>bit_mask_xor</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .neqv. other_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_from_logical_2d.html'>bit_masks_from_logical_2D</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_masks_from_logical_2d_impl.html">bit_masks_from_logical_2D_impl</a>.</p><a href="../proc/bit_masks_from_logical_2d.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_from_logical_2d_c.html'>bit_masks_from_logical_2D_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_masks_from_logical_2d.html">bit_masks_from_logical_2D</a></p><a href="../proc/bit_masks_from_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_from_logical_2d_impl.html'>bit_masks_from_logical_2D_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Packs every column of a <code>logical(c_bool)</code> matrix into its own bit mask.</p><a href="../proc/bit_masks_from_logical_2d_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_to_logical_2d.html'>bit_masks_to_logical_2D</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_masks_to_logical_2d_impl.html">bit_masks_to_logical_2D_impl</a>.</p><a href="../proc/bit_masks_to_logical_2d.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_to_logical_2d_c.html'>bit_masks_to_logical_2D_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_masks_to_logical_2d.html">bit_masks_to_logical_2D</a></p><a href="../proc/bit_masks_to_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_to_logical_2d_impl.html'>bit_masks_to_logical_2D_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Unpacks every column of a matrix of bit masks into a <code>logical(c_bool)</code> column.</p><a href="../proc/bit_masks_to_logical_2d_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/bst_range_query.html'>bst_range_query</a></td>
                  <td><a href='../module/f42_binary_search_tree.html'>f42_binary_search_tree</a></td>
                  <td>Subroutine</td>
@@ -403,15 +634,21 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_work_arr_paralog_subsets_size.html'>calc_work_arr_paralog_subsets_size</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
+                 <td><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculates the needed size for the paralog-subsets work array</p><a href="../proc/calc_work_arr_paralog_subsets_size.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a>.</p><a href="../proc/calc_work_arr_paralog_subsets_size.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_work_arr_paralog_subsets_size_c.html'>calc_work_arr_paralog_subsets_size_c</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
+                 <td><a href='../module/tox_paralog_analysis_c.html'>tox_paralog_analysis_c</a></td>
                  <td>Subroutine</td>
                  <td><p>C-wrapper for <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a></p><a href="../proc/calc_work_arr_paralog_subsets_size_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_work_arr_paralog_subsets_size_impl.html'>calc_work_arr_paralog_subsets_size_impl</a></td>
+                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates the needed size for the paralog-subsets work array</p><a href="../proc/calc_work_arr_paralog_subsets_size_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/char_as_c_char.html'>char_as_c_char</a></td>
@@ -2382,42 +2619,6 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
                  <td><p>Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/mask_check_state.html'>mask_check_state</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Function</td>
-                 <td><p>Checks the state of a bit/paralog in <code>bit_mask</code> -&gt; .true. if 1 else .false.</p><a href="../proc/mask_check_state.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_check_state_c.html'>mask_check_state_c</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/mask_check_state.html">mask_check_state</a></p><a href="../proc/mask_check_state_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_chunk_count.html'>mask_chunk_count</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Determines the needed chunk count for subset bit masks (an integer has only 32 bits)</p><a href="../proc/mask_chunk_count.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_chunk_count_c.html'>mask_chunk_count_c</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/mask_chunk_count.html">mask_chunk_count</a></p><a href="../proc/mask_chunk_count_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_get_first_successor_idx.html'>mask_get_first_successor_idx</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Function</td>
-                 <td><p>Helper function that returns the index after the last active gene in <code>bit_mask</code>, so the first succeeding gene.</p></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_set_state.html'>mask_set_state</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Sets the state of a bit/gene in <code>bit_mask</code></p></td>
-               </tr>
-			   <tr>
                  <td><a href='../proc/mean.html'>mean</a></td>
                  <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
                  <td>Function</td>
@@ -3722,7 +3923,7 @@ Closes the connected unit in case of an error</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 08:30 +0000             </p>
+ on 2026-11-13 08:38 +0000             </p>
           </div>
         </div>
         <br>

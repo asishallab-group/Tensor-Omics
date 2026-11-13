@@ -715,25 +715,6 @@
       ")"
     ]
   },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} <- mask_check_state(",
-      "  bit_mask = ${2:bit_mask},",
-      "  i_gene = ${3:i_gene}",
-      ")"
-    ]
-  },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
-    "body": [
-      "${1:result} <- mask_chunk_count(",
-      "  n_genes = ${2:n_genes}",
-      ")"
-    ]
-  },
   "calc_work_arr_paralog_subsets_size (call)": {
     "prefix": "tox:calc_work_arr_paralog_subsets_size",
     "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",

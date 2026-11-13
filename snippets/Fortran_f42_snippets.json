@@ -89,6 +89,165 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "f42_bit_masks (use)": {
+    "prefix": "f42:bit_masks.use",
+    "description": "use f42_bit_masks, only: ...",
+    "body": [
+      "use f42_bit_masks, only: ${1|bit_mask_n_words,bit_mask_test,bit_mask_from_logical,bit_mask_to_logical,bit_masks_from_logical_2D,bit_masks_to_logical_2D|}"
+    ]
+  },
+  "bit_mask_n_words (call)": {
+    "prefix": "f42:bit_mask_n_words",
+    "description": "Inside Fortran, a bit-mask macro in `src/macros.h` gives the same number.",
+    "body": [
+      "call bit_mask_n_words( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    ierr=${3:ierr})"
+    ]
+  },
+  "bit_mask_n_words (call, checked)": {
+    "prefix": "f42:bit_mask_n_words.checked",
+    "description": "Inside Fortran, a bit-mask macro in `src/macros.h` gives the same number. (with error check)",
+    "body": [
+      "call bit_mask_n_words( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    ierr=${3:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "bit_mask_test (call)": {
+    "prefix": "f42:bit_mask_test",
+    "description": "Inside Fortran, a loop tests a flag inline with a bit-mask macro from `src/macros.h` instead.",
+    "body": [
+      "call bit_mask_test( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    bit_mask=${3:bit_mask}, &",
+      "    i_bit=${4:i_bit}, &",
+      "    is_set=${5:is_set}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "bit_mask_test (call, checked)": {
+    "prefix": "f42:bit_mask_test.checked",
+    "description": "Inside Fortran, a loop tests a flag inline with a bit-mask macro from `src/macros.h` instead. (with error check)",
+    "body": [
+      "call bit_mask_test( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    bit_mask=${3:bit_mask}, &",
+      "    i_bit=${4:i_bit}, &",
+      "    is_set=${5:is_set}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "bit_mask_from_logical (call)": {
+    "prefix": "f42:bit_mask_from_logical",
+    "description": "bit_mask_from_logical",
+    "body": [
+      "call bit_mask_from_logical( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    flags=${3:flags}, &",
+      "    bit_mask=${4:bit_mask}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "bit_mask_from_logical (call, checked)": {
+    "prefix": "f42:bit_mask_from_logical.checked",
+    "description": "bit_mask_from_logical (with error check)",
+    "body": [
+      "call bit_mask_from_logical( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    flags=${3:flags}, &",
+      "    bit_mask=${4:bit_mask}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "bit_mask_to_logical (call)": {
+    "prefix": "f42:bit_mask_to_logical",
+    "description": "bit_mask_to_logical",
+    "body": [
+      "call bit_mask_to_logical( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    bit_mask=${3:bit_mask}, &",
+      "    flags=${4:flags}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "bit_mask_to_logical (call, checked)": {
+    "prefix": "f42:bit_mask_to_logical.checked",
+    "description": "bit_mask_to_logical (with error check)",
+    "body": [
+      "call bit_mask_to_logical( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_words=${2:n_words}, &",
+      "    bit_mask=${3:bit_mask}, &",
+      "    flags=${4:flags}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "bit_masks_from_logical_2D (call)": {
+    "prefix": "f42:bit_masks_from_logical_2D",
+    "description": "bit_masks_from_logical_2D",
+    "body": [
+      "call bit_masks_from_logical_2D( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_masks=${2:n_masks}, &",
+      "    n_words=${3:n_words}, &",
+      "    flags=${4:flags}, &",
+      "    bit_masks=${5:bit_masks}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "bit_masks_from_logical_2D (call, checked)": {
+    "prefix": "f42:bit_masks_from_logical_2D.checked",
+    "description": "bit_masks_from_logical_2D (with error check)",
+    "body": [
+      "call bit_masks_from_logical_2D( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_masks=${2:n_masks}, &",
+      "    n_words=${3:n_words}, &",
+      "    flags=${4:flags}, &",
+      "    bit_masks=${5:bit_masks}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "bit_masks_to_logical_2D (call)": {
+    "prefix": "f42:bit_masks_to_logical_2D",
+    "description": "bit_masks_to_logical_2D",
+    "body": [
+      "call bit_masks_to_logical_2D( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_masks=${2:n_masks}, &",
+      "    n_words=${3:n_words}, &",
+      "    bit_masks=${4:bit_masks}, &",
+      "    flags=${5:flags}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "bit_masks_to_logical_2D (call, checked)": {
+    "prefix": "f42:bit_masks_to_logical_2D.checked",
+    "description": "bit_masks_to_logical_2D (with error check)",
+    "body": [
+      "call bit_masks_to_logical_2D( &",
+      "    n_bits=${1:n_bits}, &",
+      "    n_masks=${2:n_masks}, &",
+      "    n_words=${3:n_words}, &",
+      "    bit_masks=${4:bit_masks}, &",
+      "    flags=${5:flags}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "f42_kd_tree (use)": {
     "prefix": "f42:kd_tree.use",
     "description": "use f42_kd_tree, only: ...",

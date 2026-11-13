@@ -779,7 +779,7 @@
     "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
     "body": [
       "from tensor_omics.tox_paralog_analysis import (",
-      "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization|},",
+      "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_work_arr_paralog_subsets_size|},",
       ")"
     ]
   },
@@ -847,34 +847,6 @@
       "    n_families=${4:n_families},",
       "    gene_to_fam=${5:gene_to_fam},",
       "    n_mask_chunks=${6:n_mask_chunks},",
-      ")"
-    ]
-  },
-  "tox_paralog_analysis_impl (import)": {
-    "prefix": "tox:paralog_analysis_impl.setup",
-    "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
-    "body": [
-      "from tensor_omics.tox_paralog_analysis_impl import (",
-      "    ${1|mask_check_state,mask_chunk_count,calc_work_arr_paralog_subsets_size|},",
-      ")"
-    ]
-  },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} = mask_check_state(",
-      "    bit_mask=${2:bit_mask},",
-      "    i_gene=${3:i_gene},",
-      ")"
-    ]
-  },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
-    "body": [
-      "${1:result} = mask_chunk_count(",
-      "    n_genes=${2:n_genes},",
       ")"
     ]
   },

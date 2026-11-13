@@ -1802,7 +1802,7 @@
     "prefix": "tox:paralog_analysis.use",
     "description": "use tox_paralog_analysis, only: ...",
     "body": [
-      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization|}"
+      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_work_arr_paralog_subsets_size|}"
     ]
   },
   "detect_neofunctionalization (call)": {
@@ -1982,31 +1982,6 @@
       "    n_mask_chunks=${7:n_mask_chunks}, &",
       "    ierr=${8:ierr})",
       "if (is_err(ierr)) return"
-    ]
-  },
-  "tox_paralog_analysis_impl (use)": {
-    "prefix": "tox:paralog_analysis_impl.use",
-    "description": "use tox_paralog_analysis_impl, only: ...",
-    "body": [
-      "use tox_paralog_analysis_impl, only: ${1|mask_check_state,mask_chunk_count,calc_work_arr_paralog_subsets_size|}"
-    ]
-  },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} = mask_check_state( &",
-      "    bit_mask=${2:bit_mask}, &",
-      "    i_gene=${3:i_gene})"
-    ]
-  },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
-    "body": [
-      "call mask_chunk_count( &",
-      "    n_genes=${1:n_genes}, &",
-      "    count=${2:count})"
     ]
   },
   "calc_work_arr_paralog_subsets_size (call)": {

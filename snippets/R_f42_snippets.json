@@ -31,6 +31,66 @@
       ")"
     ]
   },
+  "bit_mask_n_words (call)": {
+    "prefix": "f42:bit_mask_n_words",
+    "description": "Inside Fortran, a bit-mask macro in `src/macros.h` gives the same number.",
+    "body": [
+      "${1:result} <- bit_mask_n_words(",
+      "  n_bits = ${2:n_bits}",
+      ")"
+    ]
+  },
+  "bit_mask_test (call)": {
+    "prefix": "f42:bit_mask_test",
+    "description": "Inside Fortran, a loop tests a flag inline with a bit-mask macro from `src/macros.h` instead.",
+    "body": [
+      "${1:result} <- bit_mask_test(",
+      "  n_bits = ${2:n_bits},",
+      "  bit_mask = ${3:bit_mask},",
+      "  i_bit = ${4:i_bit}",
+      ")"
+    ]
+  },
+  "bit_mask_from_logical (call)": {
+    "prefix": "f42:bit_mask_from_logical",
+    "description": "bit_mask_from_logical",
+    "body": [
+      "${1:result} <- bit_mask_from_logical(",
+      "  n_words = ${2:n_words},",
+      "  flags = ${3:flags}",
+      ")"
+    ]
+  },
+  "bit_mask_to_logical (call)": {
+    "prefix": "f42:bit_mask_to_logical",
+    "description": "bit_mask_to_logical",
+    "body": [
+      "${1:result} <- bit_mask_to_logical(",
+      "  n_bits = ${2:n_bits},",
+      "  bit_mask = ${3:bit_mask}",
+      ")"
+    ]
+  },
+  "bit_masks_from_logical_2D (call)": {
+    "prefix": "f42:bit_masks_from_logical_2D",
+    "description": "bit_masks_from_logical_2D",
+    "body": [
+      "${1:result} <- bit_masks_from_logical_2D(",
+      "  n_words = ${2:n_words},",
+      "  flags = ${3:flags}",
+      ")"
+    ]
+  },
+  "bit_masks_to_logical_2D (call)": {
+    "prefix": "f42:bit_masks_to_logical_2D",
+    "description": "bit_masks_to_logical_2D",
+    "body": [
+      "${1:result} <- bit_masks_to_logical_2D(",
+      "  n_bits = ${2:n_bits},",
+      "  bit_masks = ${3:bit_masks}",
+      ")"
+    ]
+  },
   "build_kd_index (call)": {
     "prefix": "f42:build_kd_index",
     "description": "build_kd_index",
