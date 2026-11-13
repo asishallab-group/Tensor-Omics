@@ -1,7 +1,7 @@
 {
   "cluster_factor_trajectories_k_means (call)": {
     "prefix": "tox:cluster_factor_trajectories_k_means",
-    "description": "cluster_factor_trajectories_k_means",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single",
     "body": [
       "${1:result} <- cluster_factor_trajectories_k_means(",
       "  trajectories = ${2:trajectories},",
@@ -440,17 +440,17 @@
   },
   "mean_vector (call)": {
     "prefix": "tox:mean_vector",
-    "description": "mean_vector",
+    "description": "A selection without genes gives the zero vector.",
     "body": [
       "${1:result} <- mean_vector(",
       "  expression_vectors = ${2:expression_vectors},",
-      "  gene_indices = ${3:gene_indices}",
+      "  genes_selection_mask = ${3:genes_selection_mask}",
       ")"
     ]
   },
   "group_centroid_orthologs (call)": {
     "prefix": "tox:group_centroid_orthologs",
-    "description": "group_centroid_orthologs",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "${1:result} <- group_centroid_orthologs(",
       "  expression_vectors = ${2:expression_vectors},",
@@ -462,7 +462,7 @@
   },
   "group_centroid_all (call)": {
     "prefix": "tox:group_centroid_all",
-    "description": "group_centroid_all",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "${1:result} <- group_centroid_all(",
       "  expression_vectors = ${2:expression_vectors},",
@@ -715,25 +715,6 @@
       ")"
     ]
   },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} <- mask_check_state(",
-      "  bit_mask = ${2:bit_mask},",
-      "  i_gene = ${3:i_gene}",
-      ")"
-    ]
-  },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
-    "body": [
-      "${1:result} <- mask_chunk_count(",
-      "  n_genes = ${2:n_genes}",
-      ")"
-    ]
-  },
   "calc_work_arr_paralog_subsets_size (call)": {
     "prefix": "tox:calc_work_arr_paralog_subsets_size",
     "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
@@ -747,7 +728,7 @@
   },
   "omics_vector_RAP_projection (call)": {
     "prefix": "tox:omics_vector_RAP_projection",
-    "description": "omics_vector_RAP_projection",
+    "description": "A vector's projection is the vector minus the mean of its selected coordinates. A vector whose",
     "body": [
       "${1:result} <- omics_vector_RAP_projection(",
       "  vecs = ${2:vecs},",
@@ -758,7 +739,7 @@
   },
   "omics_field_RAP_projection (call)": {
     "prefix": "tox:omics_field_RAP_projection",
-    "description": "omics_field_RAP_projection",
+    "description": "A field whose projected vector has all coordinates equal on the selected axes lies on the space",
     "body": [
       "${1:result} <- omics_field_RAP_projection(",
       "  fields = ${2:fields},",
@@ -769,7 +750,7 @@
   },
   "clock_hand_angle_between_vectors (call)": {
     "prefix": "tox:clock_hand_angle_between_vectors",
-    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying",
+    "description": "The unsigned angle is the one between the two directions; their lengths do not matter, so",
     "body": [
       "${1:result} <- clock_hand_angle_between_vectors(",
       "  v1 = ${2:v1},",
@@ -780,7 +761,7 @@
   },
   "clock_hand_angles_for_shift_vectors (call)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors",
-    "description": "Each selected field is angled by the rule of",
+    "description": "Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from",
     "body": [
       "${1:result} <- clock_hand_angles_for_shift_vectors(",
       "  fields = ${2:fields},",
