@@ -114,7 +114,7 @@ normalized = normalization_pipeline(
   call \code{.copy()} if you need to modify it. For a non-negative input every
   value is $\geq 0$, since $\log_2(x+1) \geq 0$ there. On the bundled example
   data the values span $[0, 4.06]$ without quantile normalization and
-  $[0, 4.27]$ with it, and 2\,627 of the 88\,327 genes (3\%) have zero
+  $[1.49 \times 10^{-5}, 4.27]$ with it, and 2\,627 of the 88\,327 genes (3\%) have zero
   variance across their replicates and therefore reach the output unscaled.
   A value range wildly different from this, or a much larger unscaled
   fraction, points at the input layout rather than at biology.
