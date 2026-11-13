@@ -6,7 +6,7 @@
 !| what can be read off a vector once it is projected onto one.
 !|
 !| A RAP is picked by selecting axes (tissues) from the full expression space.
-!| `vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+!| `omics_vector_RAP_projection` projects vectors onto it and `omics_field_RAP_projection` a whole
 !| field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
 !| between two vectors -- signed by an orientation reference, so the sign means the same thing in
 !| every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
@@ -49,7 +49,7 @@ contains
         integer(c_int), intent(in), target :: n_axes
             !! number of axes
         integer(c_int), intent(in), target :: n_vecs
-            !! number of vectors per axis
+            !! number of vectors
         integer(c_int), intent(in), target :: n_selected_vecs
             !! count of `.true.` values in `vecs_selection_mask`
         integer(c_int), intent(in), target :: n_selected_axes
@@ -106,15 +106,18 @@ contains
         integer(c_int), intent(in), target :: n_axes
             !! number of axes
         integer(c_int), intent(in), target :: n_fields
-            !! number of vectors per axis
+            !! number of fields
         integer(c_int), intent(in), target :: n_selected_fields
             !! count of `.true.` values in `fields_selection_mask`
         integer(c_int), intent(in), target :: n_selected_axes
             !! count of `.true.` values in `axes_selection_mask`
         real(c_double), dimension(n_axes, 2, n_fields), intent(in), target :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
+            !! matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+            !! family centroid) and the shift from it second (e.g. paralog minus centroid), as
+            !! [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores
+            !! them. The shift is projected; the origin does not enter the projection.
         logical(c_bool), dimension(n_fields), intent(in), target :: fields_selection_mask
-            !! `.true.` for vectors where projection is to be computed
+            !! `.true.` for fields where projection is to be computed
         logical(c_bool), dimension(n_axes), intent(in), target :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         real(c_double), dimension(n_selected_axes, n_selected_fields), intent(out), target :: projections
@@ -147,8 +150,10 @@ contains
     end subroutine omics_field_RAP_projection_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angle_between_vectors(subroutine)]]
-    !| The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+    !| The unsigned angle is the one between the two directions; their lengths do not matter, so
+    !| the vectors need not be normalized. `orientation_reference` supplies the sign by saying
     !| which way round the plane the two vectors span counts as positive. Reports
+    !| `ERR_DIVISION_BY_ZERO` when `v1` or `v2` is the zero vector, which has no direction, and
     !| `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
     subroutine clock_hand_angle_between_vectors_c(&
             v1,&
@@ -163,15 +168,18 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! Dimension of both vectors
         real(c_double), dimension(n_dims), intent(in), target :: v1
-            !! First normalized vector in RAP space
+            !! First vector in RAP space, of any length but zero
         real(c_double), dimension(n_dims), intent(in), target :: v2
-            !! Second normalized vector in RAP space
+            !! Second vector in RAP space, of any length but zero
         real(c_double), dimension(n_dims), intent(in), target :: orientation_reference
             !! Orients the plane the rotation happens in, so the angle can carry a sign. A
             !! rotation from one vector to another has no inherent direction above two
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
         real(c_double), intent(out), target :: signed_angle
             !! Signed angle between vectors in radians [-pi, pi]
         integer(c_int), intent(out), target :: ierr
@@ -196,10 +204,16 @@ contains
     end subroutine clock_hand_angle_between_vectors_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angles_for_shift_vectors(subroutine)]]
-    !| Each selected field is angled by the rule of
+    !| Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from
+    !| a family centroid to its paralog, for the fields
+    !| [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores -- by the
+    !| rule of
     !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
-    !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
-    !| the reference fails to orient fails the call.
+    !| with one `orientation_reference` shared by the whole batch. The rule angles RAP-space
+    !| vectors, so project origins and shifts first; projection is linear, so `o + s` of the
+    !| projected pair is the projected paralog. A single selected field whose origin or `o + s`
+    !| is zero fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation the reference
+    !| fails to orient with `ERR_INVALID_INPUT`.
     subroutine clock_hand_angles_for_shift_vectors_c(&
             fields,&
             n_dims,&
@@ -219,7 +233,9 @@ contains
         integer(c_int), intent(in), target :: n_selected_fields
             !! Count of .true. values in fields_selection_mask
         real(c_double), dimension(n_dims, 2, n_fields), intent(in), target :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
+            !! matrix with vector fields; each field holds two vectors, its origin first and the
+            !! shift from it second, as
+            !! [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores them
         logical(c_bool), dimension(n_fields), intent(in), target :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         real(c_double), dimension(n_dims), intent(in), target :: orientation_reference
@@ -228,8 +244,11 @@ contains
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
         real(c_double), dimension(n_selected_fields), intent(out), target :: signed_angles
-            !! Signed rotation angles between vector pairs in radians [-π, π]
+            !! Signed rotation angles between vector pairs in radians [-pi, pi]
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -257,6 +276,8 @@ contains
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):compute_relative_axis_contributions(subroutine)]]
     !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
+    !| The shares depend on the vector's direction alone, so it need not be normalized; the zero
+    !| vector, which has no direction, is `ERR_DIVISION_BY_ZERO`.
     subroutine compute_relative_axis_contributions_c(&
             vec,&
             n_axes,&
@@ -268,9 +289,9 @@ contains
         integer(c_int), intent(in), target :: n_axes
             !! Number of axes (length of vec and contributions)
         real(c_double), dimension(n_axes), intent(in), target :: vec
-            !! RAP-projected and normalized vector (expression or shift)
+            !! RAP-projected vector (expression or shift), of any length but zero
         real(c_double), dimension(n_axes), intent(out), target :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -301,9 +322,9 @@ contains
         integer(c_int), intent(in), target :: n_axes
             !! Number of axes
         real(c_double), dimension(n_axes), intent(in), target :: vec
-            !! RAP-projected and normalized shift vector
+            !! RAP-projected shift vector, of any length but zero
         real(c_double), dimension(n_axes), intent(out), target :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -334,9 +355,9 @@ contains
         integer(c_int), intent(in), target :: n_axes
             !! Number of axes
         real(c_double), dimension(n_axes), intent(in), target :: vec
-            !! RAP-projected and normalized expression vector
+            !! RAP-projected expression vector, of any length but zero
         real(c_double), dimension(n_axes), intent(out), target :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(c_int), intent(out), target :: ierr
             !! Error code
 

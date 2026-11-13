@@ -90,7 +90,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">33 statements</a>
+                 title=" 0.3% of total for procedures.">63 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,21 +151,25 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, signed_angle, undefined_sign)  
+    <h2>public pure subroutine clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, second_is_shift, signed_angle, zero_vector, undefined_sign)  
 </h2>
     
 
-    <p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.</p>
-<p>The unsigned angle is <code>acos(v1 . v2)</code>. The sign is the caller's convention: the rotation
-from <code>v1</code> to <code>v2</code> sweeps through the plane the two span, and <code>orientation_reference</code> says
-which way round that plane is positive. Concretely, the sign is that of
-<code>orientation_reference . (v2 - (v1 . v2) v1)</code> -- the reference measured against the part
-of <code>v2</code> perpendicular to <code>v1</code>, which is the direction the rotation actually moves in.</p>
+    <p>Compute the signed clock hand angle between two RAP-projected vectors.</p>
+<p>The unsigned angle is <code>atan2(|v1| |p|, v1 . v2)</code>, where <code>p = v2 - ((v1 . v2)/(v1 . v1)) v1</code>
+is the part of <code>v2</code> perpendicular to <code>v1</code>: the arctangent of the angle's sine and cosine
+parts, both scaled by the same lengths. Unlike <code>acos(v1 . v2)</code> for unit vectors, it needs
+no normalized input and keeps its accuracy near 0 and PI, where acos loses half its digits.
+The sign is the caller's convention: the rotation from <code>v1</code> to <code>v2</code> sweeps through the plane
+the two span, and <code>orientation_reference</code> says which way round that plane is positive.
+Concretely, the sign is that of <code>orientation_reference . p</code> -- the reference measured
+against the direction the rotation actually moves in.</p>
 <p>In two dimensions this reduces to the familiar determinant when the reference is <code>v1</code>
 turned a quarter turn; there is simply no such canonical quarter turn in higher ones.</p>
-<p><code>undefined_sign</code> reports the one case with no answer: the reference is orthogonal to the
-rotation, so it orients nothing. Parallel <code>v1</code>/<code>v2</code> are not that case -- the angle is
-then 0 or pi and the sign does not matter, so the unsigned angle is returned as is.</p>
+<p><code>zero_vector</code> reports a zero <code>v1</code> or <code>v2</code>, which has no direction to turn from or to.
+<code>undefined_sign</code> reports the one other case with no answer: the reference is orthogonal
+to the rotation, so it orients nothing. Parallel <code>v1</code>/<code>v2</code> are not that case -- the angle
+is then 0 or pi and the sign does not matter, so the unsigned angle is returned as is.</p>
 <p>Shared compute core: the single-vector angle, reused per field by
 <a href="../proc/clock_hand_angles_for_shift_vectors_impl.html">clock_hand_angles_for_shift_vectors_impl</a>.</p>
 
@@ -183,7 +187,7 @@ then 0 or pi and the sign does not matter, so the unsigned angle is returned as 
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~3"></span>
+              <span class="anchor" id="variable-v1~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -193,12 +197,12 @@ then 0 or pi and the sign does not matter, so the unsigned angle is returned as 
             <td>::</td>
             <td><strong>v1</strong></td>
             <td>
-                <p>First normalized vector in RAP space</p>
+                <p>First vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~3"></span>
+              <span class="anchor" id="variable-v2~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -208,12 +212,12 @@ then 0 or pi and the sign does not matter, so the unsigned angle is returned as 
             <td>::</td>
             <td><strong>v2</strong></td>
             <td>
-                <p>Second normalized vector in RAP space</p>
+                <p>Second vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~12"></span>
+              <span class="anchor" id="variable-n_dims~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -228,7 +232,7 @@ then 0 or pi and the sign does not matter, so the unsigned angle is returned as 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-orientation_reference~4"></span>
+              <span class="anchor" id="variable-orientation_reference~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -242,12 +246,31 @@ then 0 or pi and the sign does not matter, so the unsigned angle is returned as 
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angle~3"></span>
+              <span class="anchor" id="variable-second_is_shift"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>second_is_shift</strong></td>
+            <td>
+                <p><code>.true.</code> when <code>v2</code> is a shift from <code>v1</code> rather than a vector of its own: the angle
+then turns from <code>v1</code> to <code>v1 + v2</code>, which is formed element by element, not stored</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-signed_angle~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -258,6 +281,21 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td><strong>signed_angle</strong></td>
             <td>
                 <p>Signed angle between vectors in radians [-pi, pi]</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zero_vector~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>zero_vector</strong></td>
+            <td>
+                <p><code>.true.</code> when <code>v1</code> or <code>v2</code> is the zero vector, so there is no angle</p>
             </td>
         </tr>
         <tr>
@@ -309,7 +347,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

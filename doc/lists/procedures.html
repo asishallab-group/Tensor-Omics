@@ -150,6 +150,237 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><p>Function to find the position to place a value in a sorted array using binary search</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/bit_mask_all.html'>bit_mask_all</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether every flag is set. <code>.true.</code> for a mask without flags.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_and.html'>bit_mask_and</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .and. other_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_and_count.html'>bit_mask_and_count</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p><code>count(left .and. right)</code>, without building the conjunction.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_and_not.html'>bit_mask_and_not</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .and. .not. other_bit_mask</code>: clears every flag <code>other_bit_mask</code> sets.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_any.html'>bit_mask_any</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether any flag is set.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_any_and.html'>bit_mask_any_and</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p><code>any(left .and. right)</code>: whether the masks share a flag. Stops at the first shared word.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_clear.html'>bit_mask_clear</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Clears flag <code>i_bit</code>. Not for <code>do concurrent</code> over flags: see the module's note on parallel loops.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_copy.html'>bit_mask_copy</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = source_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_count.html'>bit_mask_count</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The number of set flags.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_equal.html'>bit_mask_equal</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether both masks set the same flags.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_fill.html'>bit_mask_fill</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sets every flag to <code>state</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_first.html'>bit_mask_first</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The index of the first set flag, or 0 if no flag is set.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_from_logical.html'>bit_mask_from_logical</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_from_logical_impl.html">bit_mask_from_logical_impl</a>.</p><a href="../proc/bit_mask_from_logical.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_from_logical_c.html'>bit_mask_from_logical_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_from_logical.html">bit_mask_from_logical</a></p><a href="../proc/bit_mask_from_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_from_logical_impl.html'>bit_mask_from_logical_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Packs a <code>logical(c_bool)</code> array into a bit mask.</p><a href="../proc/bit_mask_from_logical_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_indices.html'>bit_mask_indices</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>The indices of the set flags, in ascending order. With <code>n_set</code> from
+<a href="../proc/bit_mask_count.html">bit_mask_count</a> that is all of them; a smaller
+<code>n_set</code> gives the first <code>n_set</code>, and a larger one fills the rest of <code>indices</code> with 0.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_is_subset.html'>bit_mask_is_subset</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>Whether every flag <code>subset_bit_mask</code> sets is also set in <code>superset_bit_mask</code>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_last.html'>bit_mask_last</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The index of the last set flag, or 0 if no flag is set.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_n_words.html'>bit_mask_n_words</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_n_words_impl.html">bit_mask_n_words_impl</a>.</p><a href="../proc/bit_mask_n_words.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_n_words_c.html'>bit_mask_n_words_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_n_words.html">bit_mask_n_words</a></p><a href="../proc/bit_mask_n_words_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_n_words_impl.html'>bit_mask_n_words_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>The number of words a mask of <code>n_bits</code> flags takes.</p><a href="../proc/bit_mask_n_words_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_next.html'>bit_mask_next</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Function</td>
+                 <td><p>The index of the first set flag after <code>after_bit</code>, or 0 if there is none. Stepping through
+the set flags of a mask:</p><a href="../proc/bit_mask_next.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_not.html'>bit_mask_not</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = .not. bit_mask</code>, the bits past <code>n_bits</code> kept zero.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_or.html'>bit_mask_or</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .or. other_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_set.html'>bit_mask_set</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sets flag <code>i_bit</code>. Not for <code>do concurrent</code> over flags: see the module's note on parallel loops.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_test.html'>bit_mask_test</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_test_impl.html">bit_mask_test_impl</a>.</p><a href="../proc/bit_mask_test.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_test_c.html'>bit_mask_test_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_test.html">bit_mask_test</a></p><a href="../proc/bit_mask_test_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_test_impl.html'>bit_mask_test_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Whether flag <code>i_bit</code> of a mask is set.</p><a href="../proc/bit_mask_test_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_to_logical.html'>bit_mask_to_logical</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_mask_to_logical_impl.html">bit_mask_to_logical_impl</a>.</p><a href="../proc/bit_mask_to_logical.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_to_logical_c.html'>bit_mask_to_logical_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_mask_to_logical.html">bit_mask_to_logical</a></p><a href="../proc/bit_mask_to_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_to_logical_impl.html'>bit_mask_to_logical_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Unpacks a bit mask into a <code>logical(c_bool)</code> array.</p><a href="../proc/bit_mask_to_logical_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_mask_xor.html'>bit_mask_xor</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p><code>bit_mask = bit_mask .neqv. other_bit_mask</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_from_logical_2d.html'>bit_masks_from_logical_2D</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_masks_from_logical_2d_impl.html">bit_masks_from_logical_2D_impl</a>.</p><a href="../proc/bit_masks_from_logical_2d.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_from_logical_2d_c.html'>bit_masks_from_logical_2D_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_masks_from_logical_2d.html">bit_masks_from_logical_2D</a></p><a href="../proc/bit_masks_from_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_from_logical_2d_impl.html'>bit_masks_from_logical_2D_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Packs every column of a <code>logical(c_bool)</code> matrix into its own bit mask.</p><a href="../proc/bit_masks_from_logical_2d_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_to_logical_2d.html'>bit_masks_to_logical_2D</a></td>
+                 <td><a href='../module/f42_bit_masks.html'>f42_bit_masks</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/bit_masks_to_logical_2d_impl.html">bit_masks_to_logical_2D_impl</a>.</p><a href="../proc/bit_masks_to_logical_2d.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_to_logical_2d_c.html'>bit_masks_to_logical_2D_c</a></td>
+                 <td><a href='../module/f42_bit_masks_c.html'>f42_bit_masks_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/bit_masks_to_logical_2d.html">bit_masks_to_logical_2D</a></p><a href="../proc/bit_masks_to_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/bit_masks_to_logical_2d_impl.html'>bit_masks_to_logical_2D_impl</a></td>
+                 <td><a href='../module/f42_bit_masks_impl.html'>f42_bit_masks_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Unpacks every column of a matrix of bit masks into a <code>logical(c_bool)</code> column.</p><a href="../proc/bit_masks_to_logical_2d_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/bst_range_query.html'>bst_range_query</a></td>
                  <td><a href='../module/f42_binary_search_tree.html'>f42_binary_search_tree</a></td>
                  <td>Subroutine</td>
@@ -403,15 +634,21 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_work_arr_paralog_subsets_size.html'>calc_work_arr_paralog_subsets_size</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
+                 <td><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculates the needed size for the paralog-subsets work array</p><a href="../proc/calc_work_arr_paralog_subsets_size.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a>.</p><a href="../proc/calc_work_arr_paralog_subsets_size.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/calc_work_arr_paralog_subsets_size_c.html'>calc_work_arr_paralog_subsets_size_c</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
+                 <td><a href='../module/tox_paralog_analysis_c.html'>tox_paralog_analysis_c</a></td>
                  <td>Subroutine</td>
                  <td><p>C-wrapper for <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a></p><a href="../proc/calc_work_arr_paralog_subsets_size_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/calc_work_arr_paralog_subsets_size_impl.html'>calc_work_arr_paralog_subsets_size_impl</a></td>
+                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculates the needed size for the paralog-subsets work array</p><a href="../proc/calc_work_arr_paralog_subsets_size_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/char_as_c_char.html'>char_as_c_char</a></td>
@@ -487,13 +724,13 @@ responsibility to close it.</p></td>
                  <td><a href='../proc/clock_hand_angle_between_vectors_helper.html'>clock_hand_angle_between_vectors_helper</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.</p><a href="../proc/clock_hand_angle_between_vectors_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Compute the signed clock hand angle between two RAP-projected vectors.</p><a href="../proc/clock_hand_angle_between_vectors_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/clock_hand_angle_between_vectors_impl.html'>clock_hand_angle_between_vectors_impl</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.</p><a href="../proc/clock_hand_angle_between_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Compute the signed clock hand angle between two RAP-projected vectors.</p><a href="../proc/clock_hand_angle_between_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/clock_hand_angles_for_shift_vectors.html'>clock_hand_angles_for_shift_vectors</a></td>
@@ -511,7 +748,7 @@ responsibility to close it.</p></td>
                  <td><a href='../proc/clock_hand_angles_for_shift_vectors_impl.html'>clock_hand_angles_for_shift_vectors_impl</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute signed rotation angles between for shift vectors, so between their origin and target</p><a href="../proc/clock_hand_angles_for_shift_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Compute the signed clock hand angle of every selected shift, from its origin to the point it reaches</p><a href="../proc/clock_hand_angles_for_shift_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/cluster_factor_trajectories_k_means.html'>cluster_factor_trajectories_k_means</a></td>
@@ -799,7 +1036,7 @@ responsibility to close it.</p></td>
                  <td><a href='../proc/compute_relative_axis_contributions_impl.html'>compute_relative_axis_contributions_impl</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute the fractional contribution of each axis to a RAP-projected and normalized vector</p><a href="../proc/compute_relative_axis_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Compute the fractional contribution of each axis to a RAP-projected vector</p><a href="../proc/compute_relative_axis_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_residuals.html'>compute_residuals</a></td>
@@ -1584,6 +1821,19 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
                  <td></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/full_sort_fallback_by_dimension_helper.html'>full_sort_fallback_by_dimension_helper</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Fully sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)), by
+heapsort. Used as
+<a href="../proc/median_select_by_dimension_helper.html">median_select_by_dimension_helper</a>'s
+worst-case-safe fallback once its own quickselect has spent its round budget without
+finishing -- this is what that partition used to do unconditionally before quickselect,
+and remains correct (if <code>O(n log n)</code> rather than average-case <code>O(n)</code>) for placing a
+median at any position of the fully-sorted result, regardless of input order. Internal to
+the index build, which has already validated everything this reads.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/generate_subsets_helper.html'>generate_subsets_helper</a></td>
                  <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
                  <td>Subroutine</td>
@@ -1768,7 +2018,7 @@ inside the loop that reads the archive, which is exactly that window.</p></td>
                  <td><a href='../proc/group_centroid_impl.html'>group_centroid_impl</a></td>
                  <td><a href='../module/tox_gene_centroids_impl.html'>tox_gene_centroids_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Iterates over families, filters gene indices, and computes centroids.</p><a href="../proc/group_centroid_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Computes one centroid per gene family, of all its genes or of its orthologs only.</p><a href="../proc/group_centroid_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/group_centroid_orthologs.html'>group_centroid_orthologs</a></td>
@@ -2005,6 +2255,139 @@ itself would justify. See <a href="../proc/is_close_within.html">is_close_within
                  <td><p>Helper to recompute the centroids in k-means by taking the mean of assigned points</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/kd_knn_heapify_down.html'>kd_knn_heapify_down</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Bubble the root down a max-heap of size <code>heap_size</code> on <code>distances</code>/<code>neighbors</code>, in
+lockstep, after its value has been overwritten.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_knn_heapify_up.html'>kd_knn_heapify_up</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Bubble the element at <code>pos</code> up a max-heap on <code>distances</code>/<code>neighbors</code> in lockstep.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_knn_query.html'>kd_knn_query</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/kd_knn_query_impl.html">kd_knn_query_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/kd_knn_query_expert.html">kd_knn_query_expert</a> to prepare it yourself.</p><a href="../proc/kd_knn_query.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_knn_query_c.html'>kd_knn_query_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_knn_query.html">kd_knn_query</a></p><a href="../proc/kd_knn_query_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_knn_query_expert.html'>kd_knn_query_expert</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/kd_knn_query_impl.html">kd_knn_query_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/kd_knn_query.html">kd_knn_query</a> does both.</p><a href="../proc/kd_knn_query_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_knn_query_expert_c.html'>kd_knn_query_expert_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_knn_query_expert.html">kd_knn_query_expert</a></p><a href="../proc/kd_knn_query_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_knn_query_impl.html'>kd_knn_query_impl</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Find the k nearest neighbors of a query point in a pre-built k-d tree</p><a href="../proc/kd_knn_query_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_count.html'>kd_range_query_count</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/kd_range_query_count_impl.html">kd_range_query_count_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/kd_range_query_count_expert.html">kd_range_query_count_expert</a> to prepare it yourself.</p><a href="../proc/kd_range_query_count.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_count_c.html'>kd_range_query_count_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_range_query_count.html">kd_range_query_count</a></p><a href="../proc/kd_range_query_count_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_count_expert.html'>kd_range_query_count_expert</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/kd_range_query_count_impl.html">kd_range_query_count_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/kd_range_query_count.html">kd_range_query_count</a> does both.</p><a href="../proc/kd_range_query_count_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_count_expert_c.html'>kd_range_query_count_expert_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_range_query_count_expert.html">kd_range_query_count_expert</a></p><a href="../proc/kd_range_query_count_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_count_impl.html'>kd_range_query_count_impl</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Count the points within <code>radius</code> of a query point in a pre-built k-d tree</p><a href="../proc/kd_range_query_count_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_list.html'>kd_range_query_list</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/kd_range_query_list_impl.html">kd_range_query_list_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/kd_range_query_list_expert.html">kd_range_query_list_expert</a> to prepare it yourself.</p><a href="../proc/kd_range_query_list.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_list_c.html'>kd_range_query_list_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_range_query_list.html">kd_range_query_list</a></p><a href="../proc/kd_range_query_list_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_list_expert.html'>kd_range_query_list_expert</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/kd_range_query_list_impl.html">kd_range_query_list_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/kd_range_query_list.html">kd_range_query_list</a> does both.</p><a href="../proc/kd_range_query_list_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_list_expert_c.html'>kd_range_query_list_expert_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_range_query_list_expert.html">kd_range_query_list_expert</a></p><a href="../proc/kd_range_query_list_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_list_impl.html'>kd_range_query_list_impl</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>List every point within <code>radius</code> of a query point in a pre-built k-d tree</p><a href="../proc/kd_range_query_list_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_mask.html'>kd_range_query_mask</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/kd_range_query_mask_impl.html">kd_range_query_mask_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/kd_range_query_mask_expert.html">kd_range_query_mask_expert</a> to prepare it yourself.</p><a href="../proc/kd_range_query_mask.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_mask_c.html'>kd_range_query_mask_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_range_query_mask.html">kd_range_query_mask</a></p><a href="../proc/kd_range_query_mask_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_mask_expert.html'>kd_range_query_mask_expert</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/kd_range_query_mask_impl.html">kd_range_query_mask_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/kd_range_query_mask.html">kd_range_query_mask</a> does both.</p><a href="../proc/kd_range_query_mask_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_mask_expert_c.html'>kd_range_query_mask_expert_c</a></td>
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/kd_range_query_mask_expert.html">kd_range_query_mask_expert</a></p><a href="../proc/kd_range_query_mask_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/kd_range_query_mask_impl.html'>kd_range_query_mask_impl</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Mark every point within <code>radius</code> of a query point in a pre-built k-d tree</p><a href="../proc/kd_range_query_mask_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/linkage_clustering.html'>linkage_clustering</a></td>
                  <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
                  <td>Subroutine</td>
@@ -2236,42 +2619,6 @@ Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</co
                  <td><p>Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/mask_check_state.html'>mask_check_state</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Function</td>
-                 <td><p>Checks the state of a bit/paralog in <code>bit_mask</code> -&gt; .true. if 1 else .false.</p><a href="../proc/mask_check_state.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_check_state_c.html'>mask_check_state_c</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/mask_check_state.html">mask_check_state</a></p><a href="../proc/mask_check_state_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_chunk_count.html'>mask_chunk_count</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Determines the needed chunk count for subset bit masks (an integer has only 32 bits)</p><a href="../proc/mask_chunk_count.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_chunk_count_c.html'>mask_chunk_count_c</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/mask_chunk_count.html">mask_chunk_count</a></p><a href="../proc/mask_chunk_count_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_get_first_successor_idx.html'>mask_get_first_successor_idx</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Function</td>
-                 <td><p>Helper function that returns the index after the last active gene in <code>bit_mask</code>, so the first succeeding gene.</p></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/mask_set_state.html'>mask_set_state</a></td>
-                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Sets the state of a bit/gene in <code>bit_mask</code></p></td>
-               </tr>
-			   <tr>
                  <td><a href='../proc/mean.html'>mean</a></td>
                  <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
                  <td>Function</td>
@@ -2295,7 +2642,19 @@ finite values: the mean of <code>[huge, huge, huge]</code> is <code>huge</code>.
                  <td><a href='../proc/mean_vector_impl.html'>mean_vector_impl</a></td>
                  <td><a href='../module/tox_gene_centroids_impl.html'>tox_gene_centroids_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Computes the element-wise mean for a given set of vectors.</p><a href="../proc/mean_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Computes the element-wise mean of the selected gene vectors.</p><a href="../proc/mean_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/median_select_by_dimension_helper.html'>median_select_by_dimension_helper</a></td>
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Partitions <code>kd_indices(left_idx:right_idx)</code> around its median position (<code>target_idx</code>)
+along <code>points(dim, :)</code>, via iterative Hoare-partition quickselect: after this call, every
+element of <code>kd_indices(left_idx:target_idx)</code> is <code>&lt;=</code> <code>points(dim, kd_indices(target_idx))</code>
+and every element of <code>kd_indices(target_idx:right_idx)</code> is <code>&gt;=</code> it -- the only invariant
+<a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a> and every query traversal in
+this module actually rely on, so the two sides are left in whatever order quickselect
+happens to leave them, not fully sorted the way this partition used to be.</p><a href="../proc/median_select_by_dimension_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/merge_distances_ward_linkage_helper.html'>merge_distances_ward_linkage_helper</a></td>
@@ -2493,7 +2852,7 @@ gene-wise mean expression and empirical standard deviation.</p></td>
                  <td><a href='../proc/omics_field_rap_projection_impl.html'>omics_field_RAP_projection_impl</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p><a href="../proc/omics_field_rap_projection_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Project the shifts of selected vector fields onto the RAP constructed from a selected set of axes.</p><a href="../proc/omics_field_rap_projection_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/omics_vector_rap_projection.html'>omics_vector_RAP_projection</a></td>
@@ -2532,13 +2891,6 @@ only by calling <a href="../interface/is_close.html">is_close</a> directly.</p><
                  <td><a href='../module/f42_sort_impl.html'>f42_sort_impl</a></td>
                  <td>Interface</td>
                  <td><p>NaN-aware <code>&lt;</code> comparison operator for <code>real(real64)</code>; see <a href="../proc/real_less.html">real_less</a>.</p></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/partial_sort_by_dimension_helper.html'>partial_sort_by_dimension_helper</a></td>
-                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)). Internal to the
-index build, which has already validated everything this reads.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/perform_permutation_test.html'>perform_permutation_test</a></td>
@@ -2817,7 +3169,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><a href='../proc/relative_axes_changes_from_shift_vector_impl.html'>relative_axes_changes_from_shift_vector_impl</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.</p><a href="../proc/relative_axes_changes_from_shift_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected shift vector.</p><a href="../proc/relative_axes_changes_from_shift_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/relative_axes_expression_from_expression_vector.html'>relative_axes_expression_from_expression_vector</a></td>
@@ -2835,7 +3187,7 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><a href='../proc/relative_axes_expression_from_expression_vector_impl.html'>relative_axes_expression_from_expression_vector_impl</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.</p><a href="../proc/relative_axes_expression_from_expression_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Compute fractional contribution of each axis to a RAP-projected expression vector.</p><a href="../proc/relative_axes_expression_from_expression_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/resolve_tox_data_files.html'>resolve_tox_data_files</a></td>
@@ -3571,7 +3923,7 @@ Closes the connected unit in case of an error</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

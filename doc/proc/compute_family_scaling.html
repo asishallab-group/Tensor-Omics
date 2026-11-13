@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for procedures.">123 statements</a>
+                 title=" 0.6% of total for procedures.">124 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -170,7 +170,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~61"></span>
+              <span class="anchor" id="variable-n_genes~86"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -185,7 +185,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~24"></span>
+              <span class="anchor" id="variable-n_families~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -200,7 +200,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~15"></span>
+              <span class="anchor" id="variable-distances~27"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -210,14 +210,12 @@
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-                <p>Array of Euclidean distances for each gene
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+                <p>Array of Euclidean distances for each gene</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~30"></span>
+              <span class="anchor" id="variable-gene_to_fam~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -247,7 +245,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~7"></span>
+              <span class="anchor" id="variable-loess_x~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -263,7 +261,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~7"></span>
+              <span class="anchor" id="variable-loess_y~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -279,7 +277,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~7"></span>
+              <span class="anchor" id="variable-indices_used~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -296,7 +294,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~22"></span>
+              <span class="anchor" id="variable-span~26"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -308,7 +306,7 @@ remaining slots hold <code>0</code>.</p>
             <td>
                 <p>Span parameter for LOESS smoothing, passed straight to
 <a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
-procedure's own range rather than to the NaN tolerance the distance data carries.
+procedure's own range.
 The default value is <code>0.7_real64</code>.
 The minimum valid value is <code>EPS_LOESS</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
@@ -316,7 +314,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~23"></span>
+              <span class="anchor" id="variable-degree~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -334,7 +332,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~4"></span>
+              <span class="anchor" id="variable-mode~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -399,7 +397,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-excluded_low_sd~4"></span>
+              <span class="anchor" id="variable-excluded_low_sd~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -409,12 +407,15 @@ The default value is <code>3_int32</code>.</p>
             <td>::</td>
             <td><strong>excluded_low_sd</strong></td>
             <td>
-                <p>Mask to save those families that have low sd</p>
+                <p>Whether each family is left out of the LOESS fit: <code>0</code> for the families <code>indices_used</code>
+lists, <code>1</code> for every other one -- a family with no or a single member, or with a spread
+below <code>low_sd_cutoff</code>. With too few families for a fit, the one family with several
+members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error return every family is <code>1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~268"></span>
+              <span class="anchor" id="variable-ierr~316"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -461,7 +462,7 @@ The default value is <code>3_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for modules and submodules.">133 statements</a>
+                 title=" 0.6% of total for modules and submodules.">133 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -169,7 +169,7 @@
       <p>Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
 what can be read off a vector once it is projected onto one.</p>
 <p>A RAP is picked by selecting axes (tissues) from the full expression space.
-<code>vector_RAP_projection</code> projects a single vector onto it and <code>field_RAP_projection</code> a whole
+<code>omics_vector_RAP_projection</code> projects vectors onto it and <code>omics_field_RAP_projection</code> a whole
 field of them. Within the plane, <code>clock_hand_angle_between_vectors</code> measures the signed angle
 between two vectors -- signed by an orientation reference, so the sign means the same thing in
 every dimension -- and <code>clock_hand_angles_for_shift_vectors</code> does that for a whole shift
@@ -185,9 +185,9 @@ level, falls on each selected axis.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -242,7 +242,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~6"></span>
+              <span class="anchor" id="variable-n_axes"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -267,7 +267,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>n_vecs</strong></td>
             <td>
-<p>number of vectors per axis</p>
+<p>number of vectors</p>
             </td>
         </tr>
         <tr>
@@ -347,7 +347,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~64"></span>
+              <span class="anchor" id="variable-ierr~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -397,12 +397,15 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>fields</strong></td>
             <td>
-<p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
+<p>matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+family centroid) and the shift from it second (e.g. paralog minus centroid), as
+<a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a> stores
+them. The shift is projected; the origin does not enter the projection.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~7"></span>
+              <span class="anchor" id="variable-n_axes~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -427,7 +430,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>n_fields</strong></td>
             <td>
-<p>number of vectors per axis</p>
+<p>number of fields</p>
             </td>
         </tr>
         <tr>
@@ -442,7 +445,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>fields_selection_mask</strong></td>
             <td>
-<p><code>.true.</code> for vectors where projection is to be computed</p>
+<p><code>.true.</code> for fields where projection is to be computed</p>
             </td>
         </tr>
         <tr>
@@ -507,7 +510,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~65"></span>
+              <span class="anchor" id="variable-ierr~35"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -557,7 +560,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>v1</strong></td>
             <td>
-<p>First normalized vector in RAP space</p>
+<p>First vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
@@ -572,12 +575,12 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>v2</strong></td>
             <td>
-<p>Second normalized vector in RAP space</p>
+<p>Second vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~4"></span>
+              <span class="anchor" id="variable-n_dims~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -606,7 +609,10 @@ level, falls on each selected axis.</p>
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
             </td>
         </tr>
         <tr>
@@ -626,7 +632,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~66"></span>
+              <span class="anchor" id="variable-ierr~36"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -676,12 +682,14 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>fields</strong></td>
             <td>
-<p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
+<p>matrix with vector fields; each field holds two vectors, its origin first and the
+shift from it second, as
+<a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a> stores them</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~5"></span>
+              <span class="anchor" id="variable-n_dims~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -755,7 +763,10 @@ as positive. The sign is that of this vector's component along the rotation.</p>
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
             </td>
         </tr>
         <tr>
@@ -770,12 +781,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>signed_angles</strong></td>
             <td>
-<p>Signed rotation angles between vector pairs in radians [-π, π]</p>
+<p>Signed rotation angles between vector pairs in radians [-pi, pi]</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~67"></span>
+              <span class="anchor" id="variable-ierr~37"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -815,7 +826,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~3"></span>
+              <span class="anchor" id="variable-vec"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -825,12 +836,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>vec</strong></td>
             <td>
-<p>RAP-projected and normalized vector (expression or shift)</p>
+<p>RAP-projected vector (expression or shift), of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~8"></span>
+              <span class="anchor" id="variable-n_axes~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -855,12 +866,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>contributions</strong></td>
             <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+<p>Fractional contribution of each axis, values in [0,1], sum to 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~68"></span>
+              <span class="anchor" id="variable-ierr~38"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -900,7 +911,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~4"></span>
+              <span class="anchor" id="variable-vec~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -910,12 +921,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>vec</strong></td>
             <td>
-<p>RAP-projected and normalized shift vector</p>
+<p>RAP-projected shift vector, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~9"></span>
+              <span class="anchor" id="variable-n_axes~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -940,12 +951,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>contributions</strong></td>
             <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+<p>Fractional contribution of each axis, values in [0,1], sum to 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~69"></span>
+              <span class="anchor" id="variable-ierr~39"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -985,7 +996,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~5"></span>
+              <span class="anchor" id="variable-vec~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -995,12 +1006,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>vec</strong></td>
             <td>
-<p>RAP-projected and normalized expression vector</p>
+<p>RAP-projected expression vector, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~10"></span>
+              <span class="anchor" id="variable-n_axes~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1025,12 +1036,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>contributions</strong></td>
             <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+<p>Fractional contribution of each axis, values in [0,1], sum to 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~70"></span>
+              <span class="anchor" id="variable-ierr~40"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1073,7 +1084,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

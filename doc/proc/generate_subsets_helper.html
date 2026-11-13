@@ -90,7 +90,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.6% of total for procedures.">106 statements</a>
+                 title=" 0.5% of total for procedures.">102 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -204,7 +204,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~7"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -219,7 +219,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~9"></span>
+              <span class="anchor" id="variable-n_mask_chunks~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -267,7 +267,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor~6"></span>
+              <span class="anchor" id="variable-ancestor~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -282,7 +282,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~10"></span>
+              <span class="anchor" id="variable-genes~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -297,7 +297,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~73"></span>
+              <span class="anchor" id="variable-n_genes~57"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -312,7 +312,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~19"></span>
+              <span class="anchor" id="variable-n_dims~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -327,7 +327,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_paralog_vector~4"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -342,22 +342,23 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~6"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(out),</td>
+<td>intent(inout),</td>
               <td></td>            <td>
               dimension(n_mask_chunks, n_paralog_subsets)
             </td>
             <td>::</td>
             <td><strong>work_arr_paralog_subsets</strong></td>
             <td>
-                <p>working array to hold bitmask encoded subsets for detection.</p>
+                <p>working array to hold bitmask encoded subsets for detection; the results and active
+subsets already in it are kept</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets~6"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -367,12 +368,12 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>n_paralog_subsets</strong></td>
             <td>
-                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>. <strong><em>USE <code>calc_work_arr_paralog_subsets_size</code> TO DETERMINE THIS NUMBER</em></strong></p>
+                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>. <strong><em>USE <code>calc_work_arr_paralog_subsets_size_impl</code> TO DETERMINE THIS NUMBER</em></strong></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results~6"></span>
+              <span class="anchor" id="variable-n_results~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -507,7 +508,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~288"></span>
+              <span class="anchor" id="variable-ierr~180"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -554,7 +555,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

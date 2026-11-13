@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 4.2% of total for modules and submodules.">817 statements</a>
+                 title=" 3.9% of total for modules and submodules.">817 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -178,9 +178,9 @@ applies the threshold and reports which genes exceed it.</p>
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -220,7 +220,7 @@ applies the threshold and reports which genes exceed it.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes"></span>
+              <span class="anchor" id="variable-n_genes~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -235,7 +235,7 @@ applies the threshold and reports which genes exceed it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families"></span>
+              <span class="anchor" id="variable-n_families~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -250,7 +250,7 @@ applies the threshold and reports which genes exceed it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~2"></span>
+              <span class="anchor" id="variable-distances~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -260,9 +260,7 @@ applies the threshold and reports which genes exceed it.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Array of Euclidean distances for each gene
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of Euclidean distances for each gene</p>
             </td>
         </tr>
         <tr>
@@ -358,7 +356,7 @@ remaining slots hold <code>0</code>.</p>
             <td>
 <p>Span parameter for LOESS smoothing, passed straight to
 <a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
-procedure's own range rather than to the NaN tolerance the distance data carries.
+procedure's own range.
 The default value is <code>0.7_real64</code>.
 The minimum valid value is <code>EPS_LOESS</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
@@ -441,12 +439,15 @@ The default value is <code>3_int32</code>.</p>
             <td>::</td>
             <td><strong>excluded_low_sd</strong></td>
             <td>
-<p>Mask to save those families that have low sd</p>
+<p>Whether each family is left out of the LOESS fit: <code>0</code> for the families <code>indices_used</code>
+lists, <code>1</code> for every other one -- a family with no or a single member, or with a spread
+below <code>low_sd_cutoff</code>. With too few families for a fit, the one family with several
+members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error return every family is <code>1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~16"></span>
+              <span class="anchor" id="variable-ierr~53"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -486,7 +487,7 @@ The default value is <code>3_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~2"></span>
+              <span class="anchor" id="variable-n_genes~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -501,7 +502,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~2"></span>
+              <span class="anchor" id="variable-n_families~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -516,7 +517,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~3"></span>
+              <span class="anchor" id="variable-distances~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -526,9 +527,7 @@ The default value is <code>3_int32</code>.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Array of Euclidean distances for each gene
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of Euclidean distances for each gene</p>
             </td>
         </tr>
         <tr>
@@ -734,7 +733,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights"></span>
+              <span class="anchor" id="variable-tmp_weights~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -851,7 +850,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
             <td>
 <p>Span parameter for LOESS smoothing, passed straight to
 <a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
-procedure's own range rather than to the NaN tolerance the distance data carries.
+procedure's own range.
 The default value is <code>0.7_real64</code>.
 The minimum valid value is <code>EPS_LOESS</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
@@ -934,7 +933,10 @@ The default value is <code>3_int32</code>.</p>
             <td>::</td>
             <td><strong>excluded_low_sd</strong></td>
             <td>
-<p>Mask to save those families that have low sd</p>
+<p>Whether each family is left out of the LOESS fit: <code>0</code> for the families <code>indices_used</code>
+lists, <code>1</code> for every other one -- a family with no or a single member, or with a spread
+below <code>low_sd_cutoff</code>. With too few families for a fit, the one family with several
+members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error return every family is <code>1</code>.</p>
             </td>
         </tr>
         <tr>
@@ -954,7 +956,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~17"></span>
+              <span class="anchor" id="variable-ierr~54"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -994,7 +996,7 @@ The default value is <code>3_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~3"></span>
+              <span class="anchor" id="variable-n_genes~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1009,7 +1011,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~4"></span>
+              <span class="anchor" id="variable-distances~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1019,9 +1021,7 @@ The default value is <code>3_int32</code>.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Array of Euclidean distances for each gene to its centroid
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of Euclidean distances for each gene to its centroid</p>
             </td>
         </tr>
         <tr>
@@ -1051,9 +1051,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>dscale</strong></td>
             <td>
-<p>Array of scaling factors for each family
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of scaling factors for each family</p>
             </td>
         </tr>
         <tr>
@@ -1118,7 +1116,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~18"></span>
+              <span class="anchor" id="variable-ierr~55"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1158,7 +1156,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~4"></span>
+              <span class="anchor" id="variable-n_genes~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1173,7 +1171,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~5"></span>
+              <span class="anchor" id="variable-distances~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1183,9 +1181,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Array of Euclidean distances for each gene to its centroid
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of Euclidean distances for each gene to its centroid</p>
             </td>
         </tr>
         <tr>
@@ -1215,9 +1211,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>dscale</strong></td>
             <td>
-<p>Array of scaling factors for each family
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of scaling factors for each family</p>
             </td>
         </tr>
         <tr>
@@ -1312,7 +1306,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~19"></span>
+              <span class="anchor" id="variable-ierr~56"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1352,7 +1346,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~5"></span>
+              <span class="anchor" id="variable-n_genes~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1377,9 +1371,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>rdi</strong></td>
             <td>
-<p>Array of RDI values for each gene
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of RDI values for each gene</p>
             </td>
         </tr>
         <tr>
@@ -1394,9 +1386,7 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>sorted_rdi</strong></td>
             <td>
-<p>Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)</p>
             </td>
         </tr>
         <tr>
@@ -1482,7 +1472,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~20"></span>
+              <span class="anchor" id="variable-ierr~57"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1522,7 +1512,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~6"></span>
+              <span class="anchor" id="variable-n_genes~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1537,7 +1527,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~3"></span>
+              <span class="anchor" id="variable-n_families~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1552,7 +1542,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~6"></span>
+              <span class="anchor" id="variable-distances~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1562,9 +1552,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Array of Euclidean distances for each gene to its centroid
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of Euclidean distances for each gene to its centroid</p>
             </td>
         </tr>
         <tr>
@@ -1684,7 +1672,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~21"></span>
+              <span class="anchor" id="variable-ierr~58"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1724,7 +1712,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~7"></span>
+              <span class="anchor" id="variable-n_genes~9"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1739,7 +1727,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~4"></span>
+              <span class="anchor" id="variable-n_families~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1754,7 +1742,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~7"></span>
+              <span class="anchor" id="variable-distances~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1764,9 +1752,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Array of Euclidean distances for each gene to its centroid
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+<p>Array of Euclidean distances for each gene to its centroid</p>
             </td>
         </tr>
         <tr>
@@ -1908,7 +1894,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights~2"></span>
+              <span class="anchor" id="variable-tmp_weights~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -2218,7 +2204,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~22"></span>
+              <span class="anchor" id="variable-ierr~59"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -2261,7 +2247,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

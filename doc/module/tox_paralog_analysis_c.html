@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.7% of total for modules and submodules.">521 statements</a>
+                 title=" 2.7% of total for modules and submodules.">556 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,6 +148,7 @@
             <a class="list-group-item" href="../module/tox_paralog_analysis_c.html#proc-detect_subfunctionalization_expert_c">detect_subfunctionalization_expert_c</a>
             <a class="list-group-item" href="../module/tox_paralog_analysis_c.html#proc-filter_paralogs_by_pattern_dosage_effect_c">filter_paralogs_by_pattern_dosage_effect_c</a>
             <a class="list-group-item" href="../module/tox_paralog_analysis_c.html#proc-filter_paralogs_by_pattern_subfunctionalization_c">filter_paralogs_by_pattern_subfunctionalization_c</a>
+            <a class="list-group-item" href="../module/tox_paralog_analysis_c.html#proc-calc_work_arr_paralog_subsets_size_c">calc_work_arr_paralog_subsets_size_c</a>
         </div>
       </div>
     </div>
@@ -224,7 +225,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestors"></span>
+              <span class="anchor" id="variable-ancestors~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -241,7 +242,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~12"></span>
+              <span class="anchor" id="variable-n_families~18"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -256,7 +257,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes"></span>
+              <span class="anchor" id="variable-genes~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -273,7 +274,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~11"></span>
+              <span class="anchor" id="variable-n_axes~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -288,7 +289,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~13"></span>
+              <span class="anchor" id="variable-gene_to_fam~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -306,7 +307,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~26"></span>
+              <span class="anchor" id="variable-n_genes~66"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -321,7 +322,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-thresholds"></span>
+              <span class="anchor" id="variable-thresholds~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -338,7 +339,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neofunc"></span>
+              <span class="anchor" id="variable-neofunc~2"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -353,7 +354,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~93"></span>
+              <span class="anchor" id="variable-ierr~216"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -393,7 +394,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor"></span>
+              <span class="anchor" id="variable-ancestor~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -408,7 +409,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~2"></span>
+              <span class="anchor" id="variable-genes~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -423,7 +424,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~27"></span>
+              <span class="anchor" id="variable-n_genes~67"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -438,7 +439,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~7"></span>
+              <span class="anchor" id="variable-n_dims~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -453,7 +454,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -468,7 +469,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks"></span>
+              <span class="anchor" id="variable-n_mask_chunks~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -478,13 +479,13 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bit_mask_n_words</code> computes it
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results"></span>
+              <span class="anchor" id="variable-n_results~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -499,7 +500,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_subset_size"></span>
+              <span class="anchor" id="variable-max_subset_size~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -512,7 +513,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
 <p>maximum subset size of checked gene subsets. Too large a value is capped to the
 maximum valid size. The bindings cap it automatically while sizing the work
 array; a Fortran caller caps it by calling
-<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
+<a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a> first.
 Zero is in range and means there is no subset to check -- the sizing routine reports
 it whenever the filtered families hold a single gene each. It reports a work array
 of zero slots along with it, which this routine does not accept, so a caller that
@@ -522,7 +523,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -532,12 +533,12 @@ The minimum valid value is <code>0_int32</code>.</p>
             <td>::</td>
             <td><strong>work_arr_paralog_subsets</strong></td>
             <td>
-<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_dosage_effect_c.html#variable-work_arr_paralog_subsets" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_dosage_effect_c.html#variable-work_arr_paralog_subsets~3" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -549,271 +550,6 @@ The minimum valid value is <code>0_int32</code>.</p>
             <td>
 <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
 It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_angle"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>max_angle</strong></td>
-            <td>
-<p>maximum angle in radians <code>0&lt;=angle&lt;=Pi</code> that a subset candidate must not exceed, otherwise pruned
-The default value is <code>4.0_real64*atan(1.0_real64)</code>.
-The minimum valid value is <code>0.0_real64</code>.
-The maximum valid value is <code>PI</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gain_gamma"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>gain_gamma</strong></td>
-            <td>
-<p>positive magnitude gain for dosage effect
-The default value is <code>0.1_real64</code>.
-The minimum valid value is <code>above(0.0_real64)</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~94"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_dosage_effect_expert_c"></span> <h3>public  subroutine <a href='../proc/detect_dosage_effect_expert_c.html'>detect_dosage_effect_expert_c</a>(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr) bind(C, name="detect_dosage_effect_expert_c")  
-</h3></div>
-    <div class="card-body">
-          
-  <p>C-wrapper for <a href="../proc/detect_dosage_effect_expert.html">detect_dosage_effect_expert</a></p><a href="../proc/detect_dosage_effect_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ancestor~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims), target
-            </td>
-            <td>::</td>
-            <td><strong>ancestor</strong></td>
-            <td>
-<p>expression vector of ancestral ortholog</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-genes~3"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>genes</strong></td>
-            <td>
-<p>expression vectors of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~28"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>number of vectors in <code>genes</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dims~8"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_dims</strong></td>
-            <td>
-<p>size of <code>ancestor</code> vector and vectors in <code>genes</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks), target
-            </td>
-            <td>::</td>
-            <td><strong>filtered_paralogs_mask</strong></td>
-            <td>
-<p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_mask_chunks~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_mask_chunks</strong></td>
-            <td>
-<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_results~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_results</strong></td>
-            <td>
-<p>number of resulting subsets. They are stored as the first <code>n_results</code> elements of <code>work_arr_paralog_subsets</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_subset_size~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>max_subset_size</strong></td>
-            <td>
-<p>maximum subset size of checked gene subsets. Too large a value is capped to the
-maximum valid size. The bindings cap it automatically while sizing the work
-array; a Fortran caller caps it by calling
-<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
-Zero is in range and means there is no subset to check -- the sizing routine reports
-it whenever the filtered families hold a single gene each. It reports a work array
-of zero slots along with it, which this routine does not accept, so a caller that
-gets zero back has nothing to detect and should not call here at all.
-The minimum valid value is <code>0_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks, n_paralog_subsets), target
-            </td>
-            <td>::</td>
-            <td><strong>work_arr_paralog_subsets</strong></td>
-            <td>
-<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_dosage_effect_expert_c.html#variable-work_arr_paralog_subsets~2" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_paralog_subsets~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_paralog_subsets</strong></td>
-            <td>
-<p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_active_mask"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_active_mask</strong></td>
-            <td>
-<p>working array to hold the extended subsets</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_paralog_vector"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_dims), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_paralog_vector</strong></td>
-            <td>
-<p>vector used for pruning subsets</p>
             </td>
         </tr>
         <tr>
@@ -853,7 +589,272 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~95"></span>
+              <span class="anchor" id="variable-ierr~217"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_dosage_effect_expert_c"></span> <h3>public  subroutine <a href='../proc/detect_dosage_effect_expert_c.html'>detect_dosage_effect_expert_c</a>(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr) bind(C, name="detect_dosage_effect_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/detect_dosage_effect_expert.html">detect_dosage_effect_expert</a></p><a href="../proc/detect_dosage_effect_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ancestor~4"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims), target
+            </td>
+            <td>::</td>
+            <td><strong>ancestor</strong></td>
+            <td>
+<p>expression vector of ancestral ortholog</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-genes~9"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>genes</strong></td>
+            <td>
+<p>expression vectors of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~68"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>number of vectors in <code>genes</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~16"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>size of <code>ancestor</code> vector and vectors in <code>genes</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filtered_paralogs_mask~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks), target
+            </td>
+            <td>::</td>
+            <td><strong>filtered_paralogs_mask</strong></td>
+            <td>
+<p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_mask_chunks~9"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_mask_chunks</strong></td>
+            <td>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bit_mask_n_words</code> computes it
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_results~7"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_results</strong></td>
+            <td>
+<p>number of resulting subsets. They are stored as the first <code>n_results</code> elements of <code>work_arr_paralog_subsets</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_subset_size~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>max_subset_size</strong></td>
+            <td>
+<p>maximum subset size of checked gene subsets. Too large a value is capped to the
+maximum valid size. The bindings cap it automatically while sizing the work
+array; a Fortran caller caps it by calling
+<a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a> first.
+Zero is in range and means there is no subset to check -- the sizing routine reports
+it whenever the filtered families hold a single gene each. It reports a work array
+of zero slots along with it, which this routine does not accept, so a caller that
+gets zero back has nothing to detect and should not call here at all.
+The minimum valid value is <code>0_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks, n_paralog_subsets), target
+            </td>
+            <td>::</td>
+            <td><strong>work_arr_paralog_subsets</strong></td>
+            <td>
+<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_dosage_effect_expert_c.html#variable-work_arr_paralog_subsets~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_paralog_subsets~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_paralog_subsets</strong></td>
+            <td>
+<p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_active_mask~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_active_mask</strong></td>
+            <td>
+<p>working array to hold the extended subsets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_paralog_vector~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_dims), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_paralog_vector</strong></td>
+            <td>
+<p>vector used for pruning subsets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_angle~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>max_angle</strong></td>
+            <td>
+<p>maximum angle in radians <code>0&lt;=angle&lt;=Pi</code> that a subset candidate must not exceed, otherwise pruned
+The default value is <code>4.0_real64*atan(1.0_real64)</code>.
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>PI</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gain_gamma~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>gain_gamma</strong></td>
+            <td>
+<p>positive magnitude gain for dosage effect
+The default value is <code>0.1_real64</code>.
+The minimum valid value is <code>above(0.0_real64)</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~218"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -893,7 +894,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor~3"></span>
+              <span class="anchor" id="variable-ancestor~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -908,7 +909,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~4"></span>
+              <span class="anchor" id="variable-genes~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -923,7 +924,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~29"></span>
+              <span class="anchor" id="variable-n_genes~69"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -938,7 +939,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~9"></span>
+              <span class="anchor" id="variable-n_dims~17"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -953,7 +954,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~3"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -968,7 +969,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~3"></span>
+              <span class="anchor" id="variable-n_mask_chunks~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -978,13 +979,13 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bit_mask_n_words</code> computes it
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results~3"></span>
+              <span class="anchor" id="variable-n_results~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -999,7 +1000,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_subset_size~3"></span>
+              <span class="anchor" id="variable-max_subset_size~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1012,7 +1013,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
 <p>maximum subset size of checked gene subsets. Too large a value is capped to the
 maximum valid size. The bindings cap it automatically while sizing the work
 array; a Fortran caller caps it by calling
-<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
+<a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a> first.
 Zero is in range and means there is no subset to check -- the sizing routine reports
 it whenever the filtered families hold a single gene each. It reports a work array
 of zero slots along with it, which this routine does not accept, so a caller that
@@ -1022,7 +1023,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~3"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1032,12 +1033,12 @@ The minimum valid value is <code>0_int32</code>.</p>
             <td>::</td>
             <td><strong>work_arr_paralog_subsets</strong></td>
             <td>
-<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_subfunctionalization_c.html#variable-work_arr_paralog_subsets~3" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_subfunctionalization_c.html#variable-work_arr_paralog_subsets~5" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets~3"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1049,285 +1050,6 @@ The minimum valid value is <code>0_int32</code>.</p>
             <td>
 <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
 It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-rdi_threshold"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>rdi_threshold</strong></td>
-            <td>
-<p>max allowed residual distance from <code>ancestor</code>
-The minimum valid value is <code>0.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-paralog_norms"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>paralog_norms</strong></td>
-            <td>
-<p>euclidean norms of the genes, used for subset pruning (<code>norm</code> from <code>f42_vector_impl</code> computes them)
-The minimum valid value is <code>0.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-sorted_paralog_norms_perm"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>sorted_paralog_norms_perm</strong></td>
-            <td>
-<p>ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~96"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_subfunctionalization_expert_c"></span> <h3>public  subroutine <a href='../proc/detect_subfunctionalization_expert_c.html'>detect_subfunctionalization_expert_c</a>(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr) bind(C, name="detect_subfunctionalization_expert_c")  
-</h3></div>
-    <div class="card-body">
-          
-  <p>C-wrapper for <a href="../proc/detect_subfunctionalization_expert.html">detect_subfunctionalization_expert</a></p><a href="../proc/detect_subfunctionalization_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ancestor~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims), target
-            </td>
-            <td>::</td>
-            <td><strong>ancestor</strong></td>
-            <td>
-<p>expression vector of ancestral ortholog</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-genes~5"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>genes</strong></td>
-            <td>
-<p>expression vectors of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~30"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>number of vectors in <code>genes</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dims~10"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_dims</strong></td>
-            <td>
-<p>size of <code>ancestor</code> vector and vectors in <code>genes</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks), target
-            </td>
-            <td>::</td>
-            <td><strong>filtered_paralogs_mask</strong></td>
-            <td>
-<p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_mask_chunks~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_mask_chunks</strong></td>
-            <td>
-<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_results~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_results</strong></td>
-            <td>
-<p>number of resulting subsets. They are stored as the first <code>n_results</code> elements of <code>work_arr_paralog_subsets</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_subset_size~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>max_subset_size</strong></td>
-            <td>
-<p>maximum subset size of checked gene subsets. Too large a value is capped to the
-maximum valid size. The bindings cap it automatically while sizing the work
-array; a Fortran caller caps it by calling
-<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
-Zero is in range and means there is no subset to check -- the sizing routine reports
-it whenever the filtered families hold a single gene each. It reports a work array
-of zero slots along with it, which this routine does not accept, so a caller that
-gets zero back has nothing to detect and should not call here at all.
-The minimum valid value is <code>0_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks, n_paralog_subsets), target
-            </td>
-            <td>::</td>
-            <td><strong>work_arr_paralog_subsets</strong></td>
-            <td>
-<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_subfunctionalization_expert_c.html#variable-work_arr_paralog_subsets~4" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_paralog_subsets~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_paralog_subsets</strong></td>
-            <td>
-<p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_active_mask~2"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_active_mask</strong></td>
-            <td>
-<p>working array to hold the extended subsets</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_paralog_vector~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_dims), target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_paralog_vector</strong></td>
-            <td>
-<p>vector used for pruning subsets</p>
             </td>
         </tr>
         <tr>
@@ -1381,7 +1103,286 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_work_array"></span>
+              <span class="anchor" id="variable-ierr~219"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_subfunctionalization_expert_c"></span> <h3>public  subroutine <a href='../proc/detect_subfunctionalization_expert_c.html'>detect_subfunctionalization_expert_c</a>(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr) bind(C, name="detect_subfunctionalization_expert_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/detect_subfunctionalization_expert.html">detect_subfunctionalization_expert</a></p><a href="../proc/detect_subfunctionalization_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ancestor~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims), target
+            </td>
+            <td>::</td>
+            <td><strong>ancestor</strong></td>
+            <td>
+<p>expression vector of ancestral ortholog</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-genes~11"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims, n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>genes</strong></td>
+            <td>
+<p>expression vectors of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~70"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>number of vectors in <code>genes</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~18"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>size of <code>ancestor</code> vector and vectors in <code>genes</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filtered_paralogs_mask~7"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks), target
+            </td>
+            <td>::</td>
+            <td><strong>filtered_paralogs_mask</strong></td>
+            <td>
+<p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_mask_chunks~11"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_mask_chunks</strong></td>
+            <td>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bit_mask_n_words</code> computes it
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_results~9"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_results</strong></td>
+            <td>
+<p>number of resulting subsets. They are stored as the first <code>n_results</code> elements of <code>work_arr_paralog_subsets</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_subset_size~6"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>max_subset_size</strong></td>
+            <td>
+<p>maximum subset size of checked gene subsets. Too large a value is capped to the
+maximum valid size. The bindings cap it automatically while sizing the work
+array; a Fortran caller caps it by calling
+<a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a> first.
+Zero is in range and means there is no subset to check -- the sizing routine reports
+it whenever the filtered families hold a single gene each. It reports a work array
+of zero slots along with it, which this routine does not accept, so a caller that
+gets zero back has nothing to detect and should not call here at all.
+The minimum valid value is <code>0_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~6"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks, n_paralog_subsets), target
+            </td>
+            <td>::</td>
+            <td><strong>work_arr_paralog_subsets</strong></td>
+            <td>
+<p>working array to hold bitmask encoded subsets for detection.</p><a href="../proc/detect_subfunctionalization_expert_c.html#variable-work_arr_paralog_subsets~6" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_paralog_subsets~6"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_paralog_subsets</strong></td>
+            <td>
+<p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_active_mask~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_active_mask</strong></td>
+            <td>
+<p>working array to hold the extended subsets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_paralog_vector~4"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_dims), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_paralog_vector</strong></td>
+            <td>
+<p>vector used for pruning subsets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi_threshold~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>rdi_threshold</strong></td>
+            <td>
+<p>max allowed residual distance from <code>ancestor</code>
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-paralog_norms~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>paralog_norms</strong></td>
+            <td>
+<p>euclidean norms of the genes, used for subset pruning (<code>norm</code> from <code>f42_vector_impl</code> computes them)
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_paralog_norms_perm~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>sorted_paralog_norms_perm</strong></td>
+            <td>
+<p>ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_work_array~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1396,7 +1397,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~97"></span>
+              <span class="anchor" id="variable-ierr~220"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1436,158 +1437,6 @@ The maximum valid value is <code>n_genes</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_angles"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>gene_angles</strong></td>
-            <td>
-<p>vector, holding the angles between ancestor and genes (0&lt;=angle&lt;=Pi)
-The minimum valid value is <code>0.0_real64</code>.
-The maximum valid value is <code>PI</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-threshold~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>threshold</strong></td>
-            <td>
-<p>filter threshold</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~31"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_families~13"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_families</strong></td>
-            <td>
-<p>number of families
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~14"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes), target
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong></td>
-            <td>
-<p>a mapping of gene index to family index, so gene i is related to <code>gene_angles(i)</code> and part of family <code>j=gene_to_fam(i)</code>.
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_families</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-masks"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks, n_families), target
-            </td>
-            <td>::</td>
-            <td><strong>masks</strong></td>
-            <td>
-<p>bit mask that will have the indices of genes kept by this pattern set to 1, else 0</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_mask_chunks~5"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>n_mask_chunks</strong></td>
-            <td>
-<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~98"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-filter_paralogs_by_pattern_subfunctionalization_c"></span> <h3>public  subroutine <a href='../proc/filter_paralogs_by_pattern_subfunctionalization_c.html'>filter_paralogs_by_pattern_subfunctionalization_c</a>(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr) bind(C, name="filter_paralogs_by_pattern_subfunctionalization_c")  
-</h3></div>
-    <div class="card-body">
-          
-  <p>C-wrapper for <a href="../proc/filter_paralogs_by_pattern_subfunctionalization.html">filter_paralogs_by_pattern_subfunctionalization</a></p><a href="../proc/filter_paralogs_by_pattern_subfunctionalization_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
               <span class="anchor" id="variable-gene_angles~2"></span>
               real(kind=c_double),
             </td>
@@ -1605,7 +1454,7 @@ The maximum valid value is <code>PI</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~3"></span>
+              <span class="anchor" id="variable-threshold~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -1620,7 +1469,7 @@ The maximum valid value is <code>PI</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~32"></span>
+              <span class="anchor" id="variable-n_genes~71"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1635,7 +1484,7 @@ The maximum valid value is <code>PI</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~14"></span>
+              <span class="anchor" id="variable-n_families~19"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1652,7 +1501,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~15"></span>
+              <span class="anchor" id="variable-gene_to_fam~21"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1684,7 +1533,7 @@ The maximum valid value is <code>n_families</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~6"></span>
+              <span class="anchor" id="variable-n_mask_chunks~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1695,12 +1544,12 @@ The maximum valid value is <code>n_families</code>.</p>
             <td><strong>n_mask_chunks</strong></td>
             <td>
 <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes
-The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~99"></span>
+              <span class="anchor" id="variable-ierr~221"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1710,7 +1559,278 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-filter_paralogs_by_pattern_subfunctionalization_c"></span> <h3>public  subroutine <a href='../proc/filter_paralogs_by_pattern_subfunctionalization_c.html'>filter_paralogs_by_pattern_subfunctionalization_c</a>(gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr) bind(C, name="filter_paralogs_by_pattern_subfunctionalization_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/filter_paralogs_by_pattern_subfunctionalization.html">filter_paralogs_by_pattern_subfunctionalization</a></p><a href="../proc/filter_paralogs_by_pattern_subfunctionalization_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_angles~3"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_angles</strong></td>
+            <td>
+<p>vector, holding the angles between ancestor and genes (0&lt;=angle&lt;=Pi)
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>PI</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-threshold~5"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>threshold</strong></td>
+            <td>
+<p>filter threshold</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~72"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>number of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_families~20"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_families</strong></td>
+            <td>
+<p>number of families
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~22"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong></td>
+            <td>
+<p>a mapping of gene index to family index, so gene i is related to <code>gene_angles(i)</code> and part of family <code>j=gene_to_fam(i)</code>.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-masks~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks, n_families), target
+            </td>
+            <td>::</td>
+            <td><strong>masks</strong></td>
+            <td>
+<p>bit mask that will have the indices of genes kept by this pattern set to 1, else 0</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_mask_chunks~13"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_mask_chunks</strong></td>
+            <td>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes
+The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~222"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_work_arr_paralog_subsets_size_c"></span> <h3>public  subroutine <a href='../proc/calc_work_arr_paralog_subsets_size_c.html'>calc_work_arr_paralog_subsets_size_c</a>(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr) bind(C, name="calc_work_arr_paralog_subsets_size_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a></p><a href="../proc/calc_work_arr_paralog_subsets_size_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_subset_size~7"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(inout),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>max_subset_size</strong></td>
+            <td>
+<p>maximum size that a subset must not exceed. Zero is in range and means there is
+nothing to size a work array for, which is reported back as a size of zero.
+The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_arr_paralog_subsets_size_c.html#variable-max_subset_size~7" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~73"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>number of genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_mask_chunks * 32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-work_array_size~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>work_array_size</strong></td>
+            <td>
+<p>The calculated needed work array size in absolute worst case scenario. Look into source for details.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filtered_paralogs_mask~8"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_mask_chunks), target
+            </td>
+            <td>::</td>
+            <td><strong>filtered_paralogs_mask</strong></td>
+            <td>
+<p>Output mask with all genes disabled that did not pass the filter</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_mask_chunks~14"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_mask_chunks</strong></td>
+            <td>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~223"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -1743,7 +1863,7 @@ The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:39 +0000             </p>
           </div>
         </div>
         <br>

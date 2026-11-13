@@ -208,11 +208,7 @@ calc_quantile_expert <- function(array, array_perm, level, n_considered = 0L) {
 #' Call \code{compute_scaled_distance_tail_probability_expert} to do that yourself.
 #'
 #' @param rdi a numeric vector. empirical distribution D
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param sorted_rdi a numeric vector. empirical distribution D with non negative values
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param c_const a numeric scalar. Constant used in the computation, typically 1
 #' @return a numeric vector. Output array to store the computed upper-tail probability for each gene.
 #' @export
@@ -253,11 +249,7 @@ compute_scaled_distance_tail_probability <- function(rdi, sorted_rdi, c_const) {
 #' \code{compute_scaled_distance_tail_probability} seeds \code{sorted_rdi_perm} and sorts it by \code{sorted_rdi}.
 #'
 #' @param rdi a numeric vector. empirical distribution D
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param sorted_rdi a numeric vector. empirical distribution D with non negative values
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param sorted_rdi_perm a integer vector. Permutation of `sorted_rdi` in ascending order. The allocating entry point builds
 #'   and heapsorts it for you; the expert one takes whatever order you supply.
 #'   The minimum valid value is `1`.
