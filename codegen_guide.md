@@ -426,15 +426,16 @@ appears in the Python and R documentation, because it was written as prose in th
 
 ### 5.2 A real that may be NaN or infinite
 
-**When** an argument legitimately carries non-finite values — a masked-out mean, a distance to
-something that is not there.
+**When** an argument legitimately carries non-finite values — a missing value in data that is
+still being prepared, such as data integration's NaN-as-missing. Only preprocessing inputs do:
+an analysis step refuses NaN and Inf.
 
 **Write** the opt-out. Finiteness is the *default*: every real argument is checked unless it
 says otherwise, and each failure mode opts out separately.
 
 ```fortran
-real(real64), intent(in) :: distances(n_genes)
-    !! Array of Euclidean distances for each gene
+real(real64), intent(in) :: expr(n_reps, n_genes)
+    !! Expression matrix
     !! DM_ALLOW_NAN
     !! DM_ALLOW_INFINITE
 ```

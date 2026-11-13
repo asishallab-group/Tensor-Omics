@@ -566,12 +566,8 @@ def compute_scaled_distance_tail_probability(
     ----------
     rdi : np.ndarray[np.float64] of shape (n_genes,)
         empirical distribution D
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     sorted_rdi : np.ndarray[np.float64] of shape (n_genes,)
         empirical distribution D with non negative values
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     c_const : float
         Constant used in the computation, typically 1
 
@@ -654,12 +650,8 @@ def compute_scaled_distance_tail_probability_expert(
     ----------
     rdi : np.ndarray[np.float64] of shape (n_genes,)
         empirical distribution D
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     sorted_rdi : np.ndarray[np.float64] of shape (n_genes,)
         empirical distribution D with non negative values
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     sorted_rdi_perm : np.ndarray[np.int32] of shape (n_genes,)
         Permutation of `sorted_rdi` in ascending order. The allocating entry point builds
         and heapsorts it for you; the expert one takes whatever order you supply.
