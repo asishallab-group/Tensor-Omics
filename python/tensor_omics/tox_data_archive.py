@@ -221,34 +221,34 @@ def save_tox_data(
         Zip filename
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids : sequence of str, of length n_gene_ids_elements, optional
-        Gene ids array, will be saved if provided
+        Gene ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids_file : str, optional
         Name of the gene ids file
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     expression : np.ndarray[np.float64] of shape (n_expression_elements_dim_1, n_expression_elements_dim_2,), column-major (order='F'), optional
-        Expression vectors array, will be saved if provided
+        Expression vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
     expression_file : str, optional
         Name of the expression file
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_to_family : np.ndarray[np.int32] of shape (n_gene_to_family_elements,), optional
-        Gene to family mapping array, will be saved if provided
+        Gene to family mapping array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
     gene_to_family_file : str, optional
         Name of the gene to family mapping file
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_ids : sequence of str, of length n_family_ids_elements, optional
-        Family ids array, will be saved if provided
+        Family ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_ids_file : str, optional
         Name of the family ids file
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_centroids : np.ndarray[np.float64] of shape (n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2,), column-major (order='F'), optional
-        Family centroids array, will be saved if provided
+        Family centroids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
     family_centroids_file : str, optional
         Name of the family centroids file
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
     shift_vectors : np.ndarray[np.float64] of shape (n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2,), column-major (order='F'), optional
-        Shift vectors array, will be saved if provided
+        Shift vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
     shift_vectors_file : str, optional
         Name of the shift vectors file
         Trailing blanks are not part of the value, as in Fortran: they are dropped.

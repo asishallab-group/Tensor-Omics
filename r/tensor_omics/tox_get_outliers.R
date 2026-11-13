@@ -9,7 +9,7 @@
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
-#' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
 #' @param span a numeric scalar. Span parameter for LOESS smoothing, passed straight to
 #'   \code{\link{loess_fit_plain}}, so it is held to that
 #'   procedure's own range.
@@ -74,7 +74,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #' are the ones an error message reports.
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
-#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
 #' @param dscale a numeric vector. Array of scaling factors for each family
 #' @return a named list with elements:
 #'   \item{rdi}{a numeric vector. Output array of RDI values for each gene}
@@ -157,7 +157,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, quantile_level = 0.95) {
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
-#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
 #' @param quantile_level a numeric scalar. Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
 #'   The default value is `0.95`.
 #'   The minimum valid value is `0.0`.
