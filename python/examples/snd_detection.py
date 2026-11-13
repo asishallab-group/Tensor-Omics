@@ -16,7 +16,7 @@ works on RAP-projected unit vectors -- a different input space, and the most
 common way to misuse this module.
 
 Subsets are bitmasks: a result names its members as set bits, decoded with
-mask_check_state. The ancestor in real use is the family's orthologs-only
+bit_mask_test. The ancestor in real use is the family's orthologs-only
 centroid; see the gene family centroid recipe.
 
 The family here is SYNTHETIC and built so each pattern is present exactly once,
@@ -32,12 +32,12 @@ import sys
 
 import numpy as np
 
-from tensor_omics import (calc_work_arr_paralog_subsets_size, detect_dosage_effect,
+from tensor_omics import (bit_mask_n_words, bit_mask_test,
+                          calc_work_arr_paralog_subsets_size, detect_dosage_effect,
                           detect_neofunctionalization, detect_subfunctionalization,
                           filter_paralogs_by_pattern_dosage_effect,
                           filter_paralogs_by_pattern_subfunctionalization,
-                          mask_check_state, mask_chunk_count, normalize_unit_length,
-                          omics_vector_RAP_projection)
+                          normalize_unit_length, omics_vector_RAP_projection)
 
 
 def angles_to(ancestor, genes):
@@ -75,7 +75,7 @@ def rap_unit(matrix):
 
 def members(mask_column, n_genes):
     """Decode one bitmask into the 1-based gene indices it contains."""
-    return [i for i in range(1, n_genes + 1) if mask_check_state(mask_column, i)]
+    return [i for i in range(1, n_genes + 1) if bit_mask_test(n_genes, mask_column, i)]
 
 
 def make_family():
@@ -96,7 +96,7 @@ def main(argv=None):
     ancestor, names, genes = make_family()
     n_genes = genes.shape[1]
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    n_chunks = mask_chunk_count(n_genes)
+    n_chunks = bit_mask_n_words(n_genes)
 
     angles = angles_to(ancestor, genes)
     print("family of %d paralogs, angle to ancestor (rad):" % n_genes)

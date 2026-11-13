@@ -44,7 +44,7 @@
         \optn{rdi\_threshold} of the ancestor, the second for one that stays
         within \optn{max\_angle} of it while exceeding its magnitude by
         \optn{gain\_gamma}.}
-  \step{Decode each result with \code{mask\_check\_state}, which reports
+  \step{Decode each result with \code{bit\_mask\_test}, which reports
         whether a given 1-based gene index is a member of that subset.}
   \step{Test neofunctionalization separately with
         \code{detect\_neofunctionalization}, on \emph{RAP-projected unit}
@@ -72,14 +72,14 @@ import numpy as np
 from tensor_omics import (
     filter_paralogs_by_pattern_subfunctionalization,
     calc_work_arr_paralog_subsets_size,
-    detect_subfunctionalization, mask_check_state,
-    mask_chunk_count)
+    detect_subfunctionalization, bit_mask_test,
+    bit_mask_n_words)
 
 # --- angles to the ancestor are YOURS to supply ------------
 angles = np.arccos(cosines)        # radians, 0 <= a <= pi
 threshold = float(np.median(angles))
 
-n_chunks = mask_chunk_count(n_genes)
+n_chunks = bit_mask_n_words(n_genes)
 masks = filter_paralogs_by_pattern_subfunctionalization(
     angles, threshold, n_families, gene_to_fam, n_chunks)
 
@@ -97,7 +97,7 @@ res = detect_subfunctionalization(
 subsets = np.asarray(res["work_arr_paralog_subsets"])
 for k in range(res["n_results"]):       # decode the bitmasks
     picked = [i for i in range(1, n_genes + 1)
-              if mask_check_state(subsets[:, k], i)]
+              if bit_mask_test(n_genes, subsets[:, k], i)]
 \end{codefragment}
 
 \begin{parameters}
