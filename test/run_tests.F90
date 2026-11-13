@@ -13,7 +13,7 @@ program main
     use mod_test_tox_normalization, only: get_all_tests_tox_normalization
     use mod_test_euclidean_distance, only: get_all_tests_euclidean_distance
     use mod_test_tox_relative_axis_plane_tools, only: get_all_tests_tox_relative_axis_plane_tools
-    use mod_test_tissue_versatility, only: get_all_tests_tissue_versatility
+    use mod_test_tox_tissue_versatility, only: get_all_tests_tox_tissue_versatility
     use mod_test_tox_data, only: get_all_tests_tox_data
     use mod_test_shift_vectors, only: get_all_tests_shift_vectors
     use mod_test_tox_gene_centroids, only: get_all_tests_tox_gene_centroids
@@ -46,7 +46,7 @@ program main
     call add_suite("tox_normalization", get_all_tests_tox_normalization)
     call add_suite("euclidean_distance", get_all_tests_euclidean_distance)
     call add_suite("tox_relative_axis_plane_tools", get_all_tests_tox_relative_axis_plane_tools)
-    call add_suite("tissue_versatility", get_all_tests_tissue_versatility)
+    call add_suite("tox_tissue_versatility", get_all_tests_tox_tissue_versatility)
     call add_suite("tox_data", get_all_tests_tox_data)
     call add_suite("shift_vectors", get_all_tests_shift_vectors)
     call add_suite("arrays", get_all_tests_arrays)
