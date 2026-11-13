@@ -6,7 +6,7 @@
 // tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, int*, int*, const int*, int*);
+void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, const int*, int*, int*, const int*, int*);
 void k_means_clustering_c(const int*, const double*, const int*, const int*, double*, int*, int*, const int*, int*);
 void linkage_clustering_c(double*, const int*, int*, int*, double*, int*, const char*, int*);
 
@@ -17,6 +17,7 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
     int n_factors = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[0];
     int n_samples = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[1];
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
+    int n_centroids_elements_dim_1 = INTEGER(Rf_getAttrib(centroids, R_DimSymbol))[0];
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_max_iterations = Rf_asInteger(max_iterations);
@@ -25,7 +26,7 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
     SEXP _out_centroids = PROTECT(Rf_duplicate(centroids)); _nprot++;
 
     // outputs and work space
-    SEXP labels = PROTECT(Rf_allocVector(INTSXP, (n_samples * n_timepoints))); _nprot++;
+    SEXP labels = PROTECT(Rf_allocVector(INTSXP, n_samples)); _nprot++;
     SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); _nprot++;
     int ierr = 0;
 
@@ -36,6 +37,7 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
         &n_samples,
         &n_timepoints,
         REAL(_out_centroids),
+        &n_centroids_elements_dim_1,
         INTEGER(labels),
         INTEGER(label_counts),
         &_v_max_iterations,

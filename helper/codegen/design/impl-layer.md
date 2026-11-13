@@ -386,9 +386,12 @@ directly with the permutation `compute_rdi_impl` built. What no wrapper can take
 clamping of invalid (negative) RDIs to zero, because it is not a sort — it stays with the caller,
 and the test shims kept exactly that one line.
 
-Both keep `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` on the RDI arrays. Neither validated anything
-before, and `identify_outliers_impl` — the one caller in `src/` — already declares the same
-quantity that way; tightening it here would have made one array answer to two contracts.
+The RDI arrays kept `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` through that conversion. Neither had
+validated anything before, and `identify_outliers_impl` — the one caller in `src/` — declared the
+same quantity that way; tightening it there alone would have made one array answer to two
+contracts. Both contracts were tightened together later: the RDI is an analysis input, and
+analysis inputs refuse NaN and Inf, so the markers left these arrays, `identify_outliers_impl`'s
+and every other outlier input at once.
 
 `f42_binary_search_tree` followed, and it is the clearest instance of the same test.
 `bst_range_query` demanded a `sorted_indices` that its callers got from `build_bst_index`, so

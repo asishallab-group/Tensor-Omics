@@ -57,9 +57,21 @@ from .f42_binary_search_tree import (
     bst_range_query,
     bst_range_query_expert,
 )
+from .f42_bit_masks import (
+    bit_mask_n_words,
+    bit_mask_test,
+    bit_mask_from_logical,
+    bit_mask_to_logical,
+    bit_masks_from_logical_2D,
+    bit_masks_to_logical_2D,
+)
 from .f42_kd_tree import (
     build_kd_index,
     build_spherical_kd,
+    kd_knn_query,
+    kd_range_query_mask,
+    kd_range_query_list,
+    kd_range_query_count,
 )
 from .f42_serde_arrays_deserialize_char import (
     deserialize_char_helper,
@@ -203,10 +215,6 @@ from .tox_paralog_analysis import (
     detect_subfunctionalization,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
-)
-from .tox_paralog_analysis_impl import (
-    mask_check_state,
-    mask_chunk_count,
     calc_work_arr_paralog_subsets_size,
 )
 from .tox_relative_axis_plane_tools import (
@@ -290,6 +298,12 @@ __all__ = [
     "ERR_INTERNAL",
     "ERR_UNKNOWN",
     "check_err_code",
+    "bit_mask_from_logical",
+    "bit_mask_n_words",
+    "bit_mask_test",
+    "bit_mask_to_logical",
+    "bit_masks_from_logical_2D",
+    "bit_masks_to_logical_2D",
     "bst_range_query",
     "bst_range_query_expert",
     "build_bst_index",
@@ -365,13 +379,15 @@ __all__ = [
     "group_centroid_orthologs",
     "identify_outliers",
     "k_means_clustering",
+    "kd_knn_query",
+    "kd_range_query_count",
+    "kd_range_query_list",
+    "kd_range_query_mask",
     "linkage_clustering",
     "loess_fit_plain",
     "loess_fit_robust",
     "loess_smooth_2d",
     "log2_transformation",
-    "mask_check_state",
-    "mask_chunk_count",
     "mean_vector",
     "normalization_pipeline",
     "normalize_all_trajectories",

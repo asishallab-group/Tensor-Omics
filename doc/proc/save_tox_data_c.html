@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.1% of total for procedures.">200 statements</a>
+                 title=" 1.0% of total for procedures.">200 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -211,7 +211,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~9"></span>
+              <span class="anchor" id="variable-gene_ids~8"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -221,12 +221,12 @@
             <td>::</td>
             <td><strong>gene_ids</strong></td>
             <td>
-                <p>Gene ids array, will be saved if provided</p>
+                <p>Gene ids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_strlen~6"></span>
+              <span class="anchor" id="variable-gene_ids_strlen~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -241,7 +241,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_ids_elements~6"></span>
+              <span class="anchor" id="variable-n_gene_ids_elements~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -296,7 +296,7 @@
             <td>::</td>
             <td><strong>expression</strong></td>
             <td>
-                <p>Expression vectors array, will be saved if provided</p>
+                <p>Expression vectors array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -365,7 +365,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~5"></span>
+              <span class="anchor" id="variable-gene_to_family"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -375,7 +375,7 @@
             <td>::</td>
             <td><strong>gene_to_family</strong></td>
             <td>
-                <p>Gene to family mapping array, will be saved if provided</p>
+                <p>Gene to family mapping array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -425,7 +425,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~5"></span>
+              <span class="anchor" id="variable-family_ids~3"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -435,12 +435,12 @@
             <td>::</td>
             <td><strong>family_ids</strong></td>
             <td>
-                <p>Family ids array, will be saved if provided</p>
+                <p>Family ids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_strlen~2"></span>
+              <span class="anchor" id="variable-family_ids_strlen"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -455,7 +455,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_ids_elements~2"></span>
+              <span class="anchor" id="variable-n_family_ids_elements"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -500,7 +500,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~8"></span>
+              <span class="anchor" id="variable-family_centroids~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -510,7 +510,7 @@
             <td>::</td>
             <td><strong>family_centroids</strong></td>
             <td>
-                <p>Family centroids array, will be saved if provided</p>
+                <p>Family centroids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -579,7 +579,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~7"></span>
+              <span class="anchor" id="variable-shift_vectors~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -589,7 +589,7 @@
             <td>::</td>
             <td><strong>shift_vectors</strong></td>
             <td>
-                <p>Shift vectors array, will be saved if provided</p>
+                <p>Shift vectors array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -658,7 +658,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~170"></span>
+              <span class="anchor" id="variable-ierr~134"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -705,7 +705,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

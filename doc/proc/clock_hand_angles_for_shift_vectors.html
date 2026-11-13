@@ -154,10 +154,16 @@
 </h2>
     
 
-    <p>Each selected field is angled by the rule of
+    <p>Each selected field, an origin <code>o</code> and a shift <code>s</code> from it, turns from <code>o</code> to <code>o + s</code> -- from
+a family centroid to its paralog, for the fields
+<a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a> stores -- by the
+rule of
 <a href="../proc/clock_hand_angle_between_vectors_impl.html">clock_hand_angle_between_vectors_impl</a>,
-with one <code>orientation_reference</code> shared by the whole batch. A single field whose rotation
-the reference fails to orient fails the call.</p>
+with one <code>orientation_reference</code> shared by the whole batch. The rule angles RAP-space
+vectors, so project origins and shifts first; projection is linear, so <code>o + s</code> of the
+projected pair is the projected paralog. A single selected field whose origin or <code>o + s</code>
+is zero fails the call with <code>ERR_DIVISION_BY_ZERO</code>, and one whose rotation the reference
+fails to orient with <code>ERR_INVALID_INPUT</code>.</p>
 
 
     <h3>Arguments</h3>
@@ -173,7 +179,7 @@ the reference fails to orient fails the call.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-fields~2"></span>
+              <span class="anchor" id="variable-fields~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -183,12 +189,14 @@ the reference fails to orient fails the call.</p>
             <td>::</td>
             <td><strong>fields</strong></td>
             <td>
-                <p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
+                <p>matrix with vector fields; each field holds two vectors, its origin first and the
+shift from it second, as
+<a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a> stores them</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~5"></span>
+              <span class="anchor" id="variable-n_dims~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -203,7 +211,7 @@ the reference fails to orient fails the call.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_fields~2"></span>
+              <span class="anchor" id="variable-n_fields~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -218,7 +226,7 @@ the reference fails to orient fails the call.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fields_selection_mask~2"></span>
+              <span class="anchor" id="variable-fields_selection_mask~6"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -233,7 +241,7 @@ the reference fails to orient fails the call.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_fields~2"></span>
+              <span class="anchor" id="variable-n_selected_fields~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -248,7 +256,7 @@ the reference fails to orient fails the call.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-orientation_reference~2"></span>
+              <span class="anchor" id="variable-orientation_reference~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -262,12 +270,15 @@ the reference fails to orient fails the call.</p>
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angles"></span>
+              <span class="anchor" id="variable-signed_angles~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -277,12 +288,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>signed_angles</strong></td>
             <td>
-                <p>Signed rotation angles between vector pairs in radians [-π, π]</p>
+                <p>Signed rotation angles between vector pairs in radians [-pi, pi]</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~67"></span>
+              <span class="anchor" id="variable-ierr~220"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -329,7 +340,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

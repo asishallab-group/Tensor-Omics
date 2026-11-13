@@ -12,19 +12,16 @@ program main
     use mod_test_loess_smoothing, only: get_all_tests_loess_smoothing
     use mod_test_tox_normalization, only: get_all_tests_tox_normalization
     use mod_test_euclidean_distance, only: get_all_tests_euclidean_distance
-    use mod_test_rap_tools_omics_vector_RAP_projection, only: get_all_tests_rap_tools_omics_vector_RAP_projection
-    use mod_test_rap_tools_omics_field_RAP_projection, only: get_all_tests_rap_tools_omics_field_RAP_projection
-    use mod_test_clock_hand_angles, only: get_all_tests_clock_hand_angles
-    use mod_test_relative_axis_contributions, only: get_all_tests_relative_axis_contributions
+    use mod_test_tox_relative_axis_plane_tools, only: get_all_tests_tox_relative_axis_plane_tools
     use mod_test_tissue_versatility, only: get_all_tests_tissue_versatility
     use mod_test_tox_data, only: get_all_tests_tox_data
     use mod_test_shift_vectors, only: get_all_tests_shift_vectors
-    use mod_test_gene_centroids, only: get_all_tests_gene_centroids
+    use mod_test_tox_gene_centroids, only: get_all_tests_tox_gene_centroids
     use mod_test_conversions, only: get_all_tests_conversions
     use mod_test_arrays, only: get_all_tests_arrays
     use mod_test_paralog_analysis, only: get_all_tests_paralog_analysis
     use mod_test_trajectory_contribution_analysis, only: get_all_tests_trajectory_contribution_analysis
-    use mod_test_trajectory_normalization, only: get_all_tests_trajectory_normalization
+    use mod_test_tox_trajectory_normalization, only: get_all_tests_tox_trajectory_normalization
     use mod_test_clustering, only: get_all_tests_clustering
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
@@ -32,6 +29,7 @@ program main
     use mod_test_tox_get_outliers_by_angle, only: get_all_tests_tox_get_outliers_by_angle
     use mod_test_f42_math, only: get_all_tests_f42_math
     use mod_test_f42_vector, only: get_all_tests_f42_vector
+    use mod_test_f42_bit_masks, only: get_all_tests_f42_bit_masks
     use mod_test_f42_reductions, only: get_all_tests_f42_reductions
     implicit none
 
@@ -50,18 +48,15 @@ program main
     call add_suite("loess_smoothing", get_all_tests_loess_smoothing)
     call add_suite("tox_normalization", get_all_tests_tox_normalization)
     call add_suite("euclidean_distance", get_all_tests_euclidean_distance)
-    call add_suite("rap_tools_omics_vector_RAP_projection", get_all_tests_rap_tools_omics_vector_RAP_projection)
-    call add_suite("rap_tools_omics_field_RAP_projection", get_all_tests_rap_tools_omics_field_RAP_projection)
-    call add_suite("clock_hand_angles", get_all_tests_clock_hand_angles)
-    call add_suite("relative_axis_contributions", get_all_tests_relative_axis_contributions)
+    call add_suite("tox_relative_axis_plane_tools", get_all_tests_tox_relative_axis_plane_tools)
     call add_suite("tissue_versatility", get_all_tests_tissue_versatility)
     call add_suite("tox_data", get_all_tests_tox_data)
     call add_suite("shift_vectors", get_all_tests_shift_vectors)
     call add_suite("arrays", get_all_tests_arrays)
-    call add_suite("gene_centroids", get_all_tests_gene_centroids)
+    call add_suite("tox_gene_centroids", get_all_tests_tox_gene_centroids)
     call add_suite("paralog_analysis", get_all_tests_paralog_analysis)
     call add_suite("trajectory_contribution_analysis", get_all_tests_trajectory_contribution_analysis)
-    call add_suite("trajectory_normalization", get_all_tests_trajectory_normalization)
+    call add_suite("tox_trajectory_normalization", get_all_tests_tox_trajectory_normalization)
     call add_suite("conversions", get_all_tests_conversions)
     call add_suite("clustering", get_all_tests_clustering)
     call add_suite("data_integration", get_all_tests_data_integration)
@@ -70,6 +65,7 @@ program main
     call add_suite("tox_get_outliers_by_angle", get_all_tests_tox_get_outliers_by_angle)
     call add_suite("f42_math", get_all_tests_f42_math)
     call add_suite("f42_vector", get_all_tests_f42_vector)
+    call add_suite("f42_bit_masks", get_all_tests_f42_bit_masks)
     call add_suite("f42_reductions", get_all_tests_f42_reductions)
 
     nargs = command_argument_count()

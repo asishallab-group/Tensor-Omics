@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for modules and submodules.">91 statements</a>
+                 title=" 0.4% of total for modules and submodules.">91 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -212,7 +212,7 @@ relative-distance index are built on.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec1"></span>
+              <span class="anchor" id="variable-vec1~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -227,7 +227,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec2"></span>
+              <span class="anchor" id="variable-vec2~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -242,7 +242,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~6"></span>
+              <span class="anchor" id="variable-n_elements~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -257,7 +257,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-result"></span>
+              <span class="anchor" id="variable-result~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -272,7 +272,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~142"></span>
+              <span class="anchor" id="variable-ierr~159"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -312,7 +312,7 @@ relative-distance index are built on.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~41"></span>
+              <span class="anchor" id="variable-n_genes~46"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -327,7 +327,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~17"></span>
+              <span class="anchor" id="variable-n_families~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -342,7 +342,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~6"></span>
+              <span class="anchor" id="variable-genes~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -357,7 +357,7 @@ relative-distance index are built on.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~5"></span>
+              <span class="anchor" id="variable-centroids~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -367,12 +367,12 @@ relative-distance index are built on.</p>
             <td>::</td>
             <td><strong>centroids</strong></td>
             <td>
-<p>Family centroid matrix (n_tissues × n_families), column-major, <code>-1.0_real64</code> for unassigned genes</p>
+<p>Family centroid matrix (n_tissues × n_families), column-major</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~21"></span>
+              <span class="anchor" id="variable-gene_to_fam~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -390,7 +390,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~13"></span>
+              <span class="anchor" id="variable-distances~15"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -400,12 +400,17 @@ The value <code>0_int32</code> is additionally accepted.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>Output distances array</p>
+<p>Euclidean distance from each gene to its own family's centroid. A gene carrying
+<code>0_int32</code> in <code>gene_to_fam</code> has no centroid to measure against and
+receives <code>-1.0_real64</code> instead of a distance -- a value no Euclidean
+distance can take, so that summarising this array without excluding those genes is
+visibly wrong rather than quietly biased. Which genes those are is <code>gene_to_fam</code>,
+not a negative entry here.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~6"></span>
+              <span class="anchor" id="variable-n_tissues~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -420,7 +425,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~143"></span>
+              <span class="anchor" id="variable-ierr~160"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -463,7 +468,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

@@ -90,7 +90,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">12 statements</a>
+                 title=" 0.1% of total for procedures.">21 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,10 +151,15 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, max_iterations)  
+    <h2>public pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, max_iterations)  
 </h2>
     
 
+    <p>One sample is one point: its trajectory is flattened over factors and time into a single
+vector, <code>factor1_t1, factor2_t1, ..., factor1_t2, ...</code>, so the clustering answers which
+samples follow a similar course. Clustering the individual <code>(sample, timepoint)</code> states
+instead is <a href="../proc/k_means_clustering_impl.html">k_means_clustering_impl</a> on the same
+array read as <code>(n_factors, n_samples*n_timepoints)</code>, which is a different question.</p>
 
 
     <h3>Arguments</h3>
@@ -170,7 +175,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~5"></span>
+              <span class="anchor" id="variable-n_clusters"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -182,12 +187,12 @@
             <td>
                 <p>number (<code>k</code>) of clusters
 The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
+The maximum valid value is <code>n_samples</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~19"></span>
+              <span class="anchor" id="variable-trajectories"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -197,12 +202,12 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
             <td>::</td>
             <td><strong>trajectories</strong></td>
             <td>
-                <p>matrix with data points to cluster</p>
+                <p>matrix with the trajectories to cluster</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~23"></span>
+              <span class="anchor" id="variable-n_factors"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -217,7 +222,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~30"></span>
+              <span class="anchor" id="variable-n_samples"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -232,7 +237,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~32"></span>
+              <span class="anchor" id="variable-n_timepoints"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -247,40 +252,41 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~7"></span>
+              <span class="anchor" id="variable-centroids"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
               <td></td>            <td>
-              dimension(n_factors, n_clusters)
+              dimension(n_factors*n_timepoints, n_clusters)
             </td>
             <td>::</td>
             <td><strong>centroids</strong></td>
             <td>
                 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
 The centroids should be unique. This is not checked in this routine.</p>
+<p>One centroid is a whole flattened trajectory, so it has <code>n_factors*n_timepoints</code> entries.</p>
 <p>The final values will be the final centroids of the clusters</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-labels~5"></span>
+              <span class="anchor" id="variable-labels"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_samples*n_timepoints)
+              dimension(n_samples)
             </td>
             <td>::</td>
             <td><strong>labels</strong></td>
             <td>
-                <p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p>
+                <p>array of labels, one per sample, so the first label is the first sample's.</p>
 <p>each label is the index of its related cluster -&gt; <code>1&lt;=label&lt;=n_clusters=k</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-label_counts~5"></span>
+              <span class="anchor" id="variable-label_counts"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -290,12 +296,27 @@ The centroids should be unique. This is not checked in this routine.</p>
             <td>::</td>
             <td><strong>label_counts</strong></td>
             <td>
-                <p>holds the number of points having the respective label assigned</p>
+                <p>holds the number of samples having the respective label assigned</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_iterations~5"></span>
+              <span class="anchor" id="variable-tmp_flattened_trajectories"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors*n_timepoints, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_flattened_trajectories</strong></td>
+            <td>
+                <p>Work matrix holding each sample's trajectory as one column</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max_iterations"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -342,7 +363,7 @@ The centroids should be unique. This is not checked in this routine.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>
