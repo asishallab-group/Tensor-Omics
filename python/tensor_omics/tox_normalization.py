@@ -652,6 +652,11 @@ def calc_fchange(
     For each control-condition pair, this subroutine computes the `log2 fold change`
     by subtracting the expression value in the control group from the corresponding
     value in the condition group, for all genes.
+
+    That subtraction is a `log2 fold change` only because `expr` is already on a
+    `log2` scale. Passing tissue averages that have not been log-transformed yields a
+    plain difference of expression levels instead, which is not a fold change.
+
     A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
     reported as ERR_NAN_INF instead of being written into the result as Inf.
 
@@ -666,7 +671,9 @@ def calc_fchange(
         The minimum valid value is `1`.
         The maximum valid value is `n_tissues`.
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
-        Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
+        Gene Expression matrix on a `log2` scale, i.e. the result of
+        :func:`tensor_omics.normalization_pipeline` or of
+        :func:`tensor_omics.log2_transformation`
 
     Returns
     -------

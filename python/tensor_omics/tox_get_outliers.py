@@ -4,8 +4,10 @@ Gene outliers, from how far each gene sits from its family's centroid.
 
 The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
 a relative distance index, scaled per family so families of different spread are comparable.
-`compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
-applies the threshold and reports which genes exceed it.
+`compute_family_scaling` produces that scaling: it fits each family's spread -- the standard
+deviation of its members' distances -- against its mean distance with LOESS over all families,
+so that a family too small for a usable empirical estimate is scaled by the trend instead.
+`identify_outliers` applies the threshold and reports which genes exceed it.
 
 `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 
@@ -122,14 +124,12 @@ def compute_family_scaling(
         Total number of gene families
     distances : np.ndarray[np.float64] of shape (n_genes,)
         Array of Euclidean distances for each gene
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
-        Mapping of each gene to its family (1-based)
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
     span : float, optional, default 0.7
         Span parameter for LOESS smoothing, passed straight to
         :func:`tensor_omics.loess_fit_plain`, so it is held to that
-        procedure's own range rather than to the NaN tolerance the distance data carries.
+        procedure's own range.
         The default value is `0.7`.
         The minimum valid value is `EPS_LOESS`.
         The maximum valid value is `1.0`.
@@ -170,7 +170,10 @@ def compute_family_scaling(
         low_sd_cutoff : float
             cutoff used to filter families with low std
         excluded_low_sd : np.ndarray[np.int32] of shape (n_families,), read-only
-            Mask to save those families that have low sd
+            Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            lists, `1` for every other one -- a family with no or a single member, or with a spread
+            below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -260,14 +263,10 @@ def compute_rdi(
     ----------
     distances : np.ndarray[np.float64] of shape (n_genes,)
         Array of Euclidean distances for each gene to its centroid
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
-        Gene-to-family mapping (1-based indexing)
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
     dscale : np.ndarray[np.float64] of shape (n_dscale_elements,)
         Array of scaling factors for each family
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -356,12 +355,8 @@ def identify_outliers(
     ----------
     rdi : np.ndarray[np.float64] of shape (n_genes,)
         Array of RDI values for each gene
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     sorted_rdi : np.ndarray[np.float64] of shape (n_genes,)
         Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     perm : np.ndarray[np.int32] of shape (n_genes,)
         Permutation array with sorted indices
     quantile_level : float, optional, default 0.95
@@ -464,10 +459,8 @@ def detect_outliers(
         Total number of gene families
     distances : np.ndarray[np.float64] of shape (n_genes,)
         Array of Euclidean distances for each gene to its centroid
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
-        Gene-to-family mapping (1-based indexing)
+        Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
     quantile_level : float, optional, default 0.95
         Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
         The default value is `0.95`.

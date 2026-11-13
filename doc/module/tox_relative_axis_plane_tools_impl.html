@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.9% of total for modules and submodules.">177 statements</a>
+                 title=" 1.0% of total for modules and submodules.">220 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -171,7 +171,7 @@
       <p>Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
 what can be read off a vector once it is projected onto one.</p>
 <p>A RAP is picked by selecting axes (tissues) from the full expression space.
-<code>vector_RAP_projection</code> projects a single vector onto it and <code>field_RAP_projection</code> a whole
+<code>omics_vector_RAP_projection</code> projects vectors onto it and <code>omics_field_RAP_projection</code> a whole
 field of them. Within the plane, <code>clock_hand_angle_between_vectors</code> measures the signed angle
 between two vectors -- signed by an orientation reference, so the sign means the same thing in
 every dimension -- and <code>clock_hand_angles_for_shift_vectors</code> does that for a whole shift
@@ -186,10 +186,10 @@ level, falls on each selected axis.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -247,7 +247,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~13"></span>
+              <span class="anchor" id="variable-n_axes~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -272,7 +272,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>n_vecs</strong></td>
             <td>
-<p>number of vectors per axis</p>
+<p>number of vectors</p>
             </td>
         </tr>
         <tr>
@@ -307,7 +307,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection_mask~4"></span>
+              <span class="anchor" id="variable-axes_selection_mask~6"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -322,7 +322,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~4"></span>
+              <span class="anchor" id="variable-n_selected_axes~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -366,7 +366,7 @@ level, falls on each selected axis.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p><a href="../proc/omics_field_rap_projection_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Project the shifts of selected vector fields onto the RAP constructed from a selected set of axes.</p><a href="../proc/omics_field_rap_projection_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -381,7 +381,7 @@ level, falls on each selected axis.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-fields~3"></span>
+              <span class="anchor" id="variable-fields~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -391,12 +391,15 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>fields</strong></td>
             <td>
-<p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
+<p>matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+family centroid) and the shift from it second (e.g. paralog minus centroid), as
+<a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a> stores
+them. The shift is projected; the origin does not enter the projection.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~14"></span>
+              <span class="anchor" id="variable-n_axes~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -421,7 +424,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>n_fields</strong></td>
             <td>
-<p>number of vectors per axis</p>
+<p>number of fields</p>
             </td>
         </tr>
         <tr>
@@ -436,7 +439,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>fields_selection_mask</strong></td>
             <td>
-<p><code>.true.</code> for vectors where projection is to be computed</p>
+<p><code>.true.</code> for fields where projection is to be computed</p>
             </td>
         </tr>
         <tr>
@@ -456,7 +459,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection_mask~5"></span>
+              <span class="anchor" id="variable-axes_selection_mask~7"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -471,7 +474,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~5"></span>
+              <span class="anchor" id="variable-n_selected_axes~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -545,7 +548,7 @@ level, falls on each selected axis.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~6"></span>
+              <span class="anchor" id="variable-n_selected_axes~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -570,7 +573,7 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>n_selected_vecs</strong></td>
             <td>
-<p>number of selected vectors per axis</p>
+<p>number of selected vectors</p>
             </td>
         </tr>
     </tbody>
@@ -589,7 +592,7 @@ level, falls on each selected axis.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.</p><a href="../proc/clock_hand_angle_between_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Compute the signed clock hand angle between two RAP-projected vectors.</p><a href="../proc/clock_hand_angle_between_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -604,7 +607,7 @@ level, falls on each selected axis.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~2"></span>
+              <span class="anchor" id="variable-v1~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -614,12 +617,12 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>v1</strong></td>
             <td>
-<p>First normalized vector in RAP space</p>
+<p>First vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~2"></span>
+              <span class="anchor" id="variable-v2~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -629,12 +632,12 @@ level, falls on each selected axis.</p>
             <td>::</td>
             <td><strong>v2</strong></td>
             <td>
-<p>Second normalized vector in RAP space</p>
+<p>Second vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~11"></span>
+              <span class="anchor" id="variable-n_dims~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -663,7 +666,10 @@ level, falls on each selected axis.</p>
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
             </td>
         </tr>
         <tr>
@@ -683,7 +689,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~137"></span>
+              <span class="anchor" id="variable-ierr~168"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -704,7 +710,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angle_between_vectors_helper"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angle_between_vectors_helper.html'>clock_hand_angle_between_vectors_helper</a>(v1, v2, n_dims, orientation_reference, signed_angle, undefined_sign)  
+    <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angle_between_vectors_helper"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angle_between_vectors_helper.html'>clock_hand_angle_between_vectors_helper</a>(v1, v2, n_dims, orientation_reference, second_is_shift, signed_angle, zero_vector, undefined_sign)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -712,7 +718,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.</p><a href="../proc/clock_hand_angle_between_vectors_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Compute the signed clock hand angle between two RAP-projected vectors.</p><a href="../proc/clock_hand_angle_between_vectors_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -727,7 +733,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~3"></span>
+              <span class="anchor" id="variable-v1~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -737,12 +743,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>v1</strong></td>
             <td>
-<p>First normalized vector in RAP space</p>
+<p>First vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~3"></span>
+              <span class="anchor" id="variable-v2~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -752,12 +758,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>v2</strong></td>
             <td>
-<p>Second normalized vector in RAP space</p>
+<p>Second vector in RAP space, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~12"></span>
+              <span class="anchor" id="variable-n_dims~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -786,7 +792,26 @@ as positive. The sign is that of this vector's component along the rotation.</p>
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-second_is_shift"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>second_is_shift</strong></td>
+            <td>
+<p><code>.true.</code> when <code>v2</code> is a shift from <code>v1</code> rather than a vector of its own: the angle
+then turns from <code>v1</code> to <code>v1 + v2</code>, which is formed element by element, not stored</p>
             </td>
         </tr>
         <tr>
@@ -802,6 +827,21 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td><strong>signed_angle</strong></td>
             <td>
 <p>Signed angle between vectors in radians [-pi, pi]</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zero_vector~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>zero_vector</strong></td>
+            <td>
+<p><code>.true.</code> when <code>v1</code> or <code>v2</code> is the zero vector, so there is no angle</p>
             </td>
         </tr>
         <tr>
@@ -835,7 +875,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Compute signed rotation angles between for shift vectors, so between their origin and target</p><a href="../proc/clock_hand_angles_for_shift_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Compute the signed clock hand angle of every selected shift, from its origin to the point it reaches</p><a href="../proc/clock_hand_angles_for_shift_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -850,7 +890,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-fields~4"></span>
+              <span class="anchor" id="variable-fields~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -860,12 +900,14 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>fields</strong></td>
             <td>
-<p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
+<p>matrix with vector fields; each field holds two vectors, its origin first and the
+shift from it second, as
+<a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a> stores them</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~13"></span>
+              <span class="anchor" id="variable-n_dims~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -939,7 +981,10 @@ as positive. The sign is that of this vector's component along the rotation.</p>
 rotation from one vector to another has no inherent direction above two
 dimensions -- and in RAP space not even in two, since the axes are tissues or
 factors and carry no handedness -- so the caller states which way round counts
-as positive. The sign is that of this vector's component along the rotation.</p>
+as positive. The sign is that of this vector's component along the rotation.
+For three selected tissues, <code>d x v1</code>, with <code>d</code> the space diagonal, reproduces the
+determinant rule <code>sign(det[d, v1, v2])</code>; a fixed vector, such as the anchor axis
+projected onto the RAP, gives every angle the same sense of clockwise.</p>
             </td>
         </tr>
         <tr>
@@ -954,12 +999,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>signed_angles</strong></td>
             <td>
-<p>Signed rotation angles between vector pairs in radians [-π, π]</p>
+<p>Signed rotation angles between vector pairs in radians [-pi, pi]</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~138"></span>
+              <span class="anchor" id="variable-ierr~169"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -988,7 +1033,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Compute the fractional contribution of each axis to a RAP-projected and normalized vector</p><a href="../proc/compute_relative_axis_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Compute the fractional contribution of each axis to a RAP-projected vector</p><a href="../proc/compute_relative_axis_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1003,7 +1048,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~6"></span>
+              <span class="anchor" id="variable-vec~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1013,12 +1058,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>vec</strong></td>
             <td>
-<p>RAP-projected and normalized vector (expression or shift)</p>
+<p>RAP-projected vector (expression or shift), of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~15"></span>
+              <span class="anchor" id="variable-n_axes~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1043,12 +1088,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>contributions</strong></td>
             <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+<p>Fractional contribution of each axis, values in [0,1], sum to 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~139"></span>
+              <span class="anchor" id="variable-ierr~170"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1077,7 +1122,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.</p><a href="../proc/relative_axes_changes_from_shift_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Compute fractional contribution of each axis to a RAP-projected shift vector.</p><a href="../proc/relative_axes_changes_from_shift_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1092,7 +1137,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~7"></span>
+              <span class="anchor" id="variable-vec~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1102,12 +1147,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>vec</strong></td>
             <td>
-<p>RAP-projected and normalized shift vector</p>
+<p>RAP-projected shift vector, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~16"></span>
+              <span class="anchor" id="variable-n_axes~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1132,12 +1177,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>contributions</strong></td>
             <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+<p>Fractional contribution of each axis, values in [0,1], sum to 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~140"></span>
+              <span class="anchor" id="variable-ierr~171"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1166,7 +1211,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.</p><a href="../proc/relative_axes_expression_from_expression_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Compute fractional contribution of each axis to a RAP-projected expression vector.</p><a href="../proc/relative_axes_expression_from_expression_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1181,7 +1226,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~8"></span>
+              <span class="anchor" id="variable-vec~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1191,12 +1236,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>vec</strong></td>
             <td>
-<p>RAP-projected and normalized expression vector</p>
+<p>RAP-projected expression vector, of any length but zero</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~17"></span>
+              <span class="anchor" id="variable-n_axes~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1221,12 +1266,12 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <td>::</td>
             <td><strong>contributions</strong></td>
             <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+<p>Fractional contribution of each axis, values in [0,1], sum to 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~141"></span>
+              <span class="anchor" id="variable-ierr~172"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1269,7 +1314,7 @@ as positive. The sign is that of this vector's component along the rotation.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

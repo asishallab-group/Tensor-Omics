@@ -31,6 +31,66 @@
       ")"
     ]
   },
+  "bit_mask_n_words (call)": {
+    "prefix": "f42:bit_mask_n_words",
+    "description": "Inside Fortran, a bit-mask macro in `src/macros.h` gives the same number.",
+    "body": [
+      "${1:result} <- bit_mask_n_words(",
+      "  n_bits = ${2:n_bits}",
+      ")"
+    ]
+  },
+  "bit_mask_test (call)": {
+    "prefix": "f42:bit_mask_test",
+    "description": "Inside Fortran, a loop tests a flag inline with a bit-mask macro from `src/macros.h` instead.",
+    "body": [
+      "${1:result} <- bit_mask_test(",
+      "  n_bits = ${2:n_bits},",
+      "  bit_mask = ${3:bit_mask},",
+      "  i_bit = ${4:i_bit}",
+      ")"
+    ]
+  },
+  "bit_mask_from_logical (call)": {
+    "prefix": "f42:bit_mask_from_logical",
+    "description": "bit_mask_from_logical",
+    "body": [
+      "${1:result} <- bit_mask_from_logical(",
+      "  n_words = ${2:n_words},",
+      "  flags = ${3:flags}",
+      ")"
+    ]
+  },
+  "bit_mask_to_logical (call)": {
+    "prefix": "f42:bit_mask_to_logical",
+    "description": "bit_mask_to_logical",
+    "body": [
+      "${1:result} <- bit_mask_to_logical(",
+      "  n_bits = ${2:n_bits},",
+      "  bit_mask = ${3:bit_mask}",
+      ")"
+    ]
+  },
+  "bit_masks_from_logical_2D (call)": {
+    "prefix": "f42:bit_masks_from_logical_2D",
+    "description": "bit_masks_from_logical_2D",
+    "body": [
+      "${1:result} <- bit_masks_from_logical_2D(",
+      "  n_words = ${2:n_words},",
+      "  flags = ${3:flags}",
+      ")"
+    ]
+  },
+  "bit_masks_to_logical_2D (call)": {
+    "prefix": "f42:bit_masks_to_logical_2D",
+    "description": "bit_masks_to_logical_2D",
+    "body": [
+      "${1:result} <- bit_masks_to_logical_2D(",
+      "  n_bits = ${2:n_bits},",
+      "  bit_masks = ${3:bit_masks}",
+      ")"
+    ]
+  },
   "build_kd_index (call)": {
     "prefix": "f42:build_kd_index",
     "description": "build_kd_index",
@@ -48,6 +108,58 @@
       "${1:result} <- build_spherical_kd(",
       "  points = ${2:points},",
       "  dimension_order = ${3:dimension_order}",
+      ")"
+    ]
+  },
+  "kd_knn_query (call)": {
+    "prefix": "f42:kd_knn_query",
+    "description": "Via a bounded max-heap kept directly in `neighbors`/`distances` and splitting-plane",
+    "body": [
+      "${1:result} <- kd_knn_query(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  k_neighbors = ${6:k_neighbors}",
+      ")"
+    ]
+  },
+  "kd_range_query_mask (call)": {
+    "prefix": "f42:kd_range_query_mask",
+    "description": "Same iterative, stack-based traversal and splitting-plane pruning as",
+    "body": [
+      "${1:result} <- kd_range_query_mask(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  radius = ${6:radius}",
+      ")"
+    ]
+  },
+  "kd_range_query_list (call)": {
+    "prefix": "f42:kd_range_query_list",
+    "description": "Same traversal and pruning as [[f42_kd_tree_impl(module):kd_range_query_mask_impl(subroutine)]],",
+    "body": [
+      "${1:result} <- kd_range_query_list(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  radius = ${6:radius}",
+      ")"
+    ]
+  },
+  "kd_range_query_count (call)": {
+    "prefix": "f42:kd_range_query_count",
+    "description": "Same traversal and pruning as",
+    "body": [
+      "${1:result} <- kd_range_query_count(",
+      "  points = ${2:points},",
+      "  kd_indices = ${3:kd_indices},",
+      "  dimension_order = ${4:dimension_order},",
+      "  query_point = ${5:query_point},",
+      "  radius = ${6:radius}",
       ")"
     ]
   },

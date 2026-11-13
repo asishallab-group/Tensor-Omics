@@ -22,6 +22,7 @@ test_framework = { path = "test_framework" }
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
+nvfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 
 optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
 optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
@@ -31,10 +32,12 @@ diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -st
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
 
 default.linux.flags = "-fPIC"
+# nvfortran treats a backslash in a string as a C escape unless told otherwise; standard Fortran,
+# gfortran and ifx treat it as an ordinary character (`"\"` is one character long).
 # nvfortran flushes subnormal numbers to zero unless told otherwise, and then writes them as 0
 # (the JSON writer, f42_serde_json_serialize, would lose them); -Kieee -Mnoflushz keep them.
 # nvfortran 26.9 or later is required: 25.7 miscompiles the JSON writer's class(*) arguments.
-default.nvfortran.flags = "-Kieee -Mnoflushz"
+default.nvfortran.flags = "-Mbackslash -Kieee -Mnoflushz"
 
 # fpm links the root library against every package it knows, the test_framework dev-dependency
 # included and even without --tests (resolve_target_linking in fpm_targets.f90). Without these
@@ -43,6 +46,10 @@ default.nvfortran.flags = "-Kieee -Mnoflushz"
 # references.
 default.linux.link-time-flags = "-Wl,--as-needed"
 default.macos.link-time-flags = "-Wl,-dead_strip_dylibs"
+# ifx's -traceback prints its frames through libgcc_s's unwinder, which no object references, so
+# --as-needed drops it: a runtime error then prints "You must link with libunwind" instead of the
+# file and line. So the diagnostics build links it outside --as-needed.
+diagnostics.ifx.linux.link-time-flags = "-Wl,--push-state,--no-as-needed -lgcc_s -Wl,--pop-state"
 
 # Above -O0, ifx reassociates floating-point expressions by default, across parentheses too. Code
 # whose accuracy depends on evaluation order then silently loses it: f42's log1p came out as the
