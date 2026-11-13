@@ -1,18 +1,25 @@
 !> The `omics_vector_RAP_projection` cases: hand-derived projections onto the RAP (subtracting the
 !| mean of the selected coordinates), which axes and which vectors the masks pick and in what
 !| order, the diagonal and in-plane special cases, each dimension on its own, the selected counts
-!| checked against their masks, NaN and Inf rejected anywhere in `vecs`, and magnitudes near
-!| `huge`.
+!| checked against their masks, NaN and Inf rejected anywhere in `vecs`, magnitudes near
+!| `huge`, and vectors whose selected coordinates are all equal, which project to exact zeros
+!| that `normalize_unit_length` refuses.
 !|
 !| Most cases select two or four axes: the mean is then a division by a power of two, exact at
 !| every optimization level, so the expected values are compared exactly. The one case on three
-!| axes says why it needs a tolerance.
+!| axes says why it needs a tolerance. The equal-coordinate cases are exact on any number of axes:
+!| they are decided on the coordinates, not on their rounded mean.
 module mod_test_omics_vector_RAP_projection
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_negative_inf
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_negative_inf, &
+                                             ieee_next_after
+    use, intrinsic :: ieee_exceptions, only: ieee_status_type, ieee_get_status, ieee_set_status, &
+                                             ieee_get_flag, ieee_set_flag, ieee_invalid
     use tox_relative_axis_plane_tools
+    use tox_relative_axis_plane_tools_impl, only: omics_vector_RAP_projection_impl
+    use tox_normalization, only: normalize_unit_length
     use test_suite, only: test_case
     use tox_errors
     implicit none
@@ -23,7 +30,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_omics_vector_RAP_projection() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(12))
+        allocate (all_tests(15))
 
         all_tests(1) = test_case("test_omics_vector_RAP_projection_all_selected", &
                                  test_omics_vector_RAP_projection_all_selected)
@@ -49,6 +56,12 @@ contains
                                   test_omics_vector_RAP_projection_rejects_nan_and_inf)
         all_tests(12) = test_case("test_omics_vector_RAP_projection_extreme_magnitudes", &
                                   test_omics_vector_RAP_projection_extreme_magnitudes)
+        all_tests(13) = test_case("test_omics_vector_RAP_projection_equal_coords_exact_zeros", &
+                                  test_omics_vector_RAP_projection_equal_coords_exact_zeros)
+        all_tests(14) = test_case("test_omics_vector_RAP_projection_equal_selected_exact_zeros", &
+                                  test_omics_vector_RAP_projection_equal_selected_exact_zeros)
+        all_tests(15) = test_case("test_omics_vector_RAP_projection_nan_stays_quiet", &
+                                  test_omics_vector_RAP_projection_nan_stays_quiet)
     end function get_all_tests_omics_vector_RAP_projection
 
     !> Every axis and every vector selected, on four axes. The RAP is the hyperplane orthogonal to
@@ -379,5 +392,117 @@ contains
         call assert_equal_array_real(projections(:, 2), expected(:, 2), 2, 0d0, &
                                      "test_omics_vector_RAP_projection_extreme_magnitudes: [huge, -huge] unchanged")
     end subroutine test_omics_vector_RAP_projection_extreme_magnitudes
+
+    !> A vector whose coordinates are all equal projects to exact zeros, whatever its length or
+    !| value, and normalize_unit_length then refuses it as the zero vector. Subtracting the rounded
+    !| mean used to leave a residue for many of them ([0.1]*7 gives about -1.4e-17 per coordinate),
+    !| which normalization turned into a unit vector off the plane.
+    subroutine test_omics_vector_RAP_projection_equal_coords_exact_zeros()
+        real(real64) :: smallest_subnormal
+
+        smallest_subnormal = ieee_next_after(0.0_real64, 1.0_real64)
+
+        call check_equal_coordinates_give_exact_zeros("[0.7]*6", 0.7_real64, 6)
+        call check_equal_coordinates_give_exact_zeros("[0.1]*3", 0.1_real64, 3)
+        call check_equal_coordinates_give_exact_zeros("[0.1]*7", 0.1_real64, 7)
+        call check_equal_coordinates_give_exact_zeros("[3.3]*13", 3.3_real64, 13)
+        call check_equal_coordinates_give_exact_zeros("[1e300]*3", 1.0e300_real64, 3)
+        call check_equal_coordinates_give_exact_zeros("[huge]*4", huge(1.0_real64), 4)
+        call check_equal_coordinates_give_exact_zeros("[-2.5]*4", -2.5_real64, 4)
+        call check_equal_coordinates_give_exact_zeros("[tiny]*5", tiny(1.0_real64), 5)
+        call check_equal_coordinates_give_exact_zeros("[tiny/4]*3, subnormal", tiny(1.0_real64)/4, 3)
+        call check_equal_coordinates_give_exact_zeros("[smallest subnormal]*7", smallest_subnormal, 7)
+        call check_equal_coordinates_give_exact_zeros("[-smallest subnormal]*2", -smallest_subnormal, 2)
+        call check_equal_coordinates_give_exact_zeros("[0]*3", 0.0_real64, 3)
+        call check_equal_coordinates_give_exact_zeros("[5]*1, a single axis", 5.0_real64, 1)
+    end subroutine test_omics_vector_RAP_projection_equal_coords_exact_zeros
+
+    !> Projects `[value]*n_axes` and checks the projection is exact zeros that normalization refuses.
+    subroutine check_equal_coordinates_give_exact_zeros(case_name, value, n_axes)
+        character(len=*), intent(in) :: case_name
+        real(real64), intent(in) :: value
+        integer(int32), intent(in) :: n_axes
+
+        real(real64) :: vecs(n_axes, 1), projections(n_axes, 1), zeros(n_axes)
+        logical(c_bool) :: axes_mask(n_axes), vecs_mask(1)
+        integer(int32) :: ierr
+
+        vecs = value
+        axes_mask = .true.
+        vecs_mask = .true.
+        zeros = 0.0_real64
+        projections = 1.0_real64
+
+        call omics_vector_RAP_projection(vecs, n_axes, 1, vecs_mask, 1, axes_mask, n_axes, projections, ierr)
+        call assert_err(ierr, ERR_OK, "test_omics_vector_RAP_projection_equal_coords_exact_zeros: " &
+                        //case_name//": projection")
+        call assert_identical_array_real(projections(:, 1), zeros, n_axes, &
+                                         "test_omics_vector_RAP_projection_equal_coords_exact_zeros: " &
+                                         //case_name//": projection is not exact zeros")
+
+        call normalize_unit_length(projections(:, 1), n_axes, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_omics_vector_RAP_projection_equal_coords_exact_zeros: " &
+                        //case_name//": normalization must refuse")
+    end subroutine check_equal_coordinates_give_exact_zeros
+
+    !> Only the selected axes count: a vector equal on them projects to exact zeros whatever its
+    !| other coordinates hold, beside vectors that are not and project as before.
+    subroutine test_omics_vector_RAP_projection_equal_selected_exact_zeros()
+        real(real64) :: vecs(4, 3), projections(3, 3), zeros(3)
+        logical(c_bool) :: axes_mask(4), vecs_mask(3)
+        integer(int32) :: ierr
+
+        vecs(:, 1) = [0.7_real64, 9.0_real64, 0.7_real64, 0.7_real64]
+        vecs(:, 2) = [1.0_real64, 2.0_real64, 4.0_real64, 1.0_real64]
+        vecs(:, 3) = [0.1_real64, -3.0_real64, 0.1_real64, 0.1_real64]
+        axes_mask = [.true., .false., .true., .true.]
+        vecs_mask = .true.
+        zeros = 0.0_real64
+
+        call omics_vector_RAP_projection(vecs, 4, 3, vecs_mask, 3, axes_mask, 3, projections, ierr)
+        call assert_err(ierr, ERR_OK, "test_omics_vector_RAP_projection_equal_selected_exact_zeros: ierr")
+        call assert_identical_array_real(projections(:, 1), zeros, 3, &
+                                         "test_omics_vector_RAP_projection_equal_selected_exact_zeros: " &
+                                         //"first vector")
+        ! The unequal vector takes the ordinary route, the mean over three axes, which may miss by a
+        ! few ulps (see test_omics_vector_RAP_projection_three_axes); only the equal ones are exact.
+        call assert_equal_array_real(projections(:, 2), [-1.0_real64, 2.0_real64, -1.0_real64], 3, 1d-14, &
+                                     "test_omics_vector_RAP_projection_equal_selected_exact_zeros: " &
+                                     //"the unequal vector")
+        call assert_identical_array_real(projections(:, 3), zeros, 3, &
+                                         "test_omics_vector_RAP_projection_equal_selected_exact_zeros: " &
+                                         //"third vector")
+    end subroutine test_omics_vector_RAP_projection_equal_selected_exact_zeros
+
+    !> The comparison that finds equal coordinates must stay quiet on a NaN: no IEEE invalid flag,
+    !| so a host halting on invalid is not stopped (the generated entry point refuses NaN first;
+    !| this calls the implementation directly to reach the comparison with one).
+    subroutine test_omics_vector_RAP_projection_nan_stays_quiet()
+        real(real64) :: vecs(3, 5), projections(3, 5), nan
+        logical(c_bool) :: axes_mask(3), vecs_mask(5)
+        type(ieee_status_type) :: status_on_entry
+        logical :: invalid_signalled
+
+        call ieee_get_status(status_on_entry)
+
+        nan = ieee_value(1.0_real64, ieee_quiet_nan)
+        vecs(:, 1) = [nan, nan, nan]
+        vecs(:, 2) = [nan, 1.0_real64, 2.0_real64]
+        vecs(:, 3) = [1.0_real64, 1.0_real64, nan]
+        vecs(:, 4) = [1.0_real64, nan, 1.0_real64]
+        vecs(:, 5) = [0.7_real64, 0.7_real64, 0.7_real64]
+        axes_mask = .true.
+        vecs_mask = .true.
+
+        call ieee_set_flag(ieee_invalid, .false.)
+        call omics_vector_RAP_projection_impl(vecs, 3, 5, vecs_mask, 5, axes_mask, 3, projections)
+        call ieee_get_flag(ieee_invalid, invalid_signalled)
+        call ieee_set_status(status_on_entry)
+
+        call assert_false(invalid_signalled, &
+                          "test_omics_vector_RAP_projection_nan_stays_quiet: a NaN coordinate raised the IEEE invalid flag")
+        call assert_identical_array_real(projections(:, 5), [0.0_real64, 0.0_real64, 0.0_real64], 3, &
+                                         "test_omics_vector_RAP_projection_nan_stays_quiet: the equal vector beside the NaNs")
+    end subroutine test_omics_vector_RAP_projection_nan_stays_quiet
 
 end module mod_test_omics_vector_RAP_projection

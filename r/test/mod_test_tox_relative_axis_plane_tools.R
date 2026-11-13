@@ -28,6 +28,22 @@ CONTRIBUTION_PROCEDURES <- list(
 # leaves to the Fortran on purpose
 NON_FINITE_VALUES <- c(NaN, Inf, NA_real_)
 
+# Vectors whose coordinates are all equal. Many of them used to project to a residue of rounding
+# noise instead of zeros, rep(0.1, 7) to about -1.4e-17 per coordinate.
+.smallest_subnormal <- 2^-1074
+.equal_coordinate_cases <- list(
+  list(name = "rep(0.7, 6)", value = 0.7, n_axes = 6L),
+  list(name = "rep(0.1, 3)", value = 0.1, n_axes = 3L),
+  list(name = "rep(0.1, 7)", value = 0.1, n_axes = 7L),
+  list(name = "rep(3.3, 13)", value = 3.3, n_axes = 13L),
+  list(name = "rep(1e300, 3)", value = 1e300, n_axes = 3L),
+  list(name = "rep(-2.5, 4)", value = -2.5, n_axes = 4L),
+  list(name = "rep(tiny, 5)", value = .Machine$double.xmin, n_axes = 5L),
+  list(name = "rep(tiny / 4, 3), subnormal", value = .Machine$double.xmin / 4, n_axes = 3L),
+  list(name = "rep(smallest subnormal, 7)", value = .smallest_subnormal, n_axes = 7L),
+  list(name = "5 on a single axis", value = 5, n_axes = 1L)
+)
+
 # (axes, vectors), finite and all different, so nothing degenerates
 .vecs <- function() {
   outer(seq_len(N_AXES), seq_len(N_VECS), function(i_axis, i_vec) i_axis * (i_vec + 1) + (i_axis - 1)^2)
@@ -59,6 +75,13 @@ NON_FINITE_VALUES <- c(NaN, Inf, NA_real_)
   assert_true(is.double(result) && is.null(dim(result)), paste0(name, ": expected a double vector"))
   assert_true(length(result) == len, sprintf("%s: expected length %d, got %d", name, len, length(result)))
   assert_true(all(is.finite(result)), paste0(name, ": non-finite values in the result"))
+}
+
+.assert_exact_zeros_that_normalization_refuses <- function(projection, case_name) {
+  assert_true(all(projection == 0), paste0(case_name, ": projection is not exact zeros"))
+  assert_error(normalize_unit_length(projection),
+               paste0(case_name, ": normalize_unit_length must refuse the zero vector"),
+               code = ERR_DIVISION_BY_ZERO)
 }
 
 # ---- omics_vector_RAP_projection -------------------------------------------------------------
@@ -100,6 +123,14 @@ test_omics_vector_RAP_projection_rejects_non_finite_vecs <- function() {
 test_omics_vector_RAP_projection_rejects_an_empty_selection <- function() {
   assert_error(omics_vector_RAP_projection(.vecs(), VECS_SELECTION_MASK, rep(FALSE, N_AXES)),
                "no axis selected", ERR_EMPTY_INPUT)
+}
+
+test_omics_vector_RAP_projection_equal_coordinates_give_exact_zeros <- function() {
+  for (case in .equal_coordinate_cases) {
+    vecs <- matrix(case$value, nrow = case$n_axes, ncol = 1L)
+    res <- omics_vector_RAP_projection(vecs, TRUE, rep(TRUE, case$n_axes))
+    .assert_exact_zeros_that_normalization_refuses(res[, 1], case$name)
+  }
 }
 
 # ---- omics_field_RAP_projection --------------------------------------------------------------
@@ -144,6 +175,16 @@ test_omics_field_RAP_projection_rejects_non_finite_fields <- function() {
 test_omics_field_RAP_projection_rejects_an_empty_selection <- function() {
   assert_error(omics_field_RAP_projection(.fields(), rep(FALSE, N_VECS), AXES_SELECTION_MASK),
                "no field selected", ERR_EMPTY_INPUT)
+}
+
+test_omics_field_RAP_projection_equal_shifts_give_exact_zeros <- function() {
+  for (case in .equal_coordinate_cases) {
+    fields <- array(0, dim = c(case$n_axes, 2L, 1L))
+    fields[, 1L, 1L] <- seq_len(case$n_axes)  # an origin off the diagonal, which does not enter
+    fields[, 2L, 1L] <- case$value  # the shift
+    res <- omics_field_RAP_projection(fields, TRUE, rep(TRUE, case$n_axes))
+    .assert_exact_zeros_that_normalization_refuses(res[, 1], paste("shift", case$name))
+  }
 }
 
 # ---- clock_hand_angle_between_vectors --------------------------------------------------------

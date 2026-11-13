@@ -20,6 +20,7 @@ from tensor_omics import (
     clock_hand_angle_between_vectors,
     clock_hand_angles_for_shift_vectors,
     compute_relative_axis_contributions,
+    normalize_unit_length,
     omics_field_RAP_projection,
     omics_vector_RAP_projection,
     relative_axes_changes_from_shift_vector,
@@ -44,6 +45,22 @@ CONTRIBUTION_PROCEDURES = (compute_relative_axis_contributions, relative_axes_ch
 
 #: what the Fortran rejects in every real input
 NON_FINITE_VALUES = (np.nan, np.inf)
+
+#: (name, value, n_axes): vectors whose coordinates are all equal. Many of them used to project
+#: to a residue of rounding noise instead of zeros, [0.1]*7 to about -1.4e-17 per coordinate.
+_SMALLEST_SUBNORMAL = np.nextafter(0.0, 1.0)
+_EQUAL_COORDINATE_CASES = [
+    ("[0.7]*6", 0.7, 6),
+    ("[0.1]*3", 0.1, 3),
+    ("[0.1]*7", 0.1, 7),
+    ("[3.3]*13", 3.3, 13),
+    ("[1e300]*3", 1e300, 3),
+    ("[-2.5]*4", -2.5, 4),
+    ("[tiny]*5", np.finfo(np.float64).tiny, 5),
+    ("[tiny/4]*3, subnormal", np.finfo(np.float64).tiny / 4, 3),
+    ("[smallest subnormal]*7", _SMALLEST_SUBNORMAL, 7),
+    ("[5]*1, a single axis", 5.0, 1),
+]
 
 
 def _vecs():
@@ -74,6 +91,14 @@ def _assert_result(result, shape, name, order='F'):
     contiguous = result.flags.f_contiguous if order == 'F' else result.flags.c_contiguous
     assert contiguous, f"{name}: expected memory order '{order}'"
     assert np.all(np.isfinite(result)), f"{name}: non-finite values in the result"
+
+
+def _assert_exact_zeros_that_normalization_refuses(projection, case_name):
+    assert np.all(projection == 0.0), f"{case_name}: projection {projection!r} is not exact zeros"
+    column = np.array(projection, dtype=np.float64)
+    assert_error(lambda: normalize_unit_length(column),
+                 f"{case_name}: normalize_unit_length must refuse the zero vector",
+                 code=ERR_DIVISION_BY_ZERO)
 
 
 # ---- omics_vector_RAP_projection -------------------------------------------------------------
@@ -108,6 +133,14 @@ def test_omics_vector_RAP_projection_rejects_an_empty_selection():
     nothing_selected = np.zeros(N_AXES, dtype=np.bool_)
     assert_error(lambda: omics_vector_RAP_projection(_vecs(), VECS_SELECTION_MASK, nothing_selected),
                  "no axis selected", ERR_EMPTY_INPUT)
+
+
+def test_omics_vector_RAP_projection_equal_coordinates_give_exact_zeros():
+    for case_name, value, n_axes in _EQUAL_COORDINATE_CASES:
+        vecs = np.full((n_axes, 1), value, order="F")
+        projections = np.asarray(omics_vector_RAP_projection(
+            vecs, np.ones(1, dtype=bool), np.ones(n_axes, dtype=bool)))
+        _assert_exact_zeros_that_normalization_refuses(projections[:, 0], case_name)
 
 
 # ---- omics_field_RAP_projection --------------------------------------------------------------
@@ -153,6 +186,16 @@ def test_omics_field_RAP_projection_rejects_an_empty_selection():
     nothing_selected = np.zeros(N_VECS, dtype=np.bool_)
     assert_error(lambda: omics_field_RAP_projection(_fields(), nothing_selected, AXES_SELECTION_MASK),
                  "no field selected", ERR_EMPTY_INPUT)
+
+
+def test_omics_field_RAP_projection_equal_shifts_give_exact_zeros():
+    for case_name, value, n_axes in _EQUAL_COORDINATE_CASES:
+        fields = np.zeros((n_axes, 2, 1), order="F")
+        fields[:, 0, 0] = np.arange(1.0, n_axes + 1.0)  # an origin off the diagonal, which does not enter
+        fields[:, 1, 0] = value  # the shift
+        projections = np.asarray(omics_field_RAP_projection(
+            fields, np.ones(1, dtype=bool), np.ones(n_axes, dtype=bool)))
+        _assert_exact_zeros_that_normalization_refuses(projections[:, 0], "shift " + case_name)
 
 
 # ---- clock_hand_angle_between_vectors --------------------------------------------------------

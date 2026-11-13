@@ -5,20 +5,24 @@
 !| property of the projection on inexact data, which axes and which fields the masks pick and in
 !| what order, the diagonal and in-plane special cases, each dimension on its own, the selected
 !| counts checked against their masks, NaN and Inf rejected anywhere in `fields` (the origin
-!| included, though it is not used), and magnitudes near `huge`.
+!| included, though it is not used), magnitudes near `huge`, and shifts whose selected
+!| coordinates are all equal, which project to exact zeros that `normalize_unit_length` refuses.
 !|
 !| The origins are chosen so that projecting origin - shift, or the shift's negative, would give
 !| a different result: every case that computes a projection would notice the origin being used.
 !|
 !| Most cases select two or four axes: the mean is then a division by a power of two, exact at
 !| every optimization level, so the expected values are compared exactly. The one case on three
-!| axes says why it needs a tolerance.
+!| axes says why it needs a tolerance. The equal-shift cases are exact on any number of axes: they
+!| are decided on the coordinates, not on their rounded mean.
 module mod_test_omics_field_RAP_projection
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_negative_inf
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_negative_inf, &
+                                             ieee_next_after
     use tox_relative_axis_plane_tools
+    use tox_normalization, only: normalize_unit_length
     use test_suite, only: test_case
     use tox_errors
     implicit none
@@ -29,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_omics_field_RAP_projection() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(13))
+        allocate (all_tests(14))
 
         all_tests(1) = test_case("test_omics_field_RAP_projection_projects_the_shift", &
                                  test_omics_field_RAP_projection_projects_the_shift)
@@ -57,6 +61,8 @@ contains
                                   test_omics_field_RAP_projection_rejects_nan_and_inf)
         all_tests(13) = test_case("test_omics_field_RAP_projection_extreme_magnitudes", &
                                   test_omics_field_RAP_projection_extreme_magnitudes)
+        all_tests(14) = test_case("test_omics_field_RAP_projection_equal_shifts_give_exact_zeros", &
+                                  test_omics_field_RAP_projection_equal_shifts_give_exact_zeros)
     end function get_all_tests_omics_field_RAP_projection
 
     !> The contract itself: the result is the projected shift, `fields(:, 2, j)`, and the origin,
@@ -452,5 +458,53 @@ contains
         call assert_equal_array_real(projections(:, 2), expected(:, 2), 2, 0d0, &
                                      "test_omics_field_RAP_projection_extreme_magnitudes: [huge, -huge] unchanged")
     end subroutine test_omics_field_RAP_projection_extreme_magnitudes
+
+    !> A field whose shift has all coordinates equal projects to exact zeros, and
+    !| normalize_unit_length then refuses it as the zero vector. Subtracting the rounded mean used
+    !| to leave a residue for many of them, which normalization turned into a direction. Every
+    !| origin is off the diagonal, so origin - shift would not project to zero.
+    subroutine test_omics_field_RAP_projection_equal_shifts_give_exact_zeros()
+        real(real64) :: smallest_subnormal
+
+        smallest_subnormal = ieee_next_after(0.0_real64, 1.0_real64)
+
+        call check_equal_shifts_give_exact_zeros("[0.7]*6", 0.7_real64, 6)
+        call check_equal_shifts_give_exact_zeros("[0.1]*7", 0.1_real64, 7)
+        call check_equal_shifts_give_exact_zeros("[3.3]*13", 3.3_real64, 13)
+        call check_equal_shifts_give_exact_zeros("[2e300]*3", 2.0e300_real64, 3)
+        call check_equal_shifts_give_exact_zeros("[-2.5]*4", -2.5_real64, 4)
+        call check_equal_shifts_give_exact_zeros("[tiny]*5", tiny(1.0_real64), 5)
+        call check_equal_shifts_give_exact_zeros("[smallest subnormal]*7", smallest_subnormal, 7)
+    end subroutine test_omics_field_RAP_projection_equal_shifts_give_exact_zeros
+
+    !> Projects the field with the shift `[shift_value]*n_axes` from the origin [1, 2, ..., n_axes]
+    !| and checks its projection is exact zeros that normalization refuses.
+    subroutine check_equal_shifts_give_exact_zeros(case_name, shift_value, n_axes)
+        character(len=*), intent(in) :: case_name
+        real(real64), intent(in) :: shift_value
+        integer(int32), intent(in) :: n_axes
+
+        real(real64) :: fields(n_axes, 2, 1), projections(n_axes, 1), zeros(n_axes)
+        logical(c_bool) :: axes_mask(n_axes), fields_mask(1)
+        integer(int32) :: ierr, i_axis
+
+        fields(:, 1, 1) = [(real(i_axis, real64), i_axis = 1, n_axes)]
+        fields(:, 2, 1) = shift_value
+        axes_mask = .true.
+        fields_mask = .true.
+        zeros = 0.0_real64
+        projections = 1.0_real64
+
+        call omics_field_RAP_projection(fields, n_axes, 1, fields_mask, 1, axes_mask, n_axes, projections, ierr)
+        call assert_err(ierr, ERR_OK, "test_omics_field_RAP_projection_equal_shifts_give_exact_zeros: " &
+                        //case_name//": projection")
+        call assert_identical_array_real(projections(:, 1), zeros, n_axes, &
+                                         "test_omics_field_RAP_projection_equal_shifts_give_exact_zeros: " &
+                                         //case_name//": projection is not exact zeros")
+
+        call normalize_unit_length(projections(:, 1), n_axes, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_omics_field_RAP_projection_equal_shifts_give_exact_zeros: " &
+                        //case_name//": normalization must refuse")
+    end subroutine check_equal_shifts_give_exact_zeros
 
 end module mod_test_omics_field_RAP_projection
