@@ -114,8 +114,8 @@ def main(argv=None):
     print("gene ids unique, family ids unique, mapping in range, expression non-negative")
 
     # --- 4. store -----------------------------------------------------------
-    # Every array needs BOTH the array and its *_file name: an array passed
-    # without a name is dropped from the archive without an error.
+    # Every array needs BOTH the array and its *_file name: passing only one
+    # half fails with a ToxInputError naming the missing argument.
     args.out.parent.mkdir(parents=True, exist_ok=True)
     save_tox_data(
         str(args.out),
