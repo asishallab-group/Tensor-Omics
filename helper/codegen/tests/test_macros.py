@@ -299,7 +299,10 @@ class TestOmpMacros:
         text = (REPO_ROOT / "src/macros.h").read_text()
         definition = next(line for line in text.splitlines(keepends=True)
                           if line.startswith(f"#define {name}"))
-        text = text.replace(definition, "").replace("#else\n", f"#else\n{definition}", 1)
+        text = text.replace(definition, "")
+        # the #else of the OpenMP switch: the header has other #ifdef blocks before it
+        openmp_else = text.index("#else\n", text.index(f"#ifdef {OPENMP_SWITCH}\n"))
+        text = text[:openmp_else] + f"#else\n{definition}" + text[openmp_else + len("#else\n"):]
         header = tmp_path / "macros.h"
         header.write_text(text)
 

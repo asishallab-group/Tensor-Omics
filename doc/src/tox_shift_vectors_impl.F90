@@ -33,7 +33,7 @@ contains
             !! DM_MAX(n_families)
             !! DM_SENTINEL(M_GENE_TO_FAM_SENTINEL)
         real(real64), intent(out) :: shift_vectors(n_tissues, 2, n_genes)
-            !! Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
+            !! Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first, then the shift vector from that centroid to the gene. A gene with no family assigned has no centroid to shift from, so both of its vectors are zero
 
         integer(int32) :: i_gene, fam_idx, i_tissue
 
@@ -43,18 +43,23 @@ contains
             ! Get current centroid index from `i_gene`
             fam_idx = gene_to_fam(i_gene)
 
+            ! A gene with no family has no centroid to shift from, so both of its vectors are
+            ! zero. The centroid index is only formed inside this branch: `fam_idx` is the
+            ! sentinel here, and indexing `family_centroids` with it would read outside the
+            ! array rather than yield anything meaningful.
             if (fam_idx == M_GENE_TO_FAM_SENTINEL) then
                 shift_vectors(:, 1, i_gene) = 0.0_real64
+                shift_vectors(:, 2, i_gene) = 0.0_real64
             else
                 shift_vectors(:, 1, i_gene) = family_centroids(:, fam_idx)
-            end if
 
-            ! shift vector = gene's own expression minus its family centroid: it points from the
-            ! family's average expression towards this gene, i.e. the direction and magnitude by
-            ! which this paralog's expression has diverged from its family.
-            do concurrent (i_tissue = 1:n_tissues) shared(shift_vectors, i_gene, expression_vectors, family_centroids, fam_idx)
-                shift_vectors(i_tissue, 2, i_gene) = expression_vectors(i_tissue, i_gene) - family_centroids(i_tissue, fam_idx)
-            end do
+                ! shift vector = gene's own expression minus its family centroid: it points from the
+                ! family's average expression towards this gene, i.e. the direction and magnitude by
+                ! which this paralog's expression has diverged from its family.
+                do concurrent (i_tissue = 1:n_tissues) shared(shift_vectors, i_gene, expression_vectors, family_centroids, fam_idx)
+                    shift_vectors(i_tissue, 2, i_gene) = expression_vectors(i_tissue, i_gene) - family_centroids(i_tissue, fam_idx)
+                end do
+            end if
         end do
     end subroutine compute_shift_vector_field_impl
 end module tox_shift_vectors_impl
