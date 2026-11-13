@@ -81,17 +81,21 @@ normalized = normalization_pipeline(
 
 \begin{note}
   Tensor Omics stores one expression vector per \emph{column} because Fortran
-  is column-major. A matrix handed over as genes $\times$ replicates is not
-  rejected --- it is silently interpreted as replicates $\times$ genes, and
-  every downstream distance and angle is then meaningless. Check
+  is column-major. A matrix handed over as genes $\times$ replicates usually
+  fails with the \code{Array size mismatch} described below, because its row
+  count is then the gene count. Should the two counts happen to agree, it is
+  not rejected --- it is silently interpreted as replicates $\times$ genes,
+  and every downstream distance and angle is then meaningless. Check
   \code{expr.shape} before you call.
 \end{note}
 
 \begin{parameters}
   \param{reps\_per\_tissue}{How the replicate rows are grouped into tissues;
     entry $i$ is the number of adjacent rows belonging to tissue $i$}{%
-    Must sum to \code{n\_replicates}, otherwise the call fails with
-    \code{Array size mismatch}. Replicate counts may differ between tissues}
+    Must sum to \code{n\_replicates}, the row count of \code{expr},
+    otherwise the call fails with \code{ToxInputError: Array size mismatch
+    (argument 'expr', via 'n\_replicates'); 'n\_replicates' must equal
+    sum(reps\_per\_tissue)}. Replicate counts may differ between tissues}
   \param{span}{Fraction of the genes entering each local fit of the
     mean--SD LOESS curve}{Keep the default \code{0.7}.
     Lower it only if the mean--SD trend is genuinely non-monotonic and the
