@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.9% of total for modules and submodules.">165 statements</a>
+                 title=" 0.8% of total for modules and submodules.">165 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -179,11 +179,11 @@ figure for the pair of studies.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='tox_data_integration_jsd_impl.html'>tox_data_integration_jsd_impl</a></li>
                   <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='tox_data_integration_jsd_impl.html'>tox_data_integration_jsd_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -238,7 +238,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pool_size"></span>
+              <span class="anchor" id="variable-pool_size~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -253,7 +253,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~5"></span>
+              <span class="anchor" id="variable-shared_residual_range~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -286,7 +286,7 @@ The default value is <code>0.95</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~106"></span>
+              <span class="anchor" id="variable-ierr~173"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -359,7 +359,7 @@ The maximum valid value is <code>pool_size</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pool_size~2"></span>
+              <span class="anchor" id="variable-pool_size~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -374,7 +374,7 @@ The maximum valid value is <code>pool_size</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~6"></span>
+              <span class="anchor" id="variable-shared_residual_range~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -407,7 +407,7 @@ The default value is <code>0.95</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~107"></span>
+              <span class="anchor" id="variable-ierr~174"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -433,171 +433,6 @@ The default value is <code>0.95</code>.</p>
     <div class="card-body">
           
   <p>Validates its inputs, prepares what <a href="../proc/determine_study_shared_residual_range_impl.html">determine_study_shared_residual_range_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/determine_study_shared_residual_range_expert.html">determine_study_shared_residual_range_expert</a> to prepare it yourself.</p><a href="../proc/determine_study_shared_residual_range.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_reps_S1, n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighborhood_residuals_S1</strong></td>
-            <td>
-<p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-NaN is permitted for this value.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_reps_S2, n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighborhood_residuals_S2</strong></td>
-            <td>
-<p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-NaN is permitted for this value.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_reps_s1~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_reps_S1</strong></td>
-            <td>
-<p>Number of replicates in study 1</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_reps_s2~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_reps_S2</strong></td>
-            <td>
-<p>Number of replicates in study 2</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_neighbors~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_neighbors</strong></td>
-            <td>
-<p>Number of neighbors in the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~9"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>Number of reference points in the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-shared_residual_range~7"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>shared_residual_range</strong></td>
-            <td>
-<p>Computed residual range (R)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-residual_range_quantile_level~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>residual_range_quantile_level</strong></td>
-            <td>
-<p>Quantile level in [0,1] for determining the residual range
-The minimum valid value is <code>0.0_real64</code>.
-The maximum valid value is <code>1.0_real64</code>.
-The default value is <code>0.95</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~108"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-determine_study_shared_residual_range_expert"></span> <h3>public pure subroutine <a href='../proc/determine_study_shared_residual_range_expert.html'>determine_study_shared_residual_range_expert</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile_level, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, then calls <a href="../proc/determine_study_shared_residual_range_impl.html">determine_study_shared_residual_range_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/determine_study_shared_residual_range.html">determine_study_shared_residual_range</a> does both.</p><a href="../proc/determine_study_shared_residual_range_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -644,7 +479,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~6"></span>
+              <span class="anchor" id="variable-n_reps_s1~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -659,7 +494,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~6"></span>
+              <span class="anchor" id="variable-n_reps_s2~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -674,7 +509,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~6"></span>
+              <span class="anchor" id="variable-n_neighbors~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -689,7 +524,172 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~10"></span>
+              <span class="anchor" id="variable-n_points~39"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points in the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shared_residual_range~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>shared_residual_range</strong></td>
+            <td>
+<p>Computed residual range (R)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-residual_range_quantile_level~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>residual_range_quantile_level</strong></td>
+            <td>
+<p>Quantile level in [0,1] for determining the residual range
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.
+The default value is <code>0.95</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~175"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-determine_study_shared_residual_range_expert"></span> <h3>public pure subroutine <a href='../proc/determine_study_shared_residual_range_expert.html'>determine_study_shared_residual_range_expert</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile_level, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/determine_study_shared_residual_range_impl.html">determine_study_shared_residual_range_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/determine_study_shared_residual_range.html">determine_study_shared_residual_range</a> does both.</p><a href="../proc/determine_study_shared_residual_range_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S1, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals_S1</strong></td>
+            <td>
+<p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S2, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals_S2</strong></td>
+            <td>
+<p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s1~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S1</strong></td>
+            <td>
+<p>Number of replicates in study 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s2~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S2</strong></td>
+            <td>
+<p>Number of replicates in study 2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_neighbors~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_neighbors</strong></td>
+            <td>
+<p>Number of neighbors in the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~40"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -734,7 +734,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~8"></span>
+              <span class="anchor" id="variable-shared_residual_range~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -767,7 +767,7 @@ The default value is <code>0.95</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~109"></span>
+              <span class="anchor" id="variable-ierr~176"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -838,7 +838,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~7"></span>
+              <span class="anchor" id="variable-n_neighbors~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -853,7 +853,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~11"></span>
+              <span class="anchor" id="variable-n_points~41"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -868,7 +868,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~9"></span>
+              <span class="anchor" id="variable-shared_residual_range~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -884,7 +884,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~5"></span>
+              <span class="anchor" id="variable-n_bins~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -959,7 +959,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~110"></span>
+              <span class="anchor" id="variable-ierr~177"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -999,7 +999,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s1~2"></span>
+              <span class="anchor" id="variable-pmf_s1"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1016,7 +1016,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s2~2"></span>
+              <span class="anchor" id="variable-pmf_s2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1033,7 +1033,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~12"></span>
+              <span class="anchor" id="variable-n_points~42"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1048,7 +1048,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~6"></span>
+              <span class="anchor" id="variable-n_bins~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1063,7 +1063,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~3"></span>
+              <span class="anchor" id="variable-js_divergences"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1078,7 +1078,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~111"></span>
+              <span class="anchor" id="variable-ierr~178"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1118,7 +1118,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~4"></span>
+              <span class="anchor" id="variable-js_divergences~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1134,7 +1134,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~13"></span>
+              <span class="anchor" id="variable-n_points~43"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1149,7 +1149,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s1~3"></span>
+              <span class="anchor" id="variable-included_n_reps_s1"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1165,7 +1165,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s2~3"></span>
+              <span class="anchor" id="variable-included_n_reps_s2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1181,7 +1181,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-global_js_divergence~3"></span>
+              <span class="anchor" id="variable-global_js_divergence"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1196,7 +1196,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~3"></span>
+              <span class="anchor" id="variable-weights~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1211,7 +1211,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~112"></span>
+              <span class="anchor" id="variable-ierr~179"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1254,7 +1254,7 @@ The minimum valid value is <code>0_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

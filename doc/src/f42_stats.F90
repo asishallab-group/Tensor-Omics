@@ -331,12 +331,8 @@ contains
             !! Number of genes being processed.
         real(real64), dimension(n_genes), intent(in) :: rdi
             !! empirical distribution D
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(in) :: sorted_rdi
             !! empirical distribution D with non negative values
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(out) :: tail_probability
             !! Output array to store the computed upper-tail probability for each gene.
         real(real64), intent(in) :: c_const
@@ -349,6 +345,8 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_in_range_real(c_const, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(rdi, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(sorted_rdi, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -392,12 +390,8 @@ contains
             !! Number of genes being processed.
         real(real64), dimension(n_genes), intent(in) :: rdi
             !! empirical distribution D
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(in) :: sorted_rdi
             !! empirical distribution D with non negative values
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: sorted_rdi_perm
             !! Permutation of `sorted_rdi` in ascending order. The allocating entry point builds
             !! and heapsorts it for you; the expert one takes whatever order you supply.
@@ -414,6 +408,8 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_in_range_real(c_const, ierr, arg_pos=6_int32)
+        call validate_all_in_range_real(rdi, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(sorted_rdi, n_genes, ierr, arg_pos=3_int32)
         call validate_all_in_range_int(sorted_rdi_perm, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_genes)
         if (is_err(ierr)) return
 #endif
