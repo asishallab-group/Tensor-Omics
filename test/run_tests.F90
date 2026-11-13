@@ -29,6 +29,7 @@ program main
     use mod_test_f42_bit_masks, only: get_all_tests_f42_bit_masks
     use mod_test_f42_reductions, only: get_all_tests_f42_reductions
     use mod_test_openmp, only: get_all_tests_openmp
+    use mod_test_tox_errors, only: get_all_tests_tox_errors
     implicit none
 
     integer :: nargs
@@ -63,6 +64,7 @@ program main
     call add_suite("f42_bit_masks", get_all_tests_f42_bit_masks)
     call add_suite("f42_reductions", get_all_tests_f42_reductions)
     call add_suite("openmp", get_all_tests_openmp)
+    call add_suite("tox_errors", get_all_tests_tox_errors)
 
     nargs = command_argument_count()
 
