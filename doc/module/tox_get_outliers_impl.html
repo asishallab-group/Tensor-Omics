@@ -188,12 +188,12 @@ applies the threshold and reports which genes exceed it.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='f42_stats_impl.html'>f42_stats_impl</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
                   <li class="list-inline-item"><a href='tox_loess_impl.html'>tox_loess_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -288,7 +288,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~60"></span>
+              <span class="anchor" id="variable-n_genes~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -303,7 +303,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~15"></span>
+              <span class="anchor" id="variable-n_families~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -318,7 +318,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~20"></span>
+              <span class="anchor" id="variable-distances~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -333,7 +333,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~14"></span>
+              <span class="anchor" id="variable-gene_to_fam~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -395,7 +395,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~4"></span>
+              <span class="anchor" id="variable-indices_used~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -412,7 +412,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~8"></span>
+              <span class="anchor" id="variable-tmp_perm~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -427,7 +427,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~4"></span>
+              <span class="anchor" id="variable-tmp_stack_left~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -442,7 +442,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~4"></span>
+              <span class="anchor" id="variable-tmp_stack_right~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -457,7 +457,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~18"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -472,7 +472,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~23"></span>
+              <span class="anchor" id="variable-int_workspace_size~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -483,12 +483,12 @@ remaining slots hold <code>0</code>.</p>
             <td><strong>int_workspace_size</strong></td>
             <td>
 <p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_impl.html#variable-int_workspace_size~23" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_impl.html#variable-int_workspace_size~16" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~18"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~11"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -503,7 +503,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~23"></span>
+              <span class="anchor" id="variable-real_workspace_size~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -514,12 +514,12 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
             <td><strong>real_workspace_size</strong></td>
             <td>
 <p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_impl.html#variable-real_workspace_size~23" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_impl.html#variable-real_workspace_size~16" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_diagl~3"></span>
+              <span class="anchor" id="variable-tmp_diagl~5"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -534,7 +534,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights~4"></span>
+              <span class="anchor" id="variable-tmp_weights~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -549,7 +549,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~12"></span>
+              <span class="anchor" id="variable-tmp_eval_points~5"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -564,7 +564,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~15"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -579,7 +579,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~15"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -594,7 +594,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~15"></span>
+              <span class="anchor" id="variable-tmp_residuals~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -609,7 +609,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~15"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -624,7 +624,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_fitted_values~3"></span>
+              <span class="anchor" id="variable-tmp_fitted_values~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -639,7 +639,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~21"></span>
+              <span class="anchor" id="variable-span~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -659,7 +659,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~22"></span>
+              <span class="anchor" id="variable-degree~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -677,7 +677,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~4"></span>
+              <span class="anchor" id="variable-mode~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -688,7 +688,7 @@ The maximum valid value is <code>2_int32</code>.</p>
             <td><strong>mode</strong></td>
             <td>
 <p>Mode for LOESS fitting
-The default value is <code>1_int32</code>.</p><a href="../proc/compute_family_scaling_impl.html#variable-mode~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+The default value is <code>1_int32</code>.</p><a href="../proc/compute_family_scaling_impl.html#variable-mode~3" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -742,7 +742,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_means_aux~3"></span>
+              <span class="anchor" id="variable-tmp_means_aux~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -757,7 +757,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~186"></span>
+              <span class="anchor" id="variable-ierr~127"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -801,7 +801,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~61"></span>
+              <span class="anchor" id="variable-n_genes~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -816,7 +816,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~21"></span>
+              <span class="anchor" id="variable-distances~15"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -831,7 +831,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~15"></span>
+              <span class="anchor" id="variable-gene_to_fam~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -861,7 +861,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~6"></span>
+              <span class="anchor" id="variable-rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -876,7 +876,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~6"></span>
+              <span class="anchor" id="variable-sorted_rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -906,7 +906,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~5"></span>
+              <span class="anchor" id="variable-tmp_stack_left~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -921,7 +921,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~5"></span>
+              <span class="anchor" id="variable-tmp_stack_right~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -965,7 +965,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~62"></span>
+              <span class="anchor" id="variable-n_genes~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -980,7 +980,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~7"></span>
+              <span class="anchor" id="variable-rdi~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -995,7 +995,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~7"></span>
+              <span class="anchor" id="variable-sorted_rdi~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1040,7 +1040,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~3"></span>
+              <span class="anchor" id="variable-threshold~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1055,7 +1055,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tail_probability~6"></span>
+              <span class="anchor" id="variable-tail_probability~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1073,7 +1073,7 @@ upper-tail probability is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile_level~5"></span>
+              <span class="anchor" id="variable-quantile_level~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1120,7 +1120,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~63"></span>
+              <span class="anchor" id="variable-n_genes~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1135,7 +1135,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~16"></span>
+              <span class="anchor" id="variable-n_families~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1150,7 +1150,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~22"></span>
+              <span class="anchor" id="variable-distances~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1165,7 +1165,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~16"></span>
+              <span class="anchor" id="variable-gene_to_fam~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1180,7 +1180,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~9"></span>
+              <span class="anchor" id="variable-tmp_perm~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1195,7 +1195,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~6"></span>
+              <span class="anchor" id="variable-tmp_stack_left~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1210,7 +1210,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~6"></span>
+              <span class="anchor" id="variable-tmp_stack_right~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1225,7 +1225,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~19"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1240,7 +1240,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~24"></span>
+              <span class="anchor" id="variable-int_workspace_size~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1251,12 +1251,12 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td><strong>int_workspace_size</strong></td>
             <td>
 <p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_impl.html#variable-int_workspace_size~24" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_impl.html#variable-int_workspace_size~17" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~19"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~12"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1271,7 +1271,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~24"></span>
+              <span class="anchor" id="variable-real_workspace_size~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1282,12 +1282,12 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
             <td><strong>real_workspace_size</strong></td>
             <td>
 <p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_impl.html#variable-real_workspace_size~24" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_impl.html#variable-real_workspace_size~17" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_diagl~4"></span>
+              <span class="anchor" id="variable-tmp_diagl~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1302,7 +1302,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights~5"></span>
+              <span class="anchor" id="variable-tmp_weights~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1317,7 +1317,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~13"></span>
+              <span class="anchor" id="variable-tmp_eval_points~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1332,7 +1332,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~16"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1347,7 +1347,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~16"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1362,7 +1362,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~16"></span>
+              <span class="anchor" id="variable-tmp_residuals~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1377,7 +1377,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~16"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1392,7 +1392,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_fitted_values~4"></span>
+              <span class="anchor" id="variable-tmp_fitted_values~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1407,7 +1407,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_means_aux~4"></span>
+              <span class="anchor" id="variable-tmp_means_aux~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1422,7 +1422,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_dscale~2"></span>
+              <span class="anchor" id="variable-tmp_dscale~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1437,7 +1437,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_excluded_low_sd~2"></span>
+              <span class="anchor" id="variable-tmp_excluded_low_sd~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1452,7 +1452,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_low_sd_cutoff~2"></span>
+              <span class="anchor" id="variable-tmp_low_sd_cutoff~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1467,7 +1467,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_rdi~2"></span>
+              <span class="anchor" id="variable-tmp_rdi~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1482,7 +1482,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_sorted_rdi~2"></span>
+              <span class="anchor" id="variable-tmp_sorted_rdi~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1497,7 +1497,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_threshold~2"></span>
+              <span class="anchor" id="variable-tmp_threshold~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1576,7 +1576,7 @@ slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tail_probability~7"></span>
+              <span class="anchor" id="variable-tail_probability~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1594,7 +1594,7 @@ upper-tail probability is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile_level~6"></span>
+              <span class="anchor" id="variable-quantile_level~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1612,7 +1612,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~187"></span>
+              <span class="anchor" id="variable-ierr~128"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1655,7 +1655,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 08:39 +0000             </p>
+ on 2026-11-13 09:20 +0000             </p>
           </div>
         </div>
         <br>

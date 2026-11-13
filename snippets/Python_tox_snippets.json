@@ -872,7 +872,7 @@
   },
   "omics_vector_RAP_projection (call)": {
     "prefix": "tox:omics_vector_RAP_projection",
-    "description": "omics_vector_RAP_projection",
+    "description": "A vector's projection is the vector minus the mean of its selected coordinates. A vector whose",
     "body": [
       "${1:result} = omics_vector_RAP_projection(",
       "    vecs=${2:vecs},",
@@ -883,7 +883,7 @@
   },
   "omics_field_RAP_projection (call)": {
     "prefix": "tox:omics_field_RAP_projection",
-    "description": "omics_field_RAP_projection",
+    "description": "A field whose projected vector has all coordinates equal on the selected axes lies on the space",
     "body": [
       "${1:result} = omics_field_RAP_projection(",
       "    fields=${2:fields},",
