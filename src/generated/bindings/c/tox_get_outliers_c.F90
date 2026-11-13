@@ -56,8 +56,6 @@ contains
             !! Total number of gene families
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Mapping of each gene to its family (1-based)
         real(c_double), dimension(n_families), intent(out), target :: dscale
@@ -75,7 +73,7 @@ contains
         real(c_double), intent(in), target :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! The default value is `0.7_real64`.
             !! The minimum valid value is `EPS_LOESS`.
             !! The maximum valid value is `1.0_real64`.
@@ -98,7 +96,10 @@ contains
         real(c_double), intent(out), target :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         integer(int32) :: mode_mode_f
@@ -216,8 +217,6 @@ contains
             !! | save_factorization    | .false.     |
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Mapping of each gene to its family (1-based)
         real(c_double), dimension(n_families), intent(out), target :: dscale
@@ -261,7 +260,7 @@ contains
         real(c_double), intent(in), target :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! The default value is `0.7_real64`.
             !! The minimum valid value is `EPS_LOESS`.
             !! The maximum valid value is `1.0_real64`.
@@ -284,7 +283,10 @@ contains
         real(c_double), intent(out), target :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
         real(c_double), dimension(n_families), intent(out), target :: tmp_means_aux
             !! Work array for saving raw means
         integer(c_int), intent(out), target :: ierr
@@ -395,14 +397,10 @@ contains
             !! number of elements in `dscale`
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         real(c_double), dimension(n_dscale_elements), intent(in), target :: dscale
             !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_genes), intent(out), target :: rdi
             !! Output array of RDI values for each gene
         real(c_double), dimension(n_genes), intent(out), target :: sorted_rdi
@@ -458,14 +456,10 @@ contains
             !! number of elements in `dscale`
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         real(c_double), dimension(n_dscale_elements), intent(in), target :: dscale
             !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_genes), intent(out), target :: rdi
             !! Output array of RDI values for each gene
         real(c_double), dimension(n_genes), intent(out), target :: sorted_rdi
@@ -526,12 +520,8 @@ contains
             !! Total number of genes
         real(c_double), dimension(n_genes), intent(in), target :: rdi
             !! Array of RDI values for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_genes), intent(in), target :: sorted_rdi
             !! Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: perm
             !! Permutation array with sorted indices
         logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
@@ -601,8 +591,6 @@ contains
             !! Total number of gene families
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
@@ -724,8 +712,6 @@ contains
             !! | save_factorization    | .false.     |
         real(c_double), dimension(n_genes), intent(in), target :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_perm

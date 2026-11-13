@@ -197,7 +197,7 @@ over is visible at the call site.</p>
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-mean_vector_c"></span> <h3>public  subroutine <a href='../proc/mean_vector_c.html'>mean_vector_c</a>(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr) bind(C, name="mean_vector_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-mean_vector_c"></span> <h3>public  subroutine <a href='../proc/mean_vector_c.html'>mean_vector_c</a>(expression_vectors, n_axes, n_genes, genes_selection_mask, n_selected_genes, centroid, ierr) bind(C, name="mean_vector_c")  
 </h3></div>
     <div class="card-body">
           
@@ -216,7 +216,7 @@ over is visible at the call site.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~28"></span>
+              <span class="anchor" id="variable-expression_vectors"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -231,7 +231,7 @@ over is visible at the call site.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~23"></span>
+              <span class="anchor" id="variable-n_axes~11"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -246,7 +246,7 @@ over is visible at the call site.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~79"></span>
+              <span class="anchor" id="variable-n_genes~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -261,24 +261,22 @@ over is visible at the call site.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_indices~3"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-genes_selection_mask"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_selected_genes), target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>gene_indices</strong></td>
+            <td><strong>genes_selection_mask</strong></td>
             <td>
-<p>An array containing the column indices of the selected genes in 'expression_vectors'.
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
+<p><code>.true.</code> for the genes (columns of <code>expression_vectors</code>) to average</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_genes~3"></span>
+              <span class="anchor" id="variable-n_selected_genes"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -288,14 +286,13 @@ The maximum valid value is <code>n_genes</code>.</p>
             <td>::</td>
             <td><strong>n_selected_genes</strong></td>
             <td>
-<p>The number of genes in the current family to be averaged.
-The minimum valid value is <code>0_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
+<p>count of <code>.true.</code> values in <code>genes_selection_mask</code>
+The minimum valid value is <code>0_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid~3"></span>
+              <span class="anchor" id="variable-centroid"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -310,7 +307,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~303"></span>
+              <span class="anchor" id="variable-ierr~75"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -350,7 +347,7 @@ The maximum valid value is <code>n_genes</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~29"></span>
+              <span class="anchor" id="variable-expression_vectors~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -365,7 +362,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~24"></span>
+              <span class="anchor" id="variable-n_axes~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -380,7 +377,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~80"></span>
+              <span class="anchor" id="variable-n_genes~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -395,7 +392,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~8"></span>
+              <span class="anchor" id="variable-gene_to_family~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -413,7 +410,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~33"></span>
+              <span class="anchor" id="variable-n_families~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -428,7 +425,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid_matrix~6"></span>
+              <span class="anchor" id="variable-centroid_matrix"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -443,7 +440,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ortholog_set~4"></span>
+              <span class="anchor" id="variable-ortholog_set"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -458,7 +455,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~304"></span>
+              <span class="anchor" id="variable-ierr~76"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -479,7 +476,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_orthologs_expert_c"></span> <h3>public  subroutine <a href='../proc/group_centroid_orthologs_expert_c.html'>group_centroid_orthologs_expert_c</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, tmp_group_indices, ortholog_set, ierr) bind(C, name="group_centroid_orthologs_expert_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_orthologs_expert_c"></span> <h3>public  subroutine <a href='../proc/group_centroid_orthologs_expert_c.html'>group_centroid_orthologs_expert_c</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, tmp_family_genes, ortholog_set, ierr) bind(C, name="group_centroid_orthologs_expert_c")  
 </h3></div>
     <div class="card-body">
           
@@ -498,7 +495,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~30"></span>
+              <span class="anchor" id="variable-expression_vectors~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -513,7 +510,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~25"></span>
+              <span class="anchor" id="variable-n_axes~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -528,7 +525,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~81"></span>
+              <span class="anchor" id="variable-n_genes~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -543,7 +540,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~9"></span>
+              <span class="anchor" id="variable-gene_to_family~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -561,7 +558,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~34"></span>
+              <span class="anchor" id="variable-n_families~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -576,7 +573,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid_matrix~7"></span>
+              <span class="anchor" id="variable-centroid_matrix~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -591,22 +588,22 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_group_indices~6"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-tmp_family_genes"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
               dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>tmp_group_indices</strong></td>
+            <td><strong>tmp_family_genes</strong></td>
             <td>
-<p>Work array for storing the indices of one family's genes.</p>
+<p>Work array: <code>.true.</code> for the genes of the family being averaged.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ortholog_set~5"></span>
+              <span class="anchor" id="variable-ortholog_set~2"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -621,7 +618,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~305"></span>
+              <span class="anchor" id="variable-ierr~77"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -661,7 +658,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~31"></span>
+              <span class="anchor" id="variable-expression_vectors~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -676,7 +673,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~26"></span>
+              <span class="anchor" id="variable-n_axes~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -691,7 +688,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~82"></span>
+              <span class="anchor" id="variable-n_genes~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -706,7 +703,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~10"></span>
+              <span class="anchor" id="variable-gene_to_family~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -724,7 +721,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~35"></span>
+              <span class="anchor" id="variable-n_families~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -739,7 +736,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid_matrix~8"></span>
+              <span class="anchor" id="variable-centroid_matrix~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -754,7 +751,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~306"></span>
+              <span class="anchor" id="variable-ierr~78"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -775,7 +772,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_all_expert_c"></span> <h3>public  subroutine <a href='../proc/group_centroid_all_expert_c.html'>group_centroid_all_expert_c</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, tmp_group_indices, ierr) bind(C, name="group_centroid_all_expert_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_all_expert_c"></span> <h3>public  subroutine <a href='../proc/group_centroid_all_expert_c.html'>group_centroid_all_expert_c</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, tmp_family_genes, ierr) bind(C, name="group_centroid_all_expert_c")  
 </h3></div>
     <div class="card-body">
           
@@ -794,7 +791,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~32"></span>
+              <span class="anchor" id="variable-expression_vectors~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -809,7 +806,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~27"></span>
+              <span class="anchor" id="variable-n_axes~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -824,7 +821,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~83"></span>
+              <span class="anchor" id="variable-n_genes~16"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -839,7 +836,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~11"></span>
+              <span class="anchor" id="variable-gene_to_family~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -857,7 +854,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~36"></span>
+              <span class="anchor" id="variable-n_families~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -872,7 +869,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid_matrix~9"></span>
+              <span class="anchor" id="variable-centroid_matrix~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -887,22 +884,22 @@ The value <code>0_int32</code> is additionally accepted.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_group_indices~7"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-tmp_family_genes~2"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
               dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>tmp_group_indices</strong></td>
+            <td><strong>tmp_family_genes</strong></td>
             <td>
-<p>Work array for storing the indices of one family's genes.</p>
+<p>Work array: <code>.true.</code> for the genes of the family being averaged.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~307"></span>
+              <span class="anchor" id="variable-ierr~79"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -945,7 +942,7 @@ The value <code>0_int32</code> is additionally accepted.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-12 21:22 +0000             </p>
+ on 2026-11-13 08:30 +0000             </p>
           </div>
         </div>
         <br>
