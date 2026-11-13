@@ -109,7 +109,8 @@ p = compute_p_values(
 \begin{expectedresults}
   On the example's planted panel, the driving factor separates cleanly from the
   rest: total contribution $12.7$ against $0.85$ and $-0.56$ for the two
-  unrelated factors, with $p < 0.0005$ against $0.40$ and $0.56$. If a factor
+  unrelated factors, with $p < 0.0005$ against about $0.4$ and $0.55$ (the exact
+  values depend on the compiler's random number generator). If a factor
   you know to be unrelated scores comparably to one you expect to matter, look
   first at whether the tested entity's \emph{dependent} differs from the other
   entities' --- see the pitfall below --- before concluding anything about the
