@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.3% of total for modules and submodules.">265 statements</a>
+                 title=" 1.3% of total for modules and submodules.">274 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -196,9 +196,9 @@ criterion asked for, so the same matrix can be re-clustered without recomputing 
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
               </ul>
             </li>
         </ul>
@@ -286,7 +286,7 @@ parameter
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-cluster_factor_trajectories_k_means_impl"></span> <h3>public pure subroutine <a href='../proc/cluster_factor_trajectories_k_means_impl.html'>cluster_factor_trajectories_k_means_impl</a>(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, max_iterations)  
+    <div class="card-header codesum"><span class="anchor" id="proc-cluster_factor_trajectories_k_means_impl"></span> <h3>public pure subroutine <a href='../proc/cluster_factor_trajectories_k_means_impl.html'>cluster_factor_trajectories_k_means_impl</a>(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, max_iterations)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -294,7 +294,7 @@ parameter
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Performs k-means clustering on factor trajectories, so factor evolution over time</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Performs k-means clustering on whole factor trajectories, so which samples evolve alike</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -321,12 +321,12 @@ parameter
             <td>
 <p>number (<code>k</code>) of clusters
 The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
+The maximum valid value is <code>n_samples</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~14"></span>
+              <span class="anchor" id="variable-trajectories"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -336,12 +336,12 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
             <td>::</td>
             <td><strong>trajectories</strong></td>
             <td>
-<p>matrix with data points to cluster</p>
+<p>matrix with the trajectories to cluster</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~17"></span>
+              <span class="anchor" id="variable-n_factors"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -356,7 +356,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~22"></span>
+              <span class="anchor" id="variable-n_samples"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -371,7 +371,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~26"></span>
+              <span class="anchor" id="variable-n_timepoints"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -386,18 +386,18 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~2"></span>
+              <span class="anchor" id="variable-centroids"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
               <td></td>            <td>
-              dimension(n_factors, n_clusters)
+              dimension(n_factors*n_timepoints, n_clusters)
             </td>
             <td>::</td>
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html#variable-centroids~2" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html#variable-centroids" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -407,12 +407,12 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_samples*n_timepoints)
+              dimension(n_samples)
             </td>
             <td>::</td>
             <td><strong>labels</strong></td>
             <td>
-<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html#variable-labels" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>array of labels, one per sample, so the first label is the first sample's.</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html#variable-labels" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -427,7 +427,22 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>label_counts</strong></td>
             <td>
-<p>holds the number of points having the respective label assigned</p>
+<p>holds the number of samples having the respective label assigned</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_flattened_trajectories"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors*n_timepoints, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_flattened_trajectories</strong></td>
+            <td>
+<p>Work matrix holding each sample's trajectory as one column</p>
             </td>
         </tr>
         <tr>
@@ -508,7 +523,7 @@ The maximum valid value is <code>n_points</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~41"></span>
+              <span class="anchor" id="variable-n_points~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -523,7 +538,7 @@ The maximum valid value is <code>n_points</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~7"></span>
+              <span class="anchor" id="variable-n_dims~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -538,7 +553,7 @@ The maximum valid value is <code>n_points</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~3"></span>
+              <span class="anchor" id="variable-centroids~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -549,7 +564,7 @@ The maximum valid value is <code>n_points</code>.</p>
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering_impl.html#variable-centroids~3" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering_impl.html#variable-centroids~2" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -644,7 +659,7 @@ The default value is <code>300_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~42"></span>
+              <span class="anchor" id="variable-n_points~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -659,7 +674,7 @@ The default value is <code>300_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~8"></span>
+              <span class="anchor" id="variable-n_dims~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -674,7 +689,7 @@ The default value is <code>300_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~4"></span>
+              <span class="anchor" id="variable-centroids~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -685,7 +700,7 @@ The default value is <code>300_int32</code>.</p>
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_recompute_cluster_centroids_helper.html#variable-centroids~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_recompute_cluster_centroids_helper.html#variable-centroids~3" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -764,7 +779,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_point~5"></span>
+              <span class="anchor" id="variable-i_point~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -809,7 +824,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~43"></span>
+              <span class="anchor" id="variable-n_points~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -824,7 +839,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~9"></span>
+              <span class="anchor" id="variable-n_dims~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -839,7 +854,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~5"></span>
+              <span class="anchor" id="variable-centroids~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -850,7 +865,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_assign_cluster_helper.html#variable-centroids~5" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_assign_cluster_helper.html#variable-centroids~4" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -899,7 +914,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~17"></span>
+              <span class="anchor" id="variable-distances"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -909,12 +924,12 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering_impl.html#variable-distances~17" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering_impl.html#variable-distances" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~44"></span>
+              <span class="anchor" id="variable-n_points~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1035,7 +1050,7 @@ The maximum valid value is <code>2_int32</code>.</p><a href="../proc/linkage_clu
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~18"></span>
+              <span class="anchor" id="variable-distances~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1050,7 +1065,7 @@ The maximum valid value is <code>2_int32</code>.</p><a href="../proc/linkage_clu
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~45"></span>
+              <span class="anchor" id="variable-n_points~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1095,7 +1110,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~19"></span>
+              <span class="anchor" id="variable-distances~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1110,7 +1125,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~46"></span>
+              <span class="anchor" id="variable-n_points~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1140,7 +1155,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-idx~5"></span>
+              <span class="anchor" id="variable-idx"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1214,7 +1229,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~20"></span>
+              <span class="anchor" id="variable-distances~4"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1229,7 +1244,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~47"></span>
+              <span class="anchor" id="variable-n_points~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1348,7 +1363,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~21"></span>
+              <span class="anchor" id="variable-distances~5"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1363,7 +1378,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~48"></span>
+              <span class="anchor" id="variable-n_points~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1512,7 +1527,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~22"></span>
+              <span class="anchor" id="variable-distances~6"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -1527,7 +1542,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~49"></span>
+              <span class="anchor" id="variable-n_points~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1616,7 +1631,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~23"></span>
+              <span class="anchor" id="variable-distances~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1631,7 +1646,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~14"></span>
+              <span class="anchor" id="variable-n~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1719,7 +1734,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:20 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

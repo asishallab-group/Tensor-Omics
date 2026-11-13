@@ -158,8 +158,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_get_outliers_impl.html'>tox_get_outliers_impl</a></li>
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_get_outliers_impl.html'>tox_get_outliers_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~80"></span>
+              <span class="anchor" id="variable-n_genes~47"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +198,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~30"></span>
+              <span class="anchor" id="variable-n_families~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~28"></span>
+              <span class="anchor" id="variable-distances~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -228,7 +228,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~38"></span>
+              <span class="anchor" id="variable-gene_to_fam~15"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -238,12 +238,12 @@
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-                <p>Mapping of each gene to its family (1-based)</p>
+                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~7"></span>
+              <span class="anchor" id="variable-dscale"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -258,7 +258,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~8"></span>
+              <span class="anchor" id="variable-loess_x"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -274,7 +274,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~8"></span>
+              <span class="anchor" id="variable-loess_y"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -290,7 +290,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~7"></span>
+              <span class="anchor" id="variable-indices_used~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -307,7 +307,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~22"></span>
+              <span class="anchor" id="variable-span~12"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -327,7 +327,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~23"></span>
+              <span class="anchor" id="variable-degree~12"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -345,7 +345,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~4"></span>
+              <span class="anchor" id="variable-mode"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -379,7 +379,7 @@ The default value is <code>'robust'</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~9"></span>
+              <span class="anchor" id="variable-n_iters~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -395,7 +395,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-low_sd_cutoff~4"></span>
+              <span class="anchor" id="variable-low_sd_cutoff"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -410,7 +410,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-excluded_low_sd~5"></span>
+              <span class="anchor" id="variable-excluded_low_sd"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -428,7 +428,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~350"></span>
+              <span class="anchor" id="variable-ierr~161"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -475,7 +475,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:20 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

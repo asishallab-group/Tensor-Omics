@@ -754,7 +754,7 @@ responsibility to close it.</p></td>
                  <td><a href='../proc/cluster_factor_trajectories_k_means.html'>cluster_factor_trajectories_k_means</a></td>
                  <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
                  <td>Subroutine</td>
-                 <td><p>Validates its inputs, then calls <a href="../proc/cluster_factor_trajectories_k_means_impl.html">cluster_factor_trajectories_k_means_impl</a>.</p><a href="../proc/cluster_factor_trajectories_k_means.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/cluster_factor_trajectories_k_means_impl.html">cluster_factor_trajectories_k_means_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/cluster_factor_trajectories_k_means_expert.html">cluster_factor_trajectories_k_means_expert</a> to prepare it yourself.</p><a href="../proc/cluster_factor_trajectories_k_means.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/cluster_factor_trajectories_k_means_c.html'>cluster_factor_trajectories_k_means_c</a></td>
@@ -763,10 +763,22 @@ responsibility to close it.</p></td>
                  <td><p>C-wrapper for <a href="../proc/cluster_factor_trajectories_k_means.html">cluster_factor_trajectories_k_means</a></p><a href="../proc/cluster_factor_trajectories_k_means_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/cluster_factor_trajectories_k_means_expert.html'>cluster_factor_trajectories_k_means_expert</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/cluster_factor_trajectories_k_means_impl.html">cluster_factor_trajectories_k_means_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/cluster_factor_trajectories_k_means.html">cluster_factor_trajectories_k_means</a> does both.</p><a href="../proc/cluster_factor_trajectories_k_means_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/cluster_factor_trajectories_k_means_expert_c.html'>cluster_factor_trajectories_k_means_expert_c</a></td>
+                 <td><a href='../module/tox_clustering_c.html'>tox_clustering_c</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-wrapper for <a href="../proc/cluster_factor_trajectories_k_means_expert.html">cluster_factor_trajectories_k_means_expert</a></p><a href="../proc/cluster_factor_trajectories_k_means_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/cluster_factor_trajectories_k_means_impl.html'>cluster_factor_trajectories_k_means_impl</a></td>
                  <td><a href='../module/tox_clustering_impl.html'>tox_clustering_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Performs k-means clustering on factor trajectories, so factor evolution over time</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Performs k-means clustering on whole factor trajectories, so which samples evolve alike</p><a href="../proc/cluster_factor_trajectories_k_means_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_acceleration_from_velocity.html'>compute_acceleration_from_velocity</a></td>
@@ -3190,6 +3202,12 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><p>Compute fractional contribution of each axis to a RAP-projected expression vector.</p><a href="../proc/relative_axes_expression_from_expression_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/require_paired_helper.html'>require_paired_helper</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Requires an array argument and its member-name argument to be given together.</p><a href="../proc/require_paired_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/resolve_tox_data_files.html'>resolve_tox_data_files</a></td>
                  <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
@@ -3931,7 +3949,7 @@ Closes the connected unit in case of an error</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:20 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

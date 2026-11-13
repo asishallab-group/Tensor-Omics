@@ -91,7 +91,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for procedures.">148 statements</a>
+                 title=" 0.8% of total for procedures.">155 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -171,7 +171,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~3"></span>
+              <span class="anchor" id="variable-zip_filename~7"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -196,12 +196,12 @@
             <td>::</td>
             <td><strong>gene_ids</strong>(:)</td>
             <td>
-                <p>Gene ids array, will be saved if provided</p>
+                <p>Gene ids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file"></span>
+              <span class="anchor" id="variable-gene_ids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -216,7 +216,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression"></span>
+              <span class="anchor" id="variable-expression~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -226,12 +226,12 @@
             <td>::</td>
             <td><strong>expression</strong>(:,:)</td>
             <td>
-                <p>Expression vectors array, will be saved if provided</p>
+                <p>Expression vectors array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file"></span>
+              <span class="anchor" id="variable-expression_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -246,7 +246,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~5"></span>
+              <span class="anchor" id="variable-gene_to_family~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -256,12 +256,12 @@
             <td>::</td>
             <td><strong>gene_to_family</strong>(:)</td>
             <td>
-                <p>Gene to family mapping array, will be saved if provided</p>
+                <p>Gene to family mapping array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file"></span>
+              <span class="anchor" id="variable-gene_to_family_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -276,7 +276,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~5"></span>
+              <span class="anchor" id="variable-family_ids~7"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -286,12 +286,12 @@
             <td>::</td>
             <td><strong>family_ids</strong>(:)</td>
             <td>
-                <p>Family ids array, will be saved if provided</p>
+                <p>Family ids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file"></span>
+              <span class="anchor" id="variable-family_ids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -306,7 +306,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~12"></span>
+              <span class="anchor" id="variable-family_centroids~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -316,12 +316,12 @@
             <td>::</td>
             <td><strong>family_centroids</strong>(:,:)</td>
             <td>
-                <p>Family centroids array, will be saved if provided</p>
+                <p>Family centroids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file"></span>
+              <span class="anchor" id="variable-family_centroids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -346,12 +346,12 @@
             <td>::</td>
             <td><strong>shift_vectors</strong>(:,:)</td>
             <td>
-                <p>Shift vectors array, will be saved if provided</p>
+                <p>Shift vectors array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file"></span>
+              <span class="anchor" id="variable-shift_vectors_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -366,7 +366,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~244"></span>
+              <span class="anchor" id="variable-ierr~250"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -413,7 +413,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:20 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

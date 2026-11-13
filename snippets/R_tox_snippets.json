@@ -1,7 +1,7 @@
 {
   "cluster_factor_trajectories_k_means (call)": {
     "prefix": "tox:cluster_factor_trajectories_k_means",
-    "description": "cluster_factor_trajectories_k_means",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single",
     "body": [
       "${1:result} <- cluster_factor_trajectories_k_means(",
       "  trajectories = ${2:trajectories},",

@@ -8,7 +8,7 @@
   },
   "cluster_factor_trajectories_k_means (call)": {
     "prefix": "tox:cluster_factor_trajectories_k_means",
-    "description": "cluster_factor_trajectories_k_means",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single",
     "body": [
       "call cluster_factor_trajectories_k_means( &",
       "    n_clusters=${1:n_clusters}, &",
@@ -25,7 +25,7 @@
   },
   "cluster_factor_trajectories_k_means (call, checked)": {
     "prefix": "tox:cluster_factor_trajectories_k_means.checked",
-    "description": "cluster_factor_trajectories_k_means (with error check)",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single (with error check)",
     "body": [
       "call cluster_factor_trajectories_k_means( &",
       "    n_clusters=${1:n_clusters}, &",

@@ -173,10 +173,10 @@ compatible <em>for this family</em>, which the global figure can hide either way
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
-                  <li class="list-inline-item"><a href='tox_data_integration_jsd_impl.html'>tox_data_integration_jsd_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_data_integration_jsd_impl.html'>tox_data_integration_jsd_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -219,7 +219,7 @@ compatible <em>for this family</em>, which the global figure can hide either way
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_idx"></span>
+              <span class="anchor" id="variable-family_idx~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -297,7 +297,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -313,7 +313,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -363,7 +363,7 @@ The maximum valid value is <code>n_genes_S2</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1"></span>
+              <span class="anchor" id="variable-n_reps_s1~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -378,7 +378,7 @@ The maximum valid value is <code>n_genes_S2</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2"></span>
+              <span class="anchor" id="variable-n_reps_s2~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -393,7 +393,7 @@ The maximum valid value is <code>n_genes_S2</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors"></span>
+              <span class="anchor" id="variable-n_neighbors~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -408,7 +408,7 @@ The maximum valid value is <code>n_genes_S2</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~21"></span>
+              <span class="anchor" id="variable-n_points~44"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -423,7 +423,7 @@ The maximum valid value is <code>n_genes_S2</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins"></span>
+              <span class="anchor" id="variable-n_bins~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -438,7 +438,7 @@ The maximum valid value is <code>n_genes_S2</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range"></span>
+              <span class="anchor" id="variable-shared_residual_range~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -454,354 +454,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>js_divergences</strong></td>
-            <td>
-<p>Jensen-Shannon divergence per reference point, computed for studies S1 and S2</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-included_n_reps_s1"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>included_n_reps_S1</strong></td>
-            <td>
-<p>Count of non-NaN residuals (included ones) in study 1</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-included_n_reps_s2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>included_n_reps_S2</strong></td>
-            <td>
-<p>Count of non-NaN residuals (included ones) in study 2</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-total_included_n_reps"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>total_included_n_reps</strong></td>
-            <td>
-<p>Total number of included replicates from both studies (<script type="math/tex"> \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) </script>)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-global_js_divergence"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>global_js_divergence</strong></td>
-            <td>
-<p>Weighted global Jensen-Shannon divergence</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-weights"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>weights</strong></td>
-            <td>
-<p>Weights used for calculating the global weighted Jensen-Shannon divergence <code>global_js_divergence</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_neighbor_mask_s1"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_neighbor_mask_S1</strong></td>
-            <td>
-<p>Work array for the mask selecting study 1's neighbors that belong to <code>family_idx</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_neighbor_mask_s2"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_neighbor_mask_S2</strong></td>
-            <td>
-<p>Work array for the mask selecting study 2's neighbors that belong to <code>family_idx</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_pmf_s1"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points, n_bins)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_pmf_S1</strong></td>
-            <td>
-<p>Work array for study 1's normalized histogram counts</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_pmf_s2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points, n_bins)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_pmf_S2</strong></td>
-            <td>
-<p>Work array for study 2's normalized histogram counts</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_counts"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points, n_bins)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_counts</strong></td>
-            <td>
-<p>Work array for the histogram counts</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-fjct_compute_masked_jsd_impl"></span> <h3>public pure subroutine <a href='../proc/fjct_compute_masked_jsd_impl.html'>fjct_compute_masked_jsd_impl</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Compute the compatibility score between two studies for a single masked sub-neighborhood</p><a href="../proc/fjct_compute_masked_jsd_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_reps_S1, n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighborhood_residuals_S1</strong></td>
-            <td>
-<p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-NaN is permitted for this value.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_reps_S2, n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighborhood_residuals_S2</strong></td>
-            <td>
-<p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-NaN is permitted for this value.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_reps_s1~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_reps_S1</strong></td>
-            <td>
-<p>Number of replicates in study 1</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_reps_s2~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_reps_S2</strong></td>
-            <td>
-<p>Number of replicates in study 2</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_neighbors~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_neighbors</strong></td>
-            <td>
-<p>Number of neighbors in the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~22"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>Number of reference points in the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighbor_mask_s1"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighbor_mask_S1</strong></td>
-            <td>
-<p>Mask selecting the neighbors of study 1 to include</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighbor_mask_s2"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighbor_mask_S2</strong></td>
-            <td>
-<p>Mask selecting the neighbors of study 2 to include</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_bins~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_bins</strong></td>
-            <td>
-<p>Number of equally sized histogram bins used for the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-shared_residual_range~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>shared_residual_range</strong></td>
-            <td>
-<p>Computed residual range for both studies
-The minimum valid value is <code>0.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-js_divergences~2"></span>
+              <span class="anchor" id="variable-js_divergences~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -846,7 +499,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_included_n_reps~2"></span>
+              <span class="anchor" id="variable-total_included_n_reps"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -876,7 +529,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~2"></span>
+              <span class="anchor" id="variable-weights~6"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -891,7 +544,354 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s1"></span>
+              <span class="anchor" id="variable-tmp_neighbor_mask_s1"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_neighbor_mask_S1</strong></td>
+            <td>
+<p>Work array for the mask selecting study 1's neighbors that belong to <code>family_idx</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_neighbor_mask_s2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_neighbor_mask_S2</strong></td>
+            <td>
+<p>Work array for the mask selecting study 2's neighbors that belong to <code>family_idx</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pmf_s1~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points, n_bins)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_pmf_S1</strong></td>
+            <td>
+<p>Work array for study 1's normalized histogram counts</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pmf_s2~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points, n_bins)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_pmf_S2</strong></td>
+            <td>
+<p>Work array for study 2's normalized histogram counts</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_counts~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points, n_bins)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_counts</strong></td>
+            <td>
+<p>Work array for the histogram counts</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-fjct_compute_masked_jsd_impl"></span> <h3>public pure subroutine <a href='../proc/fjct_compute_masked_jsd_impl.html'>fjct_compute_masked_jsd_impl</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute the compatibility score between two studies for a single masked sub-neighborhood</p><a href="../proc/fjct_compute_masked_jsd_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S1, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals_S1</strong></td>
+            <td>
+<p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S2, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals_S2</strong></td>
+            <td>
+<p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s1~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S1</strong></td>
+            <td>
+<p>Number of replicates in study 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s2~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S2</strong></td>
+            <td>
+<p>Number of replicates in study 2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_neighbors~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_neighbors</strong></td>
+            <td>
+<p>Number of neighbors in the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~45"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points in the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_mask_s1~6"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_mask_S1</strong></td>
+            <td>
+<p>Mask selecting the neighbors of study 1 to include</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_mask_s2~6"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_mask_S2</strong></td>
+            <td>
+<p>Mask selecting the neighbors of study 2 to include</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_bins~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_bins</strong></td>
+            <td>
+<p>Number of equally sized histogram bins used for the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shared_residual_range~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>shared_residual_range</strong></td>
+            <td>
+<p>Computed residual range for both studies
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-js_divergences~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>js_divergences</strong></td>
+            <td>
+<p>Jensen-Shannon divergence per reference point, computed for studies S1 and S2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-included_n_reps_s1~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>included_n_reps_S1</strong></td>
+            <td>
+<p>Count of non-NaN residuals (included ones) in study 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-included_n_reps_s2~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>included_n_reps_S2</strong></td>
+            <td>
+<p>Count of non-NaN residuals (included ones) in study 2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_included_n_reps~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>total_included_n_reps</strong></td>
+            <td>
+<p>Total number of included replicates from both studies (<script type="math/tex"> \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) </script>)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-global_js_divergence~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>global_js_divergence</strong></td>
+            <td>
+<p>Weighted global Jensen-Shannon divergence</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-weights~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>weights</strong></td>
+            <td>
+<p>Weights used for calculating the global weighted Jensen-Shannon divergence <code>global_js_divergence</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pmf_s1~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -906,7 +906,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s2"></span>
+              <span class="anchor" id="variable-pmf_s2~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -921,7 +921,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_counts~2"></span>
+              <span class="anchor" id="variable-tmp_counts~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1070,7 +1070,7 @@ The minimum valid value is <code>0_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:20 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>

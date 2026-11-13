@@ -177,8 +177,8 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -218,7 +218,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~8"></span>
+              <span class="anchor" id="variable-zip_filename"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -248,7 +248,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~9"></span>
+              <span class="anchor" id="variable-keys"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -293,7 +293,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~8"></span>
+              <span class="anchor" id="variable-filenames"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -338,7 +338,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~272"></span>
+              <span class="anchor" id="variable-ierr~133"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -378,7 +378,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~9"></span>
+              <span class="anchor" id="variable-zip_filename~2"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -408,7 +408,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~15"></span>
+              <span class="anchor" id="variable-gene_ids~8"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -418,7 +418,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <td>::</td>
             <td><strong>gene_ids</strong></td>
             <td>
-<p>Gene ids array, will be saved if provided</p>
+<p>Gene ids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -453,7 +453,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file~5"></span>
+              <span class="anchor" id="variable-gene_ids_file"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -483,7 +483,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression~4"></span>
+              <span class="anchor" id="variable-expression"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -493,7 +493,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <td>::</td>
             <td><strong>expression</strong></td>
             <td>
-<p>Expression vectors array, will be saved if provided</p>
+<p>Expression vectors array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -528,7 +528,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file~5"></span>
+              <span class="anchor" id="variable-expression_file"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -558,7 +558,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~8"></span>
+              <span class="anchor" id="variable-gene_to_family"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -568,7 +568,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <td>::</td>
             <td><strong>gene_to_family</strong></td>
             <td>
-<p>Gene to family mapping array, will be saved if provided</p>
+<p>Gene to family mapping array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -588,7 +588,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file~5"></span>
+              <span class="anchor" id="variable-gene_to_family_file"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -618,7 +618,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~8"></span>
+              <span class="anchor" id="variable-family_ids~3"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -628,7 +628,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <td>::</td>
             <td><strong>family_ids</strong></td>
             <td>
-<p>Family ids array, will be saved if provided</p>
+<p>Family ids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -663,7 +663,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file~5"></span>
+              <span class="anchor" id="variable-family_ids_file"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -693,7 +693,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~15"></span>
+              <span class="anchor" id="variable-family_centroids~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -703,7 +703,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <td>::</td>
             <td><strong>family_centroids</strong></td>
             <td>
-<p>Family centroids array, will be saved if provided</p>
+<p>Family centroids array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -738,7 +738,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file~5"></span>
+              <span class="anchor" id="variable-family_centroids_file"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -768,7 +768,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~13"></span>
+              <span class="anchor" id="variable-shift_vectors~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -778,7 +778,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <td>::</td>
             <td><strong>shift_vectors</strong></td>
             <td>
-<p>Shift vectors array, will be saved if provided</p>
+<p>Shift vectors array. Saved when it and its <code>*_file</code> name are both given; giving only one of the two is an error</p>
             </td>
         </tr>
         <tr>
@@ -813,7 +813,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file~5"></span>
+              <span class="anchor" id="variable-shift_vectors_file"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -843,7 +843,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~273"></span>
+              <span class="anchor" id="variable-ierr~134"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -883,7 +883,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~10"></span>
+              <span class="anchor" id="variable-zip_filename~3"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -913,7 +913,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_ids~3"></span>
+              <span class="anchor" id="variable-n_gene_ids"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -928,7 +928,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_id_len~3"></span>
+              <span class="anchor" id="variable-gene_id_len"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -943,7 +943,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_rows~3"></span>
+              <span class="anchor" id="variable-n_expression_rows"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -958,7 +958,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_cols~3"></span>
+              <span class="anchor" id="variable-n_expression_cols"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -973,7 +973,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_to_family~3"></span>
+              <span class="anchor" id="variable-n_gene_to_family"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -988,7 +988,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_ids~3"></span>
+              <span class="anchor" id="variable-n_family_ids"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1003,7 +1003,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_id_len~3"></span>
+              <span class="anchor" id="variable-family_id_len"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1018,7 +1018,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_rows~3"></span>
+              <span class="anchor" id="variable-n_family_centroids_rows"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1033,7 +1033,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_cols~3"></span>
+              <span class="anchor" id="variable-n_family_centroids_cols"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1048,7 +1048,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_rows~3"></span>
+              <span class="anchor" id="variable-n_shift_vectors_rows"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1063,7 +1063,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_cols~3"></span>
+              <span class="anchor" id="variable-n_shift_vectors_cols"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1078,7 +1078,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~274"></span>
+              <span class="anchor" id="variable-ierr~135"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1118,7 +1118,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~11"></span>
+              <span class="anchor" id="variable-zip_filename~4"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -1148,7 +1148,7 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_ids~4"></span>
+              <span class="anchor" id="variable-n_gene_ids~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1164,7 +1164,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_ids
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_id_len~4"></span>
+              <span class="anchor" id="variable-gene_id_len~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1180,7 +1180,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>gene_id_le
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~16"></span>
+              <span class="anchor" id="variable-gene_ids~9"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(out),</td>
@@ -1195,7 +1195,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>gene_id_le
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_rows~4"></span>
+              <span class="anchor" id="variable-n_expression_rows~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1211,7 +1211,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expressi
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_cols~4"></span>
+              <span class="anchor" id="variable-n_expression_cols~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1227,7 +1227,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expressi
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression~5"></span>
+              <span class="anchor" id="variable-expression~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1242,7 +1242,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expressi
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_to_family~4"></span>
+              <span class="anchor" id="variable-n_gene_to_family~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1258,7 +1258,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_to_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~9"></span>
+              <span class="anchor" id="variable-gene_to_family~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1273,7 +1273,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_to_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_ids~4"></span>
+              <span class="anchor" id="variable-n_family_ids~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1289,7 +1289,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_i
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_id_len~4"></span>
+              <span class="anchor" id="variable-family_id_len~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1305,7 +1305,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>family_id_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~9"></span>
+              <span class="anchor" id="variable-family_ids~4"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(out),</td>
@@ -1320,7 +1320,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>family_id_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_rows~4"></span>
+              <span class="anchor" id="variable-n_family_centroids_rows~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1336,7 +1336,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_cols~4"></span>
+              <span class="anchor" id="variable-n_family_centroids_cols~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1352,7 +1352,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~16"></span>
+              <span class="anchor" id="variable-family_centroids~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1367,7 +1367,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_rows~4"></span>
+              <span class="anchor" id="variable-n_shift_vectors_rows~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1383,7 +1383,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_cols~4"></span>
+              <span class="anchor" id="variable-n_shift_vectors_cols~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -1399,7 +1399,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~14"></span>
+              <span class="anchor" id="variable-shift_vectors~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -1414,7 +1414,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~275"></span>
+              <span class="anchor" id="variable-ierr~136"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -1457,7 +1457,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:20 +0000             </p>
+ on 2026-11-13 09:50 +0000             </p>
           </div>
         </div>
         <br>
