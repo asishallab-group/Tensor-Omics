@@ -158,6 +158,7 @@ SEXP relative_axes_expression_from_expression_vector_call(SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP calculate_density_radius_call(SEXP, SEXP);
 SEXP calculate_labels_as_density_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP identify_ensemble_seeds_global_radius_call(SEXP, SEXP, SEXP);
 SEXP identify_ensemble_seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_ambient_density_stats_call(SEXP);
 SEXP obtain_ensembles_global_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -280,6 +281,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
     {"calculate_density_radius_call", (DL_FUNC) &calculate_density_radius_call, 2},
     {"calculate_labels_as_density_call", (DL_FUNC) &calculate_labels_as_density_call, 5},
+    {"identify_ensemble_seeds_global_radius_call", (DL_FUNC) &identify_ensemble_seeds_global_radius_call, 3},
     {"identify_ensemble_seeds_call", (DL_FUNC) &identify_ensemble_seeds_call, 6},
     {"compute_ambient_density_stats_call", (DL_FUNC) &compute_ambient_density_stats_call, 1},
     {"obtain_ensembles_global_radius_call", (DL_FUNC) &obtain_ensembles_global_radius_call, 10},

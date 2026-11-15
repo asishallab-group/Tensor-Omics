@@ -1,5 +1,5 @@
 !> Unit test suite for shatter clustering data calculations.
-module mod_test_shatter_cluster_data
+module mod_test_stc
 
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
@@ -11,10 +11,11 @@ module mod_test_shatter_cluster_data
     use tox_stc, only: calculate_density_radius, calculate_density_radius_expert, &
                        calculate_labels_as_density, calculate_labels_as_density_expert, &
                        identify_ensemble_seeds, identify_ensemble_seeds_expert, &
+                       identify_ensemble_seeds_global_radius, identify_ensemble_seeds_global_radius_expert, &
                        grow_ensemble, grow_ensemble_expert, compute_ensemble_observable, accept_ensemble, &
                        obtain_ensembles_global_radius, obtain_ensembles_seed_radius, &
                        obtain_ensembles_seed_radius_expert, merge_ensembles, merge_ensembles_expert
-    use tox_stc_impl, only: grow_ensemble_impl, obtain_ensembles_impl, MODE_GLOBAL_RADIUS, grow_single_seed_helper, compute_ensemble_observable_helper, accept_ensemble_helper, &
+    use tox_stc_impl, only: grow_ensemble_impl, obtain_ensembles_impl, MODE_GLOBAL_RADIUS, grow_single_seed, compute_ensemble_observable_core, accept_ensemble_core, &
                             compute_ambient_density_stats_helper => compute_ambient_density_stats_impl, &
                             STC_STOP_FIXED_POINT, STC_STOP_REJECT_AFTER_ACCEPT, &
                             STC_STOP_NEVER_ACCEPTED, STC_STOP_NO_CANDIDATES
@@ -24,9 +25,9 @@ module mod_test_shatter_cluster_data
 
 contains
 
-    function get_all_tests_shatter_cluster_data() result(all_tests)
+    function get_all_tests_stc() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(70))
+        allocate (all_tests(75))
         all_tests(1) = test_case("test_density_radius_basic", test_density_radius_basic)
         all_tests(2) = test_case("test_density_labels_basic", test_density_labels_basic)
         all_tests(3) = test_case("test_density_radius_invalid_quantile", test_density_radius_invalid_quantile)
@@ -111,7 +112,12 @@ contains
         all_tests(68) = test_case("test_observable_window_rejects_after_shift", test_observable_window_rejects_after_shift)
         all_tests(69) = test_case("test_history_requires_two_columns", test_history_requires_two_columns)
         all_tests(70) = test_case("test_zero_mad_error_positions", test_zero_mad_error_positions)
-    end function get_all_tests_shatter_cluster_data
+        all_tests(71) = test_case("test_global_seeds_exact_knn", test_global_seeds_exact_knn)
+        all_tests(72) = test_case("test_global_seeds_distance_ties", test_global_seeds_distance_ties)
+        all_tests(73) = test_case("test_global_seeds_excludes_self", test_global_seeds_excludes_self)
+        all_tests(74) = test_case("test_global_seeds_all_neighbors", test_global_seeds_all_neighbors)
+        all_tests(75) = test_case("test_global_seeds_invalid_k", test_global_seeds_invalid_k)
+    end function get_all_tests_stc
 
     subroutine test_density_radius_basic()
         integer(int32), parameter :: n_dims = 2_int32
@@ -535,7 +541,7 @@ contains
                 do i_threshold = 1, size(thresholds)
                     do i_seed = 1, size(seeds)
 
-                        call grow_single_seed_helper(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
+                        call grow_single_seed(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
                             densities, seeds(i_seed), 0.5_real64, mad_factors(i_factor), &
                             mad_ambient, thresholds(i_threshold), &
                             tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
@@ -544,7 +550,7 @@ contains
                         reference_mask(seeds(i_seed)) = .true.
                         reference_history = 0.0_real64
                         i_iter = 1_int32
-                        call compute_ensemble_observable_helper(reference_mask, densities, n_vecs, &
+                        call compute_ensemble_observable_core(reference_mask, densities, n_vecs, &
                             0_int32, i_iter, reference_history)
                         do
                             previous_mask = reference_mask
@@ -585,9 +591,9 @@ contains
                                 exit
                             end if
                             i_iter = i_iter + 1_int32
-                            call compute_ensemble_observable_helper(reference_mask, densities, n_vecs, &
+                            call compute_ensemble_observable_core(reference_mask, densities, n_vecs, &
                                 n_candidates, i_iter, reference_history)
-                            call accept_ensemble_helper(reference_history, i_iter, thresholds(i_threshold), accepted)
+                            call accept_ensemble_core(reference_history, i_iter, thresholds(i_threshold), accepted)
                             if (.not. accepted) then
                                 reference_mask = previous_mask
                                 reference_stop = STC_STOP_REJECT_AFTER_ACCEPT
@@ -626,7 +632,7 @@ contains
         call build_kd_index_expert(vectors, n_dims, n_vecs, kd_indices, [1_int32], &
                                    tmp_workspace, tmp_values, tmp_perm, tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "commit history: build tree")
-        call grow_single_seed_helper(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
+        call grow_single_seed(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
                                      1_int32, 0.5_real64, 100.0_real64, 1.0_real64, 0.1_real64, &
                                      tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                                      history, current_mask, result_mask, stop_reason)
@@ -658,7 +664,7 @@ contains
         call assert_equal_int(ierr, ERR_OK, "incremental surface: build tree")
         tmp_surface = .true.
         current_mask = .true.
-        call grow_single_seed_helper(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
+        call grow_single_seed(vectors, n_dims, n_vecs, [1_int32], kd_indices, densities, &
                                      1_int32, 1.0_real64, 4.0_real64, 1.0_real64, 10.0_real64, &
                                      tmp_stack, tmp_vicinity, tmp_surface, tmp_perm, tmp_abs_diff, &
                                      history, current_mask, result_mask, stop_reason)
@@ -1693,20 +1699,20 @@ contains
 
         observables = 0.0_real64
 
-        call accept_ensemble_helper(observables, 1_int32, alpha_accept=0.5_real64, &
+        call accept_ensemble_core(observables, 1_int32, alpha_accept=0.5_real64, &
                                     is_accepted=is_accepted)
         call assert_true(logical(is_accepted), "helper iter 1 must always accept")
 
         observables(3, 1) = 1.0_real64
         observables(3, 2) = 1.2_real64
 
-        call accept_ensemble_helper(observables, 2_int32, alpha_accept=0.5_real64, &
+        call accept_ensemble_core(observables, 2_int32, alpha_accept=0.5_real64, &
                                     is_accepted=is_accepted)
         call assert_true(logical(is_accepted), "helper accepts smooth fold change")
 
         observables(3, 3) = 2.0_real64
 
-        call accept_ensemble_helper(observables, 3_int32, alpha_accept=0.5_real64, &
+        call accept_ensemble_core(observables, 3_int32, alpha_accept=0.5_real64, &
                                     is_accepted=is_accepted)
         call assert_false(logical(is_accepted), "helper rejects sharp heterogeneity jump")
 
@@ -2913,4 +2919,94 @@ contains
 
     end subroutine test_obtain_ensembles_per_seed_radii
 
-end module mod_test_shatter_cluster_data
+    subroutine test_global_seeds_exact_knn()
+        real(real64) :: vectors(1, 5), density(5), distances(5)
+        integer(int32) :: sorted(5), expert_sorted(5), perm(5), n_seeds, expert_n_seeds, ierr
+        logical(c_bool) :: mask(5), expert_mask(5), visited(5)
+
+        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+        density = [5.0_real64, 4.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 5_int32, density, 2_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN: validated call succeeds")
+        call assert_equal_int(n_seeds, 2_int32, "direct kNN: two seeds, not three median-coverage seeds")
+        call assert_true(all(mask .eqv. [.true., .false., .false., .true., .false.]), &
+                         "direct kNN: exact analytical seed indices")
+        call identify_ensemble_seeds_global_radius_expert(vectors, 1_int32, 5_int32, density, 2_int32, &
+                   perm, distances, visited, expert_sorted, expert_n_seeds, expert_mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN: expert call succeeds")
+        call assert_true(all(mask .eqv. expert_mask), "direct kNN: generated tiers agree")
+        call assert_true(all(visited), "direct kNN: every ambient vector is eventually covered")
+
+        ! Neighbors are selected from all ambient vectors, not only uncovered vectors.
+        vectors(1, :) = [0.0_real64, 1.0_real64, 4.0_real64, 10.0_real64, 20.0_real64]
+        density = [1.0_real64, 2.0_real64, 5.0_real64, 4.0_real64, 3.0_real64]
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 5_int32, density, 1_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN: covered-neighbor case succeeds")
+        call assert_true(all(mask .eqv. [.true., .false., .true., .true., .true.]), &
+                         "direct kNN: covered neighbors still count toward k")
+    end subroutine test_global_seeds_exact_knn
+
+    subroutine test_global_seeds_distance_ties()
+        real(real64) :: vectors(1, 6), density(6)
+        integer(int32) :: sorted(6), n_seeds, repeat_n_seeds, ierr
+        logical(c_bool) :: mask(6), repeat_mask(6)
+
+        vectors = 0.0_real64
+        density = [6.0_real64, 5.0_real64, 4.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 6_int32, density, 1_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN ties: call succeeds")
+        call assert_true(n_seeds >= 3_int32, "direct kNN ties: radius-zero ball must not cover all ties")
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 6_int32, density, 1_int32, &
+                                                   sorted, repeat_n_seeds, repeat_mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN ties: repeated call succeeds")
+        call assert_true(all(mask .eqv. repeat_mask), "direct kNN ties: deterministic for fixed input order")
+    end subroutine test_global_seeds_distance_ties
+
+    subroutine test_global_seeds_excludes_self()
+        real(real64) :: vectors(1, 2), density(2)
+        integer(int32) :: sorted(2), n_seeds, ierr
+        logical(c_bool) :: mask(2)
+
+        vectors = 0.0_real64
+        density = [1.0_real64, 2.0_real64]
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 2_int32, density, 1_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN duplicate pair: call succeeds")
+        call assert_equal_int(n_seeds, 1_int32, "direct kNN duplicate pair: other point is covered")
+        call assert_true(all(mask .eqv. [.false., .true.]), "direct kNN duplicate pair: highest density seed")
+    end subroutine test_global_seeds_excludes_self
+
+    subroutine test_global_seeds_all_neighbors()
+        real(real64) :: vectors(1, 4), density(4)
+        integer(int32) :: sorted(4), n_seeds, ierr
+        logical(c_bool) :: mask(4)
+
+        vectors(1, :) = [0.0_real64, 1.0_real64, 4.0_real64, 10.0_real64]
+        density = [1.0_real64, 2.0_real64, 4.0_real64, 3.0_real64]
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 4_int32, density, 3_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "direct kNN all-neighbors: call succeeds")
+        call assert_equal_int(n_seeds, 1_int32, "direct kNN all-neighbors: one seed covers all")
+        call assert_true(all(mask .eqv. [.false., .false., .true., .false.]), &
+                         "direct kNN all-neighbors: starts at highest density")
+    end subroutine test_global_seeds_all_neighbors
+
+    subroutine test_global_seeds_invalid_k()
+        real(real64) :: vectors(1, 2), density(2)
+        integer(int32) :: sorted(2), n_seeds, ierr
+        logical(c_bool) :: mask(2)
+
+        vectors = 0.0_real64
+        density = 1.0_real64
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 2_int32, density, 0_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_true(ierr /= ERR_OK, "direct kNN validation: zero neighbors rejected")
+        call identify_ensemble_seeds_global_radius(vectors, 1_int32, 2_int32, density, 2_int32, &
+                                                   sorted, n_seeds, mask, ierr)
+        call assert_true(ierr /= ERR_OK, "direct kNN validation: k must exclude the seed")
+    end subroutine test_global_seeds_invalid_k
+
+end module mod_test_stc

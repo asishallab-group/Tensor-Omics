@@ -51,6 +51,24 @@ _CALCULATE_LABELS_AS_DENSITY_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors"
 #: For a derived argument, the one the caller passed it in
 _CALCULATE_LABELS_AS_DENSITY_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None,)
 
+_lib.identify_ensemble_seeds_global_radius_c.restype = None
+_lib.identify_ensemble_seeds_global_radius_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_IDENTIFY_ENSEMBLE_SEEDS_GLOBAL_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "density_labels", "k_seeding", "sorted_perm", "n_seeds", "seed_mask", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_IDENTIFY_ENSEMBLE_SEEDS_GLOBAL_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None,)
+
 _lib.identify_ensemble_seeds_c.restype = None
 _lib.identify_ensemble_seeds_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
@@ -354,6 +372,101 @@ def calculate_labels_as_density(
     label_densities.flags.writeable = False
 
     return label_densities
+
+def identify_ensemble_seeds_global_radius(
+        vectors,
+        density_labels,
+        k_seeding,
+):
+    r"""Select global-radius seeds by covering exactly k nearest other vectors.
+
+    Process all vectors in descending density order. A selected seed covers itself and
+    its k_seeding nearest other ambient vectors, including neighbors already covered.
+    Equal-distance ties follow the deterministic heapsort permutation for the input order;
+    select exactly k other indices rather than a closed ball that could include extra ties.
+    Coverage only suppresses subsequent seeds; global ensemble growth uses its separate radius.
+
+    Parameters
+    ----------
+    vectors : np.ndarray[np.float64] of shape (n_dimensions, n_vectors,), column-major (order='F')
+        Input coordinate vectors
+    density_labels : np.ndarray[np.float64] of shape (n_vectors,)
+        Precalculated ambient density counts
+        The minimum valid value is `1.0`.
+    k_seeding : int
+        Number of nearest other ambient vectors covered by each selected seed
+        The minimum valid value is `1`.
+        The maximum valid value is `n_vectors - 1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        sorted_perm : np.ndarray[np.int32] of shape (n_vectors,), read-only
+            Vector indices sorted by descending density
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        n_seeds : int
+            Number of selected seed vectors
+        seed_mask : np.ndarray[np.bool_] of shape (n_vectors,), read-only
+            Logical mask identifying the selected seeds
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_stc::identify_ensemble_seeds_global_radius`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    vectors = _contract.reals(vectors, "vectors", ndim=2, order="F")
+    density_labels = _contract.reals(density_labels, "density_labels", ndim=1)
+    k_seeding = _contract.integer(k_seeding, "k_seeding")
+
+    # what the inputs already say, rather than asking for it again
+    n_dimensions = vectors.shape[0]
+    n_vectors = vectors.shape[1]
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if density_labels.shape[0] != n_vectors:
+        raise _ToxArgumentError(f"'density_labels' has {density_labels.shape[0]} along axis 0, but 'vectors' implies n_vectors == {n_vectors}; 'density_labels' is declared with shape (n_vectors)", argument="density_labels")
+
+    # outputs and work arrays, which the caller never sees
+    sorted_perm = _np.empty((n_vectors,), dtype=_np.int32, order='C')
+    n_seeds = _ctypes.c_int(0)
+    seed_mask = _np.empty((n_vectors,), dtype=_np.bool_, order='C')
+    ierr = _ctypes.c_int(0)
+
+    _lib.identify_ensemble_seeds_global_radius_c(
+        vectors,
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_vectors)),
+        density_labels,
+        _ctypes.byref(_ctypes.c_int(k_seeding)),
+        sorted_perm,
+        _ctypes.byref(n_seeds),
+        seed_mask,
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _IDENTIFY_ENSEMBLE_SEEDS_GLOBAL_RADIUS_ARGUMENTS, _IDENTIFY_ENSEMBLE_SEEDS_GLOBAL_RADIUS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    sorted_perm.flags.writeable = False
+    seed_mask.flags.writeable = False
+
+    return {
+        "sorted_perm": sorted_perm,
+        "n_seeds": n_seeds.value,
+        "seed_mask": seed_mask,
+    }
 
 def identify_ensemble_seeds(
         vectors,

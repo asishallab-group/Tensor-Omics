@@ -212,6 +212,7 @@ from .tox_shift_vectors import (
 from .tox_stc import (
     calculate_density_radius,
     calculate_labels_as_density,
+    identify_ensemble_seeds_global_radius,
     identify_ensemble_seeds,
     compute_ambient_density_stats,
     obtain_ensembles_global_radius,
@@ -356,6 +357,7 @@ __all__ = [
     "group_centroid_orthologs",
     "grow_ensemble",
     "identify_ensemble_seeds",
+    "identify_ensemble_seeds_global_radius",
     "identify_outliers",
     "k_means_clustering",
     "linkage_clustering",

@@ -36,3 +36,16 @@ stopifnot(inherits(bad_update, "error"), inherits(bad_accept, "error"),
 
 stopifnot(!("n_ensembles" %in% names(global_result)))
 stopifnot(!("n_ensembles" %in% names(local_result)))
+
+direct_vectors <- matrix(c(0, 1, 2, 3, 4), nrow = 1)
+direct_density <- c(5, 4, 3, 2, 1)
+direct <- identify_ensemble_seeds_global_radius(direct_vectors, direct_density, 2L)
+stopifnot(direct$n_seeds == 2L,
+          identical(direct$seed_mask, c(TRUE, FALSE, FALSE, TRUE, FALSE)))
+
+tied_vectors <- matrix(0, nrow = 1, ncol = 6)
+tied_density <- c(6, 5, 4, 3, 2, 1)
+tied_direct <- identify_ensemble_seeds_global_radius(tied_vectors, tied_density, 1L)
+tied_tree <- build_kd_index(tied_vectors, 1L)
+tied_local <- identify_ensemble_seeds(tied_vectors, tied_density, 1L, tied_tree, 1L, coverage_quant = 0.5)
+stopifnot(tied_direct$n_seeds >= 3L, tied_local$n_seeds == 1L)

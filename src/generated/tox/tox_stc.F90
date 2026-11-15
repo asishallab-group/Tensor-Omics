@@ -9,7 +9,7 @@ module tox_stc
     use f42_safeguard
     use tox_stc_impl, only: MODE_GLOBAL_RADIUS, MODE_SEED_RADIUS, accept_ensemble_impl, calculate_density_radius_impl
     use tox_stc_impl, only: calculate_labels_as_density_impl, compute_ambient_density_stats_impl, compute_ensemble_observable_impl, grow_ensemble_impl
-    use tox_stc_impl, only: identify_ensemble_seeds_impl, merge_ensembles_impl, obtain_ensembles_impl
+    use tox_stc_impl, only: identify_ensemble_seeds_global_radius_impl, identify_ensemble_seeds_impl, merge_ensembles_impl, obtain_ensembles_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
@@ -22,6 +22,8 @@ module tox_stc
     public :: calculate_density_radius_expert
     public :: calculate_labels_as_density
     public :: calculate_labels_as_density_expert
+    public :: identify_ensemble_seeds_global_radius
+    public :: identify_ensemble_seeds_global_radius_expert
     public :: identify_ensemble_seeds
     public :: identify_ensemble_seeds_expert
     public :: compute_ambient_density_stats
@@ -284,6 +286,152 @@ contains
         )
         call clear_err_arg_pos(ierr)
     end subroutine calculate_labels_as_density_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):identify_ensemble_seeds_global_radius_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):identify_ensemble_seeds_global_radius_expert]] to prepare it yourself.
+    !| Process all vectors in descending density order. A selected seed covers itself and
+    !| its k_seeding nearest other ambient vectors, including neighbors already covered.
+    !| Equal-distance ties follow the deterministic heapsort permutation for the input order;
+    !| select exactly k other indices rather than a closed ball that could include extra ties.
+    !| Coverage only suppresses subsequent seeds; global ensemble growth uses its separate radius.
+    pure subroutine identify_ensemble_seeds_global_radius(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            density_labels,&
+            k_seeding,&
+            sorted_perm,&
+            n_seeds,&
+            seed_mask,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+            !! Number of vectors
+            !! The minimum valid value is `2_int32`.
+        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
+            !! Input coordinate vectors
+        real(real64), dimension(n_vectors), intent(in) :: density_labels
+            !! Precalculated ambient density counts
+            !! The minimum valid value is `1.0_real64`.
+        integer(int32), intent(in) :: k_seeding
+            !! Number of nearest other ambient vectors covered by each selected seed
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors - 1_int32`.
+        integer(int32), dimension(n_vectors), intent(out) :: sorted_perm
+            !! Vector indices sorted by descending density
+        integer(int32), intent(out) :: n_seeds
+            !! Number of selected seed vectors
+        logical(c_bool), dimension(n_vectors), intent(out) :: seed_mask
+            !! Logical mask identifying the selected seeds
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+        integer(int32), dimension(:), allocatable :: tmp_perm
+        real(real64), dimension(:), allocatable :: tmp_distances
+        logical(c_bool), dimension(:), allocatable :: tmp_visited_mask
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
+        call validate_in_range_int(k_seeding, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=4_int32, min=1.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(tmp_perm(n_vectors))
+        M_ALLOCATE(tmp_distances(n_vectors))
+        M_ALLOCATE(tmp_visited_mask(n_vectors))
+
+        call identify_ensemble_seeds_global_radius_impl(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            density_labels = density_labels,&
+            k_seeding = k_seeding,&
+            tmp_perm = tmp_perm,&
+            tmp_distances = tmp_distances,&
+            tmp_visited_mask = tmp_visited_mask,&
+            sorted_perm = sorted_perm,&
+            n_seeds = n_seeds,&
+            seed_mask = seed_mask&
+        )
+    end subroutine identify_ensemble_seeds_global_radius
+
+    !> summary: Validates its inputs, then calls [[tox_stc_impl(module):identify_ensemble_seeds_global_radius_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):identify_ensemble_seeds_global_radius]] does both.
+    !| Process all vectors in descending density order. A selected seed covers itself and
+    !| its k_seeding nearest other ambient vectors, including neighbors already covered.
+    !| Equal-distance ties follow the deterministic heapsort permutation for the input order;
+    !| select exactly k other indices rather than a closed ball that could include extra ties.
+    !| Coverage only suppresses subsequent seeds; global ensemble growth uses its separate radius.
+    pure subroutine identify_ensemble_seeds_global_radius_expert(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            density_labels,&
+            k_seeding,&
+            tmp_perm,&
+            tmp_distances,&
+            tmp_visited_mask,&
+            sorted_perm,&
+            n_seeds,&
+            seed_mask,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+            !! Number of vectors
+            !! The minimum valid value is `2_int32`.
+        real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
+            !! Input coordinate vectors
+        real(real64), dimension(n_vectors), intent(in) :: density_labels
+            !! Precalculated ambient density counts
+            !! The minimum valid value is `1.0_real64`.
+        integer(int32), intent(in) :: k_seeding
+            !! Number of nearest other ambient vectors covered by each selected seed
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors - 1_int32`.
+        integer(int32), dimension(n_vectors), intent(out) :: tmp_perm
+            !! Permutation workspace for density and distance sorting
+        real(real64), dimension(n_vectors), intent(out) :: tmp_distances
+            !! Seed-to-vector Euclidean distance workspace
+        logical(c_bool), dimension(n_vectors), intent(out) :: tmp_visited_mask
+            !! Workspace marking seeds and their covered neighbors
+        integer(int32), dimension(n_vectors), intent(out) :: sorted_perm
+            !! Vector indices sorted by descending density
+        integer(int32), intent(out) :: n_seeds
+            !! Number of selected seed vectors
+        logical(c_bool), dimension(n_vectors), intent(out) :: seed_mask
+            !! Logical mask identifying the selected seeds
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
+        call validate_in_range_int(k_seeding, ierr, arg_pos=5_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(density_labels, n_vectors, ierr, arg_pos=4_int32, min=1.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        call identify_ensemble_seeds_global_radius_impl(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            density_labels = density_labels,&
+            k_seeding = k_seeding,&
+            tmp_perm = tmp_perm,&
+            tmp_distances = tmp_distances,&
+            tmp_visited_mask = tmp_visited_mask,&
+            sorted_perm = sorted_perm,&
+            n_seeds = n_seeds,&
+            seed_mask = seed_mask&
+        )
+    end subroutine identify_ensemble_seeds_global_radius_expert
 
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):identify_ensemble_seeds_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):identify_ensemble_seeds_expert]] to prepare it yourself.
     pure subroutine identify_ensemble_seeds(&

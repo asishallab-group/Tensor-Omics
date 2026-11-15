@@ -47,6 +47,29 @@ def test_invalid_observable_history_rows():
         tox_stc.accept_ensemble(history, 2)
 
 
+def test_global_seed_coverage():
+    vectors = np.array([[0., 1., 2., 3., 4.]])
+    density = np.array([5., 4., 3., 2., 1.])
+    result = tox_stc.identify_ensemble_seeds_global_radius(vectors, density, 2)
+    np.testing.assert_array_equal(result["seed_mask"], [True, False, False, True, False])
+    assert result["n_seeds"] == 2
+
+    # Exact index coverage must not turn tied distances into an all-points ball.
+    tied = np.zeros((1, 6))
+    ranked = np.arange(6., 0., -1)
+    direct = tox_stc.identify_ensemble_seeds_global_radius(tied, ranked, 1)
+    assert direct["n_seeds"] >= 3
+    order = np.array([1], dtype=np.int32)
+    tree = build_kd_index(tied, order)
+    local = tox_stc.identify_ensemble_seeds(tied, ranked, order, tree, 1, coverage_quant=0.5)
+    assert local["n_seeds"] == 1  # Existing seed-radius policy remains available unchanged.
+    for invalid_k in (0, 6):
+        with np.testing.assert_raises(ToxInputError):
+            tox_stc.identify_ensemble_seeds_global_radius(tied, ranked, invalid_k)
+
+
 if __name__ == "__main__":
     test_radius_variants()
     test_invalid_observable_history_rows()
+
+    test_global_seed_coverage()

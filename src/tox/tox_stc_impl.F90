@@ -34,14 +34,15 @@ module tox_stc_impl
     public :: calculate_labels_as_density_impl
     public :: compute_ambient_density_stats_impl
     public :: merge_ensembles_impl
+    public :: identify_ensemble_seeds_global_radius_impl
     public :: identify_ensemble_seeds_impl
     public :: grow_ensemble_impl
     public :: compute_ensemble_observable_impl
     public :: accept_ensemble_impl
     public :: obtain_ensembles_impl
-    public :: compute_ensemble_observable_helper
-    public :: accept_ensemble_helper
-    public :: grow_single_seed_helper
+    public :: compute_ensemble_observable_core
+    public :: accept_ensemble_core
+    public :: grow_single_seed
 
 contains
 
@@ -166,6 +167,79 @@ contains
         end do
 
     end subroutine calculate_labels_as_density_impl
+
+    !> summary: Select global-radius seeds by covering exactly k nearest other vectors.
+    !| AUTHOR_SALIH_ALBAYRAK
+    !| Process all vectors in descending density order. A selected seed covers itself and
+    !| its k_seeding nearest other ambient vectors, including neighbors already covered.
+    !| Equal-distance ties follow the deterministic heapsort permutation for the input order;
+    !| select exactly k other indices rather than a closed ball that could include extra ties.
+    !| Coverage only suppresses subsequent seeds; global ensemble growth uses its separate radius.
+    pure subroutine identify_ensemble_seeds_global_radius_impl(vectors, n_dimensions, n_vectors, &
+                                                               density_labels, k_seeding, &
+                                                               tmp_perm, tmp_distances, tmp_visited_mask, &
+                                                               sorted_perm, n_seeds, seed_mask)
+        integer(int32), intent(in) :: n_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+        !! Number of vectors
+        !! DM_MIN(2_int32)
+        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
+        !! Input coordinate vectors
+        real(real64), intent(in) :: density_labels(n_vectors)
+        !! Precalculated ambient density counts
+        !! DM_MIN(1.0_real64)
+        integer(int32), intent(in) :: k_seeding
+        !! Number of nearest other ambient vectors covered by each selected seed
+        !! DM_MIN(1_int32)
+        !! DM_MAX(n_vectors - 1_int32)
+        integer(int32), intent(out) :: tmp_perm(n_vectors)
+        !! Permutation workspace for density and distance sorting
+        real(real64), intent(out) :: tmp_distances(n_vectors)
+        !! Seed-to-vector Euclidean distance workspace
+        logical(c_bool), intent(out) :: tmp_visited_mask(n_vectors)
+        !! Workspace marking seeds and their covered neighbors
+        integer(int32), intent(out) :: sorted_perm(n_vectors)
+        !! Vector indices sorted by descending density
+        integer(int32), intent(out) :: n_seeds
+        !! Number of selected seed vectors
+        logical(c_bool), intent(out) :: seed_mask(n_vectors)
+        !! Logical mask identifying the selected seeds
+
+        integer(int32) :: i_vec, i_rank, candidate_idx, neighbor_idx, n_covered
+
+        call init_perm(tmp_perm)
+        call sort_array_heapsort(density_labels, tmp_perm)
+        sorted_perm = tmp_perm(n_vectors:1:-1)
+        seed_mask = .false.
+        tmp_visited_mask = .false.
+        n_seeds = 0_int32
+
+        do i_rank = 1, n_vectors
+            candidate_idx = sorted_perm(i_rank)
+            if (tmp_visited_mask(candidate_idx)) cycle
+            seed_mask(candidate_idx) = .true.
+            tmp_visited_mask(candidate_idx) = .true.
+            n_seeds = n_seeds + 1_int32
+
+            do concurrent(i_vec=1:n_vectors) shared(vectors, n_dimensions, candidate_idx, tmp_distances)
+                call euclidean_distance_impl(vectors(:, candidate_idx), vectors(:, i_vec), &
+                                             n_dimensions, tmp_distances(i_vec))
+            end do
+            call init_perm(tmp_perm)
+            call sort_array_heapsort(tmp_distances, tmp_perm)
+
+            n_covered = 0_int32
+            do i_vec = 1, n_vectors
+                neighbor_idx = tmp_perm(i_vec)
+                ! Exclude the seed by identity, even when other vectors have zero distance.
+                if (neighbor_idx == candidate_idx) cycle
+                tmp_visited_mask(neighbor_idx) = .true.
+                n_covered = n_covered + 1_int32
+                if (n_covered == k_seeding) exit
+            end do
+        end do
+    end subroutine identify_ensemble_seeds_global_radius_impl
 
     !> summary: Select seeds in descending density order and compute their local radii.
     !| AUTHOR_SALIH_ALBAYRAK
@@ -335,7 +409,7 @@ contains
     end subroutine compute_ambient_density_stats_impl
 
     !> Filter the surface by density compatibility with the current ensemble.
-    pure subroutine build_ensemble_trial_helper(ensemble_mask, n_vectors, density_labels, alpha_mad, &
+    pure subroutine build_ensemble_trial(ensemble_mask, n_vectors, density_labels, alpha_mad, &
                                                 mad_ambient, surface_mask, tmp_perm, tmp_abs_diff, trial_mask)
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
@@ -378,18 +452,17 @@ contains
         call calc_quantile_impl(tmp_abs_diff, n_vectors, tmp_perm, 0.5_real64, &
                                   ensemble_center_density, n_considered=k)
 
-        do concurrent(i_vec=1:n_vectors) &
-            shared(ensemble_mask, surface_mask, trial_mask, density_labels, ensemble_center_density, max_allowed_dev)
+        do i_vec = 1, n_vectors
             trial_mask(i_vec) = ensemble_mask(i_vec) .or. &
                                 (surface_mask(i_vec) .and. &
                                  abs(density_labels(i_vec) - ensemble_center_density) <= max_allowed_dev)
         end do
 
-    end subroutine build_ensemble_trial_helper
+    end subroutine build_ensemble_trial
 
     !> Update the five observables in the history window.
-    !| The window is the column count of `observables`, the same width `accept_ensemble_helper` reads.
-    pure subroutine compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
+    !| The window is the column count of `observables`, the same width `accept_ensemble_core` reads.
+    pure subroutine compute_ensemble_observable_core(ensemble_mask, density_labels, n_vectors, &
                                                        candidate_count, current_iter, observables)
 
         integer(int32), intent(in) :: n_vectors
@@ -481,11 +554,11 @@ contains
             observables(5, max_cols) = obs_5
         end if
 
-    end subroutine compute_ensemble_observable_helper
+    end subroutine compute_ensemble_observable_core
 
     !> Apply the log fold-change acceptance rule.
     !| Every caller passes a history of at least two columns, so two consecutive steps always exist.
-    pure subroutine accept_ensemble_helper(observables, current_iter, alpha_accept, &
+    pure subroutine accept_ensemble_core(observables, current_iter, alpha_accept, &
                                            is_accepted)
 
         integer(int32), intent(in) :: current_iter
@@ -537,7 +610,7 @@ contains
             is_accepted = .true.
         end if
 
-    end subroutine accept_ensemble_helper
+    end subroutine accept_ensemble_core
 
     !> summary: Grow one raw ensemble from each seed, using a global radius or per-seed radii.
     !| AUTHOR_SALIH_ALBAYRAK
@@ -687,7 +760,7 @@ contains
                     growth_radius = r
                 end if
 
-                call grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
+                call grow_single_seed(vectors, n_dimensions, n_vectors, dimension_order, &
                                              kd_indices, density_labels, seed_indices(i_seed), &
                                              growth_radius, actual_alpha_mad, mad_ambient, actual_alpha_accept, &
                                              tmp_stack(:, :, i_tile), tmp_vicinity_mask(:, i_tile), &
@@ -703,7 +776,7 @@ contains
     end subroutine obtain_ensembles_impl
 
     !> Grow one seed and record why it stopped.
-    pure subroutine grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
+    pure subroutine grow_single_seed(vectors, n_dimensions, n_vectors, dimension_order, &
                                             kd_indices, density_labels, seed_idx, &
                                             r, alpha_mad, mad_ambient, alpha_accept, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, &
@@ -762,7 +835,7 @@ contains
         tmp_perm(1) = seed_idx
 
         iter = 1_int32
-        call compute_ensemble_observable_helper(current_mask, density_labels, &
+        call compute_ensemble_observable_core(current_mask, density_labels, &
                                                 n_vectors, 0_int32, iter, &
                                                 tmp_observables)
 
@@ -778,7 +851,7 @@ contains
                 tmp_surface_mask = tmp_surface_mask .or. tmp_vicinity_mask
             end do
 
-            call build_ensemble_trial_helper(current_mask, n_vectors, density_labels, alpha_mad, &
+            call build_ensemble_trial(current_mask, n_vectors, density_labels, alpha_mad, &
                                              mad_ambient, tmp_surface_mask, tmp_perm, tmp_abs_diff, out_mask)
 
             curr_count = count(out_mask)
@@ -797,11 +870,11 @@ contains
 
             iter = iter + 1_int32
 
-            call compute_ensemble_observable_helper(out_mask, density_labels, &
+            call compute_ensemble_observable_core(out_mask, density_labels, &
                                                     n_vectors, candidate_count, iter, &
                                                     tmp_observables)
 
-            call accept_ensemble_helper(tmp_observables, iter, &
+            call accept_ensemble_core(tmp_observables, iter, &
                                         alpha_accept, is_accepted)
 
             if (.not. is_accepted) then
@@ -828,10 +901,10 @@ contains
 
         out_mask = current_mask
 
-    end subroutine grow_single_seed_helper
+    end subroutine grow_single_seed
 
     !> Find a union-find component root and compress the path.
-    pure subroutine find_root_helper(parent, n_nodes, node, root)
+    pure subroutine find_component_root(parent, n_nodes, node, root)
 
         integer(int32), intent(in) :: n_nodes
         !! Number of nodes in the forest
@@ -857,7 +930,7 @@ contains
             walker = next_node
         end do
 
-    end subroutine find_root_helper
+    end subroutine find_component_root
 
     !> summary: Merge intersecting ensembles by overlap coefficient and discard final singletons.
     !| AUTHOR_SALIH_ALBAYRAK
@@ -923,8 +996,8 @@ contains
                 ! Overlap Coefficient: |E_i intersection E_j| / min(|E_i|, |E_j|)
                 if (real(shared_count, real64) / real(min(size_i, size_j), real64) < actual_min_overlap) cycle
 
-                call find_root_helper(tmp_parent, n_seeds, i, root_i)
-                call find_root_helper(tmp_parent, n_seeds, j, root_j)
+                call find_component_root(tmp_parent, n_seeds, i, root_i)
+                call find_component_root(tmp_parent, n_seeds, j, root_j)
 
                 ! Attach to the smaller index so each component keeps its lowest column.
                 if (root_i < root_j) then
@@ -939,7 +1012,7 @@ contains
         tmp_active_flag = .false.
 
         do i = 1, n_seeds
-            call find_root_helper(tmp_parent, n_seeds, i, root_i)
+            call find_component_root(tmp_parent, n_seeds, i, root_i)
             merged_masks(:, root_i) = merged_masks(:, root_i) .or. raw_masks(:, i)
             tmp_active_flag(root_i) = .true.
         end do
@@ -1032,7 +1105,7 @@ contains
         end do
 
         ! The trial keeps every member, so it is the grown ensemble; this step commits unconditionally.
-        call build_ensemble_trial_helper(ensemble_mask, n_vectors, density_labels, actual_alpha_mad, &
+        call build_ensemble_trial(ensemble_mask, n_vectors, density_labels, actual_alpha_mad, &
                                          mad_ambient, tmp_surface_mask, tmp_perm, tmp_abs_diff, grown_mask)
     end subroutine grow_ensemble_impl
 
@@ -1066,7 +1139,7 @@ contains
         real(real64), intent(inout) :: observables(n_observables, n_history)
         !! Observable history, one column per growth iteration within the window
 
-        call compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
+        call compute_ensemble_observable_core(ensemble_mask, density_labels, n_vectors, &
                                                 candidate_count, current_iter, observables)
     end subroutine compute_ensemble_observable_impl
 
@@ -1095,7 +1168,7 @@ contains
         logical(c_bool), intent(out) :: is_accepted
         !! Output flag indicating step acceptance decision
 
-        call accept_ensemble_helper(observables, current_iter, alpha_accept, is_accepted)
+        call accept_ensemble_core(observables, current_iter, alpha_accept, is_accepted)
     end subroutine accept_ensemble_impl
 
 end module tox_stc_impl

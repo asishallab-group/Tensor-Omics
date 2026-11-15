@@ -8,6 +8,7 @@
 // the Fortran C-ABI symbols this module calls
 void calculate_density_radius_c(const double*, const int*, const int*, const double*, double*, int*);
 void calculate_labels_as_density_c(const double*, const int*, const int*, const double*, const int*, const int*, const int*, double*, int*);
+void identify_ensemble_seeds_global_radius_c(const double*, const int*, const int*, const double*, const int*, int*, int*, unsigned char*, int*);
 void identify_ensemble_seeds_c(const double*, const int*, const int*, const double*, const int*, const int*, const int*, int*, int*, unsigned char*, double*, const double*, int*);
 void compute_ambient_density_stats_c(const double*, const int*, double*, double*, int*);
 void obtain_ensembles_global_radius_c(const double*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, int*);
@@ -86,6 +87,51 @@ SEXP calculate_labels_as_density_call(SEXP vectors, SEXP r, SEXP dimension_order
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("label_densities"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(_nprot);
+    return _out;
+}
+
+SEXP identify_ensemble_seeds_global_radius_call(SEXP vectors, SEXP density_labels, SEXP k_seeding) {
+    int _nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
+    int n_vectors = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[1];
+
+    // scalar inputs, pulled from their length-1 vectors
+    int _v_k_seeding = Rf_asInteger(k_seeding);
+
+    // outputs and work space
+    SEXP sorted_perm = PROTECT(Rf_allocVector(INTSXP, n_vectors)); _nprot++;
+    int n_seeds = 0;
+    unsigned char* _c_seed_mask = tox_bool_alloc(n_vectors);
+    int ierr = 0;
+
+    identify_ensemble_seeds_global_radius_c(
+        REAL(vectors),
+        &n_dimensions,
+        &n_vectors,
+        REAL(density_labels),
+        &_v_k_seeding,
+        INTEGER(sorted_perm),
+        &n_seeds,
+        _c_seed_mask,
+        &ierr
+    );
+
+    // convert the outputs back
+    SEXP seed_mask = PROTECT(tox_bool_out(_c_seed_mask, n_vectors)); _nprot++;
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, sorted_perm);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(n_seeds));
+    SET_VECTOR_ELT(_out, 2, seed_mask);
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("sorted_perm"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("n_seeds"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("seed_mask"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;

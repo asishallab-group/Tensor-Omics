@@ -60,6 +60,47 @@ calculate_labels_as_density <- function(vectors, r, dimension_order, kd_indices,
     .result$label_densities
 }
 
+#' Select global-radius seeds by covering exactly k nearest other vectors.
+#'
+#' Process all vectors in descending density order. A selected seed covers itself and
+#' its k_seeding nearest other ambient vectors, including neighbors already covered.
+#' Equal-distance ties follow the deterministic heapsort permutation for the input order;
+#' select exactly k other indices rather than a closed ball that could include extra ties.
+#' Coverage only suppresses subsequent seeds; global ensemble growth uses its separate radius.
+#'
+#' Generated from the Fortran procedure \code{tox_stc::identify_ensemble_seeds_global_radius}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param vectors a numeric matrix. Input coordinate vectors
+#' @param density_labels a numeric vector. Precalculated ambient density counts
+#'   The minimum valid value is `1.0`.
+#' @param k_seeding a integer scalar. Number of nearest other ambient vectors covered by each selected seed
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_vectors - 1`.
+#' @return a named list with elements:
+#'   \item{sorted_perm}{a integer vector. Vector indices sorted by descending density}
+#'   \item{n_seeds}{a integer scalar. Number of selected seed vectors}
+#'   \item{seed_mask}{a logical vector. Logical mask identifying the selected seeds}
+#' @export
+identify_ensemble_seeds_global_radius <- function(vectors, density_labels, k_seeding) {
+    vectors <- .tox_as_double_matrix(vectors, "vectors")
+    density_labels <- .tox_as_double_vector(density_labels, "density_labels")
+    k_seeding <- .tox_as_integer_scalar(k_seeding, "k_seeding")
+    if (length(density_labels) != dim(vectors)[2])
+        .tox_shape_error("density_labels", 1L, length(density_labels), "'vectors' implies n_vectors == ", dim(vectors)[2], "n_vectors")
+
+    .result <- .Call("identify_ensemble_seeds_global_radius_call", vectors, density_labels, k_seeding)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "density_labels", "k_seeding", "sorted_perm", "n_seeds", "seed_mask", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        sorted_perm = .result$sorted_perm,
+        n_seeds = .result$n_seeds,
+        seed_mask = .result$seed_mask
+    )
+}
+
 #' Select seeds in descending density order and compute their local radii.
 #'
 #' Generated from the Fortran procedure \code{tox_stc::identify_ensemble_seeds}, whose argument names
