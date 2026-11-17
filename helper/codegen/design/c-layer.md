@@ -234,10 +234,11 @@ read off (`readable_owners`), never an output: naming an output blamed something
 wrote. One that sizes only outputs is the caller's own argument and keeps its name, unless it is an
 `n_selected_<x>` count, which names its mask.
 
-`map_err_arg_pos` in `tox_errors` stays for hand-written code where two dummy lists really are
-known to correspond. What a *generated* wrapper does with an inherited position is the opposite
-and is decided elsewhere: see "The argument position an `ierr` carries" in
-[`impl-layer.md`](impl-layer.md).
+The Fortran position a binding receives is already the generated Fortran wrapper's own: that
+wrapper translates whatever its implementation, prologue or producer returned into its own
+dummy list, and clears what names nothing its caller wrote (see "The argument position an `ierr`
+carries" in [`impl-layer.md`](impl-layer.md)). `map_err_arg_pos` in `tox_errors` stays for
+hand-written code, the author's tool for a helper's position.
 
 ## Decision: nullable optionals are `OPTIONAL`, not pointers
 

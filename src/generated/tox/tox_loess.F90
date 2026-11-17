@@ -22,7 +22,7 @@ module tox_loess
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: get_err_arg_pos, map_err_arg_pos, set_err, validate_all_in_range_real
+    use tox_errors, only: get_err_arg_pos, set_err, set_err_arg_pos, validate_all_in_range_real
     use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
@@ -151,9 +151,9 @@ contains
         if (is_err(ierr)) then
             select case (get_err_arg_pos(ierr))
             case (2_int32)
-                call map_err_arg_pos(ierr, 2_int32, 8_int32)
+                call set_err_arg_pos(ierr, 8_int32)
             case (5_int32)
-                call map_err_arg_pos(ierr, 5_int32, 10_int32)
+                call set_err_arg_pos(ierr, 10_int32)
             case default
                 call clear_err_arg_pos(ierr)
             end select
@@ -182,7 +182,17 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:10_int32)
+                ! the same position here
+            case (16_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine loess_fit_plain
 
     !> summary: Validates its inputs, then calls [[tox_loess_impl(module):loess_fit_plain_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_loess(module):loess_fit_plain]] does both.
@@ -295,7 +305,15 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:16_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine loess_fit_plain_expert
 
     !> summary: Validates its inputs, prepares what [[tox_loess_impl(module):loess_fit_robust_impl]] needs, then calls it. The entry point to reach for first; see [[tox_loess(module):loess_fit_robust_expert]] to prepare it yourself.
@@ -393,9 +411,9 @@ contains
         if (is_err(ierr)) then
             select case (get_err_arg_pos(ierr))
             case (2_int32)
-                call map_err_arg_pos(ierr, 2_int32, 8_int32)
+                call set_err_arg_pos(ierr, 8_int32)
             case (5_int32)
-                call map_err_arg_pos(ierr, 5_int32, 10_int32)
+                call set_err_arg_pos(ierr, 10_int32)
             case default
                 call clear_err_arg_pos(ierr)
             end select
@@ -433,7 +451,17 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:11_int32)
+                ! the same position here
+            case (21_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine loess_fit_robust
 
     !> summary: Validates its inputs, then calls [[tox_loess_impl(module):loess_fit_robust_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_loess(module):loess_fit_robust]] does both.
@@ -573,7 +601,15 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:21_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine loess_fit_robust_expert
 
 end module tox_loess

@@ -17,7 +17,8 @@ module tox_paralog_analysis_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int
+    use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int, &
+                          clear_err_arg_pos
     use f42_math_impl, only: PI
     use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
     use f42_bit_masks_impl, only: bit_mask_set, bit_mask_clear, bit_mask_last
@@ -184,11 +185,19 @@ contains
         do subset_size = 2, max_subset_size
             n_new_active_masks = 0_int32
             do while (n_active_masks > 0)
+                ! A position from either helper numbers the helper's dummy list, not this one, and
+                ! names nothing this procedure's caller passed: drop it, keep the error.
                 call take_active_mask_helper(work_arr_paralog_subsets, n_mask_chunks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, tmp_active_mask, ierr)
-                if (is_err(ierr)) return
+                if (is_err(ierr)) then
+                    call clear_err_arg_pos(ierr)
+                    return
+                end if
 
                 call generate_subsets_helper(tmp_active_mask, filtered_paralogs_mask, n_mask_chunks, pattern_mode, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, work_arr_paralog_subsets, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, max_angle, gain_gamma, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-                if (is_err(ierr)) return
+                if (is_err(ierr)) then
+                    call clear_err_arg_pos(ierr)
+                    return
+                end if
             end do
 
             n_active_masks = n_new_active_masks
@@ -426,11 +435,11 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_mask_chunks, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_subsets, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_active_masks, ierr, min=1_int32, arg_pos=5_int32)
-        call validate_in_range_int(n_results, ierr, min=0_int32, arg_pos=4_int32)
-        call validate_in_range_int(n_new_active_masks, ierr, min=0_int32, arg_pos=6_int32)
+        call validate_dimension_size(n_mask_chunks, ierr)
+        call validate_dimension_size(n_subsets, ierr)
+        call validate_in_range_int(n_active_masks, ierr, min=1_int32)
+        call validate_in_range_int(n_results, ierr, min=0_int32)
+        call validate_in_range_int(n_new_active_masks, ierr, min=0_int32)
         if (is_err(ierr)) return
 
         if (n_subsets < n_results + n_active_masks + n_new_active_masks) then
@@ -472,11 +481,11 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_mask_chunks, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_subsets, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_active_masks, ierr, min=0_int32, arg_pos=5_int32)
-        call validate_in_range_int(n_results, ierr, min=0_int32, arg_pos=4_int32)
-        call validate_in_range_int(n_new_active_masks, ierr, min=0_int32, arg_pos=6_int32)
+        call validate_dimension_size(n_mask_chunks, ierr)
+        call validate_dimension_size(n_subsets, ierr)
+        call validate_in_range_int(n_active_masks, ierr, min=0_int32)
+        call validate_in_range_int(n_results, ierr, min=0_int32)
+        call validate_in_range_int(n_new_active_masks, ierr, min=0_int32)
         if (is_err(ierr)) return
 
         if (n_subsets < n_results + n_active_masks + n_new_active_masks + 1) then
@@ -518,11 +527,11 @@ contains
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_mask_chunks, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_subsets, ierr, arg_pos=3_int32)
-        call validate_in_range_int(n_active_masks, ierr, min=0_int32, arg_pos=5_int32)
-        call validate_in_range_int(n_results, ierr, min=0_int32, arg_pos=4_int32)
-        call validate_in_range_int(n_new_active_masks, ierr, min=0_int32, arg_pos=6_int32)
+        call validate_dimension_size(n_mask_chunks, ierr)
+        call validate_dimension_size(n_subsets, ierr)
+        call validate_in_range_int(n_active_masks, ierr, min=0_int32)
+        call validate_in_range_int(n_results, ierr, min=0_int32)
+        call validate_in_range_int(n_new_active_masks, ierr, min=0_int32)
         if (is_err(ierr)) return
 
         if (n_subsets < n_results + n_active_masks + n_new_active_masks + 1) then

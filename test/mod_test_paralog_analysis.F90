@@ -8,7 +8,8 @@ module mod_test_paralog_analysis
     ! utilities moved to f42_bit_masks_impl, whose own suite tests them
     use tox_paralog_analysis_impl, only: calc_work_arr_paralog_subsets_size_impl, fill_array_with_minvals_for_each_idx, &
                                           add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper, &
-                                          filter_paralogs_by_pattern_impl, MODE_DOSAGE_PATTERN
+                                          filter_paralogs_by_pattern_impl, MODE_DOSAGE_PATTERN, &
+                                          detect_patterns_impl, MODE_SUBFUNC_PATTERN
     use f42_bit_masks_impl, only: bit_mask_set, bit_mask_count, bit_mask_indices
     use test_suite, only: test_case
     use tox_errors
@@ -23,7 +24,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_paralog_analysis() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(17))
+        allocate (all_tests(18))
 
         all_tests(1) = test_case("test_paralog_analysis_calc_work_arr_paralog_subsets_size", test_calc_work_arr_paralog_subsets_size)
         all_tests(2) = test_case("test_paralog_analysis_filter_paralogs_by_pattern", test_filter_paralogs_by_pattern)
@@ -42,6 +43,8 @@ contains
         all_tests(15) = test_case("test_paralog_analysis_detect_patterns_input_validation", test_detect_patterns_input_validation)
         all_tests(16) = test_case("test_paralog_analysis_detect_neofunctionalization_input_validation", test_detect_neofunctionalization_input_validation)
         all_tests(17) = test_case("test_paralog_analysis_detect_patterns_last_gene_on_word_boundary", test_detect_patterns_last_gene_on_word_boundary)
+        all_tests(18) = test_case("test_paralog_analysis_detect_patterns_drops_its_helpers_positions", &
+                                  test_detect_patterns_drops_its_helpers_positions)
     end function get_all_tests_paralog_analysis
 
     !> Test the detect_neofunctionalization function with simple synthetic examples.
@@ -1002,5 +1005,37 @@ contains
         call calc_work_arr_paralog_subsets_size_impl(max_subset_size_overflown, n_paralogs_overflow, work_array_size, mask_all_active_overflow, size(mask_all_active_overflow))
         call assert_not_equal_int(max_subset_size_overflown, 16_int32, "test_calc_work_arr_paralog_subsets_size: for overflow the max subset size should be different to input")
     end subroutine test_calc_work_arr_paralog_subsets_size
+
+    !> A position a private helper of detect_patterns_impl reports numbers the helper's dummy list,
+    !> so detect_patterns_impl drops it: the error stays, at position 0. Called directly, past the
+    !> wrapper's validation, which would refuse the permutation first: an entry past n_genes
+    !> reaches fill_array_with_minvals_for_each_idx, whose own position 3 is n_genes here.
+    subroutine test_detect_patterns_drops_its_helpers_positions()
+        integer(int32), parameter :: n_dims = 2, n_genes = 3, n_mask_chunks = 1, n_paralog_subsets = 50
+        real(real64) :: ancestor(n_dims), genes(n_dims, n_genes), paralog_norms(n_genes)
+        real(real64) :: tmp_paralog_vector(n_dims), tmp_work_array(n_genes)
+        integer(int32) :: work_arr_paralog_subsets(n_mask_chunks, n_paralog_subsets), tmp_active_mask(n_mask_chunks)
+        integer(int32) :: filtered_paralogs_mask(n_mask_chunks), sorted_paralog_norms_perm(n_genes)
+        integer(int32) :: n_results, ierr, i_gene
+
+        ancestor = [1.0_real64, 1.0_real64]
+        genes = reshape([1.0_real64, 0.0_real64, 0.0_real64, 1.0_real64, 0.5_real64, 0.5_real64], [n_dims, n_genes])
+        do i_gene = 1, n_genes
+            paralog_norms(i_gene) = norm2(genes(:, i_gene))
+        end do
+        filtered_paralogs_mask = 7  ! genes 1 to 3
+        sorted_paralog_norms_perm = [1, 2, 4]
+
+        call detect_patterns_impl(ancestor=ancestor, genes=genes, n_genes=n_genes, n_dims=n_dims, &
+                                  pattern_mode=MODE_SUBFUNC_PATTERN, filtered_paralogs_mask=filtered_paralogs_mask, &
+                                  n_mask_chunks=n_mask_chunks, n_results=n_results, max_subset_size=3_int32, &
+                                  work_arr_paralog_subsets=work_arr_paralog_subsets, n_paralog_subsets=n_paralog_subsets, &
+                                  tmp_active_mask=tmp_active_mask, tmp_paralog_vector=tmp_paralog_vector, &
+                                  rdi_threshold=0.0_real64, paralog_norms=paralog_norms, &
+                                  sorted_paralog_norms_perm=sorted_paralog_norms_perm, tmp_work_array=tmp_work_array, ierr=ierr)
+
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT), &
+                              "test_detect_patterns_drops_its_helpers_positions: ERR_INVALID_INPUT, not argument related")
+    end subroutine test_detect_patterns_drops_its_helpers_positions
 
 end module mod_test_paralog_analysis

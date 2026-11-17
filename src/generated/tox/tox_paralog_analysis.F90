@@ -23,8 +23,8 @@ module tox_paralog_analysis
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: PI, above
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
-    use tox_errors, only: validate_in_range_int, validate_in_range_real
+    use tox_errors, only: get_err_arg_pos, set_err, set_err_arg_pos, validate_all_in_range_int
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -201,7 +201,31 @@ contains
             gain_gamma = gain_gamma,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (6_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (7_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (8_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (9_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (10_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (11_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (14_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (15_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_dosage_effect
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_patterns_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_paralog_analysis(module):detect_dosage_effect]] does both.
@@ -303,7 +327,35 @@ contains
             gain_gamma = gain_gamma,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (6_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (7_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (8_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (9_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (10_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (11_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (13_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (14_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (15_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_dosage_effect_expert
 
     !> summary: Validates its inputs, prepares what [[tox_paralog_analysis_impl(module):detect_patterns_impl]] needs, then calls it. The entry point to reach for first; see [[tox_paralog_analysis(module):detect_subfunctionalization_expert]] to prepare it yourself.
@@ -411,7 +463,33 @@ contains
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (6_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (7_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (8_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (9_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (10_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (11_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (16_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (17_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (18_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_subfunctionalization
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_patterns_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_paralog_analysis(module):detect_subfunctionalization]] does both.
@@ -521,7 +599,39 @@ contains
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (6_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (7_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (8_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (9_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (10_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (11_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (13_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (16_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (17_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case (18_int32)
+                call set_err_arg_pos(ierr, 15_int32)
+            case (19_int32)
+                call set_err_arg_pos(ierr, 16_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_subfunctionalization_expert
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):filter_paralogs_by_pattern_impl]].
