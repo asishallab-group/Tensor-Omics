@@ -376,3 +376,120 @@ class TestFunctions:
 
         assert "pure subroutine fx_total(" in text
         assert "\n    subroutine fx_share(" in text  # it has an intent(out) `ierr`
+
+
+#: The probe for `fx_positions_impl`: each implementation (and the prologue) reports the
+#: position the probe sets, and `report` prints what the wrapper returned for every one in turn
+_POSITIONS_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use tox_errors, only: get_err_code, get_err_arg_pos
+    use fx_positions_impl, only: fx_report_pos, fx_report_prologue_pos
+    use fx_positions, only: fx_pos_sum, fx_pos_sum_expert, fx_pos_group_a, fx_pos_group_a_expert, &
+        fx_pos_group_b, fx_pos_group_b_expert, fx_pos_clip, fx_pos_clip_expert, fx_pos_share, &
+        fx_pos_share_expert
+    implicit none
+    integer(int32), parameter :: N = 3
+    real(real64) :: values(N) = [3.0_real64, 1.0_real64, 2.0_real64]
+    real(real64) :: total, scratch(N), work(2*N), clipped(N)
+    integer(int32) :: perm(N) = [2, 3, 1]
+    logical(c_bool) :: mask(N) = .true._c_bool
+    integer(int32) :: ierr, k
+
+{body}
+contains
+    !> one word per position: the wrapper's position, or `ok` where nothing was reported
+    subroutine report(k)
+        integer(int32), intent(in) :: k
+        if (ierr == 0) then
+            write(*, '(a)', advance='no') ' ok'
+        else if (get_err_code(ierr) /= 201) then
+            write(*, '(a, i0)', advance='no') ' code', get_err_code(ierr)
+        else
+            write(*, '(1x, i0)', advance='no') get_err_arg_pos(ierr)
+        end if
+        if (k < 0) print *
+    end subroutine report
+end program probe
+"""
+
+
+class TestAnImplementationPositionIsTranslated:
+    """The position an implementation or a prologue reports numbers its OWN dummy list, and
+    every wrapper returns the one that numbers ITS list: kept where it passed one of its own
+    dummies, 0 for everything it prepared itself (codegen_guide.md 5.14).
+
+    Each line is one wrapper, the implementation reporting 0 (nothing), then every position
+    from 1 to one past its last dummy. The error code itself, ERR_INVALID_INPUT, always survives.
+    """
+
+    def run(self, built, tmp_path, call, last):
+        out = run_fortran(built, tmp_path, f"""
+            do k = 0, {last}
+                fx_report_pos = k
+                {call}
+                call report(merge(-1_int32, k, k == {last}))
+            end do
+        """, probe=_POSITIONS_PROBE)
+        return out
+
+    def test_the_allocating_tier_numbers_its_own_list(self, built, tmp_path):
+        # fx_pos_sum(n, values, values_mask, n_selected_values, scale, total, ierr): the
+        # permutation, the recommend-sized work_size and the work array are its locals
+        call = "call fx_pos_sum(N, values, mask, N, 2.0_real64, total, ierr)"
+        assert self.run(built, tmp_path, call, 11) == \
+            ["ok", "1", "2", "0", "0", "0", "3", "4", "5", "6", "0", "0"]
+
+    def test_an_absent_optional_still_maps(self, built, tmp_path):
+        call = "call fx_pos_sum(N, values, mask, N, total=total, ierr=ierr)"
+        assert self.run(built, tmp_path, call, 11) == \
+            ["ok", "1", "2", "0", "0", "0", "3", "4", "5", "6", "0", "0"]
+
+    def test_the_expert_tier_keeps_every_position_but_ierr(self, built, tmp_path):
+        call = "call fx_pos_sum_expert(N, values, perm, 2*N, work, mask, N, 2.0_real64, total, ierr)"
+        assert self.run(built, tmp_path, call, 11) == \
+            ["ok", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "0"]
+
+    def test_a_mode_split_numbers_each_mode_and_tier_its_own_way(self, built, tmp_path):
+        # the mode is fixed in all four, and mode b does not pass `weight` at all
+        calls = {
+            "call fx_pos_group_a(N, values, 2.0_real64, total, ierr)":
+                ["ok", "1", "2", "0", "0", "3", "4", "0", "0"],
+            "call fx_pos_group_a_expert(N, values, scratch, 2.0_real64, total, ierr)":
+                ["ok", "1", "2", "0", "3", "4", "5", "0", "0"],
+            "call fx_pos_group_b(N, values, total, ierr)":
+                ["ok", "1", "2", "0", "0", "0", "3", "0", "0"],
+            "call fx_pos_group_b_expert(N, values, scratch, total, ierr)":
+                ["ok", "1", "2", "0", "3", "0", "4", "0", "0"],
+        }
+        for call, expected in calls.items():
+            assert self.run(built, tmp_path, call, 8) == expected, call
+
+    def test_behind_a_prologue(self, built, tmp_path):
+        # fx_pos_clip(n, values, clipped, fraction, ierr): the level the prologue produced and
+        # the work array are its locals
+        call = "call fx_pos_clip(N, values, clipped, 0.5_real64, ierr)"
+        assert self.run(built, tmp_path, call, 7) == ["ok", "1", "2", "0", "0", "3", "0", "0"]
+        call = "call fx_pos_clip_expert(N, values, 1.0_real64, scratch, clipped, ierr)"
+        assert self.run(built, tmp_path, call, 7) == ["ok", "1", "2", "3", "4", "5", "0", "0"]
+
+    def test_the_prologue_s_own_position(self, built, tmp_path):
+        # fx_pos_clip_guard(n, values, fraction, level, handled, ierr): its `fraction` is the
+        # wrapper's fourth argument, `level` a local, `handled` never an argument
+        out = run_fortran(built, tmp_path, """
+            fx_report_pos = 0
+            do k = 0, 7
+                fx_report_prologue_pos = k
+                call fx_pos_clip(N, values, clipped, 0.5_real64, ierr)
+                call report(merge(-1_int32, k, k == 7))
+            end do
+        """, probe=_POSITIONS_PROBE)
+
+        assert out == ["ok", "1", "2", "4", "0", "0", "0", "0"]
+
+    def test_a_function_s_result_moves_nothing(self, built, tmp_path):
+        call = "call fx_pos_share(N, values, total, ierr)"
+        assert self.run(built, tmp_path, call, 5) == ["ok", "1", "2", "0", "0", "0"]
+        call = "call fx_pos_share_expert(N, values, scratch, total, ierr)"
+        assert self.run(built, tmp_path, call, 5) == ["ok", "1", "2", "3", "0", "0"]
