@@ -600,6 +600,12 @@ end if
   sites share one shape. It costs one `mod`, the `select` only runs on an error, and an OK
   `ierr` is left exactly as the callee returned it.
 
+**Only inputs the caller provides carry a position (FES 2026-11-17).** An output, a `tmp_` work array
+or a recommend-sized value is not something a Python or R caller passed: an implementation that
+blamed one would reach them as a Fortran name they never typed (the expert tier's `tmp_head`, an
+output `y`). An error about one of those is internal and carries no position. Nothing on main
+blames one.
+
 **The author's half (FES's rule).** "Whether it comes from the impl or an underlying helper is the
 developer's concern, so the wrapper should map the argument positions that changed positions." A
 position propagates unchanged through every call that does not rewrite it, so one a helper set

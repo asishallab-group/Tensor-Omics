@@ -1052,6 +1052,10 @@ where it names nothing your caller passed. Afterwards no `select case` can tell 
 3 apart. `detect_patterns_impl` clears what its private subset helpers return, whose checks
 guard counts the algorithm keeps and so carry no position at all.
 
+**Blame only inputs the caller provides.** An output, a `tmp_` work array or a size a producer
+computes is no argument a Python or R caller passed, yet a position on it would reach them by name.
+An error about one of those is internal: report it with no position.
+
 ### 5.15 A family too big for one file
 
 **When** one family's implementations no longer fit comfortably in a single file.
