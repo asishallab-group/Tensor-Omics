@@ -1267,3 +1267,19 @@ class TestTheArgumentPositionIsTranslated:
         assert {k: plain(k) for k in range(1, 6)} == {1: 1, 2: 2, 3: 0, 4: 0, 5: 0}
         expert = translation(text, "share_expert", "share_impl")
         assert {k: expert(k) for k in range(1, 6)} == {1: 1, 2: 2, 3: 3, 4: 0, 5: 0}
+
+    def test_the_mapping_is_keyed_on_the_actual_not_on_the_name(self):
+        # On main every dummy whose actual is not its own name (a fixed mode) is also missing
+        # from the wrapper, so the shapes above cannot tell the two keys apart. A wrapper that
+        # keeps a dummy of that name and still passes the callee something else -- the
+        # allocating tier of an OpenMP root passing `M_OMP_N_THREADS(n_omp_threads)` -- must not
+        # map it.
+        from builders import procedure
+
+        wrapper = procedure(
+            "pr", integer("n", doc="n"), integer("mode", doc="m"), integer("weight", doc="w"), ierr(),
+        )
+        callee = (integer("n", doc="n"), integer("mode", doc="m"), integer("weight", doc="w"), ierr())
+        actuals = [("n", "n"), ("mode", "MODE_A"), ("weight", "weight"), ("ierr", "ierr")]
+
+        assert FortranWrapperEmitter()._call_positions(callee, actuals, wrapper) == [(1, 1), (3, 3)]
