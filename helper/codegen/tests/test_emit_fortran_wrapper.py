@@ -1283,3 +1283,45 @@ class TestTheArgumentPositionIsTranslated:
         actuals = [("n", "n"), ("mode", "MODE_A"), ("weight", "weight"), ("ierr", "ierr")]
 
         assert FortranWrapperEmitter()._call_positions(callee, actuals, wrapper) == [(1, 1), (3, 3)]
+
+    def test_a_position_only_the_prologue_moves_is_imported_too(self):
+        # Every other shape's implementation block already moves a position, so the import
+        # list would be right even if it never asked the prologue call. Here the implementation
+        # keeps every position it has -- its work array and prologue-produced level come last --
+        # and only the prologue, which takes `values` and `n` in the other order, moves any.
+        from builders import Meta, logical, module, procedure, project
+        from codegen.ir.directives import Prologue
+
+        text = emitted(project(module(
+            "tox_demo_impl",
+            procedure(
+                "guard",
+                real("values", Intent.IN, "(n)", doc="the data"),
+                integer("n", Intent.IN, doc="length"),
+                real("level", Intent.OUT, doc="the level"),
+                logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+                ierr(),
+                meta=Meta(summary="Guard", author="AUTHOR"),
+            ),
+            procedure(
+                "tail_impl",
+                integer("n", Intent.IN, doc="length"),
+                real("values", Intent.IN, "(n)", doc="the data"),
+                real("clipped", Intent.OUT, "(n)", doc="the answer"),
+                real("level", Intent.IN, doc="the level"),
+                real("tmp_work", Intent.OUT, "(n)", doc="scratch"),
+                ierr(),
+                meta=Meta(summary="Tail", author="AUTHOR"),
+                directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+            ),
+        )))
+
+        # the premise: nothing but the prologue's block moves a position
+        implementation = translation(text, "tail", "tail_impl")
+        assert {k: implementation(k) for k in range(1, 7)} == {1: 1, 2: 2, 3: 3, 4: 0, 5: 0, 6: 0}
+        expert = translation(text, "tail_expert", "tail_impl")
+        assert {k: expert(k) for k in range(1, 7)} == {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 0}
+        prologue = translation(text, "tail", "guard")
+        assert {k: prologue(k) for k in range(1, 6)} == {1: 2, 2: 1, 3: 0, 4: 0, 5: 0}
+
+        assert "set_err_arg_pos" in text.split("contains", 1)[0]
