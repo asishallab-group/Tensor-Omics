@@ -859,7 +859,8 @@ take over (Section 5.7): `detect_dosage_effect`, `detect_dosage_effect_expert`,
 no second tier) `filter_paralogs_by_pattern_dosage_effect` and
 `filter_paralogs_by_pattern_subfunctionalization`.
 
-Each validates its own arguments at its own positions, so no position remapping is needed
+Each validates its own arguments at its own positions, and translates a position the
+implementation returns into its own list (Section 5.14), so you write no position remapping
 anywhere — which is exactly what the hand-written per-mode wrappers used to spend a dozen
 `map_err_arg_pos` calls apiece on.
 
@@ -1016,14 +1017,40 @@ call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_referen
 if (undefined_sign) call set_err_once(ierr, ERR_INVALID_INPUT)
 ```
 
-**You get** the code propagated to the caller — and the **argument position cleared**
-(`clear_err_arg_pos`) on the way out. That is deliberate: a position numbers the
-*implementation's* dummy list, the wrapper's list is a different one, and a position often
-propagates in unchanged from a private helper three frames down. A wrong argument name is worse
-than none, and position 0 means "not argument related".
+**You get** the code propagated to the caller, its **argument position translated** into each
+wrapper's own dummy list. A position your implementation returns numbers *its* dummy list; the
+wrapper's list is a different one (it drops work arrays, permutations, recommend-sized values and
+a fixed mode), so after the call it rewrites the position:
 
-Keep `arg_pos=` in your implementation anyway. It is correct for a direct Fortran caller, and the
-Fortran test suite is one.
+```fortran
+if (is_err(ierr)) then
+    select case (get_err_arg_pos(ierr))
+    case (1_int32:2_int32)
+        ! the same position here
+    case (7_int32)
+        call set_err_arg_pos(ierr, 3_int32)
+    case default
+        call clear_err_arg_pos(ierr)
+    end select
+    return
+end if
+```
+
+An argument the wrapper passes from one of its own dummies keeps its name, wherever it sits in
+the wrapper's list; everything else -- a work array or permutation the wrapper prepared, a
+recommend-sized or prologue-produced value, the fixed mode, `ierr` itself -- lands in
+`case default` and becomes 0, "not argument related". The same block follows every prologue
+call, and every `DM_OUTPUT_FROM` producer call (Section 5.9). Python and R then name the argument:
+`compute_relative_axis_contributions(np.zeros(3))` raises `ERR_DIVISION_BY_ZERO` "(argument 'vec')".
+
+**Your part: every position your `ierr` returns numbers your own dummy list.** A position
+propagates unchanged through every call that does not rewrite it, so one a helper set numbers
+*the helper's* list. Translate it at that call, before positions from different helpers merge --
+`call map_err_arg_pos(ierr, 3_int32, 18_int32)` where the helper's third dummy is your
+eighteenth, or `set_err_arg_pos` inside a `select case` -- or drop it with `clear_err_arg_pos`
+where it names nothing your caller passed. Afterwards no `select case` can tell two helpers'
+3 apart. `detect_patterns_impl` clears what its private subset helpers return, whose checks
+guard counts the algorithm keeps and so carry no position at all.
 
 ### 5.15 A family too big for one file
 
@@ -1236,8 +1263,8 @@ subroutine serialize_int_helper(arr, n_elements, arr_shape, filename, ierr)
     if (is_err(ierr)) return
 ```
 
-Because you own the numbering, `arg_pos` here is *correct* and stays — nothing clears it (contrast
-Section 5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
+Because you own the numbering, `arg_pos` here is *correct* and stays — no generated wrapper stands
+between it and the caller to translate it (contrast Section 5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
 `if (is_err(ierr)) return` before touching the data.
 
 An exported procedure with no `ierr` gets one synthesised, because the binding languages always
@@ -1606,6 +1633,8 @@ Two things that will bite when you convert an existing procedure to an implement
       other arguments `DM_EQUALS`. Every real that may be non-finite carries the matching
       `DM_ALLOW_*` — and no other real does.
 - [ ] No validation in the implementation; no `ierr` unless it reports a genuine runtime failure.
+- [ ] Every position that `ierr` returns numbers the implementation's own dummy list: one a
+      helper set is translated or cleared at that call (Section 5.14).
 - [ ] The generated wrapper was read once, and validates what you expected it to — and where two
       were generated, the plain one prepares what you meant it to.
 
