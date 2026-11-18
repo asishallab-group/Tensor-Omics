@@ -378,7 +378,7 @@ class TestModes:
             "p",
             b.integer(
                 "mode", Intent.IN, doc=self._mode_doc("mean", "median"),
-                directives=Directives(default=Default("MODE_MEDIAN")),
+                directives=Directives(default=Default("MODE_MEDIAN")), optional=True,
             ),
         )
         analyse(procedure, bag)
@@ -526,7 +526,7 @@ class TestDefaultsAndMappingsThatCannotBeBuilt:
 
         procedure = b.procedure(
             "p",
-            b.integer("n", Intent.IN, directives=Directives(default=Default("f(x)"))),
+            b.integer("n", Intent.IN, directives=Directives(default=Default("f(x)")), optional=True),
             b.ierr(),
         )
         analyse(procedure, bag)
@@ -544,7 +544,7 @@ class TestDefaultsAndMappingsThatCannotBeBuilt:
             "p",
             b.integer(
                 "mode", Intent.IN, doc=self._mode_doc("mean", "median"),
-                directives=Directives(default=Default("MODE_MISSING")),
+                directives=Directives(default=Default("MODE_MISSING")), optional=True,
             ),
             b.ierr(),
         )

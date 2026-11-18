@@ -14,7 +14,7 @@ import re
 
 from .. import names
 from ..config import CONVENTIONS, Conventions
-from ..diagnostics import DiagnosticBag
+from ..diagnostics import DiagnosticBag, SourceLocation
 from .constants import KIND_VALUES
 from .doc import EXTERNAL_PREFIX
 from .entities import Argument, Module, Procedure, Project
@@ -136,6 +136,7 @@ def validate_project(project: Project, diagnostics: DiagnosticBag,
     check_whitelist_is_allocation_free(project, diagnostics, conventions)
     check_c_kinds_depend_on_the_safeguard(project, diagnostics)
     check_extents_are_declared_first(project, diagnostics)
+    check_defaults_are_on_optionals(project, diagnostics, conventions)
     check_exported_names_are_unique(project, diagnostics)
 
 
@@ -190,6 +191,22 @@ def allocations_in(procedure: Procedure) -> list[str]:
 SAFEGUARD_MODULE = "f42_safeguard"
 
 
+def synthesized_module_names(project: Project,
+                             conventions: Conventions = CONVENTIONS) -> set[str]:
+    """The lowered names of the modules the generator wrote into `project`.
+
+    A synthesized module is `<x>` beside the `<x>_impl` it came from (a re-export parent
+    included). What it declares is cloned from the implementation, so a rule about what the
+    author wrote reads the implementation and skips these.
+    """
+    suffix = conventions.impl_suffix
+    return {
+        module.name[: -len(suffix)].lower()
+        for module in project
+        if module.name.lower().endswith(suffix)
+    }
+
+
 def check_c_kinds_depend_on_the_safeguard(project: Project, diagnostics: DiagnosticBag) -> None:
     """A module naming a C kind `use`s `f42_safeguard`.
 
@@ -213,14 +230,10 @@ def check_c_kinds_depend_on_the_safeguard(project: Project, diagnostics: Diagnos
     if not any(m.name.lower() == SAFEGUARD_MODULE for m in project):
         return
 
-    #: a synthesized wrapper is `<impl>` beside the `<impl>_impl` it came from. Its `use` list
-    #: is the emitter's to write and is not in the IR at all, so checking it here would report
-    #: what the emitter has already done. `emit/fortran_wrapper` handles those.
-    synthesized = {
-        m.name[: -len("_impl")].lower()
-        for m in project
-        if m.name.lower().endswith("_impl")
-    }
+    # a synthesized wrapper's `use` list is the emitter's to write and is not in the IR at all,
+    # so checking it here would report what the emitter has already done.
+    # `emit/fortran_wrapper` handles those.
+    synthesized = synthesized_module_names(project)
     for module in project:
         if module.name.lower() == SAFEGUARD_MODULE or module.name.lower() in synthesized:
             continue
@@ -307,6 +320,68 @@ def check_extents_are_declared_first(project: Project, diagnostics: DiagnosticBa
                                 "an implicit type, which buries the real error"
                             ),
                         )
+
+
+def check_defaults_are_on_optionals(project: Project, diagnostics: DiagnosticBag,
+                                    conventions: Conventions = CONVENTIONS) -> None:
+    """A `DM_DEFAULT` sits on an `optional` argument.
+
+    A default is what an omitted argument takes, and only an optional one can be omitted.
+    On a required argument every layer's documentation still promises the default, to Fortran
+    and C callers who must pass the argument all the same. Where the bindings work the value
+    out themselves, or it is an output, the default is never used at all. And in a split
+    mode the wrapper takes the argument as optional because of its default, then hands it to
+    the implementation's mandatory dummy: a Fortran caller who omits it crashes the program.
+
+    Read off the declarations as written: an implementation's, and a hand-written export's.
+    The synthesized wrappers are skipped, since they are cloned from the implementation and
+    would report the same line once per tier. An array is skipped too: a default on one is
+    refused whether or not it is optional (`_check_default_on_an_array`).
+    """
+    synthesized = synthesized_module_names(project, conventions)
+    suffix = conventions.impl_suffix
+    for module in project:
+        if module.name.lower() in synthesized:
+            continue
+        is_impl_module = module.name.lower().endswith(suffix)
+        for procedure in module.procedures:
+            is_impl = is_impl_module and procedure.name.lower().endswith(suffix)
+            if not (is_impl or procedure.is_exported):
+                continue
+            for argument in procedure.arguments:
+                default = argument.directives.default
+                if default is None or argument.optional or argument.is_array:
+                    continue
+                location = argument.location
+                if location is not None and default.line_number is not None:
+                    location = SourceLocation(location.file, default.line_number)
+                diagnostics.error(
+                    f"argument '{argument.name}' has a DM_DEFAULT but is not optional",
+                    entity=argument,
+                    location=location,
+                    note=_required_default_note(argument),
+                )
+
+
+def _required_default_note(argument: Argument) -> str:
+    """What to do about a `DM_DEFAULT` on a required argument, for the case it is in."""
+    roles = argument.roles
+    output_from = argument.directives.output_from
+    # an implementation is analysed without the project, so its producer is not resolved
+    # onto its roles: the directive says the same
+    computed = output_from is not None and output_from.is_automatic
+    if computed or (roles is not None and roles.is_derived):
+        return (f"Python and R derive '{argument.name}' and never take it, so the default is "
+                "never used; drop it")
+    if argument.intent is Intent.OUT:
+        return ("an output takes no value from its caller, so there is nothing to default; "
+                "drop it")
+    if argument.intent is Intent.INOUT:
+        return ("an in-out argument cannot be optional, so it cannot have a default either; "
+                "drop the DM_DEFAULT")
+    return ("declare it `optional` and resolve it with M_DEFAULT_VAL (the C, Python and R "
+            "bindings come out the same, and Fortran callers get the default too), or drop "
+            "the DM_DEFAULT and state a recommended value in the prose")
 
 
 def check_whitelist_is_allocation_free(project: Project, diagnostics: DiagnosticBag,
