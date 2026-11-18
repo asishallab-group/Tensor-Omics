@@ -276,9 +276,11 @@ C passes a real `bool`, so Python and R hand over a boolean rather than a 0/1 in
 **And since 2026-08-14 the sources are `logical(c_bool)` too**, so there is no copy at all:
 the wrapper hands the caller's buffer straight to the implementation. It used to declare an
 automatic array of default `logical` and convert elementwise, because `c_bool` is one byte and
-a default `logical` is four. 31 such array temporaries across 16 wrappers are now one — a
-scalar, and only because `mask_check_state` is a `logical function` whose *result* stays
-default-kind, where there is no memory to win and a condition accepts any kind anyway.
+a default `logical` is four. 31 such array temporaries across 16 wrappers became one — a
+scalar, the *result* of the `logical function` `mask_check_state`, which stayed default-kind,
+where there was no memory to win and a condition accepts any kind anyway. That function went
+with the port of `tox_paralog_analysis` onto `f42_bit_masks_impl`, so no wrapper declares one
+now.
 
 The decision was memory, not speed: no boundary buffer, and a quarter of the bytes for every
 mask in the library. `misc/bench/logical-kinds/RESULTS.md` has the measurements, and they point the same way

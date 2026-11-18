@@ -101,8 +101,9 @@ class ProducerInput:
 class OutputFromPlan:
     """How an argument is obtained by calling another procedure.
 
-    For `DM_OUTPUT_FROM(count, mask_chunk_count, ..., AUTO)`: call `mask_chunk_count`,
-    supply its inputs from the consumer's own arguments, and take its `count` output. The
+    For `DM_OUTPUT_FROM(work_array_size, calc_work_arr_paralog_subsets_size, ..., AUTO)`: call
+    `calc_work_arr_paralog_subsets_size`, supply its inputs from the consumer's own arguments,
+    and take its `work_array_size` output. The
     binding languages call the producer's *generated wrapper*, so its own error
     checking and result handling come for free.
     """

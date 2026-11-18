@@ -567,6 +567,11 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   builds, and nothing hands the modification back (the R shim did not even compile)
 - a **`DM_DEFAULT` on an array** — a default is one value, so an omitted array arrived with one
   element and failed its shape check
+- a **`DM_DEFAULT` on an argument that is not `optional`** — only an optional argument can be
+  omitted, so every layer's documentation promised a default to callers who had to pass the value
+  anyway, one the bindings derive or an output never used it, and a split mode's wrapper made the
+  argument optional and handed it to the implementation's mandatory dummy. Reported once, at the
+  directive, from the implementation's or the export's own declaration
 - an **extent that is not `intent(in)`, or that only optional arrays carry** — the bindings read
   an extent off the arrays they are passed and drop it from the signature, so a written one is
   neither theirs to read nor to return, and one only an omitted array carries is read off nothing
@@ -625,7 +630,9 @@ dropping the fixed directory they used to be scoped to:
 - an **`allocatable` local or dummy** in any procedure of the module, implementations and
   helpers alike — the generated wrapper owns the memory. Seen through the declaration, since no
   body is ever read; a `pointer` local aliases and is fine. The dummy is the subtler half: it
-  looks like the caller's memory, but whoever fills it allocated it
+  looks like the caller's memory, but whoever fills it allocated it. The generator checks this
+  only on what Ford shows it: it never sees a `private` procedure, and in a module that defaults
+  to `private` it sees no locals either. Keep the rule by hand where it cannot look.
 - a **`use` naming anything but another `_impl` module or a member of
   `Conventions.impl_import_whitelist`**. This is what gives the rule above any reach beyond one
   file: the allocation check reads declarations, so an implementation calling a helper
