@@ -529,8 +529,8 @@ passed in is the consumer's already-prepared input, making the producer's conver
 no-ops rather than a second copy.
 
 The producer's inputs are matched to the consumer's arguments **by name**, which is what most
-cases need: `mask_chunk_count(n_genes, count)` is called from a consumer that also has
-`n_genes`. Where the two spell a quantity differently, or where a producer input is a
+cases need: `calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, ...)`
+is called from a consumer that also has `n_genes`. Where the two spell a quantity differently, or where a producer input is a
 *constant* the consumer has no argument for, the consumer's argument carries a markdown table
 mapping them (the same shape as the mode table) -- `tox_loess_required_workspace` is supplied
 `n_dim = 1_int32` and `save_factorization = .false.` that way. A producer input that is neither
@@ -630,8 +630,9 @@ up), while main publishes `value`, `mode`, `vector`, `array`, `expression`, `fac
 
 **Rejected -- refusing every `<other>_<suffix>` and every name a wrapper might use** (WP2's first
 form). It refused `p_value` beside `p` and `window_size` beside `window`, ordinary names whose local
-is never emitted, and a blanket list of intrinsics would refuse `count`, which main publishes in
-`mask_chunk_count`. Refusing where the wrapper really emits the name is both narrower and complete.
+is never emitted, and a blanket list of intrinsics would refuse `count`, which is an ordinary
+argument name wherever the wrapper counts no mask. Refusing where the wrapper really emits the
+name is both narrower and complete.
 
 **Rejected -- a list of what each emitter might reference**, kept beside the emitter. It would be a
 second description of the emitted code that drifts from the first; reading the rendered wrapper

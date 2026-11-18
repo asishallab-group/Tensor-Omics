@@ -865,8 +865,8 @@ And what calling one directly takes:
   allocations and the implementation call, which come after every producer call, see it
   refined. `_check_refined_values` refuses the rest, naming the value, the refining producer
   and the other reader.
-- **Producers do not feed each other** (FES 2026-11-12, "Rejected -- chaining producers"
-  above stands). A producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
+- **Producers do not feed each other** ("Rejected -- chaining producers" above stands). A
+  producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
   consumer -- or by the value it computes itself -- is refused on either route
   (`roles._refuses_chaining`), with the recorded alternative as its note: size for an upper
   bound, or take the value as an argument of the caller's. So no producer call reads another's

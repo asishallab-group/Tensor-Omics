@@ -1638,7 +1638,7 @@ class TestKinds:
             b.complex_("x", Intent.IN, "(n)", kind="real64"),
             b.complex_("x", Intent.IN, "(n)", kind="c_double_complex"),
             b.logical("x", Intent.IN, "(n)", kind="c_bool"),
-            b.logical("x", Intent.OUT),  # a default logical, as `mask_check_state` returns
+            b.logical("x", Intent.OUT),  # a default logical, which the C wrapper converts
         ],
         ids=lambda a: str(a.type),
     )
