@@ -276,10 +276,12 @@ def check_extents_are_declared_first(project: Project, diagnostics: DiagnosticBa
     turned back on the hand-written sources, which had drifted from it in five files until
     the diagnostics profile gained `-std=f2023` and stopped compiling.
 
-    Every procedure, not only the exported ones: this is about whether the file compiles, not
-    about what crosses into C. Argument *declaration* order is what matters and it is
-    independent of the dummy-argument list, so the line each declaration was found on is the
-    only thing that can answer it -- an argument whose line is unknown is skipped rather than
+    Every procedure Ford shows, not only the exported ones: this is about whether the file
+    compiles, not about what crosses into C. The generator checks this only on what Ford shows
+    it: it never sees a `private` procedure, and in a module that defaults to `private` it sees no
+    locals either. Keep the rule by hand where it cannot look. Argument *declaration* order is
+    what matters and it is independent of the dummy-argument list, so the line each declaration
+    was found on is the only thing that can answer it -- an argument whose line is unknown is skipped rather than
     guessed at.
     """
     for module in project:
@@ -594,6 +596,10 @@ def _check_impl_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> N
     allocation. The rule covers every procedure in the module, not only the implementations:
     one that allocates nothing itself but calls a helper that does is no better off. It holds
     across modules too, which is `_check_impl_imports`' doing: nothing else could see it.
+
+    The generator checks this only on what Ford shows it: it never sees a `private` procedure,
+    and in a module that defaults to `private` it sees no locals either. Keep the rule by hand
+    where it cannot look.
 
     A local and an `allocatable` dummy count alike. The dummy is the subtler of the two --
     it looks like the caller's memory, and the caller does receive it, but whoever fills it

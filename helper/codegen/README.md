@@ -630,7 +630,9 @@ dropping the fixed directory they used to be scoped to:
 - an **`allocatable` local or dummy** in any procedure of the module, implementations and
   helpers alike — the generated wrapper owns the memory. Seen through the declaration, since no
   body is ever read; a `pointer` local aliases and is fine. The dummy is the subtler half: it
-  looks like the caller's memory, but whoever fills it allocated it
+  looks like the caller's memory, but whoever fills it allocated it. The generator checks this
+  only on what Ford shows it: it never sees a `private` procedure, and in a module that defaults
+  to `private` it sees no locals either. Keep the rule by hand where it cannot look.
 - a **`use` naming anything but another `_impl` module or a member of
   `Conventions.impl_import_whitelist`**. This is what gives the rule above any reach beyond one
   file: the allocation check reads declarations, so an implementation calling a helper

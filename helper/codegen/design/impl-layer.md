@@ -1026,8 +1026,10 @@ rule covers the module's helpers as well as its implementations — one that all
 itself but calls a helper that does gives its expert caller nothing.
 
 It is enforced on the **declaration**: a local declared `allocatable` is refused. The generator
-never reads a body, and an `M_ALLOCATE` needs an allocatable to allocate into, so the declaration
-is a complete proxy for this tree. (A `pointer` local that is `allocate`d would slip through. No
+checks this only on what Ford shows it: it never sees a `private` procedure, and in a module that
+defaults to `private` it sees no locals either. Keep the rule by hand where it cannot look. The
+generator never reads a body, and an `M_ALLOCATE` needs an allocatable to allocate into, so the
+declaration is a complete proxy for this tree. (A `pointer` local that is `allocate`d would slip through. No
 implementation does that, and the gap is cheaper than teaching the frontend to read statements.)
 Ford hides a procedure's own variables by default, so the frontend sets `proc_internals`.
 
