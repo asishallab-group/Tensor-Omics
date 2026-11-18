@@ -654,7 +654,7 @@ end do
 
 \subsection{No Allocations in Core Routines}
 
-\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point, and the generator enforces this. This rule:
+\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point. The generator refuses an \texttt{allocatable} dummy; it does not yet see an \texttt{allocatable} local, or anything in a private helper, because FORD omits private entities and every \texttt{\_impl} module defaults to \texttt{private} --- keep that half by hand and in review. This rule:
 \begin{itemize}
   \item Keeps core routines \texttt{pure} and deterministic.
   \item Allows callers to reuse pre-allocated work arrays across multiple calls, avoiding repeated \texttt{malloc}/\texttt{free} cycles over large datasets.
