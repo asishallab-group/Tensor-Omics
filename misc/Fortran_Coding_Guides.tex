@@ -327,7 +327,7 @@ Macro & Purpose \\
 \texttt{DM\_ALLOW\_NAN} & Permit NaN (rejected by default for every real argument) \\
 \texttt{DM\_ALLOW\_INFINITE} & Permit $\pm\infty$ (rejected by default for every real argument) \\
 \texttt{DM\_EQUALS(EXPR)} & This integer must equal \texttt{EXPR}; on an extent, on top of its dimension check \\
-\texttt{DM\_DEFAULT(VAL)} & Default value (optional arguments only) \\
+\texttt{DM\_DEFAULT(VAL)} & Default value (optional scalars only) \\
 \texttt{DM\_RESULT\_SIZE\_IS(ARG)} & Only the first \texttt{ARG} elements of this output are filled \\
 \begin{tabular}[t]{@{}l@{}}\texttt{DM\_OUTPUT\_FROM(OUT,}\\\quad\texttt{PROC, MOD, MODE)}\end{tabular}
   & An \texttt{intent(in)} value: output \texttt{OUT} of the published \texttt{PROC} in
@@ -805,22 +805,26 @@ names each parameter with a FORD link, so the table stays anchored to the code i
 literal that can drift, and the generator reads it as the accepted set: Python and R pass the mode
 as its name (\texttt{"average"}), and the generated wrapper checks membership.
 
+\noindent From \texttt{src/tox/tox\_clustering\_impl.F90}:
+
 \begin{lstlisting}[language=Fortran]
-!! |      Method      |          Value         |
-!! |------------------|------------------------|
-!! | Average / UPGMA  | [[tox_linkage_impl(module):METHOD_AVERAGE(variable)]] |
-!! | Weighted / WPGMA | [[tox_linkage_impl(module):METHOD_WEIGHTED(variable)]] |
-!! |      Ward        | [[tox_linkage_impl(module):METHOD_WARD(variable)]] |
+!! | Method | Value |
+!! |--------|-------|
+!! | Average / UPGMA | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]] |
+!! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
+!! | Ward | [[tox_clustering_impl(module):METHOD_WARD(variable)]] |
 \end{lstlisting}
 
 A bare \texttt{CM\_METHOD\_AVERAGE} in that column is refused: the row does not name a parameter.
-Nor is a mode bounded with \texttt{CM\_} macros or \texttt{DM\_MIN}/\texttt{DM\_MAX}: its accepted
-set is its table, which need not be contiguous.
+Do not bound a mode with \texttt{CM\_} macros or \texttt{DM\_MIN}/\texttt{DM\_MAX} either: its
+accepted set is its table, which need not be contiguous, and a hand-written range goes stale the
+moment a mode is added.
 
 \paragraph{Use the macro in a bound too.} When a \texttt{CM\_} macro defines a real range or a
-default, write the macro itself into the \texttt{DM\_} marker instead of repeating the literal, as
-\texttt{tox\_loess\_impl} does with\\ \texttt{DM\_MIN(CM\_MIN\_INT\_WORKSPACE\_SIZE)}. This keeps the
-default or bound, the validation, and the documentation all traceable to one definition.
+default, write the macro itself into the \texttt{DM\_} marker instead of repeating the literal.
+\texttt{tox\_loess\_impl} bounds its workspace sizes that way, with
+\texttt{DM\_MIN(CM\_MIN\_INT\_WORKSPACE\_SIZE)}, which keeps the default or bound, the validation,
+and the documentation all traceable to one definition.
 
 % =============================================================================
 \section{Derived Types (\texttt{type}): Use with Care}
