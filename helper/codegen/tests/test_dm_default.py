@@ -29,6 +29,7 @@ REFUSED = "argument '{}' has a DM_DEFAULT but is not optional"
 
 DERIVED_NOTE = "Python and R derive '{}' and never take it, so the default is never used; drop it"
 OUTPUT_NOTE = "an output takes no value from its caller, so there is nothing to default; drop it"
+EXTENT_NOTE = "an extent cannot be optional; drop the DM_DEFAULT"
 INOUT_NOTE = ("an in-out argument cannot be optional, so it cannot have a default either; drop "
               "the DM_DEFAULT")
 OPTIONAL_NOTE = ("declare it `optional` and resolve it with M_DEFAULT_VAL (the C, Python and R "
@@ -139,14 +140,30 @@ class TestTheNote:
             (REFUSED.format("work_size"), DERIVED_NOTE.format("work_size")),
         ]
 
-    def test_a_value_the_caller_looks_up_is_not_derived(self):
-        # JUST_INFO: the caller still passes it, so the default would be used -- make it optional
+    def test_an_extent_only_an_output_carries(self):
+        # the caller passes it, but an optional extent is refused too: drop the default
+        n = b.integer("n", doc="count", directives=default("3_int32"))
+        filled = b.real("filled", Intent.OUT, "(n)", doc="filled")
+        arguments = (n, b.real("value", doc="value"), filled)
+        assert refusals(impl_project(*arguments)) == [(REFUSED.format("n"), EXTENT_NOTE)]
+
+    def test_a_just_info_size_of_a_work_array(self):
+        # JUST_INFO: the caller looks it up and passes it, and it is an extent all the same
         work_size = b.integer("work_size", doc="work size", directives=default(
             "10_int32",
             output_from=OutputFrom("work_size", "work_size_of", "tox_demo", OutputFromMode.JUST_INFO),
         ))
         arguments = scaled(work_size, b.real("tmp_work", Intent.OUT, "(work_size)", doc="work"))
-        assert refusals(impl_project(*arguments)) == [(REFUSED.format("work_size"), OPTIONAL_NOTE)]
+        assert refusals(impl_project(*arguments)) == [(REFUSED.format("work_size"), EXTENT_NOTE)]
+
+    def test_a_just_info_value_that_sizes_nothing(self):
+        # the caller passes it and it may be optional, so the default would be used
+        threshold = b.integer("threshold", doc="threshold", directives=default(
+            "10_int32",
+            output_from=OutputFrom("threshold", "threshold_of", "tox_demo", OutputFromMode.JUST_INFO),
+        ))
+        assert refusals(impl_project(*scaled(threshold))) == [(REFUSED.format("threshold"),
+                                                              OPTIONAL_NOTE)]
 
     def test_an_output(self):
         total = b.real("total", Intent.OUT, doc="total", directives=default("0.0_real64"))

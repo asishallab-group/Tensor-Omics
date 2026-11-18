@@ -373,6 +373,10 @@ def _required_default_note(argument: Argument) -> str:
     if computed or (roles is not None and roles.is_derived):
         return (f"Python and R derive '{argument.name}' and never take it, so the default is "
                 "never used; drop it")
+    if roles is not None and roles.is_extent:
+        # one the caller passes, because only outputs or work arrays carry it: an optional
+        # extent is refused in turn, so making it optional is no way out
+        return "an extent cannot be optional; drop the DM_DEFAULT"
     if argument.intent is Intent.OUT:
         return ("an output takes no value from its caller, so there is nothing to default; "
                 "drop it")
