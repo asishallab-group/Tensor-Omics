@@ -567,6 +567,11 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   builds, and nothing hands the modification back (the R shim did not even compile)
 - a **`DM_DEFAULT` on an array** — a default is one value, so an omitted array arrived with one
   element and failed its shape check
+- a **`DM_DEFAULT` on an argument that is not `optional`** — only an optional argument can be
+  omitted, so every layer's documentation promised a default to callers who had to pass the value
+  anyway, one the bindings derive or an output never used it, and a split mode's wrapper made the
+  argument optional and handed it to the implementation's mandatory dummy. Reported once, at the
+  directive, from the implementation's or the export's own declaration
 - an **extent that is not `intent(in)`, or that only optional arrays carry** — the bindings read
   an extent off the arrays they are passed and drop it from the signature, so a written one is
   neither theirs to read nor to return, and one only an omitted array carries is read off nothing
