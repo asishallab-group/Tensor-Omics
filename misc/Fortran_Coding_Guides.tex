@@ -869,9 +869,10 @@ use f42_sort_impl, only: sort_array
 
 \textbf{Any module that names a C kind must \texttt{use f42\_safeguard}} --- any
 \texttt{c\_bool}, \texttt{c\_int}, \texttt{c\_char} or the rest, whether or not the module has a
-\texttt{bind(C)} interface of its own. The code generator enforces this for C kinds on procedure
-arguments: a module that names one there without the \texttt{use} is a build error. A C kind on a
-local or a module variable needs the \texttt{use} just as much, but the generator does not see it.
+\texttt{bind(C)} interface of its own. The code generator enforces this for C kinds on the arguments
+of procedures FORD shows: a module that names one there without the \texttt{use} is a build error.
+A C kind on a \texttt{private} procedure's arguments, a local or a module variable needs the
+\texttt{use} just as much, but the generator does not see it.
 
 \begin{lstlisting}[language=Fortran]
 module tox_thing_impl
