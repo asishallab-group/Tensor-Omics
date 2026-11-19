@@ -7,7 +7,7 @@ from tensor_omics import (
     bitmask_n_words, bitmask_test, bitmask_from_logical, bitmask_to_logical,
     bitmasks_from_logical_2D, bitmasks_to_logical_2D,
 )
-from test_helpers import run_all_tests, assert_error
+from test_helpers import run_all_tests, assert_error, assert_refused_by_name
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # The values are tested in Fortran. These tests check that each procedure can be called, its
@@ -154,6 +154,16 @@ def test_word_with_only_bit_31_set():
     assert bitmask_test(32, bitmask, 32), "flag 32 must test as set"
     assert not bitmask_test(32, bitmask, 31), "flag 31 must test as clear"
     assert (bitmask_to_logical(32, bitmask) == flags).all(), "the word must unpack to flag 32 alone"
+
+
+def test_a_negative_n_bits_is_refused_by_name():
+    # n_bits sizes `flags`, which the binding allocates before the library is called (#215)
+    assert_refused_by_name(lambda: bitmask_to_logical(-1, np.zeros(1, dtype=np.int32)), "n_bits = -1",
+                           "n_bits")
+    assert_refused_by_name(lambda: bitmasks_to_logical_2D(-1, np.zeros((1, 2), dtype=np.int32, order="F")),
+                           "n_bits = -1 in 2-D", "n_bits")
+    assert_error(lambda: bitmask_to_logical(0, np.zeros(1, dtype=np.int32)), "n_bits = 0 stays the library's",
+                 ERR_INVALID_INPUT)
 
 
 if __name__ == "__main__":

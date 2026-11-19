@@ -99,13 +99,15 @@ def _weak_pragmas() -> list[str]:
     lines += [f"#pragma weak {symbol}" for symbol in _WEAK_R_SYMBOLS]
     return lines
 
-def c_extent(extent: str, name=lambda n: n, owner_rank=lambda array: 2) -> str:
+def c_extent(extent: str, name=lambda n: n, owner_rank=lambda array: 2,
+             in_double: bool = False) -> str:
     """A Fortran extent expression as C, through the one grammar the bindings evaluate.
 
     `name` writes an identifier (a by-value scalar is read from its `_v_` local), and
     `owner_rank` gives an array's rank as R sees it, which decides how `size(a, k)` is read:
     a vector carries no `dim`, so its only extent is its length. `generate` has refused every
-    extent a binding computes that lies outside the grammar (`abi.extents`).
+    extent a binding computes that lies outside the grammar (`abi.extents`). `in_double`
+    writes it in `double` arithmetic throughout (`extents.to_c_double`), for a count.
     """
     def size(array: str, dimension: int | None) -> str:
         if dimension is None or owner_rank(array) <= 1:
@@ -113,6 +115,8 @@ def c_extent(extent: str, name=lambda n: n, owner_rank=lambda array: 2) -> str:
         # Fortran dimensions are 1-based, and a matrix carries its extents in `dim`
         return f"INTEGER(Rf_getAttrib({array}, R_DimSymbol))[{dimension - 1}]"
 
+    if in_double:
+        return extents.to_c_double(extent, name, size)
     return extents.to_c(extent, name, size)
 
 
@@ -151,18 +155,6 @@ _R_AS_SCALAR = {
 
 def c_ctype(argument: CArgument) -> str:
     return C_CTYPE[argument.type.kind]
-
-
-def _element_count(extents) -> str:
-    """The product of some C `int` extents, as a `double`: exact for every count R can allocate.
-
-    In `int` it wrapped -- `n_bits * n_masks` of 1431655766 and 3 is 2, the size of a buffer
-    the callee then wrote 4294967298 flags into (#215). Each extent is parenthesised first,
-    since `*` binds tighter than `-`.
-    """
-    parts = [f"(double) {e}" if e.isidentifier() or e.isdigit() else f"(double) ({e})"
-             for e in extents]
-    return " * ".join(parts) if parts else "1.0"
 
 
 def _r_marshals(argument: CArgument) -> bool:
@@ -497,11 +489,12 @@ class CCallEmitter:
         names = self._scalar_local_names(wrapper)
         return [a for a in self._inputs(wrapper) if a.name in names]
 
-    def _extent(self, expr: str) -> str:
+    def _extent(self, expr: str, in_double: bool = False) -> str:
         """A Fortran extent as C, with any by-value scalar name read from its `_v_` local.
 
         An assumed size (`*`) has no value to write; an array declared so is sized by the shape
-        that travels beside it, which is what every caller of this reads instead.
+        that travels beside it, which is what every caller of this reads instead. `in_double`
+        writes it in `double` arithmetic (`c_extent`).
         """
         if expr == "*":
             return expr
@@ -517,7 +510,7 @@ class CCallEmitter:
                 return 2
             return owner.rank - 1 if owner.type.is_character else owner.rank
 
-        return c_extent(expr, name, owner_rank)
+        return c_extent(expr, name, owner_rank, in_double)
 
     def _extract_scalars(self, writer: Writer, wrapper: CWrapper) -> None:
         """Pull a by-value scalar out of its length-1 SEXP into a C local to point at."""
@@ -712,11 +705,10 @@ class CCallEmitter:
 
         # the element count first, exact and refused past what R can allocate (`tox_count`);
         # a string's length is not one of its elements
-        axes = self._allocated_extents(argument)
         if argument.shape_arg is not None:
             elements = f"tox_prod({argument.shape_arg})"
         else:
-            elements = _element_count(axes[1:] if argument.type.is_character else axes)
+            elements = self._element_count(argument)
         count = shim_local(name, COUNT)
         lines = [f'R_xlen_t {count} = tox_count("{name}", {elements});']
 
@@ -724,7 +716,8 @@ class CCallEmitter:
             return lines + [f"unsigned char* {shim_local(name, BUFFER)} = tox_bool_alloc({count});"]
         if argument.type.is_character:
             return lines + [
-                f'char* {shim_local(name, BUFFER)} = tox_char_alloc("{name}", {axes[0]}, {count});'
+                f'char* {shim_local(name, BUFFER)} = '
+                f'tox_char_alloc("{name}", {self._length(argument)}, {count});'
             ]
         if argument.is_temporary:
             ctype = c_ctype(argument)
@@ -752,20 +745,42 @@ class CCallEmitter:
         ]
 
     def _r_extents(self, argument: CArgument) -> list[str]:
-        axes = self._allocated_extents(argument)
+        axes = argument.dimension.extents
         if argument.type.is_character and axes:
             axes = axes[1:]
-        return axes
+        return [self._int_axis(argument, axis) for axis in axes]
 
-    def _allocated_extents(self, argument: CArgument) -> list[str]:
-        """The extents an output or a work array is allocated by, as C: never negative.
+    def _element_count(self, argument: CArgument) -> str:
+        """The element count of an output or a work array, as a C `double` expression.
 
-        A computed one is clamped at zero, as Fortran sizes it (`extents.clamped`); a string's
-        length leads, as C carries it. An assumed size (`*`) stays as it is: the shape that
-        travels beside such an array sizes it instead.
+        Every axis clamped at zero, as Fortran sizes it (`extents.clamped`), and the product
+        and each axis computed in `double` (`extents.to_c_double`): no `int` arithmetic happens
+        before `tox_count` checks it, so none can wrap (#215). A string's length is not one of
+        its elements.
         """
-        return [self._extent(extent if extent == "*" else extents.clamped(extent))
-                for extent in argument.dimension.extents]
+        axes = argument.dimension.extents
+        if argument.type.is_character:
+            axes = axes[1:]
+        if not axes:
+            return "1.0"
+        product = " * ".join(f"({extents.clamped(axis)})" for axis in axes)
+        return self._extent(product, in_double=True)
+
+    def _int_axis(self, argument: CArgument, axis: str) -> str:
+        """An axis of an allocated array as the `int` R's `dim` and a string length take.
+
+        A name or a literal is an `int` already; anything computed is evaluated in `double`,
+        clamped at zero, and refused past INT_MAX naming the array (`tox_int_extent`).
+        """
+        node = extents.parse(axis)
+        if isinstance(node, (extents.Name, extents.Integer)):
+            return self._extent(axis)
+        clamped = self._extent(extents.clamped(axis), in_double=True)
+        return f'tox_int_extent("{argument.name}", {clamped})'
+
+    def _length(self, argument: CArgument) -> str:
+        """The length a string output is allocated and read back with (`_int_axis`)."""
+        return self._int_axis(argument, argument.dimension.extents[0])
 
     # -- the call ---------------------------------------------------------------
 
@@ -834,7 +849,7 @@ class CCallEmitter:
                     f"{name} = PROTECT(tox_bool_out({buffer}, {count})); {C_PROTECT_COUNT}++;"
                 )
             else:
-                length = self._allocated_extents(argument)[0]
+                length = self._length(argument)
                 converted.line(
                     f"{name} = PROTECT(tox_char_out({buffer}, {length}, {count})); "
                     f"{C_PROTECT_COUNT}++;"
@@ -919,6 +934,7 @@ _MARSHAL_HEADER = r'''// Generated. Do not edit.
 #include <R.h>
 #include <Rinternals.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -927,6 +943,8 @@ _MARSHAL_HEADER = r'''// Generated. Do not edit.
 
 static inline int tox_imax(int a, int b) { return a > b ? a : b; }
 static inline int tox_imin(int a, int b) { return a < b ? a : b; }
+static inline double tox_dmax(double a, double b) { return a > b ? a : b; }
+static inline double tox_dmin(double a, double b) { return a < b ? a : b; }
 
 // Whether the code the library returned reports an error, as check_err_code in
 // error_handling.R reads it: any code but ERR_OK and a status (STAT_*), the argument position
@@ -1218,9 +1236,13 @@ static inline char* tox_char_in(SEXP x, int len, const char* argument) {
 // the callee may leave an element untouched (an early error return, a partly filled array),
 // and tox_char_out reads it back by trimming trailing blanks. A zero fill would leave NULs
 // there, which Rf_mkCharLen rejects outright with an embedded-nul error. The byte count is
-// checked as an element count is (tox_count), naming the array.
+// computed in double and refused, naming the array, past what R can allocate.
 static inline char* tox_char_alloc(const char* argument, int len, R_xlen_t n) {
-    size_t total = (size_t) tox_count(argument, (double) len * (double) (n > 0 ? n : 1));
+    double bytes = (double) len * (double) (n > 0 ? n : 1);
+    if (!(bytes >= 0 && bytes <= (double) R_XLEN_T_MAX))
+        tox_refuse(argument, "tox_shape_error", "'%s' would take %.0f bytes, which R cannot allocate",
+                   argument, bytes);
+    size_t total = (size_t) bytes;
     char* buf = (char*) R_alloc(total, 1);
     memset(buf, ' ', total);
     return buf;

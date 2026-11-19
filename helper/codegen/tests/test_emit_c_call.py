@@ -236,7 +236,7 @@ class TestConstantSizes:
     def test_an_output_is_allocated_with_the_value(self, bag):
         text = self.module_text(bag)
 
-        assert 'tox_count("sums", (double) 2)' in text
+        assert 'tox_count("sums", 2.0)' in text
         assert "N_AXES" not in text
 
     def test_a_length_is_the_value(self, bag):
@@ -304,16 +304,36 @@ class TestAllocationCounts:
         assert 'R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits * (double) n_points);' in text
         assert "unsigned char* _c_flags = tox_bool_alloc(_n_flags);" in text
 
-    def test_a_computed_axis_is_clamped_at_zero(self, bag):
+    def test_a_computed_axis_is_clamped_at_zero_in_double(self, bag):
+        # no int arithmetic before the count is checked: n_points - 2147483647 cannot wrap
         text = self.wrapper(bag)
-        assert 'tox_count("merges", (double) (tox_imax(0, n_points - 1)))' in text
+        assert 'tox_count("merges", tox_dmax(0.0, (double) n_points - 1.0))' in text
         assert "Rf_allocVector(REALSXP, _n_merges)" in text
+
+    def test_a_computed_axis_of_a_matrix_is_an_int_dim_only_once_checked(self, bag):
+        text = emitted(
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="rows"),
+                b.real("x", Intent.OUT, "(n - 2, 3)", doc="the result"),
+                b.ierr(),
+            ),
+            bag,
+        )
+        assert 'tox_count("x", tox_dmax(0.0, (double) _v_n - 2.0) * 3.0)' in text
+        assert 'INTEGER(_dim_x)[0] = tox_int_extent("x", tox_dmax(0.0, (double) _v_n - 2.0));' in text
+        assert "INTEGER(_dim_x)[1] = 3;" in text
 
     def test_the_outputs_are_converted_back_only_when_the_call_succeeded(self, bag):
         text = self.wrapper(bag)
         block = text[text.index("SEXP flags = R_NilValue;"):]
         assert block.startswith("SEXP flags = R_NilValue;\n    if (!tox_failed(ierr)) {\n"
                                 "        flags = PROTECT(tox_bool_out(_c_flags, _n_flags)); _nprot++;")
+
+    def test_a_string_buffer_is_refused_in_bytes(self):
+        header = CCallEmitter().marshal_header_content()
+        char_alloc = header[header.index("static inline char* tox_char_alloc"):]
+        assert "would take %.0f bytes, which R cannot allocate" in char_alloc[: char_alloc.index("\n}\n")]
 
     def test_an_error_is_told_from_a_status_as_check_err_code_tells_it(self):
         from codegen.ir.errors import ErrorCatalogue, ErrorCode

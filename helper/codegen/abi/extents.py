@@ -387,6 +387,33 @@ def to_c(text: str, name: Callable[[str], str], size: Callable[[str, int | None]
     return _Writer(name, size, extremum, division, False).write(parse(text))
 
 
+def to_c_double(text: str, name: Callable[[str], str], size: Callable[[str, int | None], str]) -> str:
+    """An extent as a C `double` expression, for the element count the R shim allocates by.
+
+    Every operand is a double before any operator applies, so no `int` arithmetic can overflow
+    before `tox_count` checks the result (#215): `n_timepoints - 2` of -2147483647 wrapped in
+    `int` to a huge positive axis. A double holds every integer up to 2^53 exactly, which is
+    past every count R can allocate. Fortran's integer `/` truncates toward zero, as `trunc`
+    does; `max` and `min` become the double helpers of `tox_marshal.h`.
+    """
+    def extremum(function: str, operands: list[str]) -> str:
+        text = operands[-1]
+        for operand in reversed(operands[:-1]):
+            text = f"tox_d{function}({operand}, {text})"
+        return text
+
+    class _DoubleWriter(_Writer):
+        def write(self, node) -> str:
+            if isinstance(node, Integer):
+                return f"{node.value}.0"
+            return super().write(node)
+
+    return _DoubleWriter(lambda identifier: f"(double) {name(identifier)}",
+                         lambda array, dimension: f"(double) {size(array, dimension)}",
+                         extremum, lambda left, right: f"trunc({left} / {right})",
+                         True).write(parse(text))
+
+
 # -- what the bindings compute, refused where the grammar cannot say it ----------------------
 
 

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void read_expression_vectors_tsv_c(const char*, const int*, const int*, const char*, const int*, const int*, double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, int*);
@@ -181,7 +181,7 @@ SEXP get_unassigned_mask_call(SEXP gene_to_fam) {
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    R_xlen_t _n_mask = tox_count("mask", (double) ((int) Rf_length(gene_to_fam)));
+    R_xlen_t _n_mask = tox_count("mask", (double) (int) Rf_length(gene_to_fam));
     unsigned char* _c_mask = tox_bool_alloc(_n_mask);
     int n_genes_kept = 0;
     int ierr = 0;

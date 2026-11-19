@@ -227,6 +227,18 @@ class TestClamped:
     def test_what_may_be_negative_is_clamped_at_zero(self, text, expected):
         assert extents.clamped(text) == expected
 
+    @pytest.mark.parametrize("text, expected", [
+        ("n", "(double) n"),
+        ("n - 2", "(double) n - 2.0"),
+        ("(n - 10)/3 + 5", "trunc(((double) n - 10.0) / 3.0) + 5.0"),
+        ("max(0_int32, n - 2)", "tox_dmax(0.0, (double) n - 2.0)"),
+        ("min(a, b, c)", "tox_dmin((double) a, tox_dmin((double) b, (double) c))"),
+        ("size(x, 2)", "(double) SIZE(x, 2)"),
+    ])
+    def test_a_count_is_written_in_double_throughout(self, text, expected):
+        # every operand a double before any operator applies, so no int arithmetic can wrap
+        assert extents.to_c_double(text, str, c_size) == expected
+
     def test_both_languages_write_the_clamp(self):
         assert extents.to_python(extents.clamped("n - 1")) == "max(0, n - 1)"
         assert extents.to_c(extents.clamped("n - 1"), str, c_size) == "tox_imax(0, n - 1)"

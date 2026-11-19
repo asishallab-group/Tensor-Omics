@@ -21,6 +21,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -83,6 +84,8 @@
 
 static inline int tox_imax(int a, int b) { return a > b ? a : b; }
 static inline int tox_imin(int a, int b) { return a < b ? a : b; }
+static inline double tox_dmax(double a, double b) { return a > b ? a : b; }
+static inline double tox_dmin(double a, double b) { return a < b ? a : b; }
 
 // Whether the code the library returned reports an error, as check_err_code in
 // error_handling.R reads it: any code but ERR_OK and a status (STAT_*), the argument position
@@ -374,9 +377,13 @@ static inline char* tox_char_in(SEXP x, int len, const char* argument) {
 // the callee may leave an element untouched (an early error return, a partly filled array),
 // and tox_char_out reads it back by trimming trailing blanks. A zero fill would leave NULs
 // there, which Rf_mkCharLen rejects outright with an embedded-nul error. The byte count is
-// checked as an element count is (tox_count), naming the array.
+// computed in double and refused, naming the array, past what R can allocate.
 static inline char* tox_char_alloc(const char* argument, int len, R_xlen_t n) {
-    size_t total = (size_t) tox_count(argument, (double) len * (double) (n > 0 ? n : 1));
+    double bytes = (double) len * (double) (n > 0 ? n : 1);
+    if (!(bytes >= 0 && bytes <= (double) R_XLEN_T_MAX))
+        tox_refuse(argument, "tox_shape_error", "'%s' would take %.0f bytes, which R cannot allocate",
+                   argument, bytes);
+    size_t total = (size_t) bytes;
     char* buf = (char*) R_alloc(total, 1);
     memset(buf, ' ', total);
     return buf;

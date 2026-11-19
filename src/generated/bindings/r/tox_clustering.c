@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, const int*, int*, int*, const int*, int*);
@@ -120,13 +120,13 @@ SEXP linkage_clustering_call(SEXP distances, SEXP method) {
     char* _c_method = tox_char_in(method, 8, "method");
 
     // outputs and work space
-    R_xlen_t _n_merge_i = tox_count("merge_i", (double) (tox_imax(0, n_points - 1)));
+    R_xlen_t _n_merge_i = tox_count("merge_i", tox_dmax(0.0, (double) n_points - 1.0));
     SEXP merge_i = PROTECT(Rf_allocVector(INTSXP, _n_merge_i)); _nprot++;
-    R_xlen_t _n_merge_j = tox_count("merge_j", (double) (tox_imax(0, n_points - 1)));
+    R_xlen_t _n_merge_j = tox_count("merge_j", tox_dmax(0.0, (double) n_points - 1.0));
     SEXP merge_j = PROTECT(Rf_allocVector(INTSXP, _n_merge_j)); _nprot++;
-    R_xlen_t _n_heights = tox_count("heights", (double) (tox_imax(0, n_points - 1)));
+    R_xlen_t _n_heights = tox_count("heights", tox_dmax(0.0, (double) n_points - 1.0));
     SEXP heights = PROTECT(Rf_allocVector(REALSXP, _n_heights)); _nprot++;
-    R_xlen_t _n_cluster_sizes = tox_count("cluster_sizes", (double) (tox_imax(0, n_points - 1)));
+    R_xlen_t _n_cluster_sizes = tox_count("cluster_sizes", tox_dmax(0.0, (double) n_points - 1.0));
     SEXP cluster_sizes = PROTECT(Rf_allocVector(INTSXP, _n_cluster_sizes)); _nprot++;
     int ierr = 0;
 

@@ -21,12 +21,11 @@ from tensor_omics import (
     group_centroid_orthologs,
     mean_vector,
 )
-from test_helpers import run_all_tests, assert_error
+from test_helpers import run_all_tests, assert_error, assert_refused_by_name
 from tensor_omics.error_handling import (
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
     ERR_NAN_INF,
-    ToxArgumentError,
 )
 
 N_AXES, N_GENES = 2, 4
@@ -192,13 +191,8 @@ def test_a_negative_n_families_is_refused_by_name_before_anything_is_allocated()
             _expression_vectors(), np.ones(N_GENES, dtype=np.int32), -1, np.ones(N_GENES, dtype=bool)),
     }
     for name, call in calls.items():
-        try:
-            call()
-        except ToxArgumentError as error:
-            assert error.argument == "n_families" and error.code is None, (name, error)
-            assert "'n_families' is a size and must not be negative, but it is -1" in str(error), (name, error)
-        else:
-            raise AssertionError(f"{name}: a negative n_families was not refused")
+        error = assert_refused_by_name(call, name, "n_families")
+        assert "'n_families' is a size and must not be negative, but it is -1" in str(error), (name, error)
 
 
 def test_zero_families_is_still_the_librarys_to_refuse():

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void perform_permutation_test_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, const int*, double*, double*, const int*, int*);
@@ -248,7 +248,7 @@ SEXP compute_velocity_trajectory_call(SEXP trajectory) {
     int n_timepoints = (int) Rf_length(trajectory);
 
     // outputs and work space
-    R_xlen_t _n_velocity = tox_count("velocity", (double) (tox_imax(0, n_timepoints - 1)));
+    R_xlen_t _n_velocity = tox_count("velocity", tox_dmax(0.0, (double) n_timepoints - 1.0));
     SEXP velocity = PROTECT(Rf_allocVector(REALSXP, _n_velocity)); _nprot++;
     int ierr = 0;
 
@@ -279,7 +279,7 @@ SEXP compute_acceleration_from_velocity_trajectory_call(SEXP velocity, SEXP n_ti
     int _v_n_timepoints = Rf_asInteger(n_timepoints);
 
     // outputs and work space
-    R_xlen_t _n_acceleration = tox_count("acceleration", (double) (tox_imax(0, _v_n_timepoints - 2)));
+    R_xlen_t _n_acceleration = tox_count("acceleration", tox_dmax(0.0, (double) _v_n_timepoints - 2.0));
     SEXP acceleration = PROTECT(Rf_allocVector(REALSXP, _n_acceleration)); _nprot++;
     int ierr = 0;
 
@@ -310,9 +310,9 @@ SEXP compute_velocity_trajectories_call(SEXP trajectories) {
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
 
     // outputs and work space
-    R_xlen_t _n_velocity = tox_count("velocity", (double) (tox_imax(0, n_timepoints - 1)) * (double) n_factors * (double) n_samples);
+    R_xlen_t _n_velocity = tox_count("velocity", tox_dmax(0.0, (double) n_timepoints - 1.0) * (double) n_factors * (double) n_samples);
     SEXP velocity = PROTECT(Rf_allocVector(REALSXP, _n_velocity)); _nprot++;
-    { SEXP _dim_velocity = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_velocity)[0] = tox_imax(0, n_timepoints - 1); INTEGER(_dim_velocity)[1] = n_factors; INTEGER(_dim_velocity)[2] = n_samples; Rf_setAttrib(velocity, R_DimSymbol, _dim_velocity); UNPROTECT(1); }
+    { SEXP _dim_velocity = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_velocity)[0] = tox_int_extent("velocity", tox_dmax(0.0, (double) n_timepoints - 1.0)); INTEGER(_dim_velocity)[1] = n_factors; INTEGER(_dim_velocity)[2] = n_samples; Rf_setAttrib(velocity, R_DimSymbol, _dim_velocity); UNPROTECT(1); }
     int ierr = 0;
 
     compute_velocity_trajectories_c(
@@ -346,9 +346,9 @@ SEXP compute_acceleration_from_velocity_call(SEXP velocity, SEXP n_timepoints) {
     int _v_n_timepoints = Rf_asInteger(n_timepoints);
 
     // outputs and work space
-    R_xlen_t _n_acceleration = tox_count("acceleration", (double) (tox_imax(0, _v_n_timepoints - 2)) * (double) n_factors * (double) n_samples);
+    R_xlen_t _n_acceleration = tox_count("acceleration", tox_dmax(0.0, (double) _v_n_timepoints - 2.0) * (double) n_factors * (double) n_samples);
     SEXP acceleration = PROTECT(Rf_allocVector(REALSXP, _n_acceleration)); _nprot++;
-    { SEXP _dim_acceleration = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_acceleration)[0] = tox_imax(0, _v_n_timepoints - 2); INTEGER(_dim_acceleration)[1] = n_factors; INTEGER(_dim_acceleration)[2] = n_samples; Rf_setAttrib(acceleration, R_DimSymbol, _dim_acceleration); UNPROTECT(1); }
+    { SEXP _dim_acceleration = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_acceleration)[0] = tox_int_extent("acceleration", tox_dmax(0.0, (double) _v_n_timepoints - 2.0)); INTEGER(_dim_acceleration)[1] = n_factors; INTEGER(_dim_acceleration)[2] = n_samples; Rf_setAttrib(acceleration, R_DimSymbol, _dim_acceleration); UNPROTECT(1); }
     int ierr = 0;
 
     compute_acceleration_from_velocity_c(

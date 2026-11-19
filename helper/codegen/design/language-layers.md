@@ -537,9 +537,12 @@ keeping its zero column), and four rules make what the bindings compute with it 
    binding's own allocation safe.
 2. **The shim's element counts are exact.** It multiplied `int` extents, and `n_bits * n_masks`
    of 1431655766 and 3 wrapped to 2, the size of the buffer the callee then wrote four billion
-   flags into. Every count is now computed in `double`, exact for every count R can allocate, and
-   refused past `R_XLEN_T_MAX` naming the array (`tox_count`); the buffers and loops are
-   `R_xlen_t`. Python's are Python ints already.
+   flags into. Every count is now computed in `double`, each axis included, so no `int` arithmetic
+   happens before it is checked (`extents.to_c_double`: `n_timepoints - 2` of -2147483647
+   overflowed too). It is exact for every count R can allocate, and refused past `R_XLEN_T_MAX`
+   naming the array (`tox_count`); a computed axis R's `dim` takes as an `int` is refused past
+   `INT_MAX` (`tox_int_extent`), and the buffers and loops are `R_xlen_t`. Python's are Python
+   ints already.
 3. **A computed axis is clamped at zero** (`extents.clamped`), as Fortran sizes it: the
    `n_points - 1` merges of no points are none, and the library reports the empty input rather
    than numpy or R refusing a length of -1.
