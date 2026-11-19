@@ -115,7 +115,7 @@ def test_integer_refuses_a_masked_array_with_masked_elements():
     assert np.allclose(centroid(np.ma.masked_array(FAMILY, mask=False)), [[2.0]])
 
 
-def test_a_uint32_bit_mask_word_is_refused_with_the_view_hint():
+def test_a_uint32_bitmask_word_is_refused_with_the_view_hint():
     refused(lambda: centroid(np.uint32([2**31, 1, 1, 1])), "gene_to_family", "view\\(np.int32\\)")
 
 

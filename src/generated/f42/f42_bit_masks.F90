@@ -13,18 +13,18 @@
 !| zero with `/= 0`, never with `> 0`.
 !|
 !| **The bits past `n_bits` in the last word are always zero.** Every procedure here keeps it that
-!| way, and the counts, [[f42_bit_masks_impl(module):bit_mask_all(function)]] and
-!| [[f42_bit_masks_impl(module):bit_mask_equal(function)]] rely on it.
+!| way, and the counts, [[f42_bit_masks_impl(module):bitmask_all(function)]] and
+!| [[f42_bit_masks_impl(module):bitmask_equal(function)]] rely on it.
 !|
 !| **Several masks** are the columns of a `(n_words, n_masks)` array. Every column starts on a
-!| new word, so `bit_masks(:, i_mask)` is a mask of its own and passes to any procedure here
+!| new word, so `bitmasks(:, i_mask)` is a mask of its own and passes to any procedure here
 !| without a copy.
 !|
 !| **Parallel loops write whole words.** Two iterations that set flags in the same word race, so
 !| a `do concurrent` over flags may only read a mask; one that writes runs over words or columns.
 !|
 !| **Hot loops** use the whole-mask procedures, or step from one set flag to the next with
-!| [[f42_bit_masks_impl(module):bit_mask_next(function)]]. A procedure call per flag costs more
+!| [[f42_bit_masks_impl(module):bitmask_next(function)]]. A procedure call per flag costs more
 !| than the flag, because nothing is inlined across modules; where a loop must touch single
 !| flags, the bit-mask macros in `src/macros.h` test a flag or locate its word inline, and one
 !| of them sizes a mask.
@@ -32,26 +32,26 @@
 !| Generated from [[f42_bit_masks_impl(module)]]; do not edit -- regenerate instead.
 module f42_bit_masks
     use f42_safeguard
-    use f42_bit_masks_impl, only: bit_mask_from_logical_impl, bit_mask_n_words_impl, bit_mask_test_impl, bit_mask_to_logical_impl
-    use f42_bit_masks_impl, only: bit_masks_from_logical_2D_impl, bit_masks_to_logical_2D_impl
+    use f42_bit_masks_impl, only: bitmask_from_logical_impl, bitmask_n_words_impl, bitmask_test_impl, bitmask_to_logical_impl
+    use f42_bit_masks_impl, only: bitmasks_from_logical_2D_impl, bitmasks_to_logical_2D_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32
     use tox_errors, only: set_ok, is_err, validate_dimension_size, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
-    public :: bit_mask_n_words
-    public :: bit_mask_test
-    public :: bit_mask_from_logical
-    public :: bit_mask_to_logical
-    public :: bit_masks_from_logical_2D
-    public :: bit_masks_to_logical_2D
+    public :: bitmask_n_words
+    public :: bitmask_test
+    public :: bitmask_from_logical
+    public :: bitmask_to_logical
+    public :: bitmasks_from_logical_2D
+    public :: bitmasks_to_logical_2D
 
 contains
 
-    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bit_mask_n_words_impl]].
+    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bitmask_n_words_impl]].
     !| Inside Fortran, a bit-mask macro in `src/macros.h` gives the same number.
-    pure subroutine bit_mask_n_words(&
+    pure subroutine bitmask_n_words(&
             n_bits,&
             n_words,&
             ierr&
@@ -70,18 +70,18 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call bit_mask_n_words_impl(&
+        call bitmask_n_words_impl(&
             n_bits = n_bits,&
             n_words = n_words&
         )
-    end subroutine bit_mask_n_words
+    end subroutine bitmask_n_words
 
-    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bit_mask_test_impl]].
+    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bitmask_test_impl]].
     !| Inside Fortran, a loop tests a flag inline with a bit-mask macro from `src/macros.h` instead.
-    pure subroutine bit_mask_test(&
+    pure subroutine bitmask_test(&
             n_bits,&
             n_words,&
-            bit_mask,&
+            bitmask,&
             i_bit,&
             is_set,&
             ierr&
@@ -93,7 +93,7 @@ contains
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask
             !! The minimum valid value is `1_int32`.
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
         integer(int32), intent(in) :: i_bit
             !! index of the flag, counting from 1
@@ -112,21 +112,21 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call bit_mask_test_impl(&
+        call bitmask_test_impl(&
             n_bits = n_bits,&
             n_words = n_words,&
-            bit_mask = bit_mask,&
+            bitmask = bitmask,&
             i_bit = i_bit,&
             is_set = is_set&
         )
-    end subroutine bit_mask_test
+    end subroutine bitmask_test
 
-    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bit_mask_from_logical_impl]].
-    pure subroutine bit_mask_from_logical(&
+    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bitmask_from_logical_impl]].
+    pure subroutine bitmask_from_logical(&
             n_bits,&
             n_words,&
             flags,&
-            bit_mask,&
+            bitmask,&
             ierr&
         )
         integer(int32), intent(in) :: n_bits
@@ -138,7 +138,7 @@ contains
             !! The maximum valid value is `((n_bits)/32_int32 + min(1_int32, mod((n_bits), 32_int32)))`.
         logical(c_bool), dimension(n_bits), intent(in) :: flags
             !! the flags to pack
-        integer(int32), dimension(n_words), intent(out) :: bit_mask
+        integer(int32), dimension(n_words), intent(out) :: bitmask
             !! the mask, flag `i` set where `flags(i)` is `.true.`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -150,19 +150,19 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call bit_mask_from_logical_impl(&
+        call bitmask_from_logical_impl(&
             n_bits = n_bits,&
             n_words = n_words,&
             flags = flags,&
-            bit_mask = bit_mask&
+            bitmask = bitmask&
         )
-    end subroutine bit_mask_from_logical
+    end subroutine bitmask_from_logical
 
-    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bit_mask_to_logical_impl]].
-    pure subroutine bit_mask_to_logical(&
+    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bitmask_to_logical_impl]].
+    pure subroutine bitmask_to_logical(&
             n_bits,&
             n_words,&
-            bit_mask,&
+            bitmask,&
             flags,&
             ierr&
         )
@@ -173,7 +173,7 @@ contains
             !! number of words of the mask
             !! The minimum valid value is `((n_bits)/32_int32 + min(1_int32, mod((n_bits), 32_int32)))`.
             !! The maximum valid value is `((n_bits)/32_int32 + min(1_int32, mod((n_bits), 32_int32)))`.
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
         logical(c_bool), dimension(n_bits), intent(out) :: flags
             !! `flags(i)` is `.true.` where flag `i` of the mask is set
@@ -187,21 +187,21 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call bit_mask_to_logical_impl(&
+        call bitmask_to_logical_impl(&
             n_bits = n_bits,&
             n_words = n_words,&
-            bit_mask = bit_mask,&
+            bitmask = bitmask,&
             flags = flags&
         )
-    end subroutine bit_mask_to_logical
+    end subroutine bitmask_to_logical
 
-    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bit_masks_from_logical_2D_impl]].
-    pure subroutine bit_masks_from_logical_2D(&
+    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bitmasks_from_logical_2D_impl]].
+    pure subroutine bitmasks_from_logical_2D(&
             n_bits,&
             n_masks,&
             n_words,&
             flags,&
-            bit_masks,&
+            bitmasks,&
             ierr&
         )
         integer(int32), intent(in) :: n_bits
@@ -215,7 +215,7 @@ contains
             !! The maximum valid value is `((n_bits)/32_int32 + min(1_int32, mod((n_bits), 32_int32)))`.
         logical(c_bool), dimension(n_bits, n_masks), intent(in) :: flags
             !! the flags, one mask per column
-        integer(int32), dimension(n_words, n_masks), intent(out) :: bit_masks
+        integer(int32), dimension(n_words, n_masks), intent(out) :: bitmasks
             !! the masks, column `j` packed from `flags(:, j)`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -228,21 +228,21 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call bit_masks_from_logical_2D_impl(&
+        call bitmasks_from_logical_2D_impl(&
             n_bits = n_bits,&
             n_masks = n_masks,&
             n_words = n_words,&
             flags = flags,&
-            bit_masks = bit_masks&
+            bitmasks = bitmasks&
         )
-    end subroutine bit_masks_from_logical_2D
+    end subroutine bitmasks_from_logical_2D
 
-    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bit_masks_to_logical_2D_impl]].
-    pure subroutine bit_masks_to_logical_2D(&
+    !> summary: Validates its inputs, then calls [[f42_bit_masks_impl(module):bitmasks_to_logical_2D_impl]].
+    pure subroutine bitmasks_to_logical_2D(&
             n_bits,&
             n_masks,&
             n_words,&
-            bit_masks,&
+            bitmasks,&
             flags,&
             ierr&
         )
@@ -255,10 +255,10 @@ contains
             !! number of words per mask
             !! The minimum valid value is `((n_bits)/32_int32 + min(1_int32, mod((n_bits), 32_int32)))`.
             !! The maximum valid value is `((n_bits)/32_int32 + min(1_int32, mod((n_bits), 32_int32)))`.
-        integer(int32), dimension(n_words, n_masks), intent(in) :: bit_masks
+        integer(int32), dimension(n_words, n_masks), intent(in) :: bitmasks
             !! the masks, one per column
         logical(c_bool), dimension(n_bits, n_masks), intent(out) :: flags
-            !! the flags, column `j` unpacked from `bit_masks(:, j)`
+            !! the flags, column `j` unpacked from `bitmasks(:, j)`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -270,13 +270,13 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call bit_masks_to_logical_2D_impl(&
+        call bitmasks_to_logical_2D_impl(&
             n_bits = n_bits,&
             n_masks = n_masks,&
             n_words = n_words,&
-            bit_masks = bit_masks,&
+            bitmasks = bitmasks,&
             flags = flags&
         )
-    end subroutine bit_masks_to_logical_2D
+    end subroutine bitmasks_to_logical_2D
 
 end module f42_bit_masks

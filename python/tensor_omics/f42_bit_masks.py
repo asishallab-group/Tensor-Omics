@@ -13,18 +13,18 @@ the order numpy's `np.unpackbits(words.view(np.uint8), bitorder="little")` and R
 zero with `/= 0`, never with `> 0`.
 
 **The bits past `n_bits` in the last word are always zero.** Every procedure here keeps it that
-way, and the counts, ``bit_mask_all`` and
-``bit_mask_equal`` rely on it.
+way, and the counts, ``bitmask_all`` and
+``bitmask_equal`` rely on it.
 
 **Several masks** are the columns of a `(n_words, n_masks)` array. Every column starts on a
-new word, so `bit_masks(:, i_mask)` is a mask of its own and passes to any procedure here
+new word, so `bitmasks(:, i_mask)` is a mask of its own and passes to any procedure here
 without a copy.
 
 **Parallel loops write whole words.** Two iterations that set flags in the same word race, so
 a `do concurrent` over flags may only read a mask; one that writes runs over words or columns.
 
 **Hot loops** use the whole-mask procedures, or step from one set flag to the next with
-``bit_mask_next``. A procedure call per flag costs more
+``bitmask_next``. A procedure call per flag costs more
 than the flag, because nothing is inlined across modules; where a loop must touch single
 flags, the bit-mask macros in `src/macros.h` test a flag or locate its word inline, and one
 of them sizes a mask.
@@ -43,18 +43,18 @@ from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
 
-_lib.bit_mask_n_words_c.restype = None
-_lib.bit_mask_n_words_c.argtypes = (
+_lib.bitmask_n_words_c.restype = None
+_lib.bitmask_n_words_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BIT_MASK_N_WORDS_ARGUMENTS = ("n_bits", "n_words", "ierr",)
+_BITMASK_N_WORDS_ARGUMENTS = ("n_bits", "n_words", "ierr",)
 
-_lib.bit_mask_test_c.restype = None
-_lib.bit_mask_test_c.argtypes = (
+_lib.bitmask_test_c.restype = None
+_lib.bitmask_test_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -64,12 +64,12 @@ _lib.bit_mask_test_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BIT_MASK_TEST_ARGUMENTS = ("n_bits", "n_words", "bit_mask", "i_bit", "is_set", "ierr",)
+_BITMASK_TEST_ARGUMENTS = ("n_bits", "n_words", "bitmask", "i_bit", "is_set", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASK_TEST_ARGUMENT_SOURCES = (None, "bit_mask", None, None, None, None,)
+_BITMASK_TEST_ARGUMENT_SOURCES = (None, "bitmask", None, None, None, None,)
 
-_lib.bit_mask_from_logical_c.restype = None
-_lib.bit_mask_from_logical_c.argtypes = (
+_lib.bitmask_from_logical_c.restype = None
+_lib.bitmask_from_logical_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
@@ -78,12 +78,12 @@ _lib.bit_mask_from_logical_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BIT_MASK_FROM_LOGICAL_ARGUMENTS = ("n_bits", "n_words", "flags", "bit_mask", "ierr",)
+_BITMASK_FROM_LOGICAL_ARGUMENTS = ("n_bits", "n_words", "flags", "bitmask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES = ("flags", None, None, None, None,)
+_BITMASK_FROM_LOGICAL_ARGUMENT_SOURCES = ("flags", None, None, None, None,)
 
-_lib.bit_mask_to_logical_c.restype = None
-_lib.bit_mask_to_logical_c.argtypes = (
+_lib.bitmask_to_logical_c.restype = None
+_lib.bitmask_to_logical_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -92,12 +92,12 @@ _lib.bit_mask_to_logical_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BIT_MASK_TO_LOGICAL_ARGUMENTS = ("n_bits", "n_words", "bit_mask", "flags", "ierr",)
+_BITMASK_TO_LOGICAL_ARGUMENTS = ("n_bits", "n_words", "bitmask", "flags", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES = (None, "bit_mask", None, None, None,)
+_BITMASK_TO_LOGICAL_ARGUMENT_SOURCES = (None, "bitmask", None, None, None,)
 
-_lib.bit_masks_from_logical_2D_c.restype = None
-_lib.bit_masks_from_logical_2D_c.argtypes = (
+_lib.bitmasks_from_logical_2D_c.restype = None
+_lib.bitmasks_from_logical_2D_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -107,12 +107,12 @@ _lib.bit_masks_from_logical_2D_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BIT_MASKS_FROM_LOGICAL_2D_ARGUMENTS = ("n_bits", "n_masks", "n_words", "flags", "bit_masks", "ierr",)
+_BITMASKS_FROM_LOGICAL_2D_ARGUMENTS = ("n_bits", "n_masks", "n_words", "flags", "bitmasks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES = ("flags", "flags", None, None, None, None,)
+_BITMASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES = ("flags", "flags", None, None, None, None,)
 
-_lib.bit_masks_to_logical_2D_c.restype = None
-_lib.bit_masks_to_logical_2D_c.argtypes = (
+_lib.bitmasks_to_logical_2D_c.restype = None
+_lib.bitmasks_to_logical_2D_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -122,11 +122,11 @@ _lib.bit_masks_to_logical_2D_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BIT_MASKS_TO_LOGICAL_2D_ARGUMENTS = ("n_bits", "n_masks", "n_words", "bit_masks", "flags", "ierr",)
+_BITMASKS_TO_LOGICAL_2D_ARGUMENTS = ("n_bits", "n_masks", "n_words", "bitmasks", "flags", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BIT_MASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES = (None, "bit_masks", "bit_masks", None, None, None,)
+_BITMASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES = (None, "bitmasks", "bitmasks", None, None, None,)
 
-def bit_mask_n_words(
+def bitmask_n_words(
         n_bits,
 ):
     r"""The number of words a mask of `n_bits` flags takes.
@@ -154,7 +154,7 @@ def bit_mask_n_words(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_bit_masks::bit_mask_n_words`, whose argument names are
+    Generated from the Fortran procedure `f42_bit_masks::bitmask_n_words`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
@@ -164,19 +164,19 @@ def bit_mask_n_words(
     n_words = _ctypes.c_int(0)
     ierr = _ctypes.c_int(0)
 
-    _lib.bit_mask_n_words_c(
+    _lib.bitmask_n_words_c(
         _ctypes.byref(_ctypes.c_int(n_bits)),
         _ctypes.byref(n_words),
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _BIT_MASK_N_WORDS_ARGUMENTS)
+    _check_err_code(ierr.value, _BITMASK_N_WORDS_ARGUMENTS)
 
     return n_words.value
 
-def bit_mask_test(
+def bitmask_test(
         n_bits,
-        bit_mask,
+        bitmask,
         i_bit,
 ):
     r"""Whether flag `i_bit` of a mask is set.
@@ -188,7 +188,7 @@ def bit_mask_test(
     n_bits : int
         number of flags in the mask
         The minimum valid value is `1`.
-    bit_mask : np.ndarray[np.int32] of shape (n_words,)
+    bitmask : np.ndarray[np.int32] of shape (n_words,)
         the mask
     i_bit : int
         index of the flag, counting from 1
@@ -210,35 +210,35 @@ def bit_mask_test(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_bit_masks::bit_mask_test`, whose argument names are
+    Generated from the Fortran procedure `f42_bit_masks::bitmask_test`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
     n_bits = _contract.integer(n_bits, "n_bits")
-    bit_mask = _contract.integers(bit_mask, "bit_mask", ndim=1)
+    bitmask = _contract.integers(bitmask, "bitmask", ndim=1)
     i_bit = _contract.integer(i_bit, "i_bit")
 
     # what the inputs already say, rather than asking for it again
-    n_words = bit_mask.shape[0]
+    n_words = bitmask.shape[0]
 
     # outputs and work arrays, which the caller never sees
     is_set = _ctypes.c_bool(0)
     ierr = _ctypes.c_int(0)
 
-    _lib.bit_mask_test_c(
+    _lib.bitmask_test_c(
         _ctypes.byref(_ctypes.c_int(n_bits)),
         _ctypes.byref(_ctypes.c_int(n_words)),
-        bit_mask,
+        bitmask,
         _ctypes.byref(_ctypes.c_int(i_bit)),
         _ctypes.byref(is_set),
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _BIT_MASK_TEST_ARGUMENTS, _BIT_MASK_TEST_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BITMASK_TEST_ARGUMENTS, _BITMASK_TEST_ARGUMENT_SOURCES)
 
     return is_set.value
 
-def bit_mask_from_logical(
+def bitmask_from_logical(
         n_words,
         flags,
 ):
@@ -255,7 +255,7 @@ def bit_mask_from_logical(
 
     Returns
     -------
-    bit_mask : np.ndarray[np.int32] of shape (n_words,), read-only
+    bitmask : np.ndarray[np.int32] of shape (n_words,), read-only
         the mask, flag `i` set where `flags(i)` is `True`
         A result is a value; call `.copy()` to obtain a modifiable array.
 
@@ -269,7 +269,7 @@ def bit_mask_from_logical(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_bit_masks::bit_mask_from_logical`, whose argument names are
+    Generated from the Fortran procedure `f42_bit_masks::bitmask_from_logical`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
@@ -280,27 +280,27 @@ def bit_mask_from_logical(
     n_bits = flags.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    bit_mask = _np.empty((n_words,), dtype=_np.int32, order='C')
+    bitmask = _np.empty((n_words,), dtype=_np.int32, order='C')
     ierr = _ctypes.c_int(0)
 
-    _lib.bit_mask_from_logical_c(
+    _lib.bitmask_from_logical_c(
         _ctypes.byref(_ctypes.c_int(n_bits)),
         _ctypes.byref(_ctypes.c_int(n_words)),
         flags,
-        bit_mask,
+        bitmask,
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _BIT_MASK_FROM_LOGICAL_ARGUMENTS, _BIT_MASK_FROM_LOGICAL_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BITMASK_FROM_LOGICAL_ARGUMENTS, _BITMASK_FROM_LOGICAL_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
-    bit_mask.flags.writeable = False
+    bitmask.flags.writeable = False
 
-    return bit_mask
+    return bitmask
 
-def bit_mask_to_logical(
+def bitmask_to_logical(
         n_bits,
-        bit_mask,
+        bitmask,
 ):
     r"""Unpacks a bit mask into a `logical(c_bool)` array.
 
@@ -309,7 +309,7 @@ def bit_mask_to_logical(
     n_bits : int
         number of flags
         The minimum valid value is `1`.
-    bit_mask : np.ndarray[np.int32] of shape (n_words,)
+    bitmask : np.ndarray[np.int32] of shape (n_words,)
         the mask
 
     Returns
@@ -328,36 +328,36 @@ def bit_mask_to_logical(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_bit_masks::bit_mask_to_logical`, whose argument names are
+    Generated from the Fortran procedure `f42_bit_masks::bitmask_to_logical`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
     n_bits = _contract.integer(n_bits, "n_bits")
-    bit_mask = _contract.integers(bit_mask, "bit_mask", ndim=1)
+    bitmask = _contract.integers(bitmask, "bitmask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
-    n_words = bit_mask.shape[0]
+    n_words = bitmask.shape[0]
 
     # outputs and work arrays, which the caller never sees
     flags = _np.empty((n_bits,), dtype=_np.bool_, order='C')
     ierr = _ctypes.c_int(0)
 
-    _lib.bit_mask_to_logical_c(
+    _lib.bitmask_to_logical_c(
         _ctypes.byref(_ctypes.c_int(n_bits)),
         _ctypes.byref(_ctypes.c_int(n_words)),
-        bit_mask,
+        bitmask,
         flags,
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _BIT_MASK_TO_LOGICAL_ARGUMENTS, _BIT_MASK_TO_LOGICAL_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BITMASK_TO_LOGICAL_ARGUMENTS, _BITMASK_TO_LOGICAL_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     flags.flags.writeable = False
 
     return flags
 
-def bit_masks_from_logical_2D(
+def bitmasks_from_logical_2D(
         n_words,
         flags,
 ):
@@ -374,7 +374,7 @@ def bit_masks_from_logical_2D(
 
     Returns
     -------
-    bit_masks : np.ndarray[np.int32] of shape (n_words, n_masks,), column-major (order='F'), read-only
+    bitmasks : np.ndarray[np.int32] of shape (n_words, n_masks,), column-major (order='F'), read-only
         the masks, column `j` packed from `flags(:, j)`
         A result is a value; call `.copy()` to obtain a modifiable array.
 
@@ -388,7 +388,7 @@ def bit_masks_from_logical_2D(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_bit_masks::bit_masks_from_logical_2D`, whose argument names are
+    Generated from the Fortran procedure `f42_bit_masks::bitmasks_from_logical_2D`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
@@ -400,28 +400,28 @@ def bit_masks_from_logical_2D(
     n_masks = flags.shape[1]
 
     # outputs and work arrays, which the caller never sees
-    bit_masks = _np.empty((n_words, n_masks,), dtype=_np.int32, order='F')
+    bitmasks = _np.empty((n_words, n_masks,), dtype=_np.int32, order='F')
     ierr = _ctypes.c_int(0)
 
-    _lib.bit_masks_from_logical_2D_c(
+    _lib.bitmasks_from_logical_2D_c(
         _ctypes.byref(_ctypes.c_int(n_bits)),
         _ctypes.byref(_ctypes.c_int(n_masks)),
         _ctypes.byref(_ctypes.c_int(n_words)),
         flags,
-        bit_masks,
+        bitmasks,
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENTS, _BIT_MASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BITMASKS_FROM_LOGICAL_2D_ARGUMENTS, _BITMASKS_FROM_LOGICAL_2D_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
-    bit_masks.flags.writeable = False
+    bitmasks.flags.writeable = False
 
-    return bit_masks
+    return bitmasks
 
-def bit_masks_to_logical_2D(
+def bitmasks_to_logical_2D(
         n_bits,
-        bit_masks,
+        bitmasks,
 ):
     r"""Unpacks every column of a matrix of bit masks into a `logical(c_bool)` column.
 
@@ -430,13 +430,13 @@ def bit_masks_to_logical_2D(
     n_bits : int
         number of flags per mask
         The minimum valid value is `1`.
-    bit_masks : np.ndarray[np.int32] of shape (n_words, n_masks,), column-major (order='F')
+    bitmasks : np.ndarray[np.int32] of shape (n_words, n_masks,), column-major (order='F')
         the masks, one per column
 
     Returns
     -------
     flags : np.ndarray[np.bool_] of shape (n_bits, n_masks,), column-major (order='F'), read-only
-        the flags, column `j` unpacked from `bit_masks(:, j)`
+        the flags, column `j` unpacked from `bitmasks(:, j)`
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -449,31 +449,31 @@ def bit_masks_to_logical_2D(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_bit_masks::bit_masks_to_logical_2D`, whose argument names are
+    Generated from the Fortran procedure `f42_bit_masks::bitmasks_to_logical_2D`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
     n_bits = _contract.integer(n_bits, "n_bits")
-    bit_masks = _contract.integers(bit_masks, "bit_masks", ndim=2, order="F")
+    bitmasks = _contract.integers(bitmasks, "bitmasks", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
-    n_masks = bit_masks.shape[1]
-    n_words = bit_masks.shape[0]
+    n_masks = bitmasks.shape[1]
+    n_words = bitmasks.shape[0]
 
     # outputs and work arrays, which the caller never sees
     flags = _np.empty((n_bits, n_masks,), dtype=_np.bool_, order='F')
     ierr = _ctypes.c_int(0)
 
-    _lib.bit_masks_to_logical_2D_c(
+    _lib.bitmasks_to_logical_2D_c(
         _ctypes.byref(_ctypes.c_int(n_bits)),
         _ctypes.byref(_ctypes.c_int(n_masks)),
         _ctypes.byref(_ctypes.c_int(n_words)),
-        bit_masks,
+        bitmasks,
         flags,
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _BIT_MASKS_TO_LOGICAL_2D_ARGUMENTS, _BIT_MASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BITMASKS_TO_LOGICAL_2D_ARGUMENTS, _BITMASKS_TO_LOGICAL_2D_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     flags.flags.writeable = False

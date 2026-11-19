@@ -44,7 +44,7 @@
         \optn{rdi\_threshold} of the ancestor, the second for one that stays
         within \optn{max\_angle} of it while exceeding its magnitude by
         \optn{gain\_gamma}.}
-  \step{Decode each result with \code{bit\_mask\_test}, which reports
+  \step{Decode each result with \code{bitmask\_test}, which reports
         whether a given 1-based gene index is a member of that subset.}
   \step{Test neofunctionalization separately with
         \code{detect\_neofunctionalization}, on \emph{RAP-projected unit}
@@ -72,19 +72,19 @@ import numpy as np
 from tensor_omics import (
     filter_paralogs_by_pattern_subfunctionalization,
     calc_work_arr_paralog_subsets_size,
-    detect_subfunctionalization, bit_mask_test,
-    bit_mask_n_words)
+    detect_subfunctionalization, bitmask_test,
+    bitmask_n_words)
 
 # --- angles to the ancestor are YOURS to supply ------------
 angles = np.arccos(cosines)        # radians, 0 <= a <= pi
 threshold = float(np.median(angles))
 
-n_chunks = bit_mask_n_words(n_genes)
-masks = filter_paralogs_by_pattern_subfunctionalization(
+n_chunks = bitmask_n_words(n_genes)
+family_bitmasks = filter_paralogs_by_pattern_subfunctionalization(
     angles, threshold, n_families, gene_to_fam, n_chunks)
 
 # --- one family at a time: its ancestor, its mask ----------
-mask = np.asarray(masks)[:, family - 1]
+mask = np.asarray(family_bitmasks)[:, family - 1]
 sizing = calc_work_arr_paralog_subsets_size(
     max_subset_size, n_genes, mask)     # it CAPS the size
 
@@ -94,10 +94,10 @@ res = detect_subfunctionalization(
     rdi_threshold,                      # residual tolerated
     norms, (np.argsort(norms) + 1).astype(np.int32))
 
-subsets = np.asarray(res["work_arr_paralog_subsets"])
+subsets = np.asarray(res["paralog_subsets_bitmasks"])
 for k in range(res["n_results"]):       # decode the bitmasks
     picked = [i for i in range(1, n_genes + 1)
-              if bit_mask_test(n_genes, subsets[:, k], i)]
+              if bitmask_test(n_genes, subsets[:, k], i)]
 \end{codefragment}
 
 \begin{parameters}

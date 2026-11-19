@@ -16,18 +16,18 @@
 !| zero with `/= 0`, never with `> 0`.
 !|
 !| **The bits past `n_bits` in the last word are always zero.** Every procedure here keeps it that
-!| way, and the counts, [[f42_bit_masks_impl(module):bit_mask_all(function)]] and
-!| [[f42_bit_masks_impl(module):bit_mask_equal(function)]] rely on it.
+!| way, and the counts, [[f42_bit_masks_impl(module):bitmask_all(function)]] and
+!| [[f42_bit_masks_impl(module):bitmask_equal(function)]] rely on it.
 !|
 !| **Several masks** are the columns of a `(n_words, n_masks)` array. Every column starts on a
-!| new word, so `bit_masks(:, i_mask)` is a mask of its own and passes to any procedure here
+!| new word, so `bitmasks(:, i_mask)` is a mask of its own and passes to any procedure here
 !| without a copy.
 !|
 !| **Parallel loops write whole words.** Two iterations that set flags in the same word race, so
 !| a `do concurrent` over flags may only read a mask; one that writes runs over words or columns.
 !|
 !| **Hot loops** use the whole-mask procedures, or step from one set flag to the next with
-!| [[f42_bit_masks_impl(module):bit_mask_next(function)]]. A procedure call per flag costs more
+!| [[f42_bit_masks_impl(module):bitmask_next(function)]]. A procedure call per flag costs more
 !| than the flag, because nothing is inlined across modules; where a loop must touch single
 !| flags, the bit-mask macros in `src/macros.h` test a flag or locate its word inline, and one
 !| of them sizes a mask.
@@ -38,14 +38,14 @@ module f42_bit_masks_impl
     M_IMPLICIT_NONE
     private
 
-    public :: bit_mask_n_words_impl, bit_mask_test_impl
-    public :: bit_mask_from_logical_impl, bit_mask_to_logical_impl
-    public :: bit_masks_from_logical_2D_impl, bit_masks_to_logical_2D_impl
-    public :: bit_mask_set, bit_mask_clear
-    public :: bit_mask_fill, bit_mask_copy, bit_mask_and, bit_mask_or, bit_mask_and_not, bit_mask_xor, bit_mask_not
-    public :: bit_mask_count, bit_mask_and_count, bit_mask_any, bit_mask_all, bit_mask_any_and
-    public :: bit_mask_equal, bit_mask_is_subset
-    public :: bit_mask_first, bit_mask_last, bit_mask_next, bit_mask_indices
+    public :: bitmask_n_words_impl, bitmask_test_impl
+    public :: bitmask_from_logical_impl, bitmask_to_logical_impl
+    public :: bitmasks_from_logical_2D_impl, bitmasks_to_logical_2D_impl
+    public :: bitmask_set, bitmask_clear
+    public :: bitmask_fill, bitmask_copy, bitmask_and, bitmask_or, bitmask_and_not, bitmask_xor, bitmask_not
+    public :: bitmask_count, bitmask_and_count, bitmask_any, bitmask_all, bitmask_any_and
+    public :: bitmask_equal, bitmask_is_subset
+    public :: bitmask_first, bitmask_last, bitmask_next, bitmask_indices
 
 contains
 
@@ -54,7 +54,7 @@ contains
     !> summary: The number of words a mask of `n_bits` flags takes.
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Inside Fortran, a bit-mask macro in `src/macros.h` gives the same number.
-    pure subroutine bit_mask_n_words_impl(n_bits, n_words)
+    pure subroutine bitmask_n_words_impl(n_bits, n_words)
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask; no flags take no words
             !! DM_MIN(0_int32)
@@ -62,12 +62,12 @@ contains
             !! number of words the mask takes
 
         n_words = M_BIT_MASK_N_WORDS(n_bits)
-    end subroutine bit_mask_n_words_impl
+    end subroutine bitmask_n_words_impl
 
     !> summary: Whether flag `i_bit` of a mask is set.
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Inside Fortran, a loop tests a flag inline with a bit-mask macro from `src/macros.h` instead.
-    pure subroutine bit_mask_test_impl(n_bits, n_words, bit_mask, i_bit, is_set)
+    pure subroutine bitmask_test_impl(n_bits, n_words, bitmask, i_bit, is_set)
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask
             !! DM_MIN(1_int32)
@@ -75,7 +75,7 @@ contains
             !! number of words of the mask
             !! DM_MIN(M_BIT_MASK_N_WORDS(n_bits))
             !! DM_MAX(M_BIT_MASK_N_WORDS(n_bits))
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
         integer(int32), intent(in) :: i_bit
             !! index of the flag, counting from 1
@@ -85,12 +85,12 @@ contains
             !! `.true.` if the flag is set
 
         is_set = .false._c_bool
-        if (i_bit <= n_bits) is_set = M_BIT_MASK_TEST(bit_mask, i_bit)
-    end subroutine bit_mask_test_impl
+        if (i_bit <= n_bits) is_set = M_BIT_MASK_TEST(bitmask, i_bit)
+    end subroutine bitmask_test_impl
 
     !> summary: Packs a `logical(c_bool)` array into a bit mask.
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine bit_mask_from_logical_impl(n_bits, n_words, flags, bit_mask)
+    pure subroutine bitmask_from_logical_impl(n_bits, n_words, flags, bitmask)
         integer(int32), intent(in) :: n_bits
             !! number of flags
             !! DM_MIN(1_int32)
@@ -100,21 +100,21 @@ contains
             !! DM_MAX(M_BIT_MASK_N_WORDS(n_bits))
         logical(c_bool), dimension(n_bits), intent(in) :: flags
             !! the flags to pack
-        integer(int32), dimension(n_words), intent(out) :: bit_mask
+        integer(int32), dimension(n_words), intent(out) :: bitmask
             !! the mask, flag `i` set where `flags(i)` is `.true.`
 
         integer(int32) :: i_word, first_flag
 
-        do concurrent(i_word=1:n_words) shared(flags, bit_mask) local(first_flag)
+        do concurrent(i_word=1:n_words) shared(flags, bitmask) local(first_flag)
             first_flag = (i_word - 1_int32)*M_BIT_MASK_WORD_BITS + 1_int32
-            bit_mask(i_word) = packed_word(min(M_BIT_MASK_WORD_BITS, n_bits - first_flag + 1_int32), &
+            bitmask(i_word) = packed_word(min(M_BIT_MASK_WORD_BITS, n_bits - first_flag + 1_int32), &
                                            flags(first_flag:))
         end do
-    end subroutine bit_mask_from_logical_impl
+    end subroutine bitmask_from_logical_impl
 
     !> summary: Unpacks a bit mask into a `logical(c_bool)` array.
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine bit_mask_to_logical_impl(n_bits, n_words, bit_mask, flags)
+    pure subroutine bitmask_to_logical_impl(n_bits, n_words, bitmask, flags)
         integer(int32), intent(in) :: n_bits
             !! number of flags
             !! DM_MIN(1_int32)
@@ -122,21 +122,21 @@ contains
             !! number of words of the mask
             !! DM_MIN(M_BIT_MASK_N_WORDS(n_bits))
             !! DM_MAX(M_BIT_MASK_N_WORDS(n_bits))
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
         logical(c_bool), dimension(n_bits), intent(out) :: flags
             !! `flags(i)` is `.true.` where flag `i` of the mask is set
 
         integer(int32) :: i_bit
 
-        do concurrent(i_bit=1:n_bits) shared(bit_mask, flags)
-            flags(i_bit) = M_BIT_MASK_TEST(bit_mask, i_bit)
+        do concurrent(i_bit=1:n_bits) shared(bitmask, flags)
+            flags(i_bit) = M_BIT_MASK_TEST(bitmask, i_bit)
         end do
-    end subroutine bit_mask_to_logical_impl
+    end subroutine bitmask_to_logical_impl
 
     !> summary: Packs every column of a `logical(c_bool)` matrix into its own bit mask.
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine bit_masks_from_logical_2D_impl(n_bits, n_masks, n_words, flags, bit_masks)
+    pure subroutine bitmasks_from_logical_2D_impl(n_bits, n_masks, n_words, flags, bitmasks)
         integer(int32), intent(in) :: n_bits
             !! number of flags per mask
             !! DM_MIN(1_int32)
@@ -148,7 +148,7 @@ contains
             !! DM_MAX(M_BIT_MASK_N_WORDS(n_bits))
         logical(c_bool), dimension(n_bits, n_masks), intent(in) :: flags
             !! the flags, one mask per column
-        integer(int32), dimension(n_words, n_masks), intent(out) :: bit_masks
+        integer(int32), dimension(n_words, n_masks), intent(out) :: bitmasks
             !! the masks, column `j` packed from `flags(:, j)`
 
         integer(int32) :: i_mask
@@ -156,13 +156,13 @@ contains
         ! a plain do: gfortran 16.1 dies with an internal compiler error (gfc_resolve_forall) on a
         ! do concurrent whose body calls a procedure of the same module that has one of its own
         do i_mask = 1, n_masks
-            call bit_mask_from_logical_impl(n_bits, n_words, flags(:, i_mask), bit_masks(:, i_mask))
+            call bitmask_from_logical_impl(n_bits, n_words, flags(:, i_mask), bitmasks(:, i_mask))
         end do
-    end subroutine bit_masks_from_logical_2D_impl
+    end subroutine bitmasks_from_logical_2D_impl
 
     !> summary: Unpacks every column of a matrix of bit masks into a `logical(c_bool)` column.
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine bit_masks_to_logical_2D_impl(n_bits, n_masks, n_words, bit_masks, flags)
+    pure subroutine bitmasks_to_logical_2D_impl(n_bits, n_masks, n_words, bitmasks, flags)
         integer(int32), intent(in) :: n_bits
             !! number of flags per mask
             !! DM_MIN(1_int32)
@@ -172,329 +172,329 @@ contains
             !! number of words per mask
             !! DM_MIN(M_BIT_MASK_N_WORDS(n_bits))
             !! DM_MAX(M_BIT_MASK_N_WORDS(n_bits))
-        integer(int32), dimension(n_words, n_masks), intent(in) :: bit_masks
+        integer(int32), dimension(n_words, n_masks), intent(in) :: bitmasks
             !! the masks, one per column
         logical(c_bool), dimension(n_bits, n_masks), intent(out) :: flags
-            !! the flags, column `j` unpacked from `bit_masks(:, j)`
+            !! the flags, column `j` unpacked from `bitmasks(:, j)`
 
         integer(int32) :: i_mask
 
-        ! a plain do, for the gfortran internal compiler error described in bit_masks_from_logical_2D_impl
+        ! a plain do, for the gfortran internal compiler error described in bitmasks_from_logical_2D_impl
         do i_mask = 1, n_masks
-            call bit_mask_to_logical_impl(n_bits, n_words, bit_masks(:, i_mask), flags(:, i_mask))
+            call bitmask_to_logical_impl(n_bits, n_words, bitmasks(:, i_mask), flags(:, i_mask))
         end do
-    end subroutine bit_masks_to_logical_2D_impl
+    end subroutine bitmasks_to_logical_2D_impl
 
     ! ------------------------------------------------------------------ single flags
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Sets flag `i_bit`. Not for `do concurrent` over flags: see the module's note on parallel loops.
-    pure subroutine bit_mask_set(n_words, bit_mask, i_bit)
+    pure subroutine bitmask_set(n_words, bitmask, i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the mask
         integer(int32), intent(in) :: i_bit
             !! index of the flag, `1 <= i_bit <= n_bits`
 
-        bit_mask(M_BIT_MASK_WORD(i_bit)) = ibset(bit_mask(M_BIT_MASK_WORD(i_bit)), M_BIT_MASK_BIT(i_bit))
-    end subroutine bit_mask_set
+        bitmask(M_BIT_MASK_WORD(i_bit)) = ibset(bitmask(M_BIT_MASK_WORD(i_bit)), M_BIT_MASK_BIT(i_bit))
+    end subroutine bitmask_set
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Clears flag `i_bit`. Not for `do concurrent` over flags: see the module's note on parallel loops.
-    pure subroutine bit_mask_clear(n_words, bit_mask, i_bit)
+    pure subroutine bitmask_clear(n_words, bitmask, i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the mask
         integer(int32), intent(in) :: i_bit
             !! index of the flag, `1 <= i_bit <= n_bits`
 
-        bit_mask(M_BIT_MASK_WORD(i_bit)) = ibclr(bit_mask(M_BIT_MASK_WORD(i_bit)), M_BIT_MASK_BIT(i_bit))
-    end subroutine bit_mask_clear
+        bitmask(M_BIT_MASK_WORD(i_bit)) = ibclr(bitmask(M_BIT_MASK_WORD(i_bit)), M_BIT_MASK_BIT(i_bit))
+    end subroutine bitmask_clear
 
     ! ------------------------------------------------------------------ whole masks, in place
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Sets every flag to `state`.
-    pure subroutine bit_mask_fill(n_bits, n_words, bit_mask, state)
+    pure subroutine bitmask_fill(n_bits, n_words, bitmask, state)
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask
         integer(int32), intent(in) :: n_words
             !! number of words of the mask, `ceiling(n_bits/32)`
-        integer(int32), dimension(n_words), intent(out) :: bit_mask
+        integer(int32), dimension(n_words), intent(out) :: bitmask
             !! the mask
         logical(c_bool), intent(in) :: state
             !! the value of every flag
 
         if (state) then
-            bit_mask = not(0_int32)
-            call clear_tail(n_bits, n_words, bit_mask)
+            bitmask = not(0_int32)
+            call clear_tail(n_bits, n_words, bitmask)
         else
-            bit_mask = 0_int32
+            bitmask = 0_int32
         end if
-    end subroutine bit_mask_fill
+    end subroutine bitmask_fill
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| `bit_mask = source_bit_mask`
-    pure subroutine bit_mask_copy(n_words, source_bit_mask, bit_mask)
+    !| `bitmask = source_bitmask`
+    pure subroutine bitmask_copy(n_words, source_bitmask, bitmask)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: source_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: source_bitmask
             !! the mask to copy
-        integer(int32), dimension(n_words), intent(out) :: bit_mask
+        integer(int32), dimension(n_words), intent(out) :: bitmask
             !! the copy
 
-        bit_mask = source_bit_mask
-    end subroutine bit_mask_copy
+        bitmask = source_bitmask
+    end subroutine bitmask_copy
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| `bit_mask = bit_mask .and. other_bit_mask`
-    pure subroutine bit_mask_and(n_words, other_bit_mask, bit_mask)
+    !| `bitmask = bitmask .and. other_bitmask`
+    pure subroutine bitmask_and(n_words, other_bitmask, bitmask)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: other_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: other_bitmask
             !! the second operand
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the first operand, and the result
 
-        bit_mask = iand(bit_mask, other_bit_mask)
-    end subroutine bit_mask_and
+        bitmask = iand(bitmask, other_bitmask)
+    end subroutine bitmask_and
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| `bit_mask = bit_mask .or. other_bit_mask`
-    pure subroutine bit_mask_or(n_words, other_bit_mask, bit_mask)
+    !| `bitmask = bitmask .or. other_bitmask`
+    pure subroutine bitmask_or(n_words, other_bitmask, bitmask)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: other_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: other_bitmask
             !! the second operand
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the first operand, and the result
 
-        bit_mask = ior(bit_mask, other_bit_mask)
-    end subroutine bit_mask_or
+        bitmask = ior(bitmask, other_bitmask)
+    end subroutine bitmask_or
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| `bit_mask = bit_mask .and. .not. other_bit_mask`: clears every flag `other_bit_mask` sets.
-    pure subroutine bit_mask_and_not(n_words, other_bit_mask, bit_mask)
+    !| `bitmask = bitmask .and. .not. other_bitmask`: clears every flag `other_bitmask` sets.
+    pure subroutine bitmask_and_not(n_words, other_bitmask, bitmask)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: other_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: other_bitmask
             !! the flags to clear
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the first operand, and the result
 
-        bit_mask = iand(bit_mask, not(other_bit_mask))
-    end subroutine bit_mask_and_not
+        bitmask = iand(bitmask, not(other_bitmask))
+    end subroutine bitmask_and_not
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| `bit_mask = bit_mask .neqv. other_bit_mask`
-    pure subroutine bit_mask_xor(n_words, other_bit_mask, bit_mask)
+    !| `bitmask = bitmask .neqv. other_bitmask`
+    pure subroutine bitmask_xor(n_words, other_bitmask, bitmask)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: other_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: other_bitmask
             !! the second operand
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the first operand, and the result
 
-        bit_mask = ieor(bit_mask, other_bit_mask)
-    end subroutine bit_mask_xor
+        bitmask = ieor(bitmask, other_bitmask)
+    end subroutine bitmask_xor
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| `bit_mask = .not. bit_mask`, the bits past `n_bits` kept zero.
-    pure subroutine bit_mask_not(n_bits, n_words, bit_mask)
+    !| `bitmask = .not. bitmask`, the bits past `n_bits` kept zero.
+    pure subroutine bitmask_not(n_bits, n_words, bitmask)
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask
         integer(int32), intent(in) :: n_words
             !! number of words of the mask, `ceiling(n_bits/32)`
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the mask
 
-        bit_mask = not(bit_mask)
-        call clear_tail(n_bits, n_words, bit_mask)
-    end subroutine bit_mask_not
+        bitmask = not(bitmask)
+        call clear_tail(n_bits, n_words, bitmask)
+    end subroutine bitmask_not
 
     ! ------------------------------------------------------------------ queries
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| The number of set flags.
-    pure integer(int32) function bit_mask_count(n_words, bit_mask) result(n_set)
+    pure integer(int32) function bitmask_count(n_words, bitmask) result(n_set)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
 
         integer(int32) :: i_word
 
         n_set = 0_int32
-        do concurrent(i_word=1:n_words) shared(bit_mask) reduce(+:n_set)
-            n_set = n_set + int(popcnt(bit_mask(i_word)), int32)
+        do concurrent(i_word=1:n_words) shared(bitmask) reduce(+:n_set)
+            n_set = n_set + int(popcnt(bitmask(i_word)), int32)
         end do
-    end function bit_mask_count
+    end function bitmask_count
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| `count(left .and. right)`, without building the conjunction.
-    pure integer(int32) function bit_mask_and_count(n_words, left_bit_mask, right_bit_mask) result(n_set)
+    pure integer(int32) function bitmask_and_count(n_words, left_bitmask, right_bitmask) result(n_set)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: left_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: left_bitmask
             !! the first operand
-        integer(int32), dimension(n_words), intent(in) :: right_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: right_bitmask
             !! the second operand
 
         integer(int32) :: i_word
 
         n_set = 0_int32
-        do concurrent(i_word=1:n_words) shared(left_bit_mask, right_bit_mask) reduce(+:n_set)
-            n_set = n_set + int(popcnt(iand(left_bit_mask(i_word), right_bit_mask(i_word))), int32)
+        do concurrent(i_word=1:n_words) shared(left_bitmask, right_bitmask) reduce(+:n_set)
+            n_set = n_set + int(popcnt(iand(left_bitmask(i_word), right_bitmask(i_word))), int32)
         end do
-    end function bit_mask_and_count
+    end function bitmask_and_count
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Whether any flag is set.
-    pure logical function bit_mask_any(n_words, bit_mask) result(any_set)
+    pure logical function bitmask_any(n_words, bitmask) result(any_set)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
 
         integer(int32) :: i_word
 
         any_set = .true.
         do i_word = 1, n_words
-            if (bit_mask(i_word) /= 0_int32) return
+            if (bitmask(i_word) /= 0_int32) return
         end do
         any_set = .false.
-    end function bit_mask_any
+    end function bitmask_any
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Whether every flag is set. `.true.` for a mask without flags.
-    pure logical function bit_mask_all(n_bits, n_words, bit_mask) result(all_set)
+    pure logical function bitmask_all(n_bits, n_words, bitmask) result(all_set)
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask
         integer(int32), intent(in) :: n_words
             !! number of words of the mask, `ceiling(n_bits/32)`
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
 
         integer(int32) :: i_word
 
         all_set = .false.
         do i_word = 1, n_words - 1_int32
-            if (bit_mask(i_word) /= not(0_int32)) return
+            if (bitmask(i_word) /= not(0_int32)) return
         end do
         if (n_words > 0_int32) then
-            if (bit_mask(n_words) /= last_word_flags(n_bits)) return
+            if (bitmask(n_words) /= last_word_flags(n_bits)) return
         end if
         all_set = .true.
-    end function bit_mask_all
+    end function bitmask_all
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| `any(left .and. right)`: whether the masks share a flag. Stops at the first shared word.
-    pure logical function bit_mask_any_and(n_words, left_bit_mask, right_bit_mask) result(any_shared)
+    pure logical function bitmask_any_and(n_words, left_bitmask, right_bitmask) result(any_shared)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: left_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: left_bitmask
             !! the first operand
-        integer(int32), dimension(n_words), intent(in) :: right_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: right_bitmask
             !! the second operand
 
         integer(int32) :: i_word
 
         any_shared = .true.
         do i_word = 1, n_words
-            if (iand(left_bit_mask(i_word), right_bit_mask(i_word)) /= 0_int32) return
+            if (iand(left_bitmask(i_word), right_bitmask(i_word)) /= 0_int32) return
         end do
         any_shared = .false.
-    end function bit_mask_any_and
+    end function bitmask_any_and
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Whether both masks set the same flags.
-    pure logical function bit_mask_equal(n_words, left_bit_mask, right_bit_mask) result(are_equal)
+    pure logical function bitmask_equal(n_words, left_bitmask, right_bitmask) result(are_equal)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: left_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: left_bitmask
             !! the first mask
-        integer(int32), dimension(n_words), intent(in) :: right_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: right_bitmask
             !! the second mask
 
         integer(int32) :: i_word
 
         are_equal = .false.
         do i_word = 1, n_words
-            if (left_bit_mask(i_word) /= right_bit_mask(i_word)) return
+            if (left_bitmask(i_word) /= right_bitmask(i_word)) return
         end do
         are_equal = .true.
-    end function bit_mask_equal
+    end function bitmask_equal
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Whether every flag `subset_bit_mask` sets is also set in `superset_bit_mask`.
-    pure logical function bit_mask_is_subset(n_words, subset_bit_mask, superset_bit_mask) result(is_subset)
+    !| Whether every flag `subset_bitmask` sets is also set in `superset_bitmask`.
+    pure logical function bitmask_is_subset(n_words, subset_bitmask, superset_bitmask) result(is_subset)
         integer(int32), intent(in) :: n_words
             !! number of words of both masks
-        integer(int32), dimension(n_words), intent(in) :: subset_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: subset_bitmask
             !! the mask that may be contained
-        integer(int32), dimension(n_words), intent(in) :: superset_bit_mask
+        integer(int32), dimension(n_words), intent(in) :: superset_bitmask
             !! the mask that may contain it
 
         integer(int32) :: i_word
 
         is_subset = .false.
         do i_word = 1, n_words
-            if (iand(subset_bit_mask(i_word), not(superset_bit_mask(i_word))) /= 0_int32) return
+            if (iand(subset_bitmask(i_word), not(superset_bitmask(i_word))) /= 0_int32) return
         end do
         is_subset = .true.
-    end function bit_mask_is_subset
+    end function bitmask_is_subset
 
     ! ------------------------------------------------------------------ positions
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| The index of the first set flag, or 0 if no flag is set.
-    pure integer(int32) function bit_mask_first(n_words, bit_mask) result(i_bit)
+    pure integer(int32) function bitmask_first(n_words, bitmask) result(i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
 
-        i_bit = bit_mask_next(n_words, bit_mask, 0_int32)
-    end function bit_mask_first
+        i_bit = bitmask_next(n_words, bitmask, 0_int32)
+    end function bitmask_first
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| The index of the last set flag, or 0 if no flag is set.
-    pure integer(int32) function bit_mask_last(n_words, bit_mask) result(i_bit)
+    pure integer(int32) function bitmask_last(n_words, bitmask) result(i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
 
         integer(int32) :: i_word
 
         do i_word = n_words, 1_int32, -1_int32
-            if (bit_mask(i_word) /= 0_int32) then
+            if (bitmask(i_word) /= 0_int32) then
                 ! not i_word*32 - leadz: i_word*32 overflows for the last word of a mask of 2**31 - 1 flags
                 i_bit = (i_word - 1_int32)*M_BIT_MASK_WORD_BITS &
-                        + (M_BIT_MASK_WORD_BITS - int(leadz(bit_mask(i_word)), int32))
+                        + (M_BIT_MASK_WORD_BITS - int(leadz(bitmask(i_word)), int32))
                 return
             end if
         end do
         i_bit = 0_int32
-    end function bit_mask_last
+    end function bitmask_last
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| The index of the first set flag after `after_bit`, or 0 if there is none. Stepping through
     !| the set flags of a mask:
     !|
     !| ```fortran
-    !| i_bit = bit_mask_next(n_words, bit_mask, 0_int32)
+    !| i_bit = bitmask_next(n_words, bitmask, 0_int32)
     !| do while (i_bit /= 0_int32)
     !|     ! ... flag i_bit is set
-    !|     i_bit = bit_mask_next(n_words, bit_mask, i_bit)
+    !|     i_bit = bitmask_next(n_words, bitmask, i_bit)
     !| end do
     !| ```
-    pure integer(int32) function bit_mask_next(n_words, bit_mask, after_bit) result(i_bit)
+    pure integer(int32) function bitmask_next(n_words, bitmask, after_bit) result(i_bit)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
         integer(int32), intent(in) :: after_bit
             !! the search starts at flag `after_bit + 1`; 0, or anything below, searches the whole mask
@@ -506,7 +506,7 @@ contains
         i_word = start_after/M_BIT_MASK_WORD_BITS + 1_int32
         if (i_word > n_words) return
         ! the flags up to start_after are masked out of the first word searched
-        word = iand(bit_mask(i_word), shiftl(not(0_int32), mod(start_after, M_BIT_MASK_WORD_BITS)))
+        word = iand(bitmask(i_word), shiftl(not(0_int32), mod(start_after, M_BIT_MASK_WORD_BITS)))
         do
             if (word /= 0_int32) then
                 i_bit = (i_word - 1_int32)*M_BIT_MASK_WORD_BITS + trailing_zeros(word) + 1_int32
@@ -514,20 +514,20 @@ contains
             end if
             i_word = i_word + 1_int32
             if (i_word > n_words) return
-            word = bit_mask(i_word)
+            word = bitmask(i_word)
         end do
-    end function bit_mask_next
+    end function bitmask_next
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| The indices of the set flags, in ascending order. With `n_set` from
-    !| [[f42_bit_masks_impl(module):bit_mask_count(function)]] that is all of them; a smaller
+    !| [[f42_bit_masks_impl(module):bitmask_count(function)]] that is all of them; a smaller
     !| `n_set` gives the first `n_set`, and a larger one fills the rest of `indices` with 0.
-    pure subroutine bit_mask_indices(n_words, n_set, bit_mask, indices)
+    pure subroutine bitmask_indices(n_words, n_set, bitmask, indices)
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
         integer(int32), intent(in) :: n_set
             !! number of indices to collect
-        integer(int32), dimension(n_words), intent(in) :: bit_mask
+        integer(int32), dimension(n_words), intent(in) :: bitmask
             !! the mask
         integer(int32), dimension(n_set), intent(out) :: indices
             !! the indices of the first `n_set` set flags, then 0
@@ -536,7 +536,7 @@ contains
 
         i_index = 0_int32
         do i_word = 1, n_words
-            word = bit_mask(i_word)
+            word = bitmask(i_word)
             do while (word /= 0_int32)
                 if (i_index == n_set) return
                 position = trailing_zeros(word)
@@ -546,7 +546,7 @@ contains
             end do
         end do
         indices(i_index + 1_int32:) = 0_int32
-    end subroutine bit_mask_indices
+    end subroutine bitmask_indices
 
     ! ------------------------------------------------------------------ helpers
 
@@ -581,15 +581,15 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Clears the bits past `n_bits` in the last word.
-    pure subroutine clear_tail(n_bits, n_words, bit_mask)
+    pure subroutine clear_tail(n_bits, n_words, bitmask)
         integer(int32), intent(in) :: n_bits
             !! number of flags in the mask
         integer(int32), intent(in) :: n_words
             !! number of words of the mask
-        integer(int32), dimension(n_words), intent(inout) :: bit_mask
+        integer(int32), dimension(n_words), intent(inout) :: bitmask
             !! the mask
 
-        if (n_words > 0_int32) bit_mask(n_words) = iand(bit_mask(n_words), last_word_flags(n_bits))
+        if (n_words > 0_int32) bitmask(n_words) = iand(bitmask(n_words), last_word_flags(n_bits))
     end subroutine clear_tail
 
     !> AUTHOR_FRANZ_ERIC_SILL

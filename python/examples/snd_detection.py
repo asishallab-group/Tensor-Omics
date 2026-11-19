@@ -16,7 +16,7 @@ works on RAP-projected unit vectors -- a different input space, and the most
 common way to misuse this module.
 
 Subsets are bitmasks: a result names its members as set bits, decoded with
-bit_mask_test. The ancestor in real use is the family's orthologs-only
+bitmask_test. The ancestor in real use is the family's orthologs-only
 centroid; see the gene family centroid recipe.
 
 The family here is SYNTHETIC and built so each pattern is present exactly once,
@@ -32,7 +32,7 @@ import sys
 
 import numpy as np
 
-from tensor_omics import (bit_mask_n_words, bit_mask_test,
+from tensor_omics import (bitmask_n_words, bitmask_test,
                           calc_work_arr_paralog_subsets_size, detect_dosage_effect,
                           detect_neofunctionalization, detect_subfunctionalization,
                           filter_paralogs_by_pattern_dosage_effect,
@@ -75,7 +75,7 @@ def rap_unit(matrix):
 
 def members(mask_column, n_genes):
     """Decode one bitmask into the 1-based gene indices it contains."""
-    return [i for i in range(1, n_genes + 1) if bit_mask_test(n_genes, mask_column, i)]
+    return [i for i in range(1, n_genes + 1) if bitmask_test(n_genes, mask_column, i)]
 
 
 def make_family():
@@ -96,7 +96,7 @@ def main(argv=None):
     ancestor, names, genes = make_family()
     n_genes = genes.shape[1]
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    n_chunks = bit_mask_n_words(n_genes)
+    n_chunks = bitmask_n_words(n_genes)
 
     angles = angles_to(ancestor, genes)
     print("family of %d paralogs, angle to ancestor (rad):" % n_genes)
@@ -117,7 +117,7 @@ def main(argv=None):
         1.0,                                        # residual tolerated, the RDI threshold
         norms, (np.argsort(norms) + 1).astype(np.int32),
     )
-    subsets = np.asarray(result["work_arr_paralog_subsets"])
+    subsets = np.asarray(result["paralog_subsets_bitmasks"])
     for k in range(result["n_results"]):
         picked = members(subsets[:, k], n_genes)
         residual = np.linalg.norm(ancestor - genes[:, [i - 1 for i in picked]].sum(axis=1))
@@ -132,7 +132,7 @@ def main(argv=None):
     # max_angle defaults to pi, i.e. no angle constraint at all -- set it.
     result = detect_dosage_effect(ancestor, genes, mask, sizing["max_subset_size"],
                                   max_angle=0.3, gain_gamma=0.1)
-    subsets = np.asarray(result["work_arr_paralog_subsets"])
+    subsets = np.asarray(result["paralog_subsets_bitmasks"])
     for k in range(result["n_results"]):
         picked = members(subsets[:, k], n_genes)
         gain = np.linalg.norm(genes[:, [i - 1 for i in picked]].sum(axis=1)) / np.linalg.norm(ancestor)

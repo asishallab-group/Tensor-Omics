@@ -6,14 +6,14 @@
 // tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void bit_mask_n_words_c(const int*, int*, int*);
-void bit_mask_test_c(const int*, const int*, const int*, const int*, unsigned char*, int*);
-void bit_mask_from_logical_c(const int*, const int*, const unsigned char*, int*, int*);
-void bit_mask_to_logical_c(const int*, const int*, const int*, unsigned char*, int*);
-void bit_masks_from_logical_2D_c(const int*, const int*, const int*, const unsigned char*, int*, int*);
-void bit_masks_to_logical_2D_c(const int*, const int*, const int*, const int*, unsigned char*, int*);
+void bitmask_n_words_c(const int*, int*, int*);
+void bitmask_test_c(const int*, const int*, const int*, const int*, unsigned char*, int*);
+void bitmask_from_logical_c(const int*, const int*, const unsigned char*, int*, int*);
+void bitmask_to_logical_c(const int*, const int*, const int*, unsigned char*, int*);
+void bitmasks_from_logical_2D_c(const int*, const int*, const int*, const unsigned char*, int*, int*);
+void bitmasks_to_logical_2D_c(const int*, const int*, const int*, const int*, unsigned char*, int*);
 
-SEXP bit_mask_n_words_call(SEXP n_bits) {
+SEXP bitmask_n_words_call(SEXP n_bits) {
     int _nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_bits = Rf_asInteger(n_bits);
@@ -22,7 +22,7 @@ SEXP bit_mask_n_words_call(SEXP n_bits) {
     int n_words = 0;
     int ierr = 0;
 
-    bit_mask_n_words_c(
+    bitmask_n_words_c(
         &_v_n_bits,
         &n_words,
         &ierr
@@ -39,26 +39,26 @@ SEXP bit_mask_n_words_call(SEXP n_bits) {
     return _out;
 }
 
-SEXP bit_mask_test_call(SEXP n_bits, SEXP bit_mask, SEXP i_bit) {
+SEXP bitmask_test_call(SEXP n_bits, SEXP bitmask, SEXP i_bit) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_words = (int) Rf_length(bit_mask);
+    int n_words = (int) Rf_length(bitmask);
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_bits = Rf_asInteger(n_bits);
     int _v_i_bit = Rf_asInteger(i_bit);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_bit_mask = tox_int_in(bit_mask, "bit_mask");
+    const int* _c_bitmask = tox_int_in(bitmask, "bitmask");
 
     // outputs and work space
     unsigned char is_set = 0;
     int ierr = 0;
 
-    bit_mask_test_c(
+    bitmask_test_c(
         &_v_n_bits,
         &n_words,
-        _c_bit_mask,
+        _c_bitmask,
         &_v_i_bit,
         &is_set,
         &ierr
@@ -75,7 +75,7 @@ SEXP bit_mask_test_call(SEXP n_bits, SEXP bit_mask, SEXP i_bit) {
     return _out;
 }
 
-SEXP bit_mask_from_logical_call(SEXP n_words, SEXP flags) {
+SEXP bitmask_from_logical_call(SEXP n_words, SEXP flags) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bits = (int) Rf_length(flags);
@@ -87,47 +87,47 @@ SEXP bit_mask_from_logical_call(SEXP n_words, SEXP flags) {
     unsigned char* _c_flags = tox_bool_in(flags, "flags");
 
     // outputs and work space
-    SEXP bit_mask = PROTECT(Rf_allocVector(INTSXP, _v_n_words)); _nprot++;
+    SEXP bitmask = PROTECT(Rf_allocVector(INTSXP, _v_n_words)); _nprot++;
     int ierr = 0;
 
-    bit_mask_from_logical_c(
+    bitmask_from_logical_c(
         &n_bits,
         &_v_n_words,
         _c_flags,
-        INTEGER(bit_mask),
+        INTEGER(bitmask),
         &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
-    SET_VECTOR_ELT(_out, 0, bit_mask);
+    SET_VECTOR_ELT(_out, 0, bitmask);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("bit_mask"));
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("bitmask"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;
 }
 
-SEXP bit_mask_to_logical_call(SEXP n_bits, SEXP bit_mask) {
+SEXP bitmask_to_logical_call(SEXP n_bits, SEXP bitmask) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_words = (int) Rf_length(bit_mask);
+    int n_words = (int) Rf_length(bitmask);
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_bits = Rf_asInteger(n_bits);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_bit_mask = tox_int_in(bit_mask, "bit_mask");
+    const int* _c_bitmask = tox_int_in(bitmask, "bitmask");
 
     // outputs and work space
     unsigned char* _c_flags = tox_bool_alloc(_v_n_bits);
     int ierr = 0;
 
-    bit_mask_to_logical_c(
+    bitmask_to_logical_c(
         &_v_n_bits,
         &n_words,
-        _c_bit_mask,
+        _c_bitmask,
         _c_flags,
         &ierr
     );
@@ -146,7 +146,7 @@ SEXP bit_mask_to_logical_call(SEXP n_bits, SEXP bit_mask) {
     return _out;
 }
 
-SEXP bit_masks_from_logical_2D_call(SEXP n_words, SEXP flags) {
+SEXP bitmasks_from_logical_2D_call(SEXP n_words, SEXP flags) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bits = INTEGER(Rf_getAttrib(flags, R_DimSymbol))[0];
@@ -159,51 +159,51 @@ SEXP bit_masks_from_logical_2D_call(SEXP n_words, SEXP flags) {
     unsigned char* _c_flags = tox_bool_in(flags, "flags");
 
     // outputs and work space
-    SEXP bit_masks = PROTECT(Rf_allocVector(INTSXP, _v_n_words * n_masks)); _nprot++;
-    { SEXP _dim_bit_masks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_bit_masks)[0] = _v_n_words; INTEGER(_dim_bit_masks)[1] = n_masks; Rf_setAttrib(bit_masks, R_DimSymbol, _dim_bit_masks); UNPROTECT(1); }
+    SEXP bitmasks = PROTECT(Rf_allocVector(INTSXP, _v_n_words * n_masks)); _nprot++;
+    { SEXP _dim_bitmasks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_bitmasks)[0] = _v_n_words; INTEGER(_dim_bitmasks)[1] = n_masks; Rf_setAttrib(bitmasks, R_DimSymbol, _dim_bitmasks); UNPROTECT(1); }
     int ierr = 0;
 
-    bit_masks_from_logical_2D_c(
+    bitmasks_from_logical_2D_c(
         &n_bits,
         &n_masks,
         &_v_n_words,
         _c_flags,
-        INTEGER(bit_masks),
+        INTEGER(bitmasks),
         &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
-    SET_VECTOR_ELT(_out, 0, bit_masks);
+    SET_VECTOR_ELT(_out, 0, bitmasks);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("bit_masks"));
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("bitmasks"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;
 }
 
-SEXP bit_masks_to_logical_2D_call(SEXP n_bits, SEXP bit_masks) {
+SEXP bitmasks_to_logical_2D_call(SEXP n_bits, SEXP bitmasks) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_masks = INTEGER(Rf_getAttrib(bit_masks, R_DimSymbol))[1];
-    int n_words = INTEGER(Rf_getAttrib(bit_masks, R_DimSymbol))[0];
+    int n_masks = INTEGER(Rf_getAttrib(bitmasks, R_DimSymbol))[1];
+    int n_words = INTEGER(Rf_getAttrib(bitmasks, R_DimSymbol))[0];
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_bits = Rf_asInteger(n_bits);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_bit_masks = tox_int_in(bit_masks, "bit_masks");
+    const int* _c_bitmasks = tox_int_in(bitmasks, "bitmasks");
 
     // outputs and work space
     unsigned char* _c_flags = tox_bool_alloc(_v_n_bits * n_masks);
     int ierr = 0;
 
-    bit_masks_to_logical_2D_c(
+    bitmasks_to_logical_2D_c(
         &_v_n_bits,
         &n_masks,
         &n_words,
-        _c_bit_masks,
+        _c_bitmasks,
         _c_flags,
         &ierr
     );
