@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void bitmask_n_words_c(const int*, int*, int*);
@@ -87,7 +87,8 @@ SEXP bitmask_from_logical_call(SEXP n_words, SEXP flags) {
     unsigned char* _c_flags = tox_bool_in(flags, "flags");
 
     // outputs and work space
-    SEXP bitmask = PROTECT(Rf_allocVector(INTSXP, _v_n_words)); _nprot++;
+    R_xlen_t _n_bitmask = tox_count("bitmask", (double) _v_n_words);
+    SEXP bitmask = PROTECT(Rf_allocVector(INTSXP, _n_bitmask)); _nprot++;
     int ierr = 0;
 
     bitmask_from_logical_c(
@@ -121,7 +122,8 @@ SEXP bitmask_to_logical_call(SEXP n_bits, SEXP bitmask) {
     const int* _c_bitmask = tox_words_in(bitmask, "bitmask");
 
     // outputs and work space
-    unsigned char* _c_flags = tox_bool_alloc(_v_n_bits);
+    R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits);
+    unsigned char* _c_flags = tox_bool_alloc(_n_flags);
     int ierr = 0;
 
     bitmask_to_logical_c(
@@ -132,8 +134,11 @@ SEXP bitmask_to_logical_call(SEXP n_bits, SEXP bitmask) {
         &ierr
     );
 
-    // convert the outputs back
-    SEXP flags = PROTECT(tox_bool_out(_c_flags, _v_n_bits)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP flags = R_NilValue;
+    if (!tox_failed(ierr)) {
+        flags = PROTECT(tox_bool_out(_c_flags, _n_flags)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, flags);
@@ -159,7 +164,8 @@ SEXP bitmasks_from_logical_2D_call(SEXP n_words, SEXP flags) {
     unsigned char* _c_flags = tox_bool_in(flags, "flags");
 
     // outputs and work space
-    SEXP bitmasks = PROTECT(Rf_allocVector(INTSXP, _v_n_words * n_masks)); _nprot++;
+    R_xlen_t _n_bitmasks = tox_count("bitmasks", (double) _v_n_words * (double) n_masks);
+    SEXP bitmasks = PROTECT(Rf_allocVector(INTSXP, _n_bitmasks)); _nprot++;
     { SEXP _dim_bitmasks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_bitmasks)[0] = _v_n_words; INTEGER(_dim_bitmasks)[1] = n_masks; Rf_setAttrib(bitmasks, R_DimSymbol, _dim_bitmasks); UNPROTECT(1); }
     int ierr = 0;
 
@@ -196,7 +202,8 @@ SEXP bitmasks_to_logical_2D_call(SEXP n_bits, SEXP bitmasks) {
     const int* _c_bitmasks = tox_words_in(bitmasks, "bitmasks");
 
     // outputs and work space
-    unsigned char* _c_flags = tox_bool_alloc(_v_n_bits * n_masks);
+    R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits * (double) n_masks);
+    unsigned char* _c_flags = tox_bool_alloc(_n_flags);
     int ierr = 0;
 
     bitmasks_to_logical_2D_c(
@@ -208,9 +215,12 @@ SEXP bitmasks_to_logical_2D_call(SEXP n_bits, SEXP bitmasks) {
         &ierr
     );
 
-    // convert the outputs back
-    SEXP flags = PROTECT(tox_bool_out(_c_flags, _v_n_bits * n_masks)); _nprot++;
-    { SEXP _dim_flags = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_flags)[0] = _v_n_bits; INTEGER(_dim_flags)[1] = n_masks; Rf_setAttrib(flags, R_DimSymbol, _dim_flags); UNPROTECT(1); }
+    // convert the outputs back, unless the library reports an error
+    SEXP flags = R_NilValue;
+    if (!tox_failed(ierr)) {
+        flags = PROTECT(tox_bool_out(_c_flags, _n_flags)); _nprot++;
+        { SEXP _dim_flags = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_flags)[0] = _v_n_bits; INTEGER(_dim_flags)[1] = n_masks; Rf_setAttrib(flags, R_DimSymbol, _dim_flags); UNPROTECT(1); }
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, flags);

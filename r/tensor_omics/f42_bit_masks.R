@@ -61,6 +61,7 @@ bitmask_test <- function(n_bits, bitmask, i_bit) {
 bitmask_from_logical <- function(n_words, flags) {
     n_words <- .tox_as_integer_scalar(n_words, "n_words")
     flags <- .tox_as_logical_vector(flags, "flags")
+    .tox_check_extent(n_words, "n_words")
     .result <- .Call("bitmask_from_logical_call", n_words, flags)
     .arguments <- c("n_bits", "n_words", "flags", "bitmask", "ierr")
     .sources <- c("flags", NA_character_, NA_character_, NA_character_, NA_character_)
@@ -82,6 +83,7 @@ bitmask_from_logical <- function(n_words, flags) {
 bitmask_to_logical <- function(n_bits, bitmask) {
     n_bits <- .tox_as_integer_scalar(n_bits, "n_bits")
     bitmask <- .tox_as_integer_vector(bitmask, "bitmask")
+    .tox_check_extent(n_bits, "n_bits")
     .result <- .Call("bitmask_to_logical_call", n_bits, bitmask)
     .arguments <- c("n_bits", "n_words", "bitmask", "flags", "ierr")
     .sources <- c(NA_character_, "bitmask", NA_character_, NA_character_, NA_character_)
@@ -104,6 +106,7 @@ bitmask_to_logical <- function(n_bits, bitmask) {
 bitmasks_from_logical_2D <- function(n_words, flags) {
     n_words <- .tox_as_integer_scalar(n_words, "n_words")
     flags <- .tox_as_logical_matrix(flags, "flags")
+    .tox_check_extent(n_words, "n_words")
     .result <- .Call("bitmasks_from_logical_2D_call", n_words, flags)
     .arguments <- c("n_bits", "n_masks", "n_words", "flags", "bitmasks", "ierr")
     .sources <- c("flags", "flags", NA_character_, NA_character_, NA_character_, NA_character_)
@@ -125,6 +128,7 @@ bitmasks_from_logical_2D <- function(n_words, flags) {
 bitmasks_to_logical_2D <- function(n_bits, bitmasks) {
     n_bits <- .tox_as_integer_scalar(n_bits, "n_bits")
     bitmasks <- .tox_as_integer_matrix(bitmasks, "bitmasks")
+    .tox_check_extent(n_bits, "n_bits")
     .result <- .Call("bitmasks_to_logical_2D_call", n_bits, bitmasks)
     .arguments <- c("n_bits", "n_masks", "n_words", "bitmasks", "flags", "ierr")
     .sources <- c(NA_character_, "bitmasks", "bitmasks", NA_character_, NA_character_, NA_character_)

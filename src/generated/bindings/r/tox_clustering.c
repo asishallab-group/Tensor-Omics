@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void cluster_factor_trajectories_k_means_c(const int*, const double*, const int*, const int*, const int*, double*, const int*, int*, int*, const int*, int*);
@@ -26,8 +26,10 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
     SEXP _out_centroids = PROTECT(Rf_duplicate(centroids)); _nprot++;
 
     // outputs and work space
-    SEXP labels = PROTECT(Rf_allocVector(INTSXP, n_samples)); _nprot++;
-    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); _nprot++;
+    R_xlen_t _n_labels = tox_count("labels", (double) n_samples);
+    SEXP labels = PROTECT(Rf_allocVector(INTSXP, _n_labels)); _nprot++;
+    R_xlen_t _n_label_counts = tox_count("label_counts", (double) n_clusters);
+    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, _n_label_counts)); _nprot++;
     int ierr = 0;
 
     cluster_factor_trajectories_k_means_c(
@@ -73,8 +75,10 @@ SEXP k_means_clustering_call(SEXP data_points, SEXP centroids, SEXP max_iteratio
     SEXP _out_centroids = PROTECT(Rf_duplicate(centroids)); _nprot++;
 
     // outputs and work space
-    SEXP labels = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
-    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); _nprot++;
+    R_xlen_t _n_labels = tox_count("labels", (double) n_points);
+    SEXP labels = PROTECT(Rf_allocVector(INTSXP, _n_labels)); _nprot++;
+    R_xlen_t _n_label_counts = tox_count("label_counts", (double) n_clusters);
+    SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, _n_label_counts)); _nprot++;
     int ierr = 0;
 
     k_means_clustering_c(
@@ -116,10 +120,14 @@ SEXP linkage_clustering_call(SEXP distances, SEXP method) {
     char* _c_method = tox_char_in(method, 8, "method");
 
     // outputs and work space
-    SEXP merge_i = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); _nprot++;
-    SEXP merge_j = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); _nprot++;
-    SEXP heights = PROTECT(Rf_allocVector(REALSXP, (n_points - 1))); _nprot++;
-    SEXP cluster_sizes = PROTECT(Rf_allocVector(INTSXP, (n_points - 1))); _nprot++;
+    R_xlen_t _n_merge_i = tox_count("merge_i", (double) (tox_imax(0, n_points - 1)));
+    SEXP merge_i = PROTECT(Rf_allocVector(INTSXP, _n_merge_i)); _nprot++;
+    R_xlen_t _n_merge_j = tox_count("merge_j", (double) (tox_imax(0, n_points - 1)));
+    SEXP merge_j = PROTECT(Rf_allocVector(INTSXP, _n_merge_j)); _nprot++;
+    R_xlen_t _n_heights = tox_count("heights", (double) (tox_imax(0, n_points - 1)));
+    SEXP heights = PROTECT(Rf_allocVector(REALSXP, _n_heights)); _nprot++;
+    R_xlen_t _n_cluster_sizes = tox_count("cluster_sizes", (double) (tox_imax(0, n_points - 1)));
+    SEXP cluster_sizes = PROTECT(Rf_allocVector(INTSXP, _n_cluster_sizes)); _nprot++;
     int ierr = 0;
 
     linkage_clustering_c(

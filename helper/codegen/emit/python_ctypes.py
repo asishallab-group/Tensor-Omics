@@ -49,13 +49,14 @@ from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
 
-def _python_extent(extent: str) -> str:
-    """A Fortran extent expression as Python, through the one grammar the bindings evaluate.
+def _allocated_extent(extent: str) -> str:
+    """An extent the binding allocates or pads by, as Python, through the one grammar the
+    bindings evaluate, and never negative (`extents.clamped`).
 
-    `generate` has refused every extent a binding computes that lies outside it
+    `generate` has refused every extent a binding computes that lies outside the grammar
     (`abi.extents.check_binding_extents`), so this cannot fail on one that is emitted.
     """
-    return extents.to_python(extent)
+    return extents.to_python(extents.clamped(extent))
 
 def check_package_names(binding, catalogue: ErrorCatalogue,
                         diagnostics: DiagnosticBag) -> None:
@@ -224,7 +225,7 @@ def _character_dtype(argument: CArgument) -> str:
     extent = character_length(argument)
     if extent.isdigit():
         return f'"S{extent}"'
-    return 'f"S{' + _python_extent(extent) + '}"'
+    return 'f"S{' + _allocated_extent(extent) + '}"'
 
 
 def character_length(argument: CArgument) -> str:
@@ -243,7 +244,7 @@ def _pad_width(argument: CArgument) -> str | None:
     length = argument.source.type.length if argument.source else None
     if length is not None and length.is_assumed and argument.intent.is_input:
         return None
-    return _python_extent(character_length(argument))
+    return _allocated_extent(character_length(argument))
 
 
 def character_rank(argument: CArgument) -> int:
@@ -523,6 +524,7 @@ class PythonEmitter:
             writer.block(render_docstring(wrapper, self))
             self._stash_raw(writer, wrapper)
             self._prepare_inputs(writer, wrapper)
+            self._check_extents(writer, wrapper)
             # extents a producer reads must be settled before it is called; extents read
             # off what a producer *makes* can only be settled after. So the derivation
             # brackets the producers: the plain ones first, the produced-from ones after.
@@ -595,6 +597,21 @@ class PythonEmitter:
             writer.line("# check every input by the input contract, converting only when C needs it")
             writer.extend(lines)
             writer.blank()
+
+    @staticmethod
+    def _check_extents(writer: Writer, wrapper: CWrapper) -> None:
+        """Refuse a negative size the caller passed, before anything is allocated by it (#215).
+
+        After the input contract, which has made it an int, and before a producer is called or
+        an output allocated. Zero and every documented bound stay the library's to check.
+        """
+        checked = extents.caller_passed_extents(wrapper)
+        if not checked:
+            return
+        writer.line("# the outputs are allocated by a size the caller passes, which must not be negative")
+        for argument in checked:
+            writer.line(f'{PYTHON_CONTRACT}.extent({argument.name}, "{argument.name}")')
+        writer.blank()
 
     def _prepare(self, argument: CArgument) -> str:
         """Prepare one input, reading its shape off first if that travels separately.
@@ -1097,10 +1114,10 @@ class PythonEmitter:
             # fills only partly). The zeros are what makes such an element read back as ""
             # rather than as garbage: numpy drops the trailing nulls of an `S` item.
             # Not `np.full(..., b" ")`, which fills each item with one blank and nulls.
-            shape = ", ".join(_python_extent(e) for e in argument.dimension.extents[1:]) or "1"
+            shape = ", ".join(_allocated_extent(e) for e in argument.dimension.extents[1:]) or "1"
             return f"{_NP}.zeros(({shape},), dtype={dtype_of(argument)})"
 
-        shape = ", ".join(_python_extent(e) for e in argument.dimension.extents)
+        shape = ", ".join(_allocated_extent(e) for e in argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
         return f"{_NP}.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
 

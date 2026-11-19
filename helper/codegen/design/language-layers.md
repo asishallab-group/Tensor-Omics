@@ -142,6 +142,8 @@ to 1.0: numpy makes it a float before any check sees it, as `[True, 0, 3]` is an
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |
 | a mode | a valid string matching one of the modes whole (case aside, as before), after its trailing blanks are dropped like any string's (`'ward '` is `ward`) | anything else, a leading blank included; the message lists the modes |
 | `complex(real64)` | Python: a single value is any number, complex or real, whose parts float64 holds exactly (the real rule); an array is what numpy converts to `complex128` -- outside the round trip, as numpy converts it; R: a complex or numeric vector. A single output or `intent(inout)` value comes back as a Python `complex` and an R complex | Python, a single value: a bool, a string, an object, an inexact part; R: anything that is not a number |
+| a size the caller passes: an integer the binding allocates an output or a work array by, as a whole axis, or pads a string to (`n_families` of `centroid_matrix(n_axes, n_families)`) | an integer as above, zero included | a negative one, naming it, before anything is allocated (#215): numpy and R refused it in their own words, naming neither the argument nor the library. Zero and every documented bound stay the library's, with its codes and positions |
+| bit-mask words: an `integer(int32)` array named `bitmask`, `bitmasks` or `*_bitmask(s)` | as `integer(int32)`, and in R `NA_integer_`, the word with only bit 31 set (#206, "NA is checked where the check is free") | as `integer(int32)`; in R a double NA, with a hint to pass the words as an integer vector |
 | rank | numpy `ndim` == the declared rank; R `length(dim(x))`, where a plain vector, a 1-D array and a table are rank 1, and an all-numeric data.frame is a matrix (as a DataFrame is in Python) | any other rank: nothing is flattened |
 
 **Trailing blanks are Fortran semantics, accepted and documented** (FES, 2026-10-26). A string
@@ -516,6 +518,38 @@ Python's `//` floors, so `-7/2` is -3 against -4. Python gets the exact
 line, and a size that halves is common enough to want. *Rejected:* a generated "extent oracle"
 procedure per wrapper, which would let Fortran compute every size: a second call and a new symbol
 per procedure, for a grammar no output on main leaves.
+
+## Decision: what the bindings allocate by is checked before they allocate (#215)
+
+Python and the R shim allocate every output and work array before the call, so a size the caller
+passes reached numpy's and R's allocators before the library could check it. `n_families` of
+`group_centroid_all` stays the caller's to pass (FES's decision, option B of #215, whose case for
+it is that the centroid matrix then lines up with the caller's family list, a family without genes
+keeping its zero column), and four rules make what the bindings compute with it safe:
+
+1. **A negative size the caller passes is refused by name.** `abi/extents.caller_passed_extents`
+   says which: an integer the caller supplies -- not read off an input, not computed by a
+   producer -- that is a whole axis of something the bindings allocate, or the length they pad a
+   string to. Both emitters read it, and refuse after the scalar contract and before any producer,
+   shape check or allocation (`_contract.extent`, `.tox_check_extent`). Only the sign: zero, a
+   `DM_MIN`, `DM_MAX` or `DM_EQUALS` stay the library's, with its codes and positions. It is not
+   tied to `NO_INPUT_VALIDATION`, which drops the Fortran wrappers' checks: this one keeps the
+   binding's own allocation safe.
+2. **The shim's element counts are exact.** It multiplied `int` extents, and `n_bits * n_masks`
+   of 1431655766 and 3 wrapped to 2, the size of the buffer the callee then wrote four billion
+   flags into. Every count is now computed in `double`, exact for every count R can allocate, and
+   refused past `R_XLEN_T_MAX` naming the array (`tox_count`); the buffers and loops are
+   `R_xlen_t`. Python's are Python ints already.
+3. **A computed axis is clamped at zero** (`extents.clamped`), as Fortran sizes it: the
+   `n_points - 1` merges of no points are none, and the library reports the empty input rather
+   than numpy or R refusing a length of -1.
+4. **The shim converts its outputs back only when the call succeeded** (`tox_failed`, read as
+   `check_err_code` reads a code: a status is a success). On an error R discards them, and the
+   conversion cost an allocation as large as the result for nothing.
+
+*Rejected:* deriving `n_families` from `maxval(gene_to_family)` (option A of #215, whose case
+against it is that the number of centroids would change meaning, and that no extent is derived from
+an input's values yet).
 
 ## Decision: R keeps a hand-generated wrapper over the C `.Call`
 

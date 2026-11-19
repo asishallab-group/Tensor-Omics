@@ -236,7 +236,7 @@ class TestConstantSizes:
     def test_an_output_is_allocated_with_the_value(self, bag):
         text = self.module_text(bag)
 
-        assert "Rf_allocVector(REALSXP, 2)" in text
+        assert 'tox_count("sums", (double) 2)' in text
         assert "N_AXES" not in text
 
     def test_a_length_is_the_value(self, bag):
@@ -278,3 +278,49 @@ class TestBitmaskWords:
         assert "if (TYPEOF(x) == INTSXP) return INTEGER(x);" in words_in
         # a double NA is no word, and its refusal says how to pass one
         assert "words as an integer vector" in words_in
+
+
+class TestAllocationCounts:
+    """Every element count is exact, refused past R_XLEN_T_MAX, never negative (#215)."""
+
+    def wrapper(self, bag):
+        return emitted(
+            b.procedure(
+                "p",
+                b.real("values", Intent.IN, "(n_points, n_points)", doc="the data"),
+                b.integer("n_points", Intent.IN, doc="points"),
+                b.integer("n_bits", Intent.IN, doc="flags per column"),
+                b.logical("flags", Intent.OUT, "(n_bits, n_points)", kind="c_bool", doc="flags"),
+                b.real("merges", Intent.OUT, "(n_points - 1)", doc="one fewer than the points"),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+    def test_a_count_is_a_double_product_checked_by_name(self, bag):
+        text = self.wrapper(bag)
+        assert ('R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits * (double) '
+                'INTEGER(Rf_getAttrib(values, R_DimSymbol))[0]);') not in text  # n_points is a local
+        assert 'R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits * (double) n_points);' in text
+        assert "unsigned char* _c_flags = tox_bool_alloc(_n_flags);" in text
+
+    def test_a_computed_axis_is_clamped_at_zero(self, bag):
+        text = self.wrapper(bag)
+        assert 'tox_count("merges", (double) (tox_imax(0, n_points - 1)))' in text
+        assert "Rf_allocVector(REALSXP, _n_merges)" in text
+
+    def test_the_outputs_are_converted_back_only_when_the_call_succeeded(self, bag):
+        text = self.wrapper(bag)
+        block = text[text.index("SEXP flags = R_NilValue;"):]
+        assert block.startswith("SEXP flags = R_NilValue;\n    if (!tox_failed(ierr)) {\n"
+                                "        flags = PROTECT(tox_bool_out(_c_flags, _n_flags)); _nprot++;")
+
+    def test_an_error_is_told_from_a_status_as_check_err_code_tells_it(self):
+        from codegen.ir.errors import ErrorCatalogue, ErrorCode
+        from codegen.ir.doc import Doc
+
+        codes = [ErrorCode(name="ERR_OK", value=0, doc=Doc(), is_status=False),
+                 ErrorCode(name="STAT_CONVERGED_EARLY", value=7, doc=Doc(), is_status=True)]
+        header = CCallEmitter(catalogue=ErrorCatalogue(codes, arg_pos_factor=1000)).marshal_header_content()
+        assert "int code = ierr % 1000;\n    return code != 0 && code != 7;" in header
+        assert "return code != 0;" in CCallEmitter().marshal_header_content()

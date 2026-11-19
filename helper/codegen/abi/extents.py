@@ -31,8 +31,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Callable
 
-from ..ir.types import Intent
-from .model import Conversion
+from ..ir.types import BaseType, Intent
+from .model import Conversion, Origin
 
 # -- the tree ---------------------------------------------------------------------------------
 
@@ -261,6 +261,36 @@ def evaluate(node, values: dict[str, int] | None = None) -> int:
     raise TypeError(node)
 
 
+def clamped(text: str) -> str:
+    """An allocation's extent as the bindings size it: `max(0, text)` where it may be negative.
+
+    Fortran sizes an array of a negative extent as an empty one, while numpy and R refuse it
+    before the call, so `merge_i(n_points - 1)` of no points never reached the library's own
+    `ERR_EMPTY_INPUT`. A bare name is left as it is: a caller-passed one is refused when
+    negative (`caller_passed_extents`), and one the bindings read off an array is a size. So is
+    a literal, a `size`, and what is built of those by `+ * /` or held up by a `max`.
+    """
+    node = parse(text)
+    if isinstance(node, Name) or _never_negative(node):
+        return text
+    return f"max(0, {text})"
+
+
+def _never_negative(node) -> bool:
+    match node:
+        case Integer(value):
+            return value >= 0
+        case Size():
+            return True
+        case Extremum("max", operands):
+            return any(_never_negative(operand) for operand in operands)
+        case Extremum("min", operands):
+            return all(_never_negative(operand) for operand in operands)
+        case Binary(operator, left, right) if operator in "+*/":
+            return _never_negative(left) and _never_negative(right)
+    return False
+
+
 # -- writing it out ---------------------------------------------------------------------------
 
 #: How tightly each node binds, for parenthesising only where the meaning needs it
@@ -374,6 +404,26 @@ def binding_computed_extents(wrapper):
     """
     from .c_abi import reads_a_dummy
 
+    yield from allocation_extents(wrapper)
+    for argument in wrapper:
+        if argument.is_error or argument.is_temporary or argument.intent is Intent.OUT:
+            continue
+        character = argument.conversion is Conversion.CHARACTER
+        if (argument.is_array and argument.intent.is_input and argument.shape_arg is None
+                and argument.conversion is not Conversion.MODE):
+            axes = argument.dimension.extents[1 if character else 0:]
+            for extent in axes:
+                if wrapper.argument(extent) is None and not reads_a_dummy(extent, wrapper.procedure):
+                    yield argument, extent
+
+
+def allocation_extents(wrapper):
+    """Every extent Python and the R shim allocate by for `wrapper`, as (argument, extent) pairs.
+
+    An output and a work array by each of their extents -- unless a shape argument sizes them,
+    whose product is the count -- and a string by its length, an input string's included, which
+    is padded to it. The part of `binding_computed_extents` that sizes memory.
+    """
     for argument in wrapper:
         if argument.is_error:
             continue
@@ -385,12 +435,53 @@ def binding_computed_extents(wrapper):
             continue
         if character and (allocated or argument.intent.is_input):
             yield argument, argument.dimension.extents[0]
-        if (argument.is_array and argument.intent.is_input and argument.shape_arg is None
-                and argument.conversion is not Conversion.MODE):
-            axes = argument.dimension.extents[1 if character else 0:]
-            for extent in axes:
-                if wrapper.argument(extent) is None and not reads_a_dummy(extent, wrapper.procedure):
-                    yield argument, extent
+
+
+def caller_passed_extents(wrapper) -> tuple:
+    """The integers the caller passes that are a whole axis of something the bindings allocate.
+
+    Python and R allocate every output and work array, and pad every string, before the call
+    (`allocation_extents`). Where such an extent is a bare argument the caller supplies -- one
+    the bindings neither read off an input nor compute through a producer, such as `n_families`
+    of `centroid_matrix(n_axes, n_families)` -- a negative value reached the allocation before
+    the library could check it: numpy and R refused it in words naming neither the argument nor
+    the library (#215). So both bindings refuse one themselves first, naming it, from this list.
+    Zero and every documented bound stay the library's to check, with its codes and positions.
+    In the wrapper's order.
+    """
+    names_ = set()
+    for _, extent in allocation_extents(wrapper):
+        try:
+            node = parse(extent)
+        except ExtentError:
+            continue  # `check_binding_extents` refuses it
+        if isinstance(node, Name):
+            names_.add(node.name.lower())
+    return tuple(argument for argument in wrapper
+                 if argument.name.lower() in names_ and _is_supplied_by_the_caller(argument, wrapper))
+
+
+def _is_supplied_by_the_caller(argument, wrapper) -> bool:
+    """Whether the bindings ask the caller for this scalar integer, rather than working it out.
+
+    The rule each emitter's signature applies: an input that is no work array, not derived
+    from another argument or a producer (`roles.is_derived`), and, where only C has it (an
+    extent or a length the C wrapper adds), one that sizes no input it could be read off.
+    """
+    if (argument.is_error or argument.is_array or argument.is_temporary
+            or argument.intent is not Intent.IN or argument.type.base is not BaseType.INTEGER):
+        return False
+    roles = argument.source.roles if argument.source else None
+    if roles is not None and roles.is_derived:
+        return False
+    if argument.is_synthesised:
+        owner = wrapper.argument(argument.sizes)
+        if owner is None or not owner.intent.is_input:
+            return True
+        # a work array is allocated from its extent, never read for it; a string's length is
+        # read off it whatever it is
+        return argument.origin is Origin.EXTENT and owner.is_temporary
+    return True
 
 
 def check_binding_extents(binding, diagnostics) -> None:

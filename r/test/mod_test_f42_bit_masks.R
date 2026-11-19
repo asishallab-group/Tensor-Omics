@@ -167,4 +167,34 @@ test_a_double_NA_is_no_word <- function() {
   assert_true(identical(bitmask_to_logical(4L, 11), FLAGS_1011), "the double 11 is the word 11")
 }
 
+test_a_count_that_wraps_in_int_is_refused <- function() {
+  # 2^31 - 1 flags in each of 2097153 masks: the shim computed the element count of `flags` as
+  # an int product, which wraps, and handed the callee a buffer far smaller than it then wrote
+  # (#215). Now the count is exact, and past what R can allocate it is refused, naming the array,
+  # before anything is allocated. The input is one word per mask, 8 MB.
+  err <- tryCatch(bitmasks_to_logical_2D(2147483647L, matrix(0L, 1L, 2097153L)), error = function(e) e)
+  assert_true(inherits(err, "tox_shape_error") && is.na(err$code) && identical(err$argument, "flags"),
+              "the count of 'flags' is refused by name, with no tox code")
+  assert_true(grepl("which R cannot allocate", conditionMessage(err), fixed = TRUE),
+              "the refusal says why")
+}
+
+test_a_negative_n_bits_is_refused_by_name <- function() {
+  # n_bits sizes `flags`, which the shim allocates before the library is called (#215)
+  err <- tryCatch(bitmask_to_logical(-1L, 0L), error = function(e) e)
+  assert_true(inherits(err, "tox_input_error") && is.na(err$code) && identical(err$argument, "n_bits"),
+              "a negative n_bits is refused by name")
+  assert_error(bitmask_to_logical(0L, 0L), "n_bits = 0 stays the library's", ERR_INVALID_INPUT)
+}
+
+test_the_outputs_are_not_converted_on_an_error <- function() {
+  # on an error R discards the outputs, so the shim does not convert them back: the buffer of
+  # flags reaches R only when the call succeeded. 33 flags do not fit in one word.
+  failed <- .Call("bitmask_to_logical_call", 33L, 0L)
+  assert_true(failed$ierr %% ARG_POS_FACTOR == ERR_INVALID_INPUT && is.null(failed$flags),
+              "an error returns no converted flags")
+  succeeded <- .Call("bitmask_to_logical_call", 4L, WORD_1011)
+  assert_true(succeeded$ierr == 0L && identical(succeeded$flags, FLAGS_1011), "a success returns them")
+}
+
 run_all_tests()

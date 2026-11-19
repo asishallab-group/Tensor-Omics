@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_shift_vector_field_c(const int*, const int*, const int*, const double*, const double*, const int*, double*, int*);
@@ -19,7 +19,8 @@ SEXP compute_shift_vector_field_call(SEXP expression_vectors, SEXP family_centro
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP shift_vectors = PROTECT(Rf_allocVector(REALSXP, n_tissues * 2 * n_genes)); _nprot++;
+    R_xlen_t _n_shift_vectors = tox_count("shift_vectors", (double) n_tissues * (double) 2 * (double) n_genes);
+    SEXP shift_vectors = PROTECT(Rf_allocVector(REALSXP, _n_shift_vectors)); _nprot++;
     { SEXP _dim_shift_vectors = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_shift_vectors)[0] = n_tissues; INTEGER(_dim_shift_vectors)[1] = 2; INTEGER(_dim_shift_vectors)[2] = n_genes; Rf_setAttrib(shift_vectors, R_DimSymbol, _dim_shift_vectors); UNPROTECT(1); }
     int ierr = 0;
 

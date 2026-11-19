@@ -26,6 +26,7 @@ from tensor_omics.error_handling import (
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
     ERR_NAN_INF,
+    ToxArgumentError,
 )
 
 N_AXES, N_GENES = 2, 4
@@ -179,6 +180,31 @@ def test_group_centroid_all_rejects_a_long_gene_to_family():
     # the binding's own extent check, before the library is called
     assert_error(lambda: group_centroid_all(_expression_vectors(), np.ones(N_GENES + 1, dtype=np.int32), 1),
                  "gene_to_family longer than n_genes")
+
+
+def test_a_negative_n_families_is_refused_by_name_before_anything_is_allocated():
+    # n_families sizes the output the binding allocates before the library is called (#215):
+    # numpy refused -1 there itself, as "negative dimensions are not allowed"
+    calls = {
+        "group_centroid_all": lambda: group_centroid_all(
+            _expression_vectors(), np.ones(N_GENES, dtype=np.int32), -1),
+        "group_centroid_orthologs": lambda: group_centroid_orthologs(
+            _expression_vectors(), np.ones(N_GENES, dtype=np.int32), -1, np.ones(N_GENES, dtype=bool)),
+    }
+    for name, call in calls.items():
+        try:
+            call()
+        except ToxArgumentError as error:
+            assert error.argument == "n_families" and error.code is None, (name, error)
+            assert "'n_families' is a size and must not be negative, but it is -1" in str(error), (name, error)
+        else:
+            raise AssertionError(f"{name}: a negative n_families was not refused")
+
+
+def test_zero_families_is_still_the_librarys_to_refuse():
+    # only a negative size is the binding's; zero keeps the library's code and names n_families
+    assert_error(lambda: group_centroid_all(_expression_vectors(), np.zeros(N_GENES, dtype=np.int32), 0),
+                 "no families", ERR_EMPTY_INPUT, argument="n_families")
 
 
 if __name__ == '__main__':

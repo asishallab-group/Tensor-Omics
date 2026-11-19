@@ -502,6 +502,13 @@ that only outputs or work arrays carry is asked of the caller instead, since not
 over has it yet (`n` of `fill(n, value, filled(n))`). One that only optional input arrays carry is
 refused — the bindings drop it from the signature and would then have nothing to read it off.
 
+Python and R allocate the outputs and work arrays before the call, so an extent they ask of the
+caller is refused there when it is negative, naming it, before anything is allocated by it
+(`'n_families' is a size and must not be negative, but it is -1`). Zero and a `DM_MIN`, `DM_MAX` or
+`DM_EQUALS` stay the wrapper's to check, with its codes. An output axis the declaration computes
+(`merge_i(n_points - 1)`) is allocated with at least zero elements, as Fortran sizes it, so no
+points is the wrapper's `ERR_EMPTY_INPUT`.
+
 ### 5.4 A distance matrix
 
 **When** a square real matrix holds pairwise distances.

@@ -280,6 +280,9 @@ def bitmask_from_logical(
     n_words = _contract.integer(n_words, "n_words")
     flags = _contract.logicals(flags, "flags", ndim=1)
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_words, "n_words")
+
     # what the inputs already say, rather than asking for it again
     n_bits = flags.shape[0]
 
@@ -338,6 +341,9 @@ def bitmask_to_logical(
     # check every input by the input contract, converting only when C needs it
     n_bits = _contract.integer(n_bits, "n_bits")
     bitmask = _contract.integers(bitmask, "bitmask", ndim=1)
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_bits, "n_bits")
 
     # what the inputs already say, rather than asking for it again
     n_words = bitmask.shape[0]
@@ -399,6 +405,9 @@ def bitmasks_from_logical_2D(
     n_words = _contract.integer(n_words, "n_words")
     flags = _contract.logicals(flags, "flags", ndim=2, order="F")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_words, "n_words")
+
     # what the inputs already say, rather than asking for it again
     n_bits = flags.shape[0]
     n_masks = flags.shape[1]
@@ -459,6 +468,9 @@ def bitmasks_to_logical_2D(
     # check every input by the input contract, converting only when C needs it
     n_bits = _contract.integer(n_bits, "n_bits")
     bitmasks = _contract.integers(bitmasks, "bitmasks", ndim=2, order="F")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_bits, "n_bits")
 
     # what the inputs already say, rather than asking for it again
     n_masks = bitmasks.shape[1]

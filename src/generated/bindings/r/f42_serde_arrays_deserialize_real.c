@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void deserialize_real_helper_c(double*, const int*, const int*, const int*, const char*, const int*, int*);
@@ -11,7 +11,7 @@ void deserialize_real_helper_c(double*, const int*, const int*, const int*, cons
 SEXP deserialize_real_helper_call(SEXP arr_shape, SEXP filename) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_elements = tox_prod(arr_shape);
+    int n_elements = tox_int_extent("arr", tox_prod(arr_shape));
     int n_arr_shape_elements = (int) Rf_length(arr_shape);
     int filename_strlen = tox_max_strlen(filename);
 
@@ -19,7 +19,8 @@ SEXP deserialize_real_helper_call(SEXP arr_shape, SEXP filename) {
     char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
-    SEXP arr = PROTECT(Rf_allocVector(REALSXP, tox_prod(arr_shape))); _nprot++;
+    R_xlen_t _n_arr = tox_count("arr", tox_prod(arr_shape));
+    SEXP arr = PROTECT(Rf_allocVector(REALSXP, _n_arr)); _nprot++;
     Rf_setAttrib(arr, R_DimSymbol, arr_shape);
     int ierr = 0;
 

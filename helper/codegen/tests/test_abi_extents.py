@@ -152,3 +152,81 @@ class TestWhatTheBindingsComputeIsChecked:
     def test_a_name_that_is_neither_argument_nor_constant_is_refused(self):
         bag = _published(b.integer("n"), b.real("x", Intent.OUT, "(n + n_cached)"))
         assert "'n_cached' is neither an argument nor a module constant" in bag.errors[0].message
+
+
+def _wrapper(*arguments):
+    from codegen.abi.c_abi import build_wrapper
+
+    procedure = b.procedure("p", *arguments, b.ierr())
+    bag = DiagnosticBag()
+    analyse(procedure, bag)
+    wrapper = build_wrapper(procedure, bag)
+    assert bag.errors == (), bag.render()
+    return wrapper
+
+
+def _caller_passed(*arguments):
+    return [argument.name for argument in extents.caller_passed_extents(_wrapper(*arguments))]
+
+
+class TestTheCallerPassedExtents:
+    """What both bindings refuse when negative, before they allocate by it (#215)."""
+
+    def test_an_extent_only_an_output_has_is_the_callers(self):
+        # `n_families` of `centroid_matrix(n_axes, n_families)`: n_axes is read off the input
+        assert _caller_passed(
+            b.real("expression", Intent.IN, "(n_axes, n_genes)"),
+            b.integer("n_axes"), b.integer("n_genes"), b.integer("n_families"),
+            b.real("centroid_matrix", Intent.OUT, "(n_axes, n_families)"),
+        ) == ["n_families"]
+
+    def test_one_read_off_an_input_is_not(self):
+        assert _caller_passed(b.integer("n"), b.real("x", Intent.IN, "(n)"),
+                              b.real("y", Intent.OUT, "(n)")) == []
+
+    def test_a_work_arrays_extent_is(self):
+        assert _caller_passed(b.integer("k"), b.real("tmp_work", Intent.OUT, "(k)"),
+                              b.real("total", Intent.OUT)) == ["k"]
+
+    def test_one_inside_a_computed_axis_is_not_a_whole_axis(self):
+        # `y(n - 1)` is clamped at zero instead (`clamped`); a negative n cannot size anything
+        assert _caller_passed(b.integer("n"), b.real("y", Intent.OUT, "(n - 1)")) == []
+
+    def test_the_length_of_an_output_string_is(self):
+        assert _caller_passed(b.integer("width"),
+                              b.character("label", Intent.OUT, length="width")) == ["width"]
+
+    def test_the_length_c_reads_off_an_input_string_is_not(self):
+        assert _caller_passed(b.character("label", Intent.IN), b.integer("total", Intent.OUT)) == []
+
+    def test_a_length_and_a_count_only_c_has_are_the_callers_for_an_output(self):
+        # an assumed-length, assumed-shape output: C adds both, and nothing can be read off it
+        assert _caller_passed(
+            b.character("names", Intent.OUT, "(:)", length="*"),
+        ) == ["names_strlen", "n_names_elements"]
+
+    def test_a_scalar_that_sizes_nothing_is_not(self):
+        assert _caller_passed(b.integer("seed"), b.real("x", Intent.IN, "(n)"), b.integer("n"),
+                              b.real("y", Intent.OUT, "(n)")) == []
+
+
+class TestClamped:
+    @pytest.mark.parametrize("text, expected", [
+        ("n_points - 1", "max(0, n_points - 1)"),
+        ("2*k", "max(0, 2*k)"),
+        ("-1", "max(0, -1)"),
+        ("min(n, 3)", "max(0, min(n, 3))"),
+        # a bare name is a size already or refused when negative (caller_passed_extents)
+        ("n", "n"),
+        ("3", "3"),
+        ("size(a)", "size(a)"),
+        ("max(0_int32, n_timepoints - 2)", "max(0_int32, n_timepoints - 2)"),
+        ("min(3, size(a))", "min(3, size(a))"),
+        ("size(a) + 1", "size(a) + 1"),
+    ])
+    def test_what_may_be_negative_is_clamped_at_zero(self, text, expected):
+        assert extents.clamped(text) == expected
+
+    def test_both_languages_write_the_clamp(self):
+        assert extents.to_python(extents.clamped("n - 1")) == "max(0, n - 1)"
+        assert extents.to_c(extents.clamped("n - 1"), str, c_size) == "tox_imax(0, n - 1)"

@@ -20,11 +20,13 @@ reached Fortran as `2**53`).
 from __future__ import annotations
 
 from .errors_python import ARGUMENT_EXCEPTION
+from .errors_r import NEGATIVE_EXTENT_MESSAGE
 
 
 def contract_module() -> str:
     """The text of `python/tensor_omics/_contract.py`."""
-    return _CONTRACT.replace("__ARGUMENT_EXCEPTION__", ARGUMENT_EXCEPTION)
+    return (_CONTRACT.replace("__ARGUMENT_EXCEPTION__", ARGUMENT_EXCEPTION)
+            .replace("__NEGATIVE_EXTENT_MESSAGE__", repr(NEGATIVE_EXTENT_MESSAGE)))
 
 
 _CONTRACT = r'''"""The input contract of the Python binding: what an argument accepts, and what it refuses.
@@ -200,6 +202,17 @@ def integers(value, argument, ndim=None, order="C"):
 def integer(value, argument):
     """A scalar integer(int32): the 0-d case of `integers`, as a Python int."""
     return int(integers(value, argument, ndim=0))
+
+
+def extent(value, argument):
+    """A size the caller passed, which the binding allocates by: refused when negative.
+
+    `value` has passed `integer` already. numpy would refuse a negative shape itself, before
+    the library is called, in words naming neither the argument nor the library; zero and every
+    documented bound stay the library's to check.
+    """
+    if value < 0:
+        _refuse(__NEGATIVE_EXTENT_MESSAGE__ % (argument, value), argument)
 
 
 def _refuse_inexact(argument, wanted, where, shown, rounded):

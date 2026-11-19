@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void build_bst_index_c(const double*, const int*, int*, int*);
@@ -16,7 +16,8 @@ SEXP build_bst_index_call(SEXP values) {
     int n_values = (int) Rf_length(values);
 
     // outputs and work space
-    SEXP sorted_indices = PROTECT(Rf_allocVector(INTSXP, n_values)); _nprot++;
+    R_xlen_t _n_sorted_indices = tox_count("sorted_indices", (double) n_values);
+    SEXP sorted_indices = PROTECT(Rf_allocVector(INTSXP, _n_sorted_indices)); _nprot++;
     int ierr = 0;
 
     build_bst_index_c(
@@ -47,7 +48,8 @@ SEXP bst_range_query_call(SEXP values, SEXP lower_bound, SEXP upper_bound) {
     double _v_upper_bound = Rf_asReal(upper_bound);
 
     // outputs and work space
-    SEXP output_indices = PROTECT(Rf_allocVector(INTSXP, n_values)); _nprot++;
+    R_xlen_t _n_output_indices = tox_count("output_indices", (double) n_values);
+    SEXP output_indices = PROTECT(Rf_allocVector(INTSXP, _n_output_indices)); _nprot++;
     int n_matches = 0;
     int ierr = 0;
 
@@ -87,7 +89,8 @@ SEXP bst_range_query_expert_call(SEXP values, SEXP values_perm, SEXP lower_bound
     const int* _c_values_perm = tox_int_in(values_perm, "values_perm");
 
     // outputs and work space
-    SEXP output_indices = PROTECT(Rf_allocVector(INTSXP, n_values)); _nprot++;
+    R_xlen_t _n_output_indices = tox_count("output_indices", (double) n_values);
+    SEXP output_indices = PROTECT(Rf_allocVector(INTSXP, _n_output_indices)); _nprot++;
     int n_matches = 0;
     int ierr = 0;
 

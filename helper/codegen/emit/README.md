@@ -95,7 +95,8 @@ step needs what the one before it settles.
 
 ```
 1  parameters      which C arguments the caller actually supplies (Section 4.3)
-2  coerce inputs   the input contract: kind, rank, exact conversion; raise naming the argument (Section 4.5)
+2  coerce inputs   the input contract: kind, rank, exact conversion; raise naming the argument (Section 4.5);
+                   then a negative size the caller passes (`extents.caller_passed_extents`)
 3  producers       call DM_OUTPUT_FROM(AUTO) producers (Section 4.3)
 4  derive extents  from the arrays, shape arguments and masks you were given (Section 4.3)
 5  cross-check     arguments sharing an extent must agree (Section 4.3)
@@ -129,7 +130,7 @@ think about for a new host.
 | **Array order** | C-order by default, so a rank-≥2 input may cost a **transposing copy** | already column-major — free | Fortran is column-major. Julia and MATLAB are too (free); Lua tables and NumPy defaults are not. This decides whether rank-≥2 inputs are cheap or copied |
 | **Rank 1** | the two orders coincide — no copy | same | never pay for a transpose at rank 1 |
 | **Contiguity** | `np.ascontiguousarray` / `asfortranarray` as the rank requires | R vectors are contiguous | a host with strided or lazy arrays must materialise before passing a pointer |
-| **Element count** | product of `size_extents` | same | C sees one flat block; the rank lives only in your wrapper |
+| **Element count** | product of `size_extents` | same, in `double` and refused past `R_XLEN_T_MAX` naming the array (`tox_count`): an `int` product wrapped into a buffer the callee wrote past (#215) | C sees one flat block; the rank lives only in your wrapper. Compute the count where it cannot wrap, and allocate a computed axis (`n_points - 1`) at least empty, as Fortran does (`extents.clamped`) |
 
 ### 4.2 Ownership and mutation
 
@@ -193,6 +194,7 @@ other's outputs and a module-level import would be circular.
 |---|---|
 | **numeric output** | allocate **uninitialised** (`np.empty`). Fortran fills it; zeroing is an O(n) write of data about to be overwritten, and where Fortran fills only part, zeros *look like results* while garbage looks like garbage |
 | **character output** | allocate **blank-filled**. Fortran fills a character buffer only partially, and an uninitialised byte past the written data is read back *as part of a string*. Blanks rather than nulls because the Fortran side is now a `character(len=n)` pointer view of this very buffer, so what it writes and what it leaves are both read with Fortran's own convention: `trim`, `len_trim` and comparison all work on blanks. Nothing scans for a NUL any more, so a zero-filled buffer would come back with the padding attached to the string |
+| **on an error** | the outputs are discarded, so do not pay for converting them back: R's shim converts a buffered one only when the call succeeded (`tox_failed`, a status counting as success); Python's numpy arrays need nothing |
 | **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements along the **last** axis, where *n* is the argument named: the first *n* columns of a matrix, every other axis whole |
 | **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework. Give an array of strings its type explicitly (`dtype=str`): numpy makes an empty list float64, so an array of no strings came back as numbers |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |

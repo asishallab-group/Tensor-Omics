@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void detect_neofunctionalization_c(const double*, const int*, const double*, const int*, const int*, const int*, const double*, unsigned char*, int*);
@@ -24,7 +24,8 @@ SEXP detect_neofunctionalization_call(SEXP ancestors, SEXP genes, SEXP gene_to_f
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    unsigned char* _c_neofunc = tox_bool_alloc(n_genes * n_axes);
+    R_xlen_t _n_neofunc = tox_count("neofunc", (double) n_genes * (double) n_axes);
+    unsigned char* _c_neofunc = tox_bool_alloc(_n_neofunc);
     int ierr = 0;
 
     detect_neofunctionalization_c(
@@ -39,9 +40,12 @@ SEXP detect_neofunctionalization_call(SEXP ancestors, SEXP genes, SEXP gene_to_f
         &ierr
     );
 
-    // convert the outputs back
-    SEXP neofunc = PROTECT(tox_bool_out(_c_neofunc, n_genes * n_axes)); _nprot++;
-    { SEXP _dim_neofunc = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_neofunc)[0] = n_genes; INTEGER(_dim_neofunc)[1] = n_axes; Rf_setAttrib(neofunc, R_DimSymbol, _dim_neofunc); UNPROTECT(1); }
+    // convert the outputs back, unless the library reports an error
+    SEXP neofunc = R_NilValue;
+    if (!tox_failed(ierr)) {
+        neofunc = PROTECT(tox_bool_out(_c_neofunc, _n_neofunc)); _nprot++;
+        { SEXP _dim_neofunc = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_neofunc)[0] = n_genes; INTEGER(_dim_neofunc)[1] = n_axes; Rf_setAttrib(neofunc, R_DimSymbol, _dim_neofunc); UNPROTECT(1); }
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, neofunc);
@@ -72,7 +76,8 @@ SEXP detect_dosage_effect_call(SEXP ancestor, SEXP genes, SEXP filtered_paralogs
 
     // outputs and work space
     int n_results = 0;
-    SEXP paralog_subsets_bitmasks = PROTECT(Rf_allocVector(INTSXP, n_mask_chunks * _v_n_paralog_subsets)); _nprot++;
+    R_xlen_t _n_paralog_subsets_bitmasks = tox_count("paralog_subsets_bitmasks", (double) n_mask_chunks * (double) _v_n_paralog_subsets);
+    SEXP paralog_subsets_bitmasks = PROTECT(Rf_allocVector(INTSXP, _n_paralog_subsets_bitmasks)); _nprot++;
     { SEXP _dim_paralog_subsets_bitmasks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_paralog_subsets_bitmasks)[0] = n_mask_chunks; INTEGER(_dim_paralog_subsets_bitmasks)[1] = _v_n_paralog_subsets; Rf_setAttrib(paralog_subsets_bitmasks, R_DimSymbol, _dim_paralog_subsets_bitmasks); UNPROTECT(1); }
     int ierr = 0;
 
@@ -123,7 +128,8 @@ SEXP detect_subfunctionalization_call(SEXP ancestor, SEXP genes, SEXP filtered_p
 
     // outputs and work space
     int n_results = 0;
-    SEXP paralog_subsets_bitmasks = PROTECT(Rf_allocVector(INTSXP, n_mask_chunks * _v_n_paralog_subsets)); _nprot++;
+    R_xlen_t _n_paralog_subsets_bitmasks = tox_count("paralog_subsets_bitmasks", (double) n_mask_chunks * (double) _v_n_paralog_subsets);
+    SEXP paralog_subsets_bitmasks = PROTECT(Rf_allocVector(INTSXP, _n_paralog_subsets_bitmasks)); _nprot++;
     { SEXP _dim_paralog_subsets_bitmasks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_paralog_subsets_bitmasks)[0] = n_mask_chunks; INTEGER(_dim_paralog_subsets_bitmasks)[1] = _v_n_paralog_subsets; Rf_setAttrib(paralog_subsets_bitmasks, R_DimSymbol, _dim_paralog_subsets_bitmasks); UNPROTECT(1); }
     int ierr = 0;
 
@@ -171,7 +177,8 @@ SEXP filter_paralogs_by_pattern_dosage_effect_call(SEXP gene_angles, SEXP thresh
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP family_bitmasks = PROTECT(Rf_allocVector(INTSXP, _v_n_mask_chunks * _v_n_families)); _nprot++;
+    R_xlen_t _n_family_bitmasks = tox_count("family_bitmasks", (double) _v_n_mask_chunks * (double) _v_n_families);
+    SEXP family_bitmasks = PROTECT(Rf_allocVector(INTSXP, _n_family_bitmasks)); _nprot++;
     { SEXP _dim_family_bitmasks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_family_bitmasks)[0] = _v_n_mask_chunks; INTEGER(_dim_family_bitmasks)[1] = _v_n_families; Rf_setAttrib(family_bitmasks, R_DimSymbol, _dim_family_bitmasks); UNPROTECT(1); }
     int ierr = 0;
 
@@ -211,7 +218,8 @@ SEXP filter_paralogs_by_pattern_subfunctionalization_call(SEXP gene_angles, SEXP
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP family_bitmasks = PROTECT(Rf_allocVector(INTSXP, _v_n_mask_chunks * _v_n_families)); _nprot++;
+    R_xlen_t _n_family_bitmasks = tox_count("family_bitmasks", (double) _v_n_mask_chunks * (double) _v_n_families);
+    SEXP family_bitmasks = PROTECT(Rf_allocVector(INTSXP, _n_family_bitmasks)); _nprot++;
     { SEXP _dim_family_bitmasks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_family_bitmasks)[0] = _v_n_mask_chunks; INTEGER(_dim_family_bitmasks)[1] = _v_n_families; Rf_setAttrib(family_bitmasks, R_DimSymbol, _dim_family_bitmasks); UNPROTECT(1); }
     int ierr = 0;
 

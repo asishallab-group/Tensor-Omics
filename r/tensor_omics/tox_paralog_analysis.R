@@ -180,6 +180,8 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     n_mask_chunks <- .tox_as_integer_scalar(n_mask_chunks, "n_mask_chunks")
+    .tox_check_extent(n_families, "n_families")
+    .tox_check_extent(n_mask_chunks, "n_mask_chunks")
     if (length(gene_to_fam) != length(gene_angles))
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'gene_angles' implies n_genes == ", length(gene_angles), "n_genes")
 
@@ -218,6 +220,8 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     n_mask_chunks <- .tox_as_integer_scalar(n_mask_chunks, "n_mask_chunks")
+    .tox_check_extent(n_families, "n_families")
+    .tox_check_extent(n_mask_chunks, "n_mask_chunks")
     if (length(gene_to_fam) != length(gene_angles))
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'gene_angles' implies n_genes == ", length(gene_angles), "n_genes")
 

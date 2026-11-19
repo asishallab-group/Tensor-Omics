@@ -532,6 +532,10 @@ def filter_paralogs_by_pattern_dosage_effect(
     gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
     n_mask_chunks = _contract.integer(n_mask_chunks, "n_mask_chunks")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
+    _contract.extent(n_mask_chunks, "n_mask_chunks")
+
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
 
@@ -617,6 +621,10 @@ def filter_paralogs_by_pattern_subfunctionalization(
     n_families = _contract.integer(n_families, "n_families")
     gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
     n_mask_chunks = _contract.integer(n_mask_chunks, "n_mask_chunks")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
+    _contract.extent(n_mask_chunks, "n_mask_chunks")
 
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]

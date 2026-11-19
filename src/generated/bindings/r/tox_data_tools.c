@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 97c7ade0ef85c73c -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void read_expression_vectors_tsv_c(const char*, const int*, const int*, const char*, const int*, const int*, double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, int*);
@@ -84,7 +84,8 @@ SEXP read_gene_ids_from_tsv_file_call(SEXP filename, SEXP gene_ids_strlen, SEXP 
     char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
-    char* _c_gene_ids = tox_char_alloc(_v_gene_ids_strlen, _v_n_gene_ids_elements);
+    R_xlen_t _n_gene_ids = tox_count("gene_ids", (double) _v_n_gene_ids_elements);
+    char* _c_gene_ids = tox_char_alloc("gene_ids", _v_gene_ids_strlen, _n_gene_ids);
     int ierr = 0;
 
     read_gene_ids_from_tsv_file_c(
@@ -98,8 +99,11 @@ SEXP read_gene_ids_from_tsv_file_call(SEXP filename, SEXP gene_ids_strlen, SEXP 
         &ierr
     );
 
-    // convert the outputs back
-    SEXP gene_ids = PROTECT(tox_char_out(_c_gene_ids, _v_gene_ids_strlen, _v_n_gene_ids_elements)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP gene_ids = R_NilValue;
+    if (!tox_failed(ierr)) {
+        gene_ids = PROTECT(tox_char_out(_c_gene_ids, _v_gene_ids_strlen, _n_gene_ids)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, gene_ids);
@@ -129,8 +133,10 @@ SEXP read_orthofinder_file_call(SEXP filename, SEXP gene_ids, SEXP family_ids_st
     char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen, "gene_ids");
 
     // outputs and work space
-    char* _c_family_ids = tox_char_alloc(_v_family_ids_strlen, _v_n_family_ids_elements);
-    SEXP gene_to_fam = PROTECT(Rf_allocVector(INTSXP, _v_n_gene_to_fam_elements)); _nprot++;
+    R_xlen_t _n_family_ids = tox_count("family_ids", (double) _v_n_family_ids_elements);
+    char* _c_family_ids = tox_char_alloc("family_ids", _v_family_ids_strlen, _n_family_ids);
+    R_xlen_t _n_gene_to_fam = tox_count("gene_to_fam", (double) _v_n_gene_to_fam_elements);
+    SEXP gene_to_fam = PROTECT(Rf_allocVector(INTSXP, _n_gene_to_fam)); _nprot++;
     int ierr = 0;
 
     read_orthofinder_file_c(
@@ -147,8 +153,11 @@ SEXP read_orthofinder_file_call(SEXP filename, SEXP gene_ids, SEXP family_ids_st
         &ierr
     );
 
-    // convert the outputs back
-    SEXP family_ids = PROTECT(tox_char_out(_c_family_ids, _v_family_ids_strlen, _v_n_family_ids_elements)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP family_ids = R_NilValue;
+    if (!tox_failed(ierr)) {
+        family_ids = PROTECT(tox_char_out(_c_family_ids, _v_family_ids_strlen, _n_family_ids)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
     SET_VECTOR_ELT(_out, 0, family_ids);
@@ -172,7 +181,8 @@ SEXP get_unassigned_mask_call(SEXP gene_to_fam) {
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    unsigned char* _c_mask = tox_bool_alloc(((int) Rf_length(gene_to_fam)));
+    R_xlen_t _n_mask = tox_count("mask", (double) ((int) Rf_length(gene_to_fam)));
+    unsigned char* _c_mask = tox_bool_alloc(_n_mask);
     int n_genes_kept = 0;
     int ierr = 0;
 
@@ -184,8 +194,11 @@ SEXP get_unassigned_mask_call(SEXP gene_to_fam) {
         &ierr
     );
 
-    // convert the outputs back
-    SEXP mask = PROTECT(tox_bool_out(_c_mask, ((int) Rf_length(gene_to_fam)))); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP mask = R_NilValue;
+    if (!tox_failed(ierr)) {
+        mask = PROTECT(tox_bool_out(_c_mask, _n_mask)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
     SET_VECTOR_ELT(_out, 0, mask);

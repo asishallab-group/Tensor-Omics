@@ -86,6 +86,7 @@ kd_knn_query <- function(points, kd_indices, dimension_order, query_point, k_nei
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
     query_point <- .tox_as_double_vector(query_point, "query_point")
     k_neighbors <- .tox_as_integer_scalar(k_neighbors, "k_neighbors")
+    .tox_check_extent(k_neighbors, "k_neighbors")
     if (length(kd_indices) != dim(points)[2])
         .tox_shape_error("kd_indices", 1L, length(kd_indices), "'points' implies n_points == ", dim(points)[2], "n_points")
     if (length(dimension_order) != dim(points)[1])
