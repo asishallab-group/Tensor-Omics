@@ -14,6 +14,10 @@
 !| **All 32 bits are used.** A word whose bit 31 is set is negative, so a word is tested against
 !| zero with `/= 0`, never with `> 0`.
 !|
+!| **In R the word with only bit 31 set prints as `NA`.** Its bit pattern is the one R uses for
+!| `NA_integer_`, and it is still that word: it passes back to any procedure here unchanged, and
+!| `intToBits()` decodes it, while `bitwAnd()` and arithmetic take it for a missing value.
+!|
 !| **The bits past `n_bits` in the last word are always zero.** Every procedure here keeps it that
 !| way, and the counts, [[f42_bit_masks_impl(module):bitmask_all(function)]] and
 !| [[f42_bit_masks_impl(module):bitmask_equal(function)]] rely on it.

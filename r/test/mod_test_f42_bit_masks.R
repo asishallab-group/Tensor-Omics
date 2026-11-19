@@ -120,30 +120,51 @@ test_layout_matches_int_to_bits <- function() {
   assert_true(identical(decode_with_int_to_bits(bitmask, n_bits), flags), "intToBits must recover the flags")
 }
 
-test_word_with_only_bit_31_set_is_NA <- function() {
-  # KNOWN ISSUE #206. Flag 32 alone is the word 0x80000000, the most negative int32, and R uses
-  # exactly that bit pattern for NA_integer_. This test pins today's behaviour, so that fixing
-  # #206 makes it fail on purpose: rewrite it then to assert the flag round-trips.
+test_word_with_only_bit_31_set_round_trips <- function() {
+  # Flag 32 alone is the word 0x80000000, the most negative int32, and R uses exactly that bit
+  # pattern for NA_integer_ (issue #206). It prints as NA, is still that word, and passes back.
   flags <- logical(32L)
   flags[32L] <- TRUE
   bitmask <- bitmask_from_logical(1L, flags)
-  assert_true(identical(bitmask, NA_integer_), "#206: flag 32 alone currently packs to NA_integer_")
-
-  # the bits are all there: intToBits reads NA_integer_'s pattern as flag 32 alone
+  assert_true(identical(bitmask, NA_integer_), "flag 32 alone is the word R prints as NA")
   assert_true(identical(decode_with_int_to_bits(bitmask, 32L), flags),
-              "#206: intToBits still decodes the NA word as flag 32 alone")
+              "intToBits decodes the NA word as flag 32 alone")
 
-  # but the binding refuses the word on the way back in, before the library is called
-  assert_true(inherits(tryCatch(bitmask_test(32L, bitmask, 32L), error = function(e) e), "tox_na_error"),
-              "#206: bitmask_test currently rejects the NA word with a tox_na_error")
-  assert_error(bitmask_test(32L, bitmask, 32L), "#206: bitmask_test rejects the NA word")
-  assert_error(bitmask_to_logical(32L, bitmask), "#206: bitmask_to_logical rejects the NA word")
+  assert_true(identical(bitmask_test(32L, bitmask, 32L), TRUE), "flag 32 of the NA word is set")
+  assert_true(identical(bitmask_test(32L, bitmask, 31L), FALSE), "flag 31 of the NA word is not")
+  assert_true(identical(bitmask_to_logical(32L, bitmask), flags), "the NA word unpacks to flag 32 alone")
 
-  # the 2-D form hits the same word in any column
-  bitmasks <- bitmasks_from_logical_2D(1L, cbind(flags, FLAGS_1011[c(1:4, rep(3L, 28L))]))
-  assert_true(is.na(bitmasks[1L, 1L]) && identical(bitmasks[1L, 2L], WORD_1011),
-              "#206: only the column holding 0x80000000 is NA")
-  assert_error(bitmasks_to_logical_2D(32L, bitmasks), "#206: bitmasks_to_logical_2D rejects the NA word")
+  # beside other words, and in the second word of a mask
+  flags_40 <- logical(40L)
+  flags_40[c(32L, 33L)] <- TRUE
+  words <- bitmask_from_logical(2L, flags_40)
+  assert_true(identical(words, c(NA_integer_, 1L)), "flag 32 alone in word 1, flag 33 in word 2")
+  assert_true(identical(bitmask_to_logical(40L, words), flags_40), "a mask holding the NA word round-trips")
+}
+
+test_word_with_only_bit_31_set_round_trips_in_2D <- function() {
+  # the 2-D form takes the same word in any column
+  flags <- matrix(FALSE, nrow = 32L, ncol = 3L)
+  flags[32L, 1L] <- TRUE
+  flags[c(1L, 2L, 4L), 2L] <- TRUE
+  flags[32L, 3L] <- TRUE
+  bitmasks <- bitmasks_from_logical_2D(1L, flags)
+  assert_true(identical(bitmasks, matrix(c(NA_integer_, WORD_1011, NA_integer_), nrow = 1L)),
+              "columns 1 and 3 are the NA word, column 2 is 11")
+  assert_true(identical(bitmasks_to_logical_2D(32L, bitmasks), flags), "every column round-trips")
+}
+
+test_a_double_NA_is_no_word <- function() {
+  # a double has a missing value of its own, which is no int32 bit pattern, so it is refused,
+  # with a hint how to pass the word with only bit 31 set
+  err <- tryCatch(bitmask_to_logical(32L, NA_real_), error = function(e) e)
+  assert_true(inherits(err, "tox_na_error"), "a double NA is refused as NA")
+  assert_true(grepl("integer vector", conditionMessage(err), fixed = TRUE),
+              "the refusal says to pass the words as an integer vector")
+  assert_error(bitmasks_to_logical_2D(32L, matrix(c(1, NA), nrow = 1L)), "a double NA in a column is refused")
+
+  # whole doubles in the integer range are words, as for any integer array
+  assert_true(identical(bitmask_to_logical(4L, 11), FLAGS_1011), "the double 11 is the word 11")
 }
 
 run_all_tests()

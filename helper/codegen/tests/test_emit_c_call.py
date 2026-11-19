@@ -241,3 +241,40 @@ class TestConstantSizes:
 
     def test_a_length_is_the_value(self, bag):
         assert "MAX_LEN" not in self.module_text(bag)
+
+
+class TestBitmaskWords:
+    """Every int32 bit pattern is a bit-mask word, `NA_integer_` included (#206)."""
+
+    def wrapper(self, bag, intent=Intent.IN):
+        return emitted(
+            b.procedure(
+                "p",
+                b.integer("n_words", Intent.IN, doc="words"),
+                b.integer("family_bitmasks", intent, "(n_words)", doc="the words"),
+                b.integer("gene_to_fam", Intent.IN, "(n_words)", doc="an ordinary integer array"),
+                b.integer("total", Intent.OUT, doc="the answer"),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+    def test_an_input_passes_through_the_words_helper(self, bag):
+        text = self.wrapper(bag)
+        assert 'const int* _c_family_bitmasks = tox_words_in(family_bitmasks, "family_bitmasks");' in text
+
+    def test_any_other_integer_array_keeps_its_na_check(self, bag):
+        assert 'tox_int_in(gene_to_fam, "gene_to_fam")' in self.wrapper(bag)
+
+    def test_one_modified_in_place_is_copied_by_the_words_helper(self, bag):
+        text = self.wrapper(bag, Intent.INOUT)
+        assert 'PROTECT(tox_words_copy(family_bitmasks, "family_bitmasks"))' in text
+        assert "tox_int_copy(family_bitmasks" not in text
+
+    def test_the_helpers_pass_an_integer_vector_as_it_stands(self):
+        header = CCallEmitter().marshal_header_content()
+        words_in = header[header.index("static inline const int* tox_words_in"):]
+        words_in = words_in[: words_in.index("\n}\n")]
+        assert "if (TYPEOF(x) == INTSXP) return INTEGER(x);" in words_in
+        # a double NA is no word, and its refusal says how to pass one
+        assert "words as an integer vector" in words_in

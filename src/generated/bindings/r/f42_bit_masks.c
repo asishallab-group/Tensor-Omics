@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void bitmask_n_words_c(const int*, int*, int*);
@@ -49,7 +49,7 @@ SEXP bitmask_test_call(SEXP n_bits, SEXP bitmask, SEXP i_bit) {
     int _v_i_bit = Rf_asInteger(i_bit);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_bitmask = tox_int_in(bitmask, "bitmask");
+    const int* _c_bitmask = tox_words_in(bitmask, "bitmask");
 
     // outputs and work space
     unsigned char is_set = 0;
@@ -118,7 +118,7 @@ SEXP bitmask_to_logical_call(SEXP n_bits, SEXP bitmask) {
     int _v_n_bits = Rf_asInteger(n_bits);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_bitmask = tox_int_in(bitmask, "bitmask");
+    const int* _c_bitmask = tox_words_in(bitmask, "bitmask");
 
     // outputs and work space
     unsigned char* _c_flags = tox_bool_alloc(_v_n_bits);
@@ -193,7 +193,7 @@ SEXP bitmasks_to_logical_2D_call(SEXP n_bits, SEXP bitmasks) {
     int _v_n_bits = Rf_asInteger(n_bits);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_bitmasks = tox_int_in(bitmasks, "bitmasks");
+    const int* _c_bitmasks = tox_words_in(bitmasks, "bitmasks");
 
     // outputs and work space
     unsigned char* _c_flags = tox_bool_alloc(_v_n_bits * n_masks);

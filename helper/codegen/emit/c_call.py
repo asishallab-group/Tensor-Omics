@@ -194,6 +194,16 @@ def _checks_integer_array(argument: CArgument) -> bool:
 
 
 
+def _is_bitmask(argument: CArgument) -> bool:
+    """Whether this integer array holds bit-mask words, each of which the shim passes as it is.
+
+    Every int32 bit pattern is a word, and the one with only bit 31 set is `NA_integer_`, so
+    the NA check that guards every other integer array would refuse a valid mask (#206).
+    """
+    roles = argument.source.roles if argument.source else None
+    return bool(roles and roles.is_bitmask)
+
+
 class CCallEmitter:
     def __init__(self, marshal_header: str = "tox_marshal.h", dll_name: str = R_DLL_NAME):
         self.marshal_header = marshal_header
@@ -626,7 +636,8 @@ class CCallEmitter:
             if self._is_inout_copy(argument):
                 copy = shim_local(argument.name, INOUT_COPY)
                 # an integer array arrives as R holds it, and is checked and made one here
-                duplicate = (f'tox_int_copy({argument.name}, "{argument.name}")'
+                helper = "tox_words_copy" if _is_bitmask(argument) else "tox_int_copy"
+                duplicate = (f'{helper}({argument.name}, "{argument.name}")'
                              if argument.type.base is BaseType.INTEGER
                              else f"Rf_duplicate({argument.name})")
                 lines.line(f"SEXP {copy} = PROTECT({duplicate}); {C_PROTECT_COUNT}++;")
@@ -656,7 +667,8 @@ class CCallEmitter:
         if argument.type.is_logical:
             return f'unsigned char* {buffer} = tox_bool_in({name}, "{name}");'
         if _checks_integer_array(argument):
-            return f'const int* {buffer} = tox_int_in({name}, "{name}");'
+            helper = "tox_words_in" if _is_bitmask(argument) else "tox_int_in"
+            return f'const int* {buffer} = {helper}({name}, "{name}");'
         length = self._extent(argument.dimension.extents[0])
         return f'char* {buffer} = tox_char_in({name}, {length}, "{name}");'
 
@@ -979,6 +991,33 @@ static inline const int* tox_int_in(SEXP x, const char* argument) {
 // checked as tox_int_in checks it, then copied or converted
 static inline SEXP tox_int_copy(SEXP x, const char* argument) {
     tox_int_in(x, argument);
+    return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
+}
+
+// Bit-mask words (an argument named bitmask, bitmasks or *_bitmask(s)), as the int32 Fortran is
+// handed. Every int32 bit pattern is a word, and the one with only bit 31 set is INT_MIN, which
+// R calls NA_integer_ -- so an integer vector passes as it stands, NA included: that NA is the
+// word. A double vector is converted as tox_int_in converts it, but its NA is no word, and its
+// refusal says how to pass one.
+static inline const int* tox_words_in(SEXP x, const char* argument) {
+    if (x == R_NilValue) return NULL;
+    if (TYPEOF(x) == INTSXP) return INTEGER(x);
+    if (TYPEOF(x) == REALSXP) {
+        const double* values = REAL(x);
+        for (R_xlen_t i = 0, n = XLENGTH(x); i < n; ++i)
+            if (ISNA(values[i]))
+                tox_refuse(argument, "tox_na_error",
+                           "'%s' contains NA, which is no bit-mask word as a double; pass the "
+                           "words as an integer vector, in which the word with only bit 31 set "
+                           "is NA_integer_", argument);
+    }
+    return tox_int_in(x, argument);
+}
+
+// Bit-mask words the callee modifies, as a fresh integer vector with x's attributes: checked as
+// tox_words_in checks them, then copied or converted
+static inline SEXP tox_words_copy(SEXP x, const char* argument) {
+    tox_words_in(x, argument);
     return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
 }
 

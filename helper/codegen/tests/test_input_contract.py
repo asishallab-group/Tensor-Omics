@@ -130,7 +130,8 @@ class TestTheShimChecksTheElements:
                     if base is BaseType.LOGICAL and argument.is_array:
                         helper = "tox_bool_in"
                     elif base is BaseType.INTEGER and argument.is_array:
-                        helper = "tox_int_in"
+                        # bit-mask words are checked too, all but the NA that is a word
+                        helper = "tox_words_in" if roles and roles.is_bitmask else "tox_int_in"
                     elif base is BaseType.CHARACTER:
                         helper = "tox_char_in"
                     else:

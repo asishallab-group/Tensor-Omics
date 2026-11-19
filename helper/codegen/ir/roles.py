@@ -164,6 +164,11 @@ class ArgumentRoles:
     #: `tmp_` prefixed: a work array, allocated silently and never returned
     is_temporary: bool = False
 
+    #: Named `bitmask(s)` or `*_bitmask(s)`: it holds bit-mask words, every int32 bit pattern
+    #: of which is a word (`Conventions.is_bitmask_name`; `validate` refuses it on anything but
+    #: an `integer(int32)` array)
+    is_bitmask: bool = False
+
     #: How this argument is computed from another procedure, if it is
     computed_from: OutputFromPlan | None = None
 
@@ -907,6 +912,7 @@ class _Analyser:
         for argument in self.arguments:
             argument.roles = ArgumentRoles(
                 is_temporary=self._is_temporary(argument),
+                is_bitmask=self.conventions.is_bitmask_name(argument.name),
                 mode=self._mode_table(argument),
             )
 

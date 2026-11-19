@@ -179,6 +179,33 @@ static inline SEXP tox_int_copy(SEXP x, const char* argument) {
     return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
 }
 
+// Bit-mask words (an argument named bitmask, bitmasks or *_bitmask(s)), as the int32 Fortran is
+// handed. Every int32 bit pattern is a word, and the one with only bit 31 set is INT_MIN, which
+// R calls NA_integer_ -- so an integer vector passes as it stands, NA included: that NA is the
+// word. A double vector is converted as tox_int_in converts it, but its NA is no word, and its
+// refusal says how to pass one.
+static inline const int* tox_words_in(SEXP x, const char* argument) {
+    if (x == R_NilValue) return NULL;
+    if (TYPEOF(x) == INTSXP) return INTEGER(x);
+    if (TYPEOF(x) == REALSXP) {
+        const double* values = REAL(x);
+        for (R_xlen_t i = 0, n = XLENGTH(x); i < n; ++i)
+            if (ISNA(values[i]))
+                tox_refuse(argument, "tox_na_error",
+                           "'%s' contains NA, which is no bit-mask word as a double; pass the "
+                           "words as an integer vector, in which the word with only bit 31 set "
+                           "is NA_integer_", argument);
+    }
+    return tox_int_in(x, argument);
+}
+
+// Bit-mask words the callee modifies, as a fresh integer vector with x's attributes: checked as
+// tox_words_in checks them, then copied or converted
+static inline SEXP tox_words_copy(SEXP x, const char* argument) {
+    tox_words_in(x, argument);
+    return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
+}
+
 // Whether s holds n bytes of well-formed UTF-8: no overlong form, no surrogate, nothing
 // past U+10FFFF -- what R's validUTF8() accepts
 static inline int tox_utf8_valid(const unsigned char* s, size_t n) {

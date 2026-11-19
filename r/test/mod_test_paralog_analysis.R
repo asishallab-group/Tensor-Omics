@@ -106,6 +106,36 @@ test_paralog_functions <- function() {
 }
 
 
+test_a_gene_alone_in_bit_31_survives_the_chain <- function() {
+  # Gene 32 is bit 31 of word 1. Kept alone in that word, the word is 0x80000000, which R
+  # prints as NA_integer_ (issue #206): every step of filter -> calc -> detect takes it back.
+  n_genes <- 33L
+  angles <- rep(1.0, n_genes)
+  angles[c(32L, 33L)] <- 0.1
+  gene_to_fam <- rep(1L, n_genes)
+
+  family_bitmasks <- filter_paralogs_by_pattern_dosage_effect(angles, 0.5, 1L, gene_to_fam,
+                                                              bitmask_n_words(n_genes))
+  kept <- family_bitmasks[, 1]
+  assert_true(identical(kept, c(NA_integer_, 1L)), "genes 32 and 33: the NA word, then bit 0 of word 2")
+
+  sizing <- calc_work_arr_paralog_subsets_size(2L, n_genes, kept)
+  assert_true(sizing$max_subset_size == 2L, "two genes are kept, so a subset holds two at most")
+
+  # only the two kept genes together exceed the ancestor's magnitude by 10%
+  genes <- matrix(rep(c(0.6, 0.6), n_genes), nrow = 2L)
+  found <- detect_dosage_effect(c(1.0, 1.0), genes, kept, sizing$max_subset_size, gain_gamma = 0.1)
+  assert_true(found$n_results == 1L, "the pair {32, 33} is the one dosage subset")
+  assert_true(identical(found$paralog_subsets_bitmasks[, 1], c(NA_integer_, 1L)),
+              "the subset comes back as the same words, the NA word included")
+
+  # an NA in an ordinary integer argument is still refused: it is no family index
+  assert_true(inherits(tryCatch(filter_paralogs_by_pattern_dosage_effect(
+                angles, 0.5, 1L, c(NA_integer_, gene_to_fam[-1]), bitmask_n_words(n_genes)),
+                error = function(e) e), "tox_na_error"),
+              "gene_to_fam = NA is refused as NA")
+}
+
 test_detect_neofunctionalization <- function() {
 
   # Case 1: differences below threshold -> all FALSE

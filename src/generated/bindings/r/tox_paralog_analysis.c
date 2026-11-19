@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 1d1eead404787dab -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void detect_neofunctionalization_c(const double*, const int*, const double*, const int*, const int*, const int*, const double*, unsigned char*, int*);
@@ -68,7 +68,7 @@ SEXP detect_dosage_effect_call(SEXP ancestor, SEXP genes, SEXP filtered_paralogs
     double _v_gain_gamma = Rf_asReal(gain_gamma);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_filtered_paralogs_bitmask = tox_int_in(filtered_paralogs_bitmask, "filtered_paralogs_bitmask");
+    const int* _c_filtered_paralogs_bitmask = tox_words_in(filtered_paralogs_bitmask, "filtered_paralogs_bitmask");
 
     // outputs and work space
     int n_results = 0;
@@ -118,7 +118,7 @@ SEXP detect_subfunctionalization_call(SEXP ancestor, SEXP genes, SEXP filtered_p
     double _v_rdi_threshold = Rf_asReal(rdi_threshold);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_filtered_paralogs_bitmask = tox_int_in(filtered_paralogs_bitmask, "filtered_paralogs_bitmask");
+    const int* _c_filtered_paralogs_bitmask = tox_words_in(filtered_paralogs_bitmask, "filtered_paralogs_bitmask");
     const int* _c_sorted_paralog_norms_perm = tox_int_in(sorted_paralog_norms_perm, "sorted_paralog_norms_perm");
 
     // outputs and work space
@@ -247,7 +247,7 @@ SEXP calc_work_arr_paralog_subsets_size_call(SEXP max_subset_size, SEXP n_genes,
     int _v_n_genes = Rf_asInteger(n_genes);
 
     // convert what Fortran cannot take from R directly
-    const int* _c_filtered_paralogs_bitmask = tox_int_in(filtered_paralogs_bitmask, "filtered_paralogs_bitmask");
+    const int* _c_filtered_paralogs_bitmask = tox_words_in(filtered_paralogs_bitmask, "filtered_paralogs_bitmask");
 
     // outputs and work space
     int work_array_size = 0;

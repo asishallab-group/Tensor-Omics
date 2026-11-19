@@ -877,6 +877,7 @@ class _Validator:
         self._check_mask_count(argument)
         self._check_result_size(argument)
         self._check_equals(argument)
+        self._check_bitmask(argument)
         self._check_lower_bounds(argument)
         self._check_error_argument(argument)
 
@@ -1319,6 +1320,50 @@ class _Validator:
                 "the call, so DM_EQUALS goes on a required intent(in) scalar integer"
             ),
         )
+
+    def _check_bitmask(self, argument: Argument) -> None:
+        """A bit-mask name goes on an `integer(int32)` array, with no value range.
+
+        Every int32 bit pattern is a word, so R passes such an argument without its NA check
+        (`NA_integer_` is the word with only bit 31 set). On anything else the name would
+        promise a layout the argument does not have, and a DM_MIN, DM_MAX, DM_SENTINEL or
+        DM_EQUALS would compare words as the numbers they are not.
+        """
+        if argument.roles is None or not argument.roles.is_bitmask:
+            return
+        words = self.conventions.bitmask_names
+        spellings = " / ".join(f"'{word}'" for word in words)
+        endings = " / ".join(f"'_{word}'" for word in words)
+        note = (
+            f"the name {spellings}, or one ending in {endings}, says the argument holds "
+            "bit-mask words (f42_bit_masks_impl): rename it, or declare it an integer(int32) "
+            "array"
+        )
+        # an integer of another kind is the kind rule's to refuse (`_check_kind`): one cause,
+        # one error
+        fortran = argument.type
+        if fortran is None or fortran.base is not BaseType.INTEGER or not argument.is_array:
+            self.error(
+                f"argument '{argument.name}' is named as bit-mask words, but is not an "
+                "integer(int32) array",
+                argument,
+                note=note,
+            )
+            return
+        directives = argument.directives
+        ranges = [macro for macro, present in (
+            ("DM_MIN", directives.minimum), ("DM_MAX", directives.maximum),
+            ("DM_SENTINEL", directives.sentinel), ("DM_EQUALS", directives.equals),
+        ) if present is not None]
+        if ranges:
+            self.error(
+                f"bit-mask argument '{argument.name}' has {' and '.join(ranges)}",
+                argument,
+                note=(
+                    "every int32 bit pattern is a word of a bit mask, so no value range applies "
+                    "to one; drop the directive, or rename the argument if it is not a bit mask"
+                ),
+            )
 
     def _check_lower_bounds(self, argument: Argument) -> None:
         """An axis that does not start at 1 (`x(0:n)`, `x(0:)`).

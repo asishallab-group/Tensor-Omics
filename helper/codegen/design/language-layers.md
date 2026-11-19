@@ -189,7 +189,7 @@ Some refusals say what to do instead: a uint32 bit-mask word of 2^31 or more pas
 
 Edges that are documented rather than fixed: a Python list `[True, 0, 3]` is an int64 array
 before any check sees the bool in it; `-2**31` is an int32 to Python but `NA_integer_` to R,
-which refuses it; a `Decimal` or `Fraction` is an object, and so refused for a real it used to
+which refuses it -- except as a bit-mask word (below); a `Decimal` or `Fraction` is an object, and so refused for a real it used to
 reach through `__float__` (a Python int too large for int64 is an object too, which an integer
 refuses as out of range and a real takes by the exact rule); a double above 2^53 is whole
 by construction, so neither language can tell that a typed value was rounded before it arrived.
@@ -283,6 +283,16 @@ The cost, per type:
 
 In practice the large arrays are doubles, which are not scanned at all; integers are
 indices, counts and shapes.
+
+**Bit-mask words are the exception (#206).** An `integer(int32)` array named `bitmask`,
+`bitmasks` or `*_bitmask(s)` holds the words of `f42_bit_masks_impl`, and every int32 bit pattern
+is a word: the one with only bit 31 set is `INT_MIN`, which is `NA_integer_`. So the shim passes
+such an integer vector as it stands (`tox_words_in`), and the word comes back out as
+`NA_integer_` and goes in again unchanged. A double vector is converted as for any integer array;
+its `NA` is a NaN payload, not a word, and is refused with a hint to pass the words as an integer
+vector. Every other check stays, and the generator refuses the name on anything but an
+`integer(int32)` array and beside a `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or `DM_EQUALS`, which would
+compare words as numbers. Python needs nothing: numpy has no integer NA.
 
 *Rejected:* checking everything uniformly. It would scan the big arrays for a sentinel
 that cannot occur in them.
