@@ -6,7 +6,7 @@ module mod_test_paralog_analysis
     use tox_paralog_analysis
     ! the work-array sizing routine and the helpers stayed in the kernel module; the bit-mask
     ! utilities moved to f42_bit_masks_impl, whose own suite tests them
-    use tox_paralog_analysis_impl, only: calc_work_arr_paralog_subsets_size_impl, fill_array_with_minvals_for_each_idx, &
+    use tox_paralog_analysis_impl, only: calc_paralog_subsets_bitmasks_size_impl, fill_array_with_minvals_for_each_idx, &
                                           add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper, &
                                           filter_paralogs_by_pattern_impl, MODE_DOSAGE_PATTERN, &
                                           detect_patterns_impl, MODE_SUBFUNC_PATTERN
@@ -26,7 +26,7 @@ contains
         type(test_case), allocatable :: all_tests(:)
         allocate (all_tests(18))
 
-        all_tests(1) = test_case("test_paralog_analysis_calc_work_arr_paralog_subsets_size", test_calc_work_arr_paralog_subsets_size)
+        all_tests(1) = test_case("test_paralog_analysis_calc_paralog_subsets_bitmasks_size", test_calc_paralog_subsets_bitmasks_size)
         all_tests(2) = test_case("test_paralog_analysis_filter_paralogs_by_pattern", test_filter_paralogs_by_pattern)
         all_tests(3) = test_case("test_paralog_analysis_add_new_active_mask_helper", test_add_new_active_mask_helper)
         all_tests(4) = test_case("test_paralog_analysis_add_to_results_helper", test_add_to_results_helper)
@@ -366,7 +366,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
@@ -421,7 +421,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, subf_min_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
         call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when detecting subfunctionalization")
@@ -432,7 +432,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, 2*dos_max_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for dosage effect")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
         call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, dos_max_angle, gain_gamma, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when detecting dosage effect")
@@ -484,14 +484,14 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         ! no paralog passes the subfunctionalization filter here, so nothing is left to detect
         call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_dosage_effect_near_angle_margin: expected no subfunctionalization candidates")
 
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for dosage effect")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr)
@@ -544,7 +544,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
@@ -555,7 +555,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for dosage effect")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr)
@@ -607,7 +607,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
@@ -619,7 +619,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for dosage effect")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         ! a perfect subfunctionalization split leaves no dosage-effect candidate at all: the
         ! filter selects nothing, so there is no subset array to detect in
         call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_perfect_subfunc_split: expected no dosage-effect candidates")
@@ -668,7 +668,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
@@ -679,7 +679,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for dosage effect")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         ! no paralog passes the dosage-effect filter here, so nothing is left to detect
         call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no dosage-effect candidates")
 
@@ -699,7 +699,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
         call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
@@ -711,7 +711,7 @@ contains
         max_subset_size = n_genes
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_bitmasks(:, 1), n_mask_chunks, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for dosage effect")
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmasks(:, 1), n_mask_chunks)
         ! no paralog passes the dosage-effect filter here, so nothing is left to detect
         call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no dosage-effect candidates")
     end subroutine test_detect_patterns_subfunc_at_angle_margin
@@ -906,7 +906,7 @@ contains
             call bitmask_set(n_mask_chunks, filtered_paralogs_bitmask, filtered_genes(i_gene))
         end do
 
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmask, &
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmask, &
                                                 n_mask_chunks)
         allocate (paralog_subsets_bitmasks(n_mask_chunks, work_array_size))
 
@@ -950,8 +950,8 @@ contains
         call assert_equal_int(bitmask_count(n_mask_chunks, family_bitmasks(:, 2)), 0_int32, "test_filter_paralogs_by_pattern: second family's gene should be inactive")
     end subroutine test_filter_paralogs_by_pattern
 
-    !> Test the calc_work_arr_paralog_subsets_size function with various input configurations.
-    subroutine test_calc_work_arr_paralog_subsets_size
+    !> Test the calc_paralog_subsets_bitmasks_size function with various input configurations.
+    subroutine test_calc_paralog_subsets_bitmasks_size
         integer(int32), parameter :: n_dims = 10
         integer(int32), parameter :: n_genes = 16, n_paralogs_overflow = 100
         integer(int32) :: i_gene, max_subset_size_all_active, work_array_size, ierr, n_results, max_subset_size_overflown
@@ -983,7 +983,7 @@ contains
         do i_gene = 1, n_genes
             max_subset_size_all_active = i_gene
 
-            call calc_work_arr_paralog_subsets_size_impl(max_subset_size_all_active, n_genes, work_array_size, mask_all_active, size(mask_all_active))
+            call calc_paralog_subsets_bitmasks_size_impl(max_subset_size_all_active, n_genes, work_array_size, mask_all_active, size(mask_all_active))
 
             allocate (paralog_subsets_bitmasks(1, work_array_size + 1))
             paralog_subsets_bitmasks = 0
@@ -992,8 +992,8 @@ contains
             ! masks have at least one active bit -> non-zero
             ! masks also won't be reset to zero, as new added masks overwrite them anyway.
             ! Thus, all calculated needed space should be used during detection -> non-zero
-            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when detecting patterns")
-            call assert_equal_int(count(paralog_subsets_bitmasks /= 0), work_array_size, "test_calc_work_arr_paralog_subsets_size: different count of subsets used than expected")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_paralog_subsets_bitmasks_size: unexpected error when detecting patterns")
+            call assert_equal_int(count(paralog_subsets_bitmasks /= 0), work_array_size, "test_calc_paralog_subsets_bitmasks_size: different count of subsets used than expected")
             deallocate (paralog_subsets_bitmasks)
         end do
 
@@ -1002,9 +1002,9 @@ contains
             call bitmask_set(size(mask_all_active_overflow, kind=int32), mask_all_active_overflow, i_gene)
         end do
         max_subset_size_overflown = 16
-        call calc_work_arr_paralog_subsets_size_impl(max_subset_size_overflown, n_paralogs_overflow, work_array_size, mask_all_active_overflow, size(mask_all_active_overflow))
-        call assert_not_equal_int(max_subset_size_overflown, 16_int32, "test_calc_work_arr_paralog_subsets_size: for overflow the max subset size should be different to input")
-    end subroutine test_calc_work_arr_paralog_subsets_size
+        call calc_paralog_subsets_bitmasks_size_impl(max_subset_size_overflown, n_paralogs_overflow, work_array_size, mask_all_active_overflow, size(mask_all_active_overflow))
+        call assert_not_equal_int(max_subset_size_overflown, 16_int32, "test_calc_paralog_subsets_bitmasks_size: for overflow the max subset size should be different to input")
+    end subroutine test_calc_paralog_subsets_bitmasks_size
 
     !> A position a private helper of detect_patterns_impl reports numbers the helper's dummy list,
     !> so detect_patterns_impl drops it: the error stays, at position 0. Called directly, past the

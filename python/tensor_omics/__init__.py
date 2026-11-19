@@ -199,7 +199,7 @@ from .tox_paralog_analysis import (
     detect_subfunctionalization,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
-    calc_work_arr_paralog_subsets_size,
+    calc_paralog_subsets_bitmasks_size,
 )
 from .tox_relative_axis_plane_tools import (
     omics_vector_RAP_projection,
@@ -291,10 +291,10 @@ __all__ = [
     "build_spherical_kd",
     "calc_fchange",
     "calc_neighborhood_size",
+    "calc_paralog_subsets_bitmasks_size",
     "calc_quantile",
     "calc_quantile_expert",
     "calc_tiss_avg",
-    "calc_work_arr_paralog_subsets_size",
     "clock_hand_angle_between_vectors",
     "clock_hand_angles_for_shift_vectors",
     "cluster_factor_trajectories_k_means",

@@ -39,7 +39,7 @@ test_paralog_functions <- function() {
 
   # Testing work-array size calculation
   max_subset_size <- 3L
-  work_info <- calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, as.integer(dosage_mask[, 1]))
+  work_info <- calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs, as.integer(dosage_mask[, 1]))
   assert_true(work_info$work_array_size == 3L)
   assert_true(work_info$max_subset_size == 3L)
 
@@ -64,7 +64,7 @@ test_paralog_functions <- function() {
   dosage_found <- dosage_result$paralog_subsets_bitmasks[1, seq_len(dosage_result$n_results)]
   assert_true(all(dosage_found == c(6L, 3L, 5L)))
 
-  # an over-large max_subset_size is capped by calc_work_arr_paralog_subsets_size (inout
+  # an over-large max_subset_size is capped by calc_paralog_subsets_bitmasks_size (inout
   # feedback): the same result comes back at once, not after a runaway subset-size loop
   capped <- detect_dosage_effect(
     ancestor = ancestor,
@@ -81,7 +81,7 @@ test_paralog_functions <- function() {
   norms <- sqrt(colSums(paralogs ^ 2))
   sorted_perm <- as.integer(order(norms))
 
-  subfunc_info <- calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs,
+  subfunc_info <- calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs,
                                                      as.integer(subfunc_mask[, 1]))
 
   subfunc_result <- detect_subfunctionalization(
@@ -119,7 +119,7 @@ test_a_gene_alone_in_bit_31_survives_the_chain <- function() {
   kept <- family_bitmasks[, 1]
   assert_true(identical(kept, c(NA_integer_, 1L)), "genes 32 and 33: the NA word, then bit 0 of word 2")
 
-  sizing <- calc_work_arr_paralog_subsets_size(2L, n_genes, kept)
+  sizing <- calc_paralog_subsets_bitmasks_size(2L, n_genes, kept)
   assert_true(sizing$max_subset_size == 2L, "two genes are kept, so a subset holds two at most")
 
   # only the two kept genes together exceed the ancestor's magnitude by 10%

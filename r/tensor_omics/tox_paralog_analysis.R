@@ -51,7 +51,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
-#'   \code{\link{calc_work_arr_paralog_subsets_size}} first.
+#'   \code{\link{calc_paralog_subsets_bitmasks_size}} first.
 #'   Zero is in range and means there is no subset to check -- the sizing routine reports
 #'   it whenever the filtered families hold a single gene each. It reports a work array
 #'   of zero slots along with it, which this routine does not accept, so a caller that
@@ -78,9 +78,9 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
     gain_gamma <- .tox_as_double_scalar(gain_gamma, "gain_gamma")
     .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "max_angle", "gain_gamma", "ierr")
     .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_bitmask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .calc_work_arr_paralog_subsets_size_result <- tryCatch(calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_bitmask = filtered_paralogs_bitmask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_bitmask = 5L), .arguments, .sources))
-    max_subset_size <- .calc_work_arr_paralog_subsets_size_result$max_subset_size
-    n_paralog_subsets <- .calc_work_arr_paralog_subsets_size_result$work_array_size
+    .calc_paralog_subsets_bitmasks_size_result <- tryCatch(calc_paralog_subsets_bitmasks_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_bitmask = filtered_paralogs_bitmask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_bitmask = 5L), .arguments, .sources))
+    max_subset_size <- .calc_paralog_subsets_bitmasks_size_result$max_subset_size
+    n_paralog_subsets <- .calc_paralog_subsets_bitmasks_size_result$work_array_size
 
     if (dim(genes)[1] != length(ancestor))
         .tox_shape_error("genes", 1L, dim(genes)[1], "'ancestor' implies n_dims == ", length(ancestor), "n_dims, n_genes")
@@ -105,7 +105,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
-#'   \code{\link{calc_work_arr_paralog_subsets_size}} first.
+#'   \code{\link{calc_paralog_subsets_bitmasks_size}} first.
 #'   Zero is in range and means there is no subset to check -- the sizing routine reports
 #'   it whenever the filtered families hold a single gene each. It reports a work array
 #'   of zero slots along with it, which this routine does not accept, so a caller that
@@ -133,9 +133,9 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_bitma
     sorted_paralog_norms_perm <- .tox_as_integer_vector(sorted_paralog_norms_perm, "sorted_paralog_norms_perm")
     .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr")
     .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_bitmask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .calc_work_arr_paralog_subsets_size_result <- tryCatch(calc_work_arr_paralog_subsets_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_bitmask = filtered_paralogs_bitmask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_bitmask = 5L), .arguments, .sources))
-    max_subset_size <- .calc_work_arr_paralog_subsets_size_result$max_subset_size
-    n_paralog_subsets <- .calc_work_arr_paralog_subsets_size_result$work_array_size
+    .calc_paralog_subsets_bitmasks_size_result <- tryCatch(calc_paralog_subsets_bitmasks_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_bitmask = filtered_paralogs_bitmask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_bitmask = 5L), .arguments, .sources))
+    max_subset_size <- .calc_paralog_subsets_bitmasks_size_result$max_subset_size
+    n_paralog_subsets <- .calc_paralog_subsets_bitmasks_size_result$work_array_size
 
     if (dim(genes)[1] != length(ancestor))
         .tox_shape_error("genes", 1L, dim(genes)[1], "'ancestor' implies n_dims == ", length(ancestor), "n_dims, n_genes")
@@ -241,7 +241,7 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
 #'
 #' This subroutine calculates the needed size for the work array.
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::calc_work_arr_paralog_subsets_size}, whose argument names
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::calc_paralog_subsets_bitmasks_size}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param max_subset_size a integer scalar. maximum size that a subset must not exceed. Zero is in range and means there is
@@ -263,11 +263,11 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
 #'     Also, size will be set to number of genes in `filtered_paralogs_bitmask` if larger.}
 #'   \item{work_array_size}{a integer scalar. The calculated needed work array size in absolute worst case scenario. Look into source for details.}
 #' @export
-calc_work_arr_paralog_subsets_size <- function(max_subset_size, n_genes, filtered_paralogs_bitmask) {
+calc_paralog_subsets_bitmasks_size <- function(max_subset_size, n_genes, filtered_paralogs_bitmask) {
     max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")
     n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")
     filtered_paralogs_bitmask <- .tox_as_integer_vector(filtered_paralogs_bitmask, "filtered_paralogs_bitmask")
-    .result <- .Call("calc_work_arr_paralog_subsets_size_call", max_subset_size, n_genes, filtered_paralogs_bitmask)
+    .result <- .Call("calc_paralog_subsets_bitmasks_size_call", max_subset_size, n_genes, filtered_paralogs_bitmask)
     .arguments <- c("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_bitmask", "n_mask_chunks", "ierr")
     .sources <- c(NA_character_, NA_character_, NA_character_, NA_character_, "filtered_paralogs_bitmask", NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)

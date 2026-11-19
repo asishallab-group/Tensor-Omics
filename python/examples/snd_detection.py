@@ -33,7 +33,7 @@ import sys
 import numpy as np
 
 from tensor_omics import (bitmask_n_words, bitmask_test,
-                          calc_work_arr_paralog_subsets_size, detect_dosage_effect,
+                          calc_paralog_subsets_bitmasks_size, detect_dosage_effect,
                           detect_neofunctionalization, detect_subfunctionalization,
                           filter_paralogs_by_pattern_dosage_effect,
                           filter_paralogs_by_pattern_subfunctionalization,
@@ -110,7 +110,7 @@ def main(argv=None):
         angles, median, 1, gene_to_fam, n_chunks))[:, 0]
     print("subfunctionalization, kept by the filter:",
           [names[i - 1] for i in members(mask, n_genes)])
-    sizing = calc_work_arr_paralog_subsets_size(n_genes, n_genes, mask)
+    sizing = calc_paralog_subsets_bitmasks_size(n_genes, n_genes, mask)
     norms = np.linalg.norm(genes, axis=0)
     result = detect_subfunctionalization(
         ancestor, genes, mask, sizing["max_subset_size"],
@@ -128,7 +128,7 @@ def main(argv=None):
         angles, median, 1, gene_to_fam, n_chunks))[:, 0]
     print("\ndosage effect, kept by the filter:",
           [names[i - 1] for i in members(mask, n_genes)])
-    sizing = calc_work_arr_paralog_subsets_size(n_genes, n_genes, mask)
+    sizing = calc_paralog_subsets_bitmasks_size(n_genes, n_genes, mask)
     # max_angle defaults to pi, i.e. no angle constraint at all -- set it.
     result = detect_dosage_effect(ancestor, genes, mask, sizing["max_subset_size"],
                                   max_angle=0.3, gain_gamma=0.1)

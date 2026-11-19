@@ -102,7 +102,7 @@ contains
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
-            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl(subroutine)]] first.
+            !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
             !! Zero is in range and means there is no subset to check -- the sizing routine reports
             !! it whenever the filtered families hold a single gene each. It reports a work array
             !! of zero slots along with it, which this routine does not accept, so a caller that
@@ -110,7 +110,7 @@ contains
             !! DM_MIN(0_int32)
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
-            !! DM_OUTPUT_FROM(work_array_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis, AUTO)
+            !! DM_OUTPUT_FROM(work_array_size, calc_paralog_subsets_bitmasks_size, tox_paralog_analysis, AUTO)
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
@@ -232,7 +232,7 @@ contains
             !! | Subfunctionalization |   [[tox_paralog_analysis_impl(module):MODE_SUBFUNC_PATTERN(variable)]]   |
             !!
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. ***USE `calc_work_arr_paralog_subsets_size_impl` TO DETERMINE THIS NUMBER***
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. ***USE `calc_paralog_subsets_bitmasks_size_impl` TO DETERMINE THIS NUMBER***
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(inout) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection; the results and active
             !! subsets already in it are kept
@@ -609,7 +609,7 @@ contains
     !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
     !|
     !| This subroutine calculates the needed size for the work array.
-    pure subroutine calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmask, n_mask_chunks)
+    pure subroutine calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmask, n_mask_chunks)
         integer(int32), intent(in) :: n_genes
             !! number of genes
             !! DM_MIN(1_int32)
@@ -690,5 +690,5 @@ contains
         ! all subsets with last gene enabled are counted as a result.
         ! as the subset of size 1 with last gene is not a valid subset, remove it (can not be extended, thus also not part of initialization)
         work_array_size = work_array_size - 1
-    end subroutine calc_work_arr_paralog_subsets_size_impl
+    end subroutine calc_paralog_subsets_bitmasks_size_impl
 end module tox_paralog_analysis_impl

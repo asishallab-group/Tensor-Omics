@@ -576,7 +576,7 @@ passed in is the consumer's already-prepared input, making the producer's conver
 no-ops rather than a second copy.
 
 The producer's inputs are matched to the consumer's arguments **by name**, which is what most
-cases need: `calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, ...)`
+cases need: `calc_paralog_subsets_bitmasks_size(max_subset_size, n_genes, work_array_size, ...)`
 is called from a consumer that also has `n_genes`. Where the two spell a quantity differently, or where a producer input is a
 *constant* the consumer has no argument for, the consumer's argument carries a markdown table
 mapping them (the same shape as the mode table) -- `tox_loess_required_workspace` is supplied

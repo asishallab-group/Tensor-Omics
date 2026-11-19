@@ -9,7 +9,7 @@ from tensor_omics import (
     bitmask_test,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
-    calc_work_arr_paralog_subsets_size,
+    calc_paralog_subsets_bitmasks_size,
     detect_dosage_effect,
     detect_subfunctionalization,
     bitmask_n_words,
@@ -63,7 +63,7 @@ def test_paralog_functions():
     # Testing Work Array Size Calculation
 
     max_subset_size = 3
-    sizes = calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, dosage_mask)
+    sizes = calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs, dosage_mask)
     work_array_size = sizes["work_array_size"]
     actual_max_subset_size = sizes["max_subset_size"]
     assert work_array_size == 3, "Expected work_array_size to be 3, got " + str(work_array_size)
@@ -88,7 +88,7 @@ def test_paralog_functions():
     assert (dosage_result['paralog_subsets_bitmasks'] == [[6, 3, 5]]).all(), "Dosage Effect results should be [[6, 3, 5]], got " + str(dosage_result['paralog_subsets_bitmasks'])
     assert dosage_result['n_results'] == 3, "Expected Dosage Effect n_results to be 3, got " + str(dosage_result['n_results'])
 
-    # an over-large max_subset_size is capped by calc_work_arr_paralog_subsets_size (inout
+    # an over-large max_subset_size is capped by calc_paralog_subsets_bitmasks_size (inout
     # feedback): the same result comes back at once, not after a runaway subset-size loop
     capped = detect_dosage_effect(
         ancestor=ancestor,
@@ -106,7 +106,7 @@ def test_paralog_functions():
     norms = np.sqrt(np.sum(paralogs**2, axis=0))
     sorted_perm = np.argsort(norms).astype(np.int32) + 1
 
-    subfunc_sizes = calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, subfunc_mask)
+    subfunc_sizes = calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs, subfunc_mask)
     subfunc_work_size = subfunc_sizes["work_array_size"]
     subfunc_max_subset_size = subfunc_sizes["max_subset_size"]
 

@@ -125,8 +125,8 @@ _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS = ("gene_angles", "th
 #: For a derived argument, the one the caller passed it in
 _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", None, None, None, None, None,)
 
-_lib.calc_work_arr_paralog_subsets_size_c.restype = None
-_lib.calc_work_arr_paralog_subsets_size_c.argtypes = (
+_lib.calc_paralog_subsets_bitmasks_size_c.restype = None
+_lib.calc_paralog_subsets_bitmasks_size_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -136,9 +136,9 @@ _lib.calc_work_arr_paralog_subsets_size_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS = ("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_bitmask", "n_mask_chunks", "ierr",)
+_CALC_PARALOG_SUBSETS_BITMASKS_SIZE_ARGUMENTS = ("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_bitmask", "n_mask_chunks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES = (None, None, None, None, "filtered_paralogs_bitmask", None,)
+_CALC_PARALOG_SUBSETS_BITMASKS_SIZE_ARGUMENT_SOURCES = (None, None, None, None, "filtered_paralogs_bitmask", None,)
 
 def detect_neofunctionalization(
         ancestors,
@@ -251,7 +251,7 @@ def detect_dosage_effect(
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
-        :func:`tensor_omics.calc_work_arr_paralog_subsets_size` first.
+        :func:`tensor_omics.calc_paralog_subsets_bitmasks_size` first.
         Zero is in range and means there is no subset to check -- the sizing routine reports
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
@@ -307,11 +307,11 @@ def detect_dosage_effect(
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
     try:
-        _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_bitmask=filtered_paralogs_bitmask)
+        _calc_paralog_subsets_bitmasks_size_result = calc_paralog_subsets_bitmasks_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_bitmask=filtered_paralogs_bitmask)
     except _ToxError as _error:
         raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_bitmask": 5}, _DETECT_DOSAGE_EFFECT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES) from None
-    max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
-    n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
+    max_subset_size = _calc_paralog_subsets_bitmasks_size_result["max_subset_size"]
+    n_paralog_subsets = _calc_paralog_subsets_bitmasks_size_result["work_array_size"]
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if genes.shape[0] != n_dims:
@@ -371,7 +371,7 @@ def detect_subfunctionalization(
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
-        :func:`tensor_omics.calc_work_arr_paralog_subsets_size` first.
+        :func:`tensor_omics.calc_paralog_subsets_bitmasks_size` first.
         Zero is in range and means there is no subset to check -- the sizing routine reports
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
@@ -429,11 +429,11 @@ def detect_subfunctionalization(
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
     try:
-        _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_bitmask=filtered_paralogs_bitmask)
+        _calc_paralog_subsets_bitmasks_size_result = calc_paralog_subsets_bitmasks_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_bitmask=filtered_paralogs_bitmask)
     except _ToxError as _error:
         raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_bitmask": 5}, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES) from None
-    max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
-    n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
+    max_subset_size = _calc_paralog_subsets_bitmasks_size_result["max_subset_size"]
+    n_paralog_subsets = _calc_paralog_subsets_bitmasks_size_result["work_array_size"]
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if genes.shape[0] != n_dims:
@@ -655,7 +655,7 @@ def filter_paralogs_by_pattern_subfunctionalization(
 
     return family_bitmasks
 
-def calc_work_arr_paralog_subsets_size(
+def calc_paralog_subsets_bitmasks_size(
         max_subset_size,
         n_genes,
         filtered_paralogs_bitmask,
@@ -709,7 +709,7 @@ def calc_work_arr_paralog_subsets_size(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::calc_work_arr_paralog_subsets_size`, whose argument names are
+    Generated from the Fortran procedure `tox_paralog_analysis::calc_paralog_subsets_bitmasks_size`, whose argument names are
     the ones an error message reports.
     """
     # check every input by the input contract, converting only when C needs it
@@ -724,7 +724,7 @@ def calc_work_arr_paralog_subsets_size(
     work_array_size = _ctypes.c_int(0)
     ierr = _ctypes.c_int(0)
 
-    _lib.calc_work_arr_paralog_subsets_size_c(
+    _lib.calc_paralog_subsets_bitmasks_size_c(
         _ctypes.byref(max_subset_size),
         _ctypes.byref(_ctypes.c_int(n_genes)),
         _ctypes.byref(work_array_size),
@@ -733,7 +733,7 @@ def calc_work_arr_paralog_subsets_size(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_PARALOG_SUBSETS_BITMASKS_SIZE_ARGUMENTS, _CALC_PARALOG_SUBSETS_BITMASKS_SIZE_ARGUMENT_SOURCES)
 
     return {
         "max_subset_size": max_subset_size.value,
