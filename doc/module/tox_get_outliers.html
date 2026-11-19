@@ -182,12 +182,12 @@ so that a family too small for a usable empirical estimate is scaled by the tren
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='tox_get_outliers_impl.html'>tox_get_outliers_impl</a></li>
                   <li class="list-inline-item"><a href='tox_loess.html'>tox_loess</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='tox_loess_impl.html'>tox_loess_impl</a></li>
+                  <li class="list-inline-item"><a href='tox_get_outliers_impl.html'>tox_get_outliers_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_loess_impl.html'>tox_loess_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -226,7 +226,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~58"></span>
+              <span class="anchor" id="variable-n_genes~62"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -241,7 +241,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~19"></span>
+              <span class="anchor" id="variable-n_families~33"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -256,7 +256,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~18"></span>
+              <span class="anchor" id="variable-distances~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -271,7 +271,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~24"></span>
+              <span class="anchor" id="variable-gene_to_fam~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -286,7 +286,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~3"></span>
+              <span class="anchor" id="variable-dscale~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -301,7 +301,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~4"></span>
+              <span class="anchor" id="variable-loess_x~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -317,7 +317,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~4"></span>
+              <span class="anchor" id="variable-loess_y~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -333,7 +333,7 @@ so that a family too small for a usable empirical estimate is scaled by the tren
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~3"></span>
+              <span class="anchor" id="variable-indices_used~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -350,7 +350,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~17"></span>
+              <span class="anchor" id="variable-span~19"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -370,7 +370,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~17"></span>
+              <span class="anchor" id="variable-degree~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -388,7 +388,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~3"></span>
+              <span class="anchor" id="variable-mode~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -399,12 +399,12 @@ The maximum valid value is <code>2_int32</code>.</p>
             <td><strong>mode</strong></td>
             <td>
 <p>Mode for LOESS fitting
-The default value is <code>1_int32</code>.</p><a href="../proc/compute_family_scaling.html#variable-mode~3" class="pull-right"><emph>Read more&hellip;</emph></a>
+The default value is <code>1_int32</code>.</p><a href="../proc/compute_family_scaling.html#variable-mode~5" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~4"></span>
+              <span class="anchor" id="variable-n_iters~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -420,7 +420,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-low_sd_cutoff~2"></span>
+              <span class="anchor" id="variable-low_sd_cutoff~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -435,7 +435,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-excluded_low_sd~3"></span>
+              <span class="anchor" id="variable-excluded_low_sd~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -453,7 +453,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~260"></span>
+              <span class="anchor" id="variable-ierr~206"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -493,7 +493,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~59"></span>
+              <span class="anchor" id="variable-n_genes~63"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -508,7 +508,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~20"></span>
+              <span class="anchor" id="variable-n_families~34"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -523,7 +523,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~19"></span>
+              <span class="anchor" id="variable-distances~17"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -538,7 +538,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~25"></span>
+              <span class="anchor" id="variable-gene_to_fam~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -553,7 +553,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~4"></span>
+              <span class="anchor" id="variable-dscale~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -568,7 +568,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~5"></span>
+              <span class="anchor" id="variable-loess_x~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -584,7 +584,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~5"></span>
+              <span class="anchor" id="variable-loess_y~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -600,7 +600,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~4"></span>
+              <span class="anchor" id="variable-indices_used~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -617,7 +617,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~9"></span>
+              <span class="anchor" id="variable-tmp_perm~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -632,7 +632,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~5"></span>
+              <span class="anchor" id="variable-tmp_stack_left~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -647,7 +647,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~5"></span>
+              <span class="anchor" id="variable-tmp_stack_right~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -662,7 +662,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~15"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -677,7 +677,7 @@ remaining slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~16"></span>
+              <span class="anchor" id="variable-int_workspace_size~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -688,12 +688,12 @@ remaining slots hold <code>0</code>.</p>
             <td><strong>int_workspace_size</strong></td>
             <td>
 <p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_expert.html#variable-int_workspace_size~16" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_expert.html#variable-int_workspace_size~22" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~15"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~16"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -708,7 +708,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~16"></span>
+              <span class="anchor" id="variable-real_workspace_size~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -719,12 +719,12 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
             <td><strong>real_workspace_size</strong></td>
             <td>
 <p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_expert.html#variable-real_workspace_size~16" class="pull-right"><emph>Read more&hellip;</emph></a>
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/compute_family_scaling_expert.html#variable-real_workspace_size~22" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_diagl~4"></span>
+              <span class="anchor" id="variable-tmp_diagl~6"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -739,7 +739,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights~4"></span>
+              <span class="anchor" id="variable-tmp_weights~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -754,10 +754,1141 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~13"></span>
+              <span class="anchor" id="variable-tmp_eval_points~8"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
+              <td></td>            <td>
+              dimension(n_families, 1)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_eval_points</strong></td>
+            <td>
+<p>Z matrix for LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_robust_weights~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_robust_weights</strong></td>
+            <td>
+<p>Residuals for robust LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_combined_weights~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_combined_weights</strong></td>
+            <td>
+<p>Working weights array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_residuals~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_residuals</strong></td>
+            <td>
+<p>Residuals array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_permutation_indices~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_permutation_indices</strong></td>
+            <td>
+<p>Permutation indices for robust LOESS fitting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_fitted_values~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_fitted_values</strong></td>
+            <td>
+<p>Output array for LOESS predictions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-span~20"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>span</strong></td>
+            <td>
+<p>Span parameter for LOESS smoothing, passed straight to
+<a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
+procedure's own range.
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-degree~21"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>degree</strong></td>
+            <td>
+<p>Degree of the LOESS polynomial
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>mode</strong></td>
+            <td>
+<p>Mode for LOESS fitting
+The default value is <code>1_int32</code>.</p><a href="../proc/compute_family_scaling_expert.html#variable-mode~6" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_iters~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_iters</strong></td>
+            <td>
+<p>Number of iterations for robust LOESS fitting
+The default value is <code>3_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-low_sd_cutoff~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>low_sd_cutoff</strong></td>
+            <td>
+<p>cutoff used to filter families with low std</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-excluded_low_sd~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>excluded_low_sd</strong></td>
+            <td>
+<p>Whether each family is left out of the LOESS fit: <code>0</code> for the families <code>indices_used</code>
+lists, <code>1</code> for every other one -- a family with no or a single member, or with a spread
+below <code>low_sd_cutoff</code>. With too few families for a fit, the one family with several
+members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error return every family is <code>1</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_means_aux~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_means_aux</strong></td>
+            <td>
+<p>Work array for saving raw means</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~207"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_rdi"></span> <h3>public pure subroutine <a href='../proc/compute_rdi.html'>compute_rdi</a>(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/compute_rdi_impl.html">compute_rdi_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_rdi_expert.html">compute_rdi_expert</a> to prepare it yourself.</p><a href="../proc/compute_rdi.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~64"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~18"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Array of Euclidean distances for each gene to its centroid</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~33"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong></td>
+            <td>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dscale~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>dscale</strong></td>
+            <td>
+<p>Array of scaling factors for each family</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong></td>
+            <td>
+<p>Output array of RDI values for each gene</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong></td>
+            <td>
+<p>Work array for sorting (dimension n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~25"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong></td>
+            <td>
+<p>Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~208"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_rdi_expert"></span> <h3>public pure subroutine <a href='../proc/compute_rdi_expert.html'>compute_rdi_expert</a>(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, tmp_stack_left, tmp_stack_right, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/compute_rdi_impl.html">compute_rdi_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_rdi.html">compute_rdi</a> does both.</p><a href="../proc/compute_rdi_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~65"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~19"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Array of Euclidean distances for each gene to its centroid</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~34"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong></td>
+            <td>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dscale~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:)
+            </td>
+            <td>::</td>
+            <td><strong>dscale</strong></td>
+            <td>
+<p>Array of scaling factors for each family</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong></td>
+            <td>
+<p>Output array of RDI values for each gene</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong></td>
+            <td>
+<p>Work array for sorting (dimension n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~26"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong></td>
+            <td>
+<p>Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_stack_left~16"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_left</strong></td>
+            <td>
+<p>Stack array for sorting (dimension n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_stack_right~16"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_right</strong></td>
+            <td>
+<p>Stack array for sorting (dimension n_genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~209"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-identify_outliers"></span> <h3>public pure subroutine <a href='../proc/identify_outliers.html'>identify_outliers</a>(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, tail_probability, quantile_level, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/identify_outliers_impl.html">identify_outliers_impl</a>.</p><a href="../proc/identify_outliers.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~66"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong></td>
+            <td>
+<p>Array of RDI values for each gene</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong></td>
+            <td>
+<p>Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-perm~27"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>perm</strong></td>
+            <td>
+<p>Permutation array with sorted indices</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-is_outlier~6"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>is_outlier</strong></td>
+            <td>
+<p>Output boolean array indicating outliers</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-threshold~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>threshold</strong></td>
+            <td>
+<p>Output threshold value used for detection</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tail_probability~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tail_probability</strong></td>
+            <td>
+<p>Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail probability is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-quantile_level~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>quantile_level</strong></td>
+            <td>
+<p>Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
+The default value is <code>0.95_real64</code>.
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~210"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_outliers"></span> <h3>public  subroutine <a href='../proc/detect_outliers.html'>detect_outliers</a>(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/detect_outliers_impl.html">detect_outliers_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/detect_outliers_expert.html">detect_outliers_expert</a> to prepare it yourself.</p><a href="../proc/detect_outliers.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~67"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_families~35"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_families</strong></td>
+            <td>
+<p>Total number of gene families</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~20"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Array of Euclidean distances for each gene to its centroid</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~35"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong></td>
+            <td>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-is_outlier~7"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>is_outlier</strong></td>
+            <td>
+<p>Output boolean array indicating outliers</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-loess_x~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>loess_x</strong></td>
+            <td>
+<p>Mean distance of each family in the LOESS fit of the family scaling, packed at the
+front in the order of <code>loess_n</code>. The remaining slots hold <code>-1</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-loess_y~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>loess_y</strong></td>
+            <td>
+<p>Standard deviation of the distances of each family in that fit, packed like
+<code>loess_x</code>. The remaining slots hold <code>-1</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-loess_n~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>loess_n</strong></td>
+            <td>
+<p>Family index of each point in that fit, packed at the front. Families with a single
+member, and those with the lowest spread, are left out of the fit; the remaining
+slots hold <code>0</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tail_probability~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tail_probability</strong></td>
+            <td>
+<p>Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail probability is used.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-quantile_level~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>quantile_level</strong></td>
+            <td>
+<p>Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
+The default value is <code>0.95_real64</code>.
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~211"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-detect_outliers_expert"></span> <h3>public  subroutine <a href='../proc/detect_outliers_expert.html'>detect_outliers_expert</a>(n_genes, n_families, distances, gene_to_fam, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, tmp_means_aux, tmp_dscale, tmp_excluded_low_sd, tmp_low_sd_cutoff, tmp_rdi, tmp_sorted_rdi, tmp_threshold, is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/detect_outliers_impl.html">detect_outliers_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/detect_outliers.html">detect_outliers</a> does both.</p><a href="../proc/detect_outliers_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~68"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_families~36"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_families</strong></td>
+            <td>
+<p>Total number of gene families</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-distances~21"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>distances</strong></td>
+            <td>
+<p>Array of Euclidean distances for each gene to its centroid</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_fam~36"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong></td>
+            <td>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_perm~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_perm</strong></td>
+            <td>
+<p>Permutation array for sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_stack_left~18"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_left</strong></td>
+            <td>
+<p>Stack array for left indices during sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_stack_right~18"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_stack_right</strong></td>
+            <td>
+<p>Stack array for right indices during sorting</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_int_workspace~18"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(int_workspace_size)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_int_workspace</strong></td>
+            <td>
+<p>Integer workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-int_workspace_size~24"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>int_workspace_size</strong></td>
+            <td>
+<p>Length of integer workspace.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_expert.html#variable-int_workspace_size~24" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_real_workspace~18"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(real_workspace_size)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_real_workspace</strong></td>
+            <td>
+<p>Real workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-real_workspace_size~24"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>real_workspace_size</strong></td>
+            <td>
+<p>Length of real workspace.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_expert.html#variable-real_workspace_size~24" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_diagl~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_diagl</strong></td>
+            <td>
+<p>Diagonal elements of the weight matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_weights~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_weights</strong></td>
+            <td>
+<p>Initial weights for LOESS</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_eval_points~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
               <td></td>            <td>
               dimension(n_families, 1)
             </td>
@@ -829,7 +1960,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_fitted_values~4"></span>
+              <span class="anchor" id="variable-tmp_fitted_values~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -844,110 +1975,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~18"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>span</strong></td>
-            <td>
-<p>Span parameter for LOESS smoothing, passed straight to
-<a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
-procedure's own range.
-The default value is <code>0.7_real64</code>.
-The minimum valid value is <code>EPS_LOESS</code>.
-The maximum valid value is <code>1.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-degree~18"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>degree</strong></td>
-            <td>
-<p>Degree of the LOESS polynomial
-The default value is <code>2_int32</code>.
-The minimum valid value is <code>0_int32</code>.
-The maximum valid value is <code>2_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-mode~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>mode</strong></td>
-            <td>
-<p>Mode for LOESS fitting
-The default value is <code>1_int32</code>.</p><a href="../proc/compute_family_scaling_expert.html#variable-mode~4" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_iters~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_iters</strong></td>
-            <td>
-<p>Number of iterations for robust LOESS fitting
-The default value is <code>3_int32</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-low_sd_cutoff~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>low_sd_cutoff</strong></td>
-            <td>
-<p>cutoff used to filter families with low std</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-excluded_low_sd~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>excluded_low_sd</strong></td>
-            <td>
-<p>Whether each family is left out of the LOESS fit: <code>0</code> for the families <code>indices_used</code>
-lists, <code>1</code> for every other one -- a family with no or a single member, or with a spread
-below <code>low_sd_cutoff</code>. With too few families for a fit, the one family with several
-members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error return every family is <code>1</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_means_aux~4"></span>
+              <span class="anchor" id="variable-tmp_means_aux~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -962,1035 +1990,7 @@ members (if any) is <code>0</code>, as in <code>indices_used</code>. On an error
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~261"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_rdi"></span> <h3>public pure subroutine <a href='../proc/compute_rdi.html'>compute_rdi</a>(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, prepares what <a href="../proc/compute_rdi_impl.html">compute_rdi_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_rdi_expert.html">compute_rdi_expert</a> to prepare it yourself.</p><a href="../proc/compute_rdi.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~60"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~20"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>Array of Euclidean distances for each gene to its centroid</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~26"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong></td>
-            <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dscale~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>dscale</strong></td>
-            <td>
-<p>Array of scaling factors for each family</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-rdi~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>rdi</strong></td>
-            <td>
-<p>Output array of RDI values for each gene</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-sorted_rdi~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>sorted_rdi</strong></td>
-            <td>
-<p>Work array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-perm~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>perm</strong></td>
-            <td>
-<p>Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~262"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_rdi_expert"></span> <h3>public pure subroutine <a href='../proc/compute_rdi_expert.html'>compute_rdi_expert</a>(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, tmp_stack_left, tmp_stack_right, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, then calls <a href="../proc/compute_rdi_impl.html">compute_rdi_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_rdi.html">compute_rdi</a> does both.</p><a href="../proc/compute_rdi_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~61"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~21"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>Array of Euclidean distances for each gene to its centroid</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~27"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong></td>
-            <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dscale~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>dscale</strong></td>
-            <td>
-<p>Array of scaling factors for each family</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-rdi~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>rdi</strong></td>
-            <td>
-<p>Output array of RDI values for each gene</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-sorted_rdi~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>sorted_rdi</strong></td>
-            <td>
-<p>Work array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-perm~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>perm</strong></td>
-            <td>
-<p>Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_stack_left~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_stack_left</strong></td>
-            <td>
-<p>Stack array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_stack_right~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_stack_right</strong></td>
-            <td>
-<p>Stack array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~263"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-identify_outliers"></span> <h3>public pure subroutine <a href='../proc/identify_outliers.html'>identify_outliers</a>(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, tail_probability, quantile_level, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, then calls <a href="../proc/identify_outliers_impl.html">identify_outliers_impl</a>.</p><a href="../proc/identify_outliers.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~62"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-rdi~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>rdi</strong></td>
-            <td>
-<p>Array of RDI values for each gene</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-sorted_rdi~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>sorted_rdi</strong></td>
-            <td>
-<p>Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-perm~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>perm</strong></td>
-            <td>
-<p>Permutation array with sorted indices</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-is_outlier~3"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>is_outlier</strong></td>
-            <td>
-<p>Output boolean array indicating outliers</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-threshold~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>threshold</strong></td>
-            <td>
-<p>Output threshold value used for detection</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tail_probability~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tail_probability</strong></td>
-            <td>
-<p>Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
-observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
-Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-upper-tail probability is used.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-quantile_level~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>quantile_level</strong></td>
-            <td>
-<p>Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
-The default value is <code>0.95_real64</code>.
-The minimum valid value is <code>0.0_real64</code>.
-The maximum valid value is <code>1.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~264"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_outliers"></span> <h3>public  subroutine <a href='../proc/detect_outliers.html'>detect_outliers</a>(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, prepares what <a href="../proc/detect_outliers_impl.html">detect_outliers_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/detect_outliers_expert.html">detect_outliers_expert</a> to prepare it yourself.</p><a href="../proc/detect_outliers.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~63"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_families~21"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_families</strong></td>
-            <td>
-<p>Total number of gene families</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~22"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>Array of Euclidean distances for each gene to its centroid</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~28"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong></td>
-            <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-is_outlier~4"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>is_outlier</strong></td>
-            <td>
-<p>Output boolean array indicating outliers</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-loess_x~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>loess_x</strong></td>
-            <td>
-<p>Mean distance of each family in the LOESS fit of the family scaling, packed at the
-front in the order of <code>loess_n</code>. The remaining slots hold <code>-1</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-loess_y~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>loess_y</strong></td>
-            <td>
-<p>Standard deviation of the distances of each family in that fit, packed like
-<code>loess_x</code>. The remaining slots hold <code>-1</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-loess_n~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>loess_n</strong></td>
-            <td>
-<p>Family index of each point in that fit, packed at the front. Families with a single
-member, and those with the lowest spread, are left out of the fit; the remaining
-slots hold <code>0</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tail_probability~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tail_probability</strong></td>
-            <td>
-<p>Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
-observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
-Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-upper-tail probability is used.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-quantile_level~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>quantile_level</strong></td>
-            <td>
-<p>Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
-The default value is <code>0.95_real64</code>.
-The minimum valid value is <code>0.0_real64</code>.
-The maximum valid value is <code>1.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~265"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-detect_outliers_expert"></span> <h3>public  subroutine <a href='../proc/detect_outliers_expert.html'>detect_outliers_expert</a>(n_genes, n_families, distances, gene_to_fam, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, tmp_means_aux, tmp_dscale, tmp_excluded_low_sd, tmp_low_sd_cutoff, tmp_rdi, tmp_sorted_rdi, tmp_threshold, is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, then calls <a href="../proc/detect_outliers_impl.html">detect_outliers_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/detect_outliers.html">detect_outliers</a> does both.</p><a href="../proc/detect_outliers_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~64"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_families~22"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_families</strong></td>
-            <td>
-<p>Total number of gene families</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~23"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>Array of Euclidean distances for each gene to its centroid</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~29"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong></td>
-            <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>distances</code>, using <code>0_int32</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_perm~11"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_perm</strong></td>
-            <td>
-<p>Permutation array for sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_stack_left~9"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_stack_left</strong></td>
-            <td>
-<p>Stack array for left indices during sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_stack_right~9"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_stack_right</strong></td>
-            <td>
-<p>Stack array for right indices during sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_int_workspace~17"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(int_workspace_size)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_int_workspace</strong></td>
-            <td>
-<p>Integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace_size~18"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-<p>Length of integer workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_expert.html#variable-int_workspace_size~18" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_real_workspace~17"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(real_workspace_size)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_real_workspace</strong></td>
-            <td>
-<p>Real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~18"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-<p>Length of real workspace.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p><a href="../proc/detect_outliers_expert.html#variable-real_workspace_size~18" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_diagl~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_diagl</strong></td>
-            <td>
-<p>Diagonal elements of the weight matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_weights~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_weights</strong></td>
-            <td>
-<p>Initial weights for LOESS</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_eval_points~15"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families, 1)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_eval_points</strong></td>
-            <td>
-<p>Z matrix for LOESS fitting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_robust_weights~16"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_robust_weights</strong></td>
-            <td>
-<p>Residuals for robust LOESS fitting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_combined_weights~16"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_combined_weights</strong></td>
-            <td>
-<p>Working weights array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_residuals~16"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_residuals</strong></td>
-            <td>
-<p>Residuals array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~16"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation_indices</strong></td>
-            <td>
-<p>Permutation indices for robust LOESS fitting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_fitted_values~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_fitted_values</strong></td>
-            <td>
-<p>Output array for LOESS predictions</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_means_aux~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_families)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_means_aux</strong></td>
-            <td>
-<p>Work array for saving raw means</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_dscale~3"></span>
+              <span class="anchor" id="variable-tmp_dscale~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2005,7 +2005,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_excluded_low_sd~3"></span>
+              <span class="anchor" id="variable-tmp_excluded_low_sd~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -2020,7 +2020,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_low_sd_cutoff~3"></span>
+              <span class="anchor" id="variable-tmp_low_sd_cutoff~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -2035,7 +2035,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_rdi~3"></span>
+              <span class="anchor" id="variable-tmp_rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2050,7 +2050,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_sorted_rdi~3"></span>
+              <span class="anchor" id="variable-tmp_sorted_rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2065,7 +2065,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_threshold~3"></span>
+              <span class="anchor" id="variable-tmp_threshold~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -2080,7 +2080,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier~5"></span>
+              <span class="anchor" id="variable-is_outlier~8"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -2095,7 +2095,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~7"></span>
+              <span class="anchor" id="variable-loess_x~11"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2111,7 +2111,7 @@ front in the order of <code>loess_n</code>. The remaining slots hold <code>-1</c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~7"></span>
+              <span class="anchor" id="variable-loess_y~11"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2127,7 +2127,7 @@ front in the order of <code>loess_n</code>. The remaining slots hold <code>-1</c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_n~3"></span>
+              <span class="anchor" id="variable-loess_n~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -2144,7 +2144,7 @@ slots hold <code>0</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tail_probability~5"></span>
+              <span class="anchor" id="variable-tail_probability~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2162,7 +2162,7 @@ upper-tail probability is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile_level~5"></span>
+              <span class="anchor" id="variable-quantile_level~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2180,7 +2180,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~266"></span>
+              <span class="anchor" id="variable-ierr~212"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2223,7 +2223,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-18 11:17 +0000             </p>
+ on 2026-11-19 11:49 +0000             </p>
           </div>
         </div>
         <br>

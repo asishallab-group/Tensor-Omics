@@ -231,11 +231,11 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='tox_data_read_write.html'>tox_data_read_write</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_config.html'>f42_config</a></li>
+                  <li class="list-inline-item"><a href='tox_data_read_write.html'>tox_data_read_write</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -498,7 +498,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~10"></span>
+              <span class="anchor" id="variable-flags~14"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -664,7 +664,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~11"></span>
+              <span class="anchor" id="variable-flags~15"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -830,7 +830,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-index"></span>
+              <span class="anchor" id="variable-index~2"></span>
               integer(kind=c_int64_t),
             </td>
 <td></td>
@@ -860,7 +860,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~12"></span>
+              <span class="anchor" id="variable-flags~16"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -943,7 +943,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~13"></span>
+              <span class="anchor" id="variable-flags~17"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -1147,7 +1147,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~14"></span>
+              <span class="anchor" id="variable-flags~18"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -1215,7 +1215,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-index~2"></span>
+              <span class="anchor" id="variable-index~3"></span>
               integer(kind=c_int64_t),
             </td>
 <td></td>
@@ -1230,7 +1230,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~15"></span>
+              <span class="anchor" id="variable-flags~19"></span>
               integer(kind=c_int),
             </td>
 <td></td>
@@ -1385,7 +1385,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename"></span>
+              <span class="anchor" id="variable-zip_filename~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1400,7 +1400,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys"></span>
+              <span class="anchor" id="variable-keys~2"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1415,7 +1415,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames"></span>
+              <span class="anchor" id="variable-filenames~2"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1430,7 +1430,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~210"></span>
+              <span class="anchor" id="variable-ierr~413"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1474,7 +1474,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~2"></span>
+              <span class="anchor" id="variable-zip_filename~6"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1489,7 +1489,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~2"></span>
+              <span class="anchor" id="variable-keys~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -1504,7 +1504,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~2"></span>
+              <span class="anchor" id="variable-filenames~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -1519,7 +1519,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~211"></span>
+              <span class="anchor" id="variable-ierr~414"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1563,7 +1563,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~64"></span>
+              <span class="anchor" id="variable-filename~93"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1578,7 +1578,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~212"></span>
+              <span class="anchor" id="variable-ierr~415"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1715,7 +1715,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~65"></span>
+              <span class="anchor" id="variable-filename~94"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1730,7 +1730,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~213"></span>
+              <span class="anchor" id="variable-ierr~416"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1791,7 +1791,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~66"></span>
+              <span class="anchor" id="variable-filename~95"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1836,7 +1836,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~214"></span>
+              <span class="anchor" id="variable-ierr~417"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1880,7 +1880,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~3"></span>
+              <span class="anchor" id="variable-keys~4"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1895,7 +1895,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~3"></span>
+              <span class="anchor" id="variable-filenames~4"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1925,7 +1925,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~215"></span>
+              <span class="anchor" id="variable-ierr~418"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1984,7 +1984,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~4"></span>
+              <span class="anchor" id="variable-keys~5"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -1999,7 +1999,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~4"></span>
+              <span class="anchor" id="variable-values~16"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2014,7 +2014,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~216"></span>
+              <span class="anchor" id="variable-ierr~419"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2073,7 +2073,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~5"></span>
+              <span class="anchor" id="variable-keys~6"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2088,7 +2088,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~4"></span>
+              <span class="anchor" id="variable-filenames~5"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2103,7 +2103,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~217"></span>
+              <span class="anchor" id="variable-ierr~420"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2148,7 +2148,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~3"></span>
+              <span class="anchor" id="variable-zip_filename~7"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2163,7 +2163,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~9"></span>
+              <span class="anchor" id="variable-gene_ids~17"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2178,7 +2178,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file"></span>
+              <span class="anchor" id="variable-gene_ids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2193,7 +2193,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression"></span>
+              <span class="anchor" id="variable-expression~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2208,7 +2208,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file"></span>
+              <span class="anchor" id="variable-expression_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2223,7 +2223,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~5"></span>
+              <span class="anchor" id="variable-gene_to_family~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2238,7 +2238,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file"></span>
+              <span class="anchor" id="variable-gene_to_family_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2253,7 +2253,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~4"></span>
+              <span class="anchor" id="variable-family_ids~8"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2268,7 +2268,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file"></span>
+              <span class="anchor" id="variable-family_ids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2283,7 +2283,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~9"></span>
+              <span class="anchor" id="variable-family_centroids~17"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2298,7 +2298,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file"></span>
+              <span class="anchor" id="variable-family_centroids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2313,7 +2313,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~8"></span>
+              <span class="anchor" id="variable-shift_vectors~15"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2328,7 +2328,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file"></span>
+              <span class="anchor" id="variable-shift_vectors_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2343,7 +2343,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~218"></span>
+              <span class="anchor" id="variable-ierr~421"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2447,7 +2447,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~219"></span>
+              <span class="anchor" id="variable-ierr~422"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2491,7 +2491,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~4"></span>
+              <span class="anchor" id="variable-zip_filename~8"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2506,7 +2506,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~10"></span>
+              <span class="anchor" id="variable-gene_ids~18"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2521,7 +2521,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file~2"></span>
+              <span class="anchor" id="variable-gene_ids_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2536,7 +2536,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression~2"></span>
+              <span class="anchor" id="variable-expression~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2551,7 +2551,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file~2"></span>
+              <span class="anchor" id="variable-expression_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2566,7 +2566,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~6"></span>
+              <span class="anchor" id="variable-gene_to_family~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -2581,7 +2581,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file~2"></span>
+              <span class="anchor" id="variable-gene_to_family_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2596,7 +2596,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~5"></span>
+              <span class="anchor" id="variable-family_ids~9"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2611,7 +2611,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file~2"></span>
+              <span class="anchor" id="variable-family_ids_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2626,7 +2626,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~10"></span>
+              <span class="anchor" id="variable-family_centroids~18"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2641,7 +2641,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file~2"></span>
+              <span class="anchor" id="variable-family_centroids_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2656,7 +2656,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~9"></span>
+              <span class="anchor" id="variable-shift_vectors~16"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2671,7 +2671,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file~2"></span>
+              <span class="anchor" id="variable-shift_vectors_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2686,7 +2686,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~220"></span>
+              <span class="anchor" id="variable-ierr~423"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2730,7 +2730,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~5"></span>
+              <span class="anchor" id="variable-zip_filename~9"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2745,7 +2745,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file~3"></span>
+              <span class="anchor" id="variable-gene_ids_file~4"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2760,7 +2760,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file~3"></span>
+              <span class="anchor" id="variable-expression_file~4"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2775,7 +2775,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file~3"></span>
+              <span class="anchor" id="variable-gene_to_family_file~4"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2790,7 +2790,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file~3"></span>
+              <span class="anchor" id="variable-family_ids_file~4"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2805,7 +2805,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file~3"></span>
+              <span class="anchor" id="variable-family_centroids_file~4"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2820,7 +2820,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file~3"></span>
+              <span class="anchor" id="variable-shift_vectors_file~4"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2835,7 +2835,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~221"></span>
+              <span class="anchor" id="variable-ierr~424"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2879,7 +2879,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file~4"></span>
+              <span class="anchor" id="variable-gene_ids_file~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2894,7 +2894,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file~4"></span>
+              <span class="anchor" id="variable-expression_file~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2909,7 +2909,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file~4"></span>
+              <span class="anchor" id="variable-gene_to_family_file~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2924,7 +2924,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file~4"></span>
+              <span class="anchor" id="variable-family_ids_file~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2939,7 +2939,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file~4"></span>
+              <span class="anchor" id="variable-family_centroids_file~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2954,7 +2954,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file~4"></span>
+              <span class="anchor" id="variable-shift_vectors_file~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2999,7 +2999,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~6"></span>
+              <span class="anchor" id="variable-zip_filename~10"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -3014,7 +3014,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_ids"></span>
+              <span class="anchor" id="variable-n_gene_ids~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3029,7 +3029,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_id_len"></span>
+              <span class="anchor" id="variable-gene_id_len~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3044,7 +3044,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_rows"></span>
+              <span class="anchor" id="variable-n_expression_rows~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3059,7 +3059,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_cols"></span>
+              <span class="anchor" id="variable-n_expression_cols~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3074,7 +3074,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_to_family"></span>
+              <span class="anchor" id="variable-n_gene_to_family~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3089,7 +3089,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_ids"></span>
+              <span class="anchor" id="variable-n_family_ids~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3104,7 +3104,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_id_len"></span>
+              <span class="anchor" id="variable-family_id_len~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3119,7 +3119,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_rows"></span>
+              <span class="anchor" id="variable-n_family_centroids_rows~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3134,7 +3134,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_cols"></span>
+              <span class="anchor" id="variable-n_family_centroids_cols~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3149,7 +3149,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_rows"></span>
+              <span class="anchor" id="variable-n_shift_vectors_rows~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3164,7 +3164,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_cols"></span>
+              <span class="anchor" id="variable-n_shift_vectors_cols~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3179,7 +3179,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~222"></span>
+              <span class="anchor" id="variable-ierr~425"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3224,7 +3224,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~7"></span>
+              <span class="anchor" id="variable-zip_filename~11"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -3239,7 +3239,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_ids~2"></span>
+              <span class="anchor" id="variable-n_gene_ids~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3255,7 +3255,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_ids
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_id_len~2"></span>
+              <span class="anchor" id="variable-gene_id_len~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3271,7 +3271,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>gene_id_le
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~11"></span>
+              <span class="anchor" id="variable-gene_ids~19"></span>
               character(len=gene_id_len),
             </td>
 <td>intent(out),</td>
@@ -3286,7 +3286,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>gene_id_le
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_rows~2"></span>
+              <span class="anchor" id="variable-n_expression_rows~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3302,7 +3302,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expressi
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_expression_cols~2"></span>
+              <span class="anchor" id="variable-n_expression_cols~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3318,7 +3318,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expressi
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression~3"></span>
+              <span class="anchor" id="variable-expression~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -3333,7 +3333,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expressi
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_gene_to_family~2"></span>
+              <span class="anchor" id="variable-n_gene_to_family~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3349,7 +3349,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_to_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~7"></span>
+              <span class="anchor" id="variable-gene_to_family~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -3364,7 +3364,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_to_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_ids~2"></span>
+              <span class="anchor" id="variable-n_family_ids~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3380,7 +3380,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_i
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_id_len~2"></span>
+              <span class="anchor" id="variable-family_id_len~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3396,7 +3396,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>family_id_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~6"></span>
+              <span class="anchor" id="variable-family_ids~10"></span>
               character(len=family_id_len),
             </td>
 <td>intent(out),</td>
@@ -3411,7 +3411,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>family_id_
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_rows~2"></span>
+              <span class="anchor" id="variable-n_family_centroids_rows~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3427,7 +3427,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_family_centroids_cols~2"></span>
+              <span class="anchor" id="variable-n_family_centroids_cols~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3443,7 +3443,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~11"></span>
+              <span class="anchor" id="variable-family_centroids~19"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -3458,7 +3458,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_c
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_rows~2"></span>
+              <span class="anchor" id="variable-n_shift_vectors_rows~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3474,7 +3474,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_shift_vectors_cols~2"></span>
+              <span class="anchor" id="variable-n_shift_vectors_cols~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -3490,7 +3490,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~10"></span>
+              <span class="anchor" id="variable-shift_vectors~17"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -3505,7 +3505,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~224"></span>
+              <span class="anchor" id="variable-ierr~427"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -3548,7 +3548,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_ve
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-18 11:17 +0000             </p>
+ on 2026-11-19 11:49 +0000             </p>
           </div>
         </div>
         <br>

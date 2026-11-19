@@ -150,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine detect_dosage_effect_expert(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr)  
+    <h2>public pure subroutine detect_dosage_effect_expert(ancestor, genes, n_genes, n_dims, filtered_paralogs_bitmask, n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, n_paralog_subsets, tmp_active_bitmask, tmp_paralog_vector, max_angle, gain_gamma, ierr)  
 </h2>
     
 
@@ -184,7 +184,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~11"></span>
+              <span class="anchor" id="variable-genes~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -199,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~87"></span>
+              <span class="anchor" id="variable-n_genes~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -214,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~25"></span>
+              <span class="anchor" id="variable-n_dims~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -229,7 +229,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~7"></span>
+              <span class="anchor" id="variable-filtered_paralogs_bitmask~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -237,7 +237,7 @@
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>filtered_paralogs_mask</strong></td>
+            <td><strong>filtered_paralogs_bitmask</strong></td>
             <td>
                 <p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
             </td>
@@ -254,7 +254,7 @@
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bit_mask_n_words</code> computes it
+                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes; <code>bitmask_n_words</code> computes it
 The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))</code>.</p>
             </td>
         </tr>
@@ -270,7 +270,7 @@ The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes
             <td>::</td>
             <td><strong>n_results</strong></td>
             <td>
-                <p>number of resulting subsets. They are stored as the first <code>n_results</code> elements of <code>work_arr_paralog_subsets</code></p>
+                <p>number of resulting subsets. They are stored as the first <code>n_results</code> elements of <code>paralog_subsets_bitmasks</code></p>
             </td>
         </tr>
         <tr>
@@ -288,7 +288,7 @@ The minimum valid value is <code>((n_genes)/32_int32 + min(1_int32, mod((n_genes
                 <p>maximum subset size of checked gene subsets. Too large a value is capped to the
 maximum valid size. The bindings cap it automatically while sizing the work
 array; a Fortran caller caps it by calling
-<a href="../proc/calc_work_arr_paralog_subsets_size_impl.html">calc_work_arr_paralog_subsets_size_impl</a> first.
+<a href="../proc/calc_paralog_subsets_bitmasks_size_impl.html">calc_paralog_subsets_bitmasks_size_impl</a> first.
 Zero is in range and means there is no subset to check -- the sizing routine reports
 it whenever the filtered families hold a single gene each. It reports a work array
 of zero slots along with it, which this routine does not accept, so a caller that
@@ -298,7 +298,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~6"></span>
+              <span class="anchor" id="variable-paralog_subsets_bitmasks~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -306,7 +306,7 @@ The minimum valid value is <code>0_int32</code>.</p>
               dimension(n_mask_chunks, n_paralog_subsets)
             </td>
             <td>::</td>
-            <td><strong>work_arr_paralog_subsets</strong></td>
+            <td><strong>paralog_subsets_bitmasks</strong></td>
             <td>
                 <p>working array to hold bitmask encoded subsets for detection.</p>
 <div class="alert alert-info">
@@ -327,13 +327,13 @@ The minimum valid value is <code>0_int32</code>.</p>
             <td>::</td>
             <td><strong>n_paralog_subsets</strong></td>
             <td>
-                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
-It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
+                <p>number of gene subsets that can be stored in <code>paralog_subsets_bitmasks</code>.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_paralog_subsets_bitmasks_size.html">calc_paralog_subsets_bitmasks_size</a>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_active_mask~4"></span>
+              <span class="anchor" id="variable-tmp_active_bitmask~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -341,7 +341,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>tmp_active_mask</strong></td>
+            <td><strong>tmp_active_bitmask</strong></td>
             <td>
                 <p>working array to hold the extended subsets</p>
             </td>
@@ -398,7 +398,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~370"></span>
+              <span class="anchor" id="variable-ierr~37"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -445,7 +445,7 @@ The minimum valid value is <code>above(0.0_real64)</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-18 11:17 +0000             </p>
+ on 2026-11-19 11:49 +0000             </p>
           </div>
         </div>
         <br>
