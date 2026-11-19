@@ -15,12 +15,12 @@ test_paralog_functions <- function() {
   n_paralogs <- 5L
   i_paralog <- 2L
 
-  chunk_count <- bit_mask_n_words(n_paralogs)
+  chunk_count <- bitmask_n_words(n_paralogs)
   assert_true(chunk_count == 1L)
 
-  bit_mask <- integer(chunk_count)
-  bit_mask[(i_paralog %/% 32L) + 1L] <- bitwShiftL(1L, i_paralog %% 32L)
-  state <- bit_mask_test(n_paralogs, bit_mask, i_paralog + 1L)
+  bitmask <- integer(chunk_count)
+  bitmask[(i_paralog %/% 32L) + 1L] <- bitwShiftL(1L, i_paralog %% 32L)
+  state <- bitmask_test(n_paralogs, bitmask, i_paralog + 1L)
   assert_true(isTRUE(state))
 
   # Testing pattern filtering
@@ -39,7 +39,7 @@ test_paralog_functions <- function() {
 
   # Testing work-array size calculation
   max_subset_size <- 3L
-  work_info <- calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, as.integer(dosage_mask[, 1]))
+  work_info <- calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs, as.integer(dosage_mask[, 1]))
   assert_true(work_info$work_array_size == 3L)
   assert_true(work_info$max_subset_size == 3L)
 
@@ -53,7 +53,7 @@ test_paralog_functions <- function() {
   dosage_result <- detect_dosage_effect(
     ancestor = ancestor,
     genes = paralogs,
-    filtered_paralogs_mask = as.integer(dosage_mask[, 1]),
+    filtered_paralogs_bitmask = as.integer(dosage_mask[, 1]),
     max_subset_size = work_info$max_subset_size,
     gain_gamma = 0.1,
     max_angle = pi
@@ -61,34 +61,34 @@ test_paralog_functions <- function() {
 
   # the work array is returned whole; n_results says how much of it is filled
   assert_true(dosage_result$n_results == 3L)
-  dosage_found <- dosage_result$work_arr_paralog_subsets[1, seq_len(dosage_result$n_results)]
+  dosage_found <- dosage_result$paralog_subsets_bitmasks[1, seq_len(dosage_result$n_results)]
   assert_true(all(dosage_found == c(6L, 3L, 5L)))
 
-  # an over-large max_subset_size is capped by calc_work_arr_paralog_subsets_size (inout
+  # an over-large max_subset_size is capped by calc_paralog_subsets_bitmasks_size (inout
   # feedback): the same result comes back at once, not after a runaway subset-size loop
   capped <- detect_dosage_effect(
     ancestor = ancestor,
     genes = paralogs,
-    filtered_paralogs_mask = as.integer(dosage_mask[, 1]),
+    filtered_paralogs_bitmask = as.integer(dosage_mask[, 1]),
     max_subset_size = 2000000000L,
     gain_gamma = 0.1,
     max_angle = pi
   )
   assert_true(capped$n_results == 3L)
-  assert_true(all(capped$work_arr_paralog_subsets[1, seq_len(capped$n_results)] == c(6L, 3L, 5L)))
+  assert_true(all(capped$paralog_subsets_bitmasks[1, seq_len(capped$n_results)] == c(6L, 3L, 5L)))
 
   # Testing subfunctionalization detection
   norms <- sqrt(colSums(paralogs ^ 2))
   sorted_perm <- as.integer(order(norms))
 
-  subfunc_info <- calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs,
+  subfunc_info <- calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs,
                                                      as.integer(subfunc_mask[, 1]))
 
   subfunc_result <- detect_subfunctionalization(
     ancestor = ancestor,
     genes = paralogs,
     rdi_threshold = 0.5,
-    filtered_paralogs_mask = as.integer(subfunc_mask[, 1]),
+    filtered_paralogs_bitmask = as.integer(subfunc_mask[, 1]),
     max_subset_size = subfunc_info$max_subset_size,
     paralog_norms = norms,
     sorted_paralog_norms_perm = sorted_perm
@@ -96,15 +96,45 @@ test_paralog_functions <- function() {
 
   assert_true(subfunc_result$n_results == 0L)
 
-  # Edge cases. Zero genes need zero words, so bit_mask_n_words returns rather than
+  # Edge cases. Zero genes need zero words, so bitmask_n_words returns rather than
   # raising; the Python suite asserts no error too.
-  assert_true(bit_mask_n_words(0L) == 0L)
+  assert_true(bitmask_n_words(0L) == 0L)
 
-  single_mask <- bit_mask_n_words(1L)
+  single_mask <- bitmask_n_words(1L)
   assert_true(single_mask == 1L)
 
 }
 
+
+test_a_gene_alone_in_bit_31_survives_the_chain <- function() {
+  # Gene 32 is bit 31 of word 1. Kept alone in that word, the word is 0x80000000, which R
+  # prints as NA_integer_ (issue #206): every step of filter -> calc -> detect takes it back.
+  n_genes <- 33L
+  angles <- rep(1.0, n_genes)
+  angles[c(32L, 33L)] <- 0.1
+  gene_to_fam <- rep(1L, n_genes)
+
+  family_bitmasks <- filter_paralogs_by_pattern_dosage_effect(angles, 0.5, 1L, gene_to_fam,
+                                                              bitmask_n_words(n_genes))
+  kept <- family_bitmasks[, 1]
+  assert_true(identical(kept, c(NA_integer_, 1L)), "genes 32 and 33: the NA word, then bit 0 of word 2")
+
+  sizing <- calc_paralog_subsets_bitmasks_size(2L, n_genes, kept)
+  assert_true(sizing$max_subset_size == 2L, "two genes are kept, so a subset holds two at most")
+
+  # only the two kept genes together exceed the ancestor's magnitude by 10%
+  genes <- matrix(rep(c(0.6, 0.6), n_genes), nrow = 2L)
+  found <- detect_dosage_effect(c(1.0, 1.0), genes, kept, sizing$max_subset_size, gain_gamma = 0.1)
+  assert_true(found$n_results == 1L, "the pair {32, 33} is the one dosage subset")
+  assert_true(identical(found$paralog_subsets_bitmasks[, 1], c(NA_integer_, 1L)),
+              "the subset comes back as the same words, the NA word included")
+
+  # an NA in an ordinary integer argument is still refused: it is no family index
+  assert_true(inherits(tryCatch(filter_paralogs_by_pattern_dosage_effect(
+                angles, 0.5, 1L, c(NA_integer_, gene_to_fam[-1]), bitmask_n_words(n_genes)),
+                error = function(e) e), "tox_na_error"),
+              "gene_to_fam = NA is refused as NA")
+}
 
 test_detect_neofunctionalization <- function() {
 

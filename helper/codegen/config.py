@@ -99,6 +99,10 @@ class Conventions:
     #: A square real matrix whose name is one of these, or ends in `_<one>`, is validated for
     #: distance-matrix structure (symmetry, non-negativity, zero diagonal) rather than finiteness
     distance_matrix_suffixes: tuple[str, ...] = ("distances", "distance_matrix")
+    #: An `integer(int32)` array whose name is one of these, or ends in `_<one>`, holds bit-mask
+    #: words, laid out as `f42_bit_masks_impl` documents. Every int32 bit pattern is a word, the
+    #: one with only bit 31 set included, which is `NA_integer_` in R, so R passes it unchecked
+    bitmask_names: tuple[str, ...] = ("bitmask", "bitmasks")
 
     #: Accepted spellings of a mode argument. A dummy is a mode argument if its name is
     #: an alias verbatim (`mode`) or carries one as a suffix (`link_method`).
@@ -140,6 +144,14 @@ class Conventions:
             if lowered.endswith(f"_{alias}") and _is_identifier(lowered[: -len(alias) - 1]):
                 return alias
         return None
+
+    def is_bitmask_name(self, name: str) -> bool:
+        """Whether `name` says the argument holds bit-mask words: `bitmask`, `family_bitmasks`.
+
+        `_bitmask` does not end in `_mask`, so such an argument is never a selection mask too.
+        """
+        lowered = name.lower()
+        return any(lowered == word or lowered.endswith(f"_{word}") for word in self.bitmask_names)
 
     def mask_arg_name_of(self, name: str) -> str | None:
         """Return the argument a mask belongs to, e.g. `foo_selection_mask` -> `foo`.

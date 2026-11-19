@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void gjct_permutation_test_c(const double*, const double*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const int*, double*, double*, const int*, const unsigned char*, const unsigned char*, int*);
@@ -53,7 +53,8 @@ SEXP gjct_permutation_test_call(SEXP neighborhood_residuals_S1, SEXP neighborhoo
     unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2, "neighbor_mask_S2");
 
     // outputs and work space
-    SEXP jsd_null = PROTECT(Rf_allocVector(REALSXP, _v_n_permutations)); _nprot++;
+    R_xlen_t _n_jsd_null = tox_count("jsd_null", (double) _v_n_permutations);
+    SEXP jsd_null = PROTECT(Rf_allocVector(REALSXP, _n_jsd_null)); _nprot++;
     double p_value = 0;
     int ierr = 0;
 

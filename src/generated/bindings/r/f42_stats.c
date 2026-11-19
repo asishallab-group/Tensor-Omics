@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void loess_smooth_2d_c(const int*, const int*, const double*, const double*, const int*, const int*, const double*, const double*, const double*, double*, int*);
@@ -29,7 +29,8 @@ SEXP loess_smooth_2d_call(SEXP x_ref, SEXP y_ref, SEXP indices_used, SEXP x_quer
     const int* _c_indices_used = tox_int_in(indices_used, "indices_used");
 
     // outputs and work space
-    SEXP y_out = PROTECT(Rf_allocVector(REALSXP, n_target)); _nprot++;
+    R_xlen_t _n_y_out = tox_count("y_out", (double) n_target);
+    SEXP y_out = PROTECT(Rf_allocVector(REALSXP, _n_y_out)); _nprot++;
     int ierr = 0;
 
     loess_smooth_2d_c(
@@ -63,8 +64,10 @@ SEXP compute_edf_call(SEXP values) {
     int n_values = (int) Rf_length(values);
 
     // outputs and work space
-    SEXP unique_values = PROTECT(Rf_allocVector(REALSXP, n_values)); _nprot++;
-    SEXP cdf_values = PROTECT(Rf_allocVector(REALSXP, n_values)); _nprot++;
+    R_xlen_t _n_unique_values = tox_count("unique_values", (double) n_values);
+    SEXP unique_values = PROTECT(Rf_allocVector(REALSXP, _n_unique_values)); _nprot++;
+    R_xlen_t _n_cdf_values = tox_count("cdf_values", (double) n_values);
+    SEXP cdf_values = PROTECT(Rf_allocVector(REALSXP, _n_cdf_values)); _nprot++;
     int n_unique = 0;
     int ierr = 0;
 
@@ -101,8 +104,10 @@ SEXP compute_edf_expert_call(SEXP values, SEXP values_perm) {
     const int* _c_values_perm = tox_int_in(values_perm, "values_perm");
 
     // outputs and work space
-    SEXP unique_values = PROTECT(Rf_allocVector(REALSXP, n_values)); _nprot++;
-    SEXP cdf_values = PROTECT(Rf_allocVector(REALSXP, n_values)); _nprot++;
+    R_xlen_t _n_unique_values = tox_count("unique_values", (double) n_values);
+    SEXP unique_values = PROTECT(Rf_allocVector(REALSXP, _n_unique_values)); _nprot++;
+    R_xlen_t _n_cdf_values = tox_count("cdf_values", (double) n_values);
+    SEXP cdf_values = PROTECT(Rf_allocVector(REALSXP, _n_cdf_values)); _nprot++;
     int n_unique = 0;
     int ierr = 0;
 
@@ -210,7 +215,8 @@ SEXP compute_scaled_distance_tail_probability_call(SEXP rdi, SEXP sorted_rdi, SE
     double _v_c_const = Rf_asReal(c_const);
 
     // outputs and work space
-    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_tail_probability = tox_count("tail_probability", (double) n_genes);
+    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, _n_tail_probability)); _nprot++;
     int ierr = 0;
 
     compute_scaled_distance_tail_probability_c(
@@ -245,7 +251,8 @@ SEXP compute_scaled_distance_tail_probability_expert_call(SEXP rdi, SEXP sorted_
     const int* _c_sorted_rdi_perm = tox_int_in(sorted_rdi_perm, "sorted_rdi_perm");
 
     // outputs and work space
-    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_tail_probability = tox_count("tail_probability", (double) n_genes);
+    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, _n_tail_probability)); _nprot++;
     int ierr = 0;
 
     compute_scaled_distance_tail_probability_expert_c(

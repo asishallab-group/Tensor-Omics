@@ -105,9 +105,10 @@ C_KEYWORDS = frozenset({
 #: emitter writes, both ways.
 R_SHIM_HELPERS = frozenset({
     "tox_bool_alloc", "tox_bool_in", "tox_bool_out", "tox_char_alloc", "tox_char_in",
-    "tox_char_out", "tox_imax", "tox_imin", "tox_int_copy", "tox_int_in", "tox_max_strlen",
-    "tox_prod", "tox_refuse", "tox_refuse_element", "tox_refuse_na", "tox_refuse_type",
-    "tox_shape_of", "tox_show", "tox_sum_true", "tox_utf8", "tox_utf8_valid",
+    "tox_char_out", "tox_count", "tox_dmax", "tox_dmin", "tox_failed", "tox_imax", "tox_imin",
+    "tox_int_copy", "tox_int_extent", "tox_int_in", "tox_max_strlen", "tox_prod", "tox_refuse",
+    "tox_refuse_element", "tox_refuse_na", "tox_refuse_type", "tox_shape_of", "tox_show",
+    "tox_sum_true", "tox_utf8", "tox_utf8_valid", "tox_words_copy", "tox_words_in",
 })
 
 
@@ -204,6 +205,8 @@ DIM = "dim"
 OPTIONAL_DIM_ATTRIBUTE = "d"
 #: The C buffer a logical or a string is converted into
 BUFFER = "c"
+#: The element count of an output or a work array, as the shim allocates it (`tox_count`)
+COUNT = "n"
 #: The copy of an array modified in place, so the caller's stays intact
 INOUT_COPY = "out"
 #: The count of protected objects, a local of every shim function

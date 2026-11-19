@@ -255,6 +255,7 @@ the wrappers, and the export path, where you write the whole procedure and mark 
 |---|---|
 | the whole contract, task by task | the guide |
 | valid ranges, finiteness, masks, distance matrices, optionals | guide Sections 5.1–5.6 |
+| an extent that must equal another size, bit-mask words | guide Sections 5.17–5.18 |
 | work arrays, permutations, recommend sizing | guide Sections 5.7–5.9 |
 | modes, per-mode procedures | guide Sections 5.10–5.12 |
 | prologues, runtime errors, split families | guide Sections 5.13–5.15 |

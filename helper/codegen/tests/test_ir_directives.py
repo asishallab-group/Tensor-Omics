@@ -136,12 +136,12 @@ class TestResultSizeIs:
 class TestOutputFrom:
     def test_auto(self, macros, parser):
         directives = parser.parse(
-            documented(macros, "DM_OUTPUT_FROM(n_words, bit_mask_n_words, f42_bit_masks, AUTO)")
+            documented(macros, "DM_OUTPUT_FROM(n_words, bitmask_n_words, f42_bit_masks, AUTO)")
         )
 
         assert directives.output_from == OutputFrom(
             argument="n_words",
-            procedure="bit_mask_n_words",
+            procedure="bitmask_n_words",
             module="f42_bit_masks",
             mode=OutputFromMode.AUTO,
             line_number=None,
@@ -151,7 +151,7 @@ class TestOutputFrom:
     def test_just_info(self, macros, parser):
         directives = parser.parse(
             documented(
-                macros, "DM_OUTPUT_FROM(n_words, bit_mask_n_words, f42_bit_masks, JUST_INFO)"
+                macros, "DM_OUTPUT_FROM(n_words, bitmask_n_words, f42_bit_masks, JUST_INFO)"
             )
         )
 

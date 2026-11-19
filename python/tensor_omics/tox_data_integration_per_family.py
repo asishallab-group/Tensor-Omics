@@ -342,6 +342,9 @@ def fjct_compute_masked_jsd(
     n_bins = _contract.integer(n_bins, "n_bins")
     shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_bins, "n_bins")
+
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
     n_reps_S2 = neighborhood_residuals_S2.shape[0]

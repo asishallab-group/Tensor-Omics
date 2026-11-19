@@ -418,7 +418,7 @@ whose LOESS wrappers call a producer generated into their own module. What a cal
 only as FES approved: the C symbol and its argument list, and the top-level Python and R name and
 parameters, are as they were; the Fortran entry point moved to `tox_loess` and gained the
 trailing `ierr`; and `tensor_omics.tox_loess_impl`, which held only this routine, is gone (the
-function is in `tensor_omics.tox_loess`). `calc_work_arr_paralog_subsets_size` converts in its
+function is in `tensor_omics.tox_loess`). `calc_work_arr_paralog_subsets_size` (now `calc_paralog_subsets_bitmasks_size`) converts in its
 own branch (#207), not here.
 
 ### f42_kd_tree: the hand-written triple the layer was designed for

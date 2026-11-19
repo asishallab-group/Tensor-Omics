@@ -55,6 +55,7 @@ Related reading, once this is not enough:
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
   - [5.16 A function](#516-a-function)
   - [5.17 An extent that must equal another size](#517-an-extent-that-must-equal-another-size)
+  - [5.18 Bit-mask words](#518-bit-mask-words)
 
 **Part II — the export path** (IO, infrastructure, and everything else)
 
@@ -500,6 +501,13 @@ An extent is an input too: `intent(in)`. Python and R read it off an input array
 that only outputs or work arrays carry is asked of the caller instead, since nothing the caller hands
 over has it yet (`n` of `fill(n, value, filled(n))`). One that only optional input arrays carry is
 refused — the bindings drop it from the signature and would then have nothing to read it off.
+
+Python and R allocate the outputs and work arrays before the call, so an extent they ask of the
+caller is refused there when it is negative, naming it, before anything is allocated by it
+(`'n_families' is a size and must not be negative, but it is -1`). Zero and a `DM_MIN`, `DM_MAX` or
+`DM_EQUALS` stay the wrapper's to check, with its codes. An output axis the declaration computes
+(`merge_i(n_points - 1)`) is allocated with at least zero elements, as Fortran sizes it, so no
+points is the wrapper's `ERR_EMPTY_INPUT`.
 
 ### 5.4 A distance matrix
 
@@ -1250,6 +1258,30 @@ If the array can be declared with the expression itself — `expr(sum(reps_per_t
 as `calc_tiss_avg_impl` does — that needs no marker and no extent argument at all (Section 4).
 `DM_EQUALS` is for a size that the implementation needs as an argument anyway.
 
+### 5.18 Bit-mask words
+
+**When** an `integer(int32)` array holds the words of a bit mask that the caller passes in or
+gets back, laid out as `f42_bit_masks_impl` documents.
+
+**Write** the name: the argument is called `bitmask` or `bitmasks`, or ends in `_bitmask` /
+`_bitmasks`.
+
+```fortran
+integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
+    !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+```
+
+**You get** an R binding that passes every word. Every int32 bit pattern is a word, and the one
+with only bit 31 set is the bit pattern R uses for `NA_integer_`, so an ordinary integer array
+would refuse it as NA (issue #206). Such an argument passes as the integer vector it is, that
+word included; R prints it as `NA`, and it comes back out of an output and goes in again
+unchanged. A double `NA` is still refused, with a hint to pass the words as an integer vector,
+and every other check stays. Python is unaffected: numpy has no integer NA.
+
+**Only** on an `integer(int32)` array, and without `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or
+`DM_EQUALS`: a word is no number to compare. `_bitmask` does not end in `_mask`, so a bit-mask
+argument is never a selection mask (Section 5.3).
+
 ---
 
 # Part II — the export path
@@ -1580,6 +1612,7 @@ it are an example's.
 | a `DM_RESULT_SIZE_IS` naming an `intent(in)` count | the count is what the procedure reports back (Section 5.6) |
 | a `DM_RESULT_SIZE_IS` naming something that is not an argument, or that is not a scalar integer (`'picked' says its result size is 'n_chosen', which is not an argument of 'pr_rsize_missing_impl'`, `'n_picked' cannot be the result size of 'picked': a result size is a scalar integer`) | the count is a scalar the procedure sets (Section 5.6) |
 | a `DM_EQUALS` on anything but a required `intent(in)` scalar integer | the wrapper compares the value the caller passed, before the call (Section 5.17) |
+| an argument named `bitmask`, `bitmasks`, `*_bitmask` or `*_bitmasks` that is not an integer array (`argument 'bitmask' is named as bit-mask words, but is not an integer(int32) array`), or that has a `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or `DM_EQUALS` (`bit-mask argument 'bitmasks' has DM_MIN`) | the name says it holds bit-mask words, which R passes without its NA check and which no value range applies to (Section 5.18) |
 | an `intent(out)` `<base>_perm` whose base is an argument, or an `intent(out)` `DM_OUTPUT_FROM(..., AUTO)` value | `foo` builds or computes it itself and would discard the result (Sections 5.8, 5.9) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | a `<x>_shape` argument that is not `intent(in)`, or not a rank-1 integer array, or one whose `x` is not rank 1 (`shape argument 'values_shape' is not intent(in)`, `shape argument 'values_shape' is not a rank-1 integer array`, `'values' has a shape argument but is rank 2`) | a shape is the list of the flat array's extents, one integer per dimension, and is only read (Section 6.6) |

@@ -419,4 +419,12 @@ test_compute_velocity_acceleration_contributions_plain <- function() {
 
 }
 
+test_a_computed_axis_cannot_overflow_into_an_allocation <- function() {
+  # acceleration has max(0, n_timepoints - 2) elements. In C int arithmetic -2147483647 - 2
+  # overflowed (undefined, in practice 2147483647: a 16 GB vector); the shim now computes every
+  # axis in double, so it is 0, as Fortran sizes it, and nothing is allocated (#215)
+  r <- compute_acceleration_from_velocity_trajectory(numeric(0), -2147483647L)
+  assert_true(is.double(r) && length(r) == 0L, "an empty acceleration, not an allocation")
+}
+
 run_all_tests()
