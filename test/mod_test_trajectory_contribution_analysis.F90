@@ -346,6 +346,8 @@ contains
         integer(int32), parameter :: n_factors = 2, n_samples = 20, n_timepoints = 3
         integer(int32), parameter :: n_permutations = 2
         integer(int32) :: ierr, mode
+        integer :: seed_size
+        integer, allocatable :: state_before(:), state_after(:), state_next(:)
         real(real64) :: trajectories(n_factors, n_samples, n_timepoints)
         integer(int32) :: factor_idx, dependent_idx, sample_idx
         real(real64) :: local_contributions(n_timepoints, n_permutations)
@@ -388,19 +390,29 @@ contains
         call assert_equal_array_real(local_contributions, expected_local, n_timepoints*n_permutations, TOL, "test_perform_permutation_test: Case 1 local contributions")
         call assert_equal_array_real(total_contributions, expected_total, n_permutations, TOL, "test_perform_permutation_test: Case 1 total contribution")
 
-        ! Case 2: test randomness reproducibility: without seed -> not reproducible
+        ! Case 2: without a supplied seed, calls continue the existing RNG stream.
+        ! Two sampled alternatives can coincide, so equal scores are not an error.
+        call init_random(42_int32)
         call random_number(trajectories)
+        call random_seed(size=seed_size)
+        allocate (state_before(seed_size), state_after(seed_size), state_next(seed_size))
+        call random_seed(get=state_before)
         call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       expected_local, expected_total, temp_factor, temp_dependent, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_perform_permutation_test: Case 2 Permutation test ierr expected contribs")
+        call random_seed(get=state_after)
+        call assert_false(all(state_before == state_after), &
+                          "test_perform_permutation_test: Case 2 first call must advance RNG state")
 
         call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       local_contributions, total_contributions, temp_factor, temp_dependent, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_perform_permutation_test: Case 2 Permutation test ierr")
 
-        call assert_false(all(local_contributions == expected_local), "test_perform_permutation_test: Case 2 should not be reproducible")
+        call random_seed(get=state_next)
+        call assert_false(all(state_after == state_next), &
+                          "test_perform_permutation_test: Case 2 next call must continue RNG stream")
 
         ! Case 3: test randomness reproducibility: with seed -> reproducible
         call random_number(trajectories)
