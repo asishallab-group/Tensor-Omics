@@ -40,6 +40,8 @@ from .error_handling import (
     ERR_STRING_TOO_LONG,
     ERR_IDX_OUT_OF_BOUNDS,
     ERR_DIVISION_BY_ZERO,
+    ERR_JSON_SEQUENCE,
+    ERR_INVALID_UTF8,
     ERR_ALLOC_FAIL,
     ERR_POINTER_NULL,
     ERR_UNIT_NOT_CONNECTED,
@@ -120,6 +122,9 @@ from .tox_data_archive import (
     save_tox_data,
     get_tox_data_dims,
     read_tox_data_into,
+)
+from .tox_data_flyer_json import (
+    save_flyer_json,
 )
 from .tox_data_integration_jsd import (
     determine_shared_residual_range,
@@ -271,6 +276,8 @@ __all__ = [
     "ERR_STRING_TOO_LONG",
     "ERR_IDX_OUT_OF_BOUNDS",
     "ERR_DIVISION_BY_ZERO",
+    "ERR_JSON_SEQUENCE",
+    "ERR_INVALID_UTF8",
     "ERR_ALLOC_FAIL",
     "ERR_POINTER_NULL",
     "ERR_UNIT_NOT_CONNECTED",
@@ -379,6 +386,7 @@ __all__ = [
     "relative_axes_changes_from_shift_vector",
     "relative_axes_expression_from_expression_vector",
     "root_mean_sq_normalization",
+    "save_flyer_json",
     "save_tox_data",
     "serialize_char_helper",
     "serialize_complex_helper",
