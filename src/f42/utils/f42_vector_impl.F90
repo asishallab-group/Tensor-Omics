@@ -5,6 +5,7 @@
 !| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_vector_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err
     use f42_math_impl, only: clamp, is_close, scaling_exponent
     M_IMPLICIT_NONE
@@ -41,6 +42,7 @@ contains
 
         norm_product = sqrt(norm1_sq)*sqrt(norm2_sq)
         if (is_close(norm_product, 0.0_real64)) then
+            angle = 0.0_real64
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
@@ -133,4 +135,60 @@ contains
             vector(i_dim) = vector(i_dim) - to_be_subtracted(i_dim)
         end do
     end subroutine subtract_vector
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Whether a vector has a direction: it is not the zero vector. A vector made only of subnormal
+    !| numbers has one too, as long as the build reads such numbers as themselves: where its
+    !| floating-point mode reads subnormal inputs as zero (denormals-are-zero), it is the zero
+    !| vector. See [[f42_vector_impl(module):scaled_length(subroutine)]].
+    pure logical(c_bool) function has_direction(n_dims, vector)
+        integer(int32), intent(in) :: n_dims
+            !! Number of elements in `vector`
+        real(real64), intent(in) :: vector(n_dims)
+            !! The vector
+
+        integer(int32) :: exponent
+        real(real64) :: scaled_norm
+
+        call scaled_length(n_dims, vector, exponent, scaled_norm)
+        has_direction = scaled_norm > 0.0_real64
+    end function has_direction
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| The angle in radians between the directions of two vectors, in \([0, \pi]\), or `-1.0`
+    !| where either has no direction (see [[f42_vector_impl(module):has_direction(function)]]).
+    !|
+    !| For the unit vectors \(u\) and \(v\) it is \(2\,\mathrm{atan2}(|u - v|, |u + v|)\): unlike
+    !| the acos of their dot product, which [[f42_vector_impl(module):angle_between(subroutine)]]
+    !| takes, this stays accurate near 0 and \(\pi\), where acos turns one rounding error of the
+    !| cosine into an angle of about `1e-8`. Both vectors are scaled as
+    !| [[f42_vector_impl(module):scaled_length(subroutine)]] does, so no finite magnitude overflows
+    !| or underflows.
+    pure real(real64) function angle_to_direction(n_dims, vector, direction) result(angle)
+        integer(int32), intent(in) :: n_dims
+            !! Number of elements in both vectors
+        real(real64), intent(in) :: vector(n_dims)
+            !! The vector, of any length
+        real(real64), intent(in) :: direction(n_dims)
+            !! The direction, of any length
+
+        real(real64) :: vector_scaled_norm, direction_scaled_norm
+        real(real64) :: vector_unit, direction_unit, difference_squared, sum_squared
+        integer(int32) :: vector_exponent, direction_exponent, i_dim
+
+        angle = -1.0_real64
+        call scaled_length(n_dims, vector, vector_exponent, vector_scaled_norm)
+        call scaled_length(n_dims, direction, direction_exponent, direction_scaled_norm)
+        if (vector_scaled_norm == 0.0_real64 .or. direction_scaled_norm == 0.0_real64) return
+
+        difference_squared = 0.0_real64
+        sum_squared = 0.0_real64
+        do i_dim = 1, n_dims
+            vector_unit = scale(vector(i_dim), vector_exponent)/vector_scaled_norm
+            direction_unit = scale(direction(i_dim), direction_exponent)/direction_scaled_norm
+            difference_squared = difference_squared + (vector_unit - direction_unit)**2
+            sum_squared = sum_squared + (vector_unit + direction_unit)**2
+        end do
+        angle = 2.0_real64*atan2(sqrt(difference_squared), sqrt(sum_squared))
+    end function angle_to_direction
 end module f42_vector_impl

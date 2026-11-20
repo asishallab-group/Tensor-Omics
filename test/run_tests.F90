@@ -26,6 +26,9 @@ program main
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
     use mod_test_tail_probability, only: get_all_tests_tail_probability
+    use mod_test_tox_get_outliers_by_angle, only: get_all_tests_tox_get_outliers_by_angle
+    use mod_test_f42_math, only: get_all_tests_f42_math
+    use mod_test_f42_vector, only: get_all_tests_f42_vector
     use mod_test_f42_bit_masks, only: get_all_tests_f42_bit_masks
     use mod_test_f42_reductions, only: get_all_tests_f42_reductions
     implicit none
@@ -59,6 +62,9 @@ program main
     call add_suite("data_integration", get_all_tests_data_integration)
     call add_suite("binary_search", get_all_tests_binary_search)
     call add_suite("tail_probability", get_all_tests_tail_probability)
+    call add_suite("tox_get_outliers_by_angle", get_all_tests_tox_get_outliers_by_angle)
+    call add_suite("f42_math", get_all_tests_f42_math)
+    call add_suite("f42_vector", get_all_tests_f42_vector)
     call add_suite("f42_bit_masks", get_all_tests_f42_bit_masks)
     call add_suite("f42_reductions", get_all_tests_f42_reductions)
 
