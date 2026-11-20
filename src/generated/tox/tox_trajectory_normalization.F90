@@ -37,7 +37,9 @@ contains
         real(real64), dimension(n_points), intent(out) :: v_norm
             !! Normalized time series
         integer(int32), intent(out) :: status
-            !! Status code for specific warnings
+            !! `ERR_DIVISION_BY_ZERO` when the series is constant, a single time point included: it
+            !! is then written as zeros. A warning for this series, not an error -- `ierr` stays OK,
+            !! as a pipeline can reach a constant series from valid input.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -74,7 +76,9 @@ contains
         real(real64), dimension(n_timepoints, n_factors), intent(out) :: trajectory_norm
             !! Normalized trajectory for one sample
         integer(int32), dimension(n_factors), intent(out) :: status
-            !! Status code for specific warnings, one per factor
+            !! One status per factor, as
+            !! [[tox_trajectory_normalization_impl(module):normalize_variable_timeseries_impl(subroutine)]]
+            !! sets it
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -117,7 +121,9 @@ contains
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(out) :: trajectories_norm
             !! Normalized trajectories
         integer(int32), dimension(n_factors, n_samples), intent(out) :: status
-            !! Status code for specific warnings, one per factor per sample
+            !! One status per factor and sample, as
+            !! [[tox_trajectory_normalization_impl(module):normalize_variable_timeseries_impl(subroutine)]]
+            !! sets it
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:), allocatable :: tmp_series
@@ -175,7 +181,9 @@ contains
         real(real64), dimension(n_timepoints), intent(out) :: tmp_series_norm
             !! Work array: the normalized time series
         integer(int32), dimension(n_factors, n_samples), intent(out) :: status
-            !! Status code for specific warnings, one per factor per sample
+            !! One status per factor and sample, as
+            !! [[tox_trajectory_normalization_impl(module):normalize_variable_timeseries_impl(subroutine)]]
+            !! sets it
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 

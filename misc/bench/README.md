@@ -8,6 +8,7 @@ machine rather than re-argued.
 |---|---|
 | [`logical-kinds/`](logical-kinds/) | What does the `c_bool` marshalling copy at the C boundary cost, and does holding a mask in `c_bool` rather than the default kind cost anything to write or to read? |
 | [`r-binding-backend/`](r-binding-backend/) | Should the R binding go through Rcpp, cpp11, pure C `.Call`, or `.C`? |
+| [`bit_masks/`](bit_masks/) | Should `f42_bit_masks` be a derived type with operators, or a core of procedures on plain int32 words? |
 | [`subnormal-detection/`](subnormal-detection/) | How could f42 recognise a subnormal value reliably — by `exponent`, by `ieee_class`, or by its bit pattern — and what would the test cost in `scaled_length`'s loops, called from another module or written inline? (f42 then chose not to detect subnormals at all.) |
 
 ## Layout of a benchmark

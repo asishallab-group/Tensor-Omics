@@ -5,7 +5,7 @@ module mod_test_stc
     use, intrinsic :: iso_c_binding, only: c_bool
     use asserts
     use test_suite, only: test_case
-    use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, get_err_arg_pos
+    use tox_errors, only: ERR_OK, ERR_INVALID_INPUT, get_err_arg_pos, get_err_code
     use f42_kd_tree, only: build_kd_index_expert
     use f42_kd_tree_impl, only: KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
     use tox_stc, only: calculate_density_radius, calculate_density_radius_expert, &
@@ -124,6 +124,8 @@ contains
         integer(int32), parameter :: n_vecs = 10_int32
 
         real(real64) :: vectors(n_dims, n_vecs), tmp_mean_vec(n_dims), tmp_distances(n_vecs), radius
+
+        logical(c_bool) :: tmp_all_selected(n_vecs)
         integer(int32) :: tmp_perm(n_vecs), ierr, i_setup
 
         do i_setup = 1, n_vecs
@@ -131,6 +133,7 @@ contains
         end do
 
         call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            tmp_all_selected, &
             0.50_real64, radius, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "test_density_radius_basic: ierr success control check")
@@ -186,6 +189,8 @@ contains
         integer(int32), parameter :: n_vecs = 5_int32
 
         real(real64) :: vectors(n_dims, n_vecs), tmp_mean_vec(n_dims), tmp_distances(n_vecs), radius
+
+        logical(c_bool) :: tmp_all_selected(n_vecs)
         integer(int32) :: tmp_perm(n_vecs), ierr, i_setup
 
         do i_setup = 1, n_vecs
@@ -193,10 +198,12 @@ contains
         end do
 
         call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            tmp_all_selected, &
             -0.1_real64, radius, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_radius_invalid_quantile: Negative quantile must fail")
 
         call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            tmp_all_selected, &
             1.1_real64, radius, ierr)
         call assert_true(ierr /= ERR_OK, "test_density_radius_invalid_quantile: Quantile > 1.0 must fail")
     end subroutine test_density_radius_invalid_quantile
@@ -247,6 +254,8 @@ contains
         integer(int32), parameter :: n_vecs = 10_int32
 
         real(real64) :: vectors(n_dims, n_vecs), tmp_mean_vec(n_dims), tmp_distances(n_vecs)
+
+        logical(c_bool) :: tmp_all_selected(n_vecs)
         real(real64) :: radius_default, radius_explicit
         integer(int32) :: tmp_perm(n_vecs), ierr, i_setup
 
@@ -255,10 +264,12 @@ contains
         end do
 
         call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            tmp_all_selected, &
             radius=radius_default, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_radius_default_quantile: default call check")
 
         call calculate_density_radius_expert(vectors, n_dims, n_vecs, tmp_mean_vec, tmp_distances, tmp_perm, &
+            tmp_all_selected, &
             0.15_real64, radius_explicit, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_radius_default_quantile: explicit call check")
 
@@ -1480,14 +1491,18 @@ contains
             mad_ambient=mad, ierr=ierr)
         call assert_equal_int(get_err_arg_pos(ierr), 6_int32, "direct ensemble growth names density_labels argument")
 
+        ! The generated wrappers translate the position into their own argument lists; density_labels
+        ! comes before every argument they drop, so it keeps the same position there.
         call grow_ensemble(vectors, n_dims, n_vecs, mask, 1.0_real64, dims, kd, labels, &
             0.5_real64, grown, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "generated growth clears implementation argument positions")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "generated growth reports invalid input")
+        call assert_equal_int(get_err_arg_pos(ierr), 8_int32, "generated growth names density_labels argument")
 
         call obtain_ensembles_global_radius(vectors, n_dims, n_vecs, dims, kd, labels, seeds, n_seeds, &
             1.0_real64, t_observables=2_int32, n_tiles=1_int32, ensemble_matrix=ensembles, &
             stop_reasons=stops, mad_ambient=mad, ierr=ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "generated ensembles clear implementation argument positions")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "generated ensembles report invalid input")
+        call assert_equal_int(get_err_arg_pos(ierr), 6_int32, "generated ensembles name density_labels argument")
     end subroutine test_zero_mad_error_positions
 
     !> Acceptance compares two consecutive steps, so every entry point requires a history of two columns.

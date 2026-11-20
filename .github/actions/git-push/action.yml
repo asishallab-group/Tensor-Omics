@@ -28,7 +28,7 @@ runs:
     - name: Install git
       shell: bash
       run: |
-        pacman -Sy --needed --noconfirm git
+        pacman -Syu --needed --noconfirm git
         pacman -Scc --noconfirm
         git --version
 

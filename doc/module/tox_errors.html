@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.4% of total for modules and submodules.">266 statements</a>
+                 title=" 1.3% of total for modules and submodules.">271 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -200,6 +200,7 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_errors.html#proc-map_err_arg_pos">map_err_arg_pos</a>
+            <a class="list-group-item" href="../module/tox_errors.html#proc-set_err_arg_pos">set_err_arg_pos</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-clear_err_arg_pos">clear_err_arg_pos</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_ok">set_ok</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_err">set_err</a>
@@ -240,8 +241,8 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
               </ul>
             </li>
@@ -858,7 +859,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-error~6"></span>
+              <span class="anchor" id="variable-error"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -918,7 +919,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~261"></span>
+              <span class="anchor" id="variable-ierr~240"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -963,7 +964,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~262"></span>
+              <span class="anchor" id="variable-ierr~241"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1008,7 +1009,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~268"></span>
+              <span class="anchor" id="variable-ierr~248"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1053,7 +1054,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~269"></span>
+              <span class="anchor" id="variable-ierr~249"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1088,7 +1089,7 @@ parameter
 </h3></div>
     <div class="card-body">
           
-  <p>Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.</p>
+  <p>Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.</p><a href="../proc/map_err_arg_pos.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1103,7 +1104,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~263"></span>
+              <span class="anchor" id="variable-ierr~242"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1154,6 +1155,61 @@ parameter
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-set_err_arg_pos"></span> <h3>public pure subroutine <a href='../proc/set_err_arg_pos.html'>set_err_arg_pos</a>(ierr, arg_pos)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Sets the argument position of an error code, keeping the error itself.</p><a href="../proc/set_err_arg_pos.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~243"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>The new argument position, 0 for not argument related</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-clear_err_arg_pos"></span> <h3>public pure subroutine <a href='../proc/clear_err_arg_pos.html'>clear_err_arg_pos</a>(ierr)  
 </h3></div>
     <div class="card-body">
@@ -1173,7 +1229,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~264"></span>
+              <span class="anchor" id="variable-ierr~244"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1213,7 +1269,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~265"></span>
+              <span class="anchor" id="variable-ierr~245"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1253,7 +1309,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~266"></span>
+              <span class="anchor" id="variable-ierr~246"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1268,7 +1324,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-error~8"></span>
+              <span class="anchor" id="variable-error~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1283,7 +1339,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~3"></span>
+              <span class="anchor" id="variable-arg_pos~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1323,7 +1379,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~267"></span>
+              <span class="anchor" id="variable-ierr~247"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1338,7 +1394,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-error~9"></span>
+              <span class="anchor" id="variable-error~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1353,7 +1409,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~4"></span>
+              <span class="anchor" id="variable-arg_pos~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1393,7 +1449,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ios"></span>
+              <span class="anchor" id="variable-ios~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1408,7 +1464,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~270"></span>
+              <span class="anchor" id="variable-ierr~250"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1449,7 +1505,7 @@ Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPU
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~27"></span>
+              <span class="anchor" id="variable-n~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1464,7 +1520,7 @@ Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPU
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~271"></span>
+              <span class="anchor" id="variable-ierr~251"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1479,7 +1535,7 @@ Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPU
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~5"></span>
+              <span class="anchor" id="variable-arg_pos~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1565,7 +1621,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~272"></span>
+              <span class="anchor" id="variable-ierr~252"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1580,7 +1636,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~6"></span>
+              <span class="anchor" id="variable-arg_pos~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1620,7 +1676,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val"></span>
+              <span class="anchor" id="variable-val~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1635,7 +1691,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~273"></span>
+              <span class="anchor" id="variable-ierr~253"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1650,7 +1706,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~7"></span>
+              <span class="anchor" id="variable-arg_pos~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1665,7 +1721,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~2"></span>
+              <span class="anchor" id="variable-min"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1680,7 +1736,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max~2"></span>
+              <span class="anchor" id="variable-max"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1735,7 +1791,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~21"></span>
+              <span class="anchor" id="variable-array~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1750,7 +1806,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~16"></span>
+              <span class="anchor" id="variable-n_elements~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1765,7 +1821,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~274"></span>
+              <span class="anchor" id="variable-ierr~254"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1780,7 +1836,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~8"></span>
+              <span class="anchor" id="variable-arg_pos~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1795,7 +1851,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~3"></span>
+              <span class="anchor" id="variable-min~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1810,7 +1866,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max~3"></span>
+              <span class="anchor" id="variable-max~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1865,7 +1921,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~2"></span>
+              <span class="anchor" id="variable-val~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1880,7 +1936,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~275"></span>
+              <span class="anchor" id="variable-ierr~255"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1895,7 +1951,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~9"></span>
+              <span class="anchor" id="variable-arg_pos~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1910,7 +1966,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~4"></span>
+              <span class="anchor" id="variable-min~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1925,7 +1981,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max~4"></span>
+              <span class="anchor" id="variable-max~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2010,7 +2066,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~22"></span>
+              <span class="anchor" id="variable-array~20"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2025,7 +2081,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~17"></span>
+              <span class="anchor" id="variable-n_elements~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2040,7 +2096,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~276"></span>
+              <span class="anchor" id="variable-ierr~256"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2055,7 +2111,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~10"></span>
+              <span class="anchor" id="variable-arg_pos~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2070,7 +2126,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~5"></span>
+              <span class="anchor" id="variable-min~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2085,7 +2141,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max~5"></span>
+              <span class="anchor" id="variable-max~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2172,7 +2228,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~26"></span>
+              <span class="anchor" id="variable-distances~25"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2187,7 +2243,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~28"></span>
+              <span class="anchor" id="variable-n~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2202,7 +2258,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~277"></span>
+              <span class="anchor" id="variable-ierr~257"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2217,7 +2273,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-arg_pos~11"></span>
+              <span class="anchor" id="variable-arg_pos~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2232,7 +2288,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~6"></span>
+              <span class="anchor" id="variable-min~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2247,7 +2303,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max~6"></span>
+              <span class="anchor" id="variable-max~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2290,7 +2346,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-07 17:33 +0000             </p>
+ on 2026-11-19 11:49 +0000             </p>
           </div>
         </div>
         <br>

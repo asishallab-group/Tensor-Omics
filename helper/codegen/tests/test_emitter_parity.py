@@ -154,7 +154,7 @@ class TestTheTargetsAgreeOnTheRealProject:
         assert len(published) > 100
         assert "loess_fit_plain" in published, "a generated wrapper"
         assert "loess_fit_plain_expert" in published, "a generated expert tier"
-        assert "tox_loess_required_workspace" in published, "a hand-written export"
+        assert "get_array_metadata" in published, "a hand-written export"
 
     def test_every_wrapper_asks_for_the_same_arguments(self, project_binding):
         python, r = PythonEmitter(), RWrapperEmitter()

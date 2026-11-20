@@ -10,7 +10,7 @@
   },
   "cluster_factor_trajectories_k_means (call)": {
     "prefix": "tox:cluster_factor_trajectories_k_means",
-    "description": "cluster_factor_trajectories_k_means",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single",
     "body": [
       "${1:result} = cluster_factor_trajectories_k_means(",
       "    trajectories=${2:trajectories},",
@@ -539,17 +539,17 @@
   },
   "mean_vector (call)": {
     "prefix": "tox:mean_vector",
-    "description": "mean_vector",
+    "description": "A selection without genes gives the zero vector.",
     "body": [
       "${1:result} = mean_vector(",
       "    expression_vectors=${2:expression_vectors},",
-      "    gene_indices=${3:gene_indices},",
+      "    genes_selection_mask=${3:genes_selection_mask},",
       ")"
     ]
   },
   "group_centroid_orthologs (call)": {
     "prefix": "tox:group_centroid_orthologs",
-    "description": "group_centroid_orthologs",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "${1:result} = group_centroid_orthologs(",
       "    expression_vectors=${2:expression_vectors},",
@@ -561,7 +561,7 @@
   },
   "group_centroid_all (call)": {
     "prefix": "tox:group_centroid_all",
-    "description": "group_centroid_all",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "${1:result} = group_centroid_all(",
       "    expression_vectors=${2:expression_vectors},",
@@ -634,7 +634,18 @@
     "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
     "body": [
       "from tensor_omics.tox_loess import (",
-      "    ${1|loess_fit_plain,loess_fit_robust|},",
+      "    ${1|tox_loess_required_workspace,loess_fit_plain,loess_fit_robust|},",
+      ")"
+    ]
+  },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "${1:result} = tox_loess_required_workspace(",
+      "    n_dim=${2:n_dim},",
+      "    max_neighborhood_size=${3:max_neighborhood_size},",
+      "    save_factorization=${4:save_factorization},",
       ")"
     ]
   },
@@ -670,26 +681,6 @@
       "    compute_influence=${9:False},",
       "    save_factorization=${10:False},",
       "    n_iters=${11:3},",
-      ")"
-    ]
-  },
-  "tox_loess_impl (import)": {
-    "prefix": "tox:loess_impl.setup",
-    "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
-    "body": [
-      "from tensor_omics.tox_loess_impl import (",
-      "    ${1|tox_loess_required_workspace|},",
-      ")"
-    ]
-  },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "${1:result} = tox_loess_required_workspace(",
-      "    n_dim=${2:n_dim},",
-      "    max_neighborhood_size=${3:max_neighborhood_size},",
-      "    save_factorization=${4:save_factorization},",
       ")"
     ]
   },
@@ -788,7 +779,7 @@
     "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
     "body": [
       "from tensor_omics.tox_paralog_analysis import (",
-      "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization|},",
+      "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_paralog_subsets_bitmasks_size|},",
       ")"
     ]
   },
@@ -811,7 +802,7 @@
       "${1:result} = detect_dosage_effect(",
       "    ancestor=${2:ancestor},",
       "    genes=${3:genes},",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask},",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask},",
       "    max_subset_size=${5:max_subset_size},",
       "    max_angle=${6:3.141592653589793},",
       "    gain_gamma=${7:0.1},",
@@ -825,7 +816,7 @@
       "${1:result} = detect_subfunctionalization(",
       "    ancestor=${2:ancestor},",
       "    genes=${3:genes},",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask},",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask},",
       "    max_subset_size=${5:max_subset_size},",
       "    rdi_threshold=${6:rdi_threshold},",
       "    paralog_norms=${7:paralog_norms},",
@@ -859,42 +850,14 @@
       ")"
     ]
   },
-  "tox_paralog_analysis_impl (import)": {
-    "prefix": "tox:paralog_analysis_impl.setup",
-    "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
-    "body": [
-      "from tensor_omics.tox_paralog_analysis_impl import (",
-      "    ${1|mask_check_state,mask_chunk_count,calc_work_arr_paralog_subsets_size|},",
-      ")"
-    ]
-  },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} = mask_check_state(",
-      "    bit_mask=${2:bit_mask},",
-      "    i_gene=${3:i_gene},",
-      ")"
-    ]
-  },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
-    "body": [
-      "${1:result} = mask_chunk_count(",
-      "    n_genes=${2:n_genes},",
-      ")"
-    ]
-  },
-  "calc_work_arr_paralog_subsets_size (call)": {
-    "prefix": "tox:calc_work_arr_paralog_subsets_size",
+  "calc_paralog_subsets_bitmasks_size (call)": {
+    "prefix": "tox:calc_paralog_subsets_bitmasks_size",
     "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
     "body": [
-      "${1:result} = calc_work_arr_paralog_subsets_size(",
+      "${1:result} = calc_paralog_subsets_bitmasks_size(",
       "    max_subset_size=${2:max_subset_size},",
       "    n_genes=${3:n_genes},",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask},",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask},",
       ")"
     ]
   },
@@ -909,7 +872,7 @@
   },
   "omics_vector_RAP_projection (call)": {
     "prefix": "tox:omics_vector_RAP_projection",
-    "description": "omics_vector_RAP_projection",
+    "description": "A vector's projection is the vector minus the mean of its selected coordinates. A vector whose",
     "body": [
       "${1:result} = omics_vector_RAP_projection(",
       "    vecs=${2:vecs},",
@@ -920,7 +883,7 @@
   },
   "omics_field_RAP_projection (call)": {
     "prefix": "tox:omics_field_RAP_projection",
-    "description": "omics_field_RAP_projection",
+    "description": "A field whose projected vector has all coordinates equal on the selected axes lies on the space",
     "body": [
       "${1:result} = omics_field_RAP_projection(",
       "    fields=${2:fields},",
@@ -931,7 +894,7 @@
   },
   "clock_hand_angle_between_vectors (call)": {
     "prefix": "tox:clock_hand_angle_between_vectors",
-    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying",
+    "description": "The unsigned angle is the one between the two directions; their lengths do not matter, so",
     "body": [
       "${1:result} = clock_hand_angle_between_vectors(",
       "    v1=${2:v1},",
@@ -942,7 +905,7 @@
   },
   "clock_hand_angles_for_shift_vectors (call)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors",
-    "description": "Each selected field is angled by the rule of",
+    "description": "Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from",
     "body": [
       "${1:result} = clock_hand_angles_for_shift_vectors(",
       "    fields=${2:fields},",
@@ -1003,7 +966,7 @@
     "description": "Import a function from Shape-truthful clustering with a global or per-seed growth radius.",
     "body": [
       "from tensor_omics.tox_stc import (",
-      "    ${1|calculate_density_radius,calculate_labels_as_density,identify_ensemble_seeds,compute_ambient_density_stats,obtain_ensembles_global_radius,obtain_ensembles_seed_radius,merge_ensembles,grow_ensemble,compute_ensemble_observable,accept_ensemble|},",
+      "    ${1|calculate_density_radius,calculate_labels_as_density,identify_ensemble_seeds_global_radius,identify_ensemble_seeds,compute_ambient_density_stats,obtain_ensembles_global_radius,obtain_ensembles_seed_radius,merge_ensembles,grow_ensemble,compute_ensemble_observable,accept_ensemble|},",
       ")"
     ]
   },
@@ -1027,6 +990,17 @@
       "    dimension_order=${4:dimension_order},",
       "    kd_indices=${5:kd_indices},",
       "    n_tiles=${6:n_tiles},",
+      ")"
+    ]
+  },
+  "identify_ensemble_seeds_global_radius (call)": {
+    "prefix": "tox:identify_ensemble_seeds_global_radius",
+    "description": "Process all vectors in descending density order. A selected seed covers itself and",
+    "body": [
+      "${1:result} = identify_ensemble_seeds_global_radius(",
+      "    vectors=${2:vectors},",
+      "    density_labels=${3:density_labels},",
+      "    k_seeding=${4:k_seeding},",
       ")"
     ]
   },

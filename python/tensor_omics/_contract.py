@@ -173,6 +173,17 @@ def integer(value, argument):
     return int(integers(value, argument, ndim=0))
 
 
+def extent(value, argument):
+    """A size the caller passed, which the binding allocates by: refused when negative.
+
+    `value` has passed `integer` already. numpy would refuse a negative shape itself, before
+    the library is called, in words naming neither the argument nor the library; zero and every
+    documented bound stay the library's to check.
+    """
+    if value < 0:
+        _refuse("'%s' is a size and must not be negative, but it is %d" % (argument, value), argument)
+
+
 def _refuse_inexact(argument, wanted, where, shown, rounded):
     """Refuse a value float64 would round: `shown` is it, `rounded` what float64 makes of it."""
     _refuse(f"'{argument}' must be {wanted} that a float64 holds exactly, but {where} is "

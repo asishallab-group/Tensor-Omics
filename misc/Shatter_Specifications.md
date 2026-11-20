@@ -27,7 +27,8 @@ A zero ambient median absolute deviation is an error when there are seeds to gro
 
 The generated wrappers validate input arguments. The implementation reports zero-MAD runtime
 errors against `density_labels` using its own argument position. Per codegen_guide section 5.14,
-generated wrappers clear implementation argument positions because their signatures differ.
+each generated wrapper translates that position into its own argument list, so a caller is told
+which of its own arguments the error concerns.
 
 Regenerate all bindings with `python3 helper/generate_code.py`; verify with `--check`.
 

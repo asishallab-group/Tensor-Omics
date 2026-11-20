@@ -23,12 +23,57 @@ module tox_loess_c
     M_IMPLICIT_NONE
     private
 
+    public :: tox_loess_required_workspace_c
     public :: loess_fit_plain_c
     public :: loess_fit_plain_expert_c
     public :: loess_fit_robust_c
     public :: loess_fit_robust_expert_c
 
 contains
+
+    !> summary: C-wrapper for [[tox_loess(module):tox_loess_required_workspace(subroutine)]]
+    !| Computes the required sizes for integer and real workspace arrays.
+    !| These sizes depend on the dimensionality of the data and the maximum neighborhood size.
+    subroutine tox_loess_required_workspace_c(&
+            n_dim,&
+            max_neighborhood_size,&
+            int_workspace_size,&
+            real_workspace_size,&
+            save_factorization,&
+            ierr&
+        ) bind(C, name="tox_loess_required_workspace_c")
+        use tox_loess, only: tox_loess_required_workspace
+
+        integer(c_int), intent(in), target :: n_dim
+            !! Dimensionality of the data
+        integer(c_int), intent(in), target :: max_neighborhood_size
+            !! Maximum neighborhood size
+        integer(c_int), intent(out), target :: int_workspace_size
+            !! Required size of the integer workspace array
+        integer(c_int), intent(out), target :: real_workspace_size
+            !! Required size of the real workspace array
+        logical(c_bool), intent(in), target :: save_factorization
+            !! Save matrix factorization flag
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dim)
+        M_CHECK_NON_NULL(max_neighborhood_size)
+        M_CHECK_NON_NULL(int_workspace_size)
+        M_CHECK_NON_NULL(real_workspace_size)
+        M_CHECK_NON_NULL(save_factorization)
+
+        call tox_loess_required_workspace(&
+            n_dim = n_dim,&
+            max_neighborhood_size = max_neighborhood_size,&
+            int_workspace_size = int_workspace_size,&
+            real_workspace_size = real_workspace_size,&
+            save_factorization = save_factorization,&
+            ierr = ierr&
+        )
+    end subroutine tox_loess_required_workspace_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain(subroutine)]]
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
@@ -142,7 +187,7 @@ contains
             !! Total number of data points
         integer(c_int), intent(in), target :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -150,7 +195,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -363,7 +408,7 @@ contains
             !! Total number of data points
         integer(c_int), intent(in), target :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -371,7 +416,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |

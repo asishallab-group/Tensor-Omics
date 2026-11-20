@@ -255,6 +255,7 @@ the wrappers, and the export path, where you write the whole procedure and mark 
 |---|---|
 | the whole contract, task by task | the guide |
 | valid ranges, finiteness, masks, distance matrices, optionals | guide Sections 5.1–5.6 |
+| an extent that must equal another size, bit-mask words | guide Sections 5.17–5.18 |
 | work arrays, permutations, recommend sizing | guide Sections 5.7–5.9 |
 | modes, per-mode procedures | guide Sections 5.10–5.12 |
 | prologues, runtime errors, split families | guide Sections 5.13–5.15 |
@@ -328,6 +329,21 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **A producer is a published entry point**: an `M_EXPORT_C` procedure, or an implementation's
+  plain-named generated wrapper `foo`, named in its generated module (`ir.roles`). Naming
+  `foo_impl` is refused with a note naming `foo` and its module, or for a mode split the per-mode
+  wrappers; so is `foo_expert`, with a note naming `foo`. A generated producer validates, so its error carries its own argument's position:
+  the generated `foo` that calls it checks `ierr` after each producer call and maps the position
+  to the dummy that supplied that input, else clears it (`emit.fortran_wrapper`), and Python and
+  R re-raise a producer's error from their own call through `_consumer_error` /
+  `.tox_consumer_error`, naming the argument the caller passed, else none. Its purity is derived
+  by the same `_is_pure`, recursively, with a visited set. A same-module producer is not
+  `use`d; an output nothing takes gets a local if it is a scalar and is refused if it is an
+  array; an input the producer's binding derives (`ProducerInput.derived`) is resolved like any
+  other and passed only by Fortran (`OutputFromPlan.binding_inputs` is what Python and R pass).
+  Two modules may not consume each other's producers: the generated modules would `use` each
+  other, a cycle fpm stops on. A producer that comes back to its consumer through its own
+  producers is refused, naming the chain (`roles._check_producer_cycles`).
 - **A refusal of the binding's own is an input error without a code** (#221). Python raises
   `ToxArgumentError` (`emit.errors_python.ARGUMENT_EXCEPTION`), a `ToxInputError` whose `code`
   is None and which is a `TypeError` and a `ValueError` too, for every shape, type and value it
@@ -521,7 +537,7 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   default), or a variable of the module around it (`empty_view_anchor`, where an array of
   strings is viewed). Read off the wrappers as emitted, after
   their macros are expanded (`emit/name_clashes.py`), so it is refused exactly where it collides:
-  `count` stays a good argument of `mask_chunk_count`, which counts nothing. The R shim and Python
+  `count` stays a good argument of a procedure that counts nothing. The R shim and Python
   have no such clash to refuse -- everything they bind beside the arguments starts with `_`
   (`_v_k`, `_nprot`, `_np`, `_error`), which no Fortran name can. All of these names are built in
   [`names.py`](names.py), and `tests/test_names.py` reads the generated Python, R shim, R wrapper
@@ -552,6 +568,11 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   builds, and nothing hands the modification back (the R shim did not even compile)
 - a **`DM_DEFAULT` on an array** — a default is one value, so an omitted array arrived with one
   element and failed its shape check
+- a **`DM_DEFAULT` on an argument that is not `optional`** — only an optional argument can be
+  omitted, so every layer's documentation promised a default to callers who had to pass the value
+  anyway, one the bindings derive or an output never used it, and a split mode's wrapper made the
+  argument optional and handed it to the implementation's mandatory dummy. Reported once, at the
+  directive, from the implementation's or the export's own declaration
 - an **extent that is not `intent(in)`, or that only optional arrays carry** — the bindings read
   an extent off the arrays they are passed and drop it from the signature, so a written one is
   neither theirs to read nor to return, and one only an omitted array carries is read off nothing
@@ -595,8 +616,8 @@ dropping the fixed directory they used to be scoped to:
   publishes an unvalidated twin beside it, under a name (`foo_impl`) a binding caller cannot
   tell apart from the validated `foo`. Support routines in the same module (the
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
-  implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
-  Python home of `tox_loess_required_workspace`, and holds no implementation at all
+  implementation module can itself show up in the bindings — `tox_data_integration_preprocessing_impl.py`
+  is the Python home of `calc_neighborhood_size`, and holds no implementation
 - an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
   `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
   (it calls the producer itself). Either way it would discard what the implementation computes;
@@ -610,7 +631,9 @@ dropping the fixed directory they used to be scoped to:
 - an **`allocatable` local or dummy** in any procedure of the module, implementations and
   helpers alike — the generated wrapper owns the memory. Seen through the declaration, since no
   body is ever read; a `pointer` local aliases and is fine. The dummy is the subtler half: it
-  looks like the caller's memory, but whoever fills it allocated it
+  looks like the caller's memory, but whoever fills it allocated it. The generator checks this
+  only on what Ford shows it: it never sees a `private` procedure, and in a module that defaults
+  to `private` it sees no locals either. Keep the rule by hand where it cannot look.
 - a **`use` naming anything but another `_impl` module or a member of
   `Conventions.impl_import_whitelist`**. This is what gives the rule above any reach beyond one
   file: the allocation check reads declarations, so an implementation calling a helper

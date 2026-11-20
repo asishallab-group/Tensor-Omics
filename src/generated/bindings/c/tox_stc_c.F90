@@ -88,6 +88,7 @@ contains
             tmp_mean_vec,&
             tmp_distances,&
             tmp_perm,&
+            tmp_all_selected,&
             mean_to_other_vecs_dist_quant,&
             radius,&
             ierr&
@@ -106,6 +107,8 @@ contains
             !! Preallocated workspace for calculated distances
         integer(c_int), dimension(n_vectors), intent(out), target :: tmp_perm
             !! Preallocated workspace for permutation indices
+        logical(c_bool), dimension(n_vectors), intent(out), target :: tmp_all_selected
+            !! Preallocated workspace selecting every vector for the data centroid
         real(c_double), intent(in), target :: mean_to_other_vecs_dist_quant
             !! Quantile of the distances to the data centroid that becomes the density radius
             !! The minimum valid value is `0.0_real64`.
@@ -126,6 +129,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_mean_vec, n_dimensions)
         M_CHECK_ARRAY_NON_NULL(tmp_distances, n_vectors)
         M_CHECK_ARRAY_NON_NULL(tmp_perm, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(tmp_all_selected, n_vectors)
 
         call calculate_density_radius_expert(&
             vectors = vectors,&
@@ -134,6 +138,7 @@ contains
             tmp_mean_vec = tmp_mean_vec,&
             tmp_distances = tmp_distances,&
             tmp_perm = tmp_perm,&
+            tmp_all_selected = tmp_all_selected,&
             mean_to_other_vecs_dist_quant = mean_to_other_vecs_dist_quant,&
             radius = radius,&
             ierr = ierr&

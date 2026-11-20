@@ -1,28 +1,33 @@
 # Generated. Do not edit.
 
-#' Computes the element-wise mean for a given set of vectors.
+#' Computes the element-wise mean of the selected gene vectors.
+#'
+#' A selection without genes gives the zero vector.
 #'
 #' Generated from the Fortran procedure \code{tox_gene_centroids::mean_vector}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
-#' @param gene_indices a integer vector. An array containing the column indices of the selected genes in 'expression_vectors'.
-#'   The minimum valid value is `1`.
-#'   The maximum valid value is `n_genes`.
+#' @param genes_selection_mask a logical vector. `TRUE` for the genes (columns of `expression_vectors`) to average
 #' @return a numeric vector. The output vector representing the computed centroid.
 #' @export
-mean_vector <- function(expression_vectors, gene_indices) {
+mean_vector <- function(expression_vectors, genes_selection_mask) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
-    gene_indices <- .tox_as_integer_vector(gene_indices, "gene_indices")
-    .result <- .Call("mean_vector_call", expression_vectors, gene_indices)
-    .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_indices", "n_selected_genes", "centroid", "ierr")
-    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "gene_indices", NA_character_, NA_character_)
+    genes_selection_mask <- .tox_as_logical_vector(genes_selection_mask, "genes_selection_mask")
+    if (length(genes_selection_mask) != dim(expression_vectors)[2])
+        .tox_shape_error("genes_selection_mask", 1L, length(genes_selection_mask), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
+
+    .result <- .Call("mean_vector_call", expression_vectors, genes_selection_mask)
+    .arguments <- c("expression_vectors", "n_axes", "n_genes", "genes_selection_mask", "n_selected_genes", "centroid", "ierr")
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "genes_selection_mask", NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid
 }
 
-#' Iterates over families, filters gene indices, and computes centroids.
+#' Computes one centroid per gene family, of all its genes or of its orthologs only.
+#'
+#' A family without selected genes gets the zero vector.
 #'
 #' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_orthologs}, whose argument names
 #' are the ones an error message reports.
@@ -41,6 +46,7 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
     gene_to_family <- .tox_as_integer_vector(gene_to_family, "gene_to_family")
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     ortholog_set <- .tox_as_logical_vector(ortholog_set, "ortholog_set")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_family) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_family", 1L, length(gene_to_family), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
     if (length(ortholog_set) != dim(expression_vectors)[2])
@@ -54,7 +60,9 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
     .result$centroid_matrix
 }
 
-#' Iterates over families, filters gene indices, and computes centroids.
+#' Computes one centroid per gene family, of all its genes or of its orthologs only.
+#'
+#' A family without selected genes gets the zero vector.
 #'
 #' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_all}, whose argument names
 #' are the ones an error message reports.
@@ -71,6 +79,7 @@ group_centroid_all <- function(expression_vectors, gene_to_family, n_families) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     gene_to_family <- .tox_as_integer_vector(gene_to_family, "gene_to_family")
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_family) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_family", 1L, length(gene_to_family), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 

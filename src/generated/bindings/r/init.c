@@ -63,8 +63,18 @@
 SEXP build_bst_index_call(SEXP);
 SEXP bst_range_query_call(SEXP, SEXP, SEXP);
 SEXP bst_range_query_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP bitmask_n_words_call(SEXP);
+SEXP bitmask_test_call(SEXP, SEXP, SEXP);
+SEXP bitmask_from_logical_call(SEXP, SEXP);
+SEXP bitmask_to_logical_call(SEXP, SEXP);
+SEXP bitmasks_from_logical_2D_call(SEXP, SEXP);
+SEXP bitmasks_to_logical_2D_call(SEXP, SEXP);
 SEXP build_kd_index_call(SEXP, SEXP);
 SEXP build_spherical_kd_call(SEXP, SEXP);
+SEXP kd_knn_query_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_mask_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_list_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_count_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP vicinity_vectors_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP vicinity_vectors_count_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
@@ -129,9 +139,9 @@ SEXP compute_family_scaling_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_rdi_call(SEXP, SEXP, SEXP);
 SEXP identify_outliers_call(SEXP, SEXP, SEXP, SEXP);
 SEXP detect_outliers_call(SEXP, SEXP, SEXP, SEXP);
+SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP normalize_unit_length_call(SEXP);
 SEXP normalization_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normalize_by_std_dev_call(SEXP, SEXP, SEXP);
@@ -145,9 +155,7 @@ SEXP detect_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP detect_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP mask_check_state_call(SEXP, SEXP);
-SEXP mask_chunk_count_call(SEXP);
-SEXP calc_work_arr_paralog_subsets_size_call(SEXP, SEXP, SEXP);
+SEXP calc_paralog_subsets_bitmasks_size_call(SEXP, SEXP, SEXP);
 SEXP omics_vector_RAP_projection_call(SEXP, SEXP, SEXP);
 SEXP omics_field_RAP_projection_call(SEXP, SEXP, SEXP);
 SEXP clock_hand_angle_between_vectors_call(SEXP, SEXP, SEXP);
@@ -186,8 +194,18 @@ static const R_CallMethodDef CallEntries[] = {
     {"build_bst_index_call", (DL_FUNC) &build_bst_index_call, 1},
     {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 3},
     {"bst_range_query_expert_call", (DL_FUNC) &bst_range_query_expert_call, 4},
+    {"bitmask_n_words_call", (DL_FUNC) &bitmask_n_words_call, 1},
+    {"bitmask_test_call", (DL_FUNC) &bitmask_test_call, 3},
+    {"bitmask_from_logical_call", (DL_FUNC) &bitmask_from_logical_call, 2},
+    {"bitmask_to_logical_call", (DL_FUNC) &bitmask_to_logical_call, 2},
+    {"bitmasks_from_logical_2D_call", (DL_FUNC) &bitmasks_from_logical_2D_call, 2},
+    {"bitmasks_to_logical_2D_call", (DL_FUNC) &bitmasks_to_logical_2D_call, 2},
     {"build_kd_index_call", (DL_FUNC) &build_kd_index_call, 2},
     {"build_spherical_kd_call", (DL_FUNC) &build_spherical_kd_call, 2},
+    {"kd_knn_query_call", (DL_FUNC) &kd_knn_query_call, 5},
+    {"kd_range_query_mask_call", (DL_FUNC) &kd_range_query_mask_call, 5},
+    {"kd_range_query_list_call", (DL_FUNC) &kd_range_query_list_call, 5},
+    {"kd_range_query_count_call", (DL_FUNC) &kd_range_query_count_call, 5},
     {"vicinity_vectors_call", (DL_FUNC) &vicinity_vectors_call, 5},
     {"vicinity_vectors_count_call", (DL_FUNC) &vicinity_vectors_count_call, 5},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},
@@ -252,9 +270,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_rdi_call", (DL_FUNC) &compute_rdi_call, 3},
     {"identify_outliers_call", (DL_FUNC) &identify_outliers_call, 4},
     {"detect_outliers_call", (DL_FUNC) &detect_outliers_call, 4},
+    {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 9},
     {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 10},
-    {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"normalize_unit_length_call", (DL_FUNC) &normalize_unit_length_call, 1},
     {"normalization_pipeline_call", (DL_FUNC) &normalization_pipeline_call, 5},
     {"normalize_by_std_dev_call", (DL_FUNC) &normalize_by_std_dev_call, 3},
@@ -268,9 +286,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"detect_subfunctionalization_call", (DL_FUNC) &detect_subfunctionalization_call, 8},
     {"filter_paralogs_by_pattern_dosage_effect_call", (DL_FUNC) &filter_paralogs_by_pattern_dosage_effect_call, 5},
     {"filter_paralogs_by_pattern_subfunctionalization_call", (DL_FUNC) &filter_paralogs_by_pattern_subfunctionalization_call, 5},
-    {"mask_check_state_call", (DL_FUNC) &mask_check_state_call, 2},
-    {"mask_chunk_count_call", (DL_FUNC) &mask_chunk_count_call, 1},
-    {"calc_work_arr_paralog_subsets_size_call", (DL_FUNC) &calc_work_arr_paralog_subsets_size_call, 3},
+    {"calc_paralog_subsets_bitmasks_size_call", (DL_FUNC) &calc_paralog_subsets_bitmasks_size_call, 3},
     {"omics_vector_RAP_projection_call", (DL_FUNC) &omics_vector_RAP_projection_call, 3},
     {"omics_field_RAP_projection_call", (DL_FUNC) &omics_field_RAP_projection_call, 3},
     {"clock_hand_angle_between_vectors_call", (DL_FUNC) &clock_hand_angle_between_vectors_call, 3},

@@ -51,7 +51,7 @@ cannot disagree — **never re-derive any of it in an emitter**:
 | `.sizes` / `.axis` | for an `EXTENT`: which argument and which 0-based axis it measures |
 | `.shape_arg` | for an array whose extents travel separately, the argument carrying them |
 | `.size_extents` | the extents to multiply for the element count |
-| `.source.roles` | the IR roles: the `is_*` predicates (`is_extent`, `is_shape_arg`, `is_mask_count`, `is_temporary`, `is_computed`, `is_derived`, `is_mode`) and the links between arguments (`extent_of`, `shape_of`, `shape_arg`, `mask_count_of`, `count_arg`, `result_size_arg`, `computed_from`) |
+| `.source.roles` | the IR roles: the `is_*` predicates (`is_extent`, `is_shape_arg`, `is_mask_count`, `is_temporary`, `is_bitmask`, `is_computed`, `is_derived`, `is_mode`) and the links between arguments (`extent_of`, `shape_of`, `shape_arg`, `mask_count_of`, `count_arg`, `result_size_arg`, `computed_from`) |
 | `CWrapper.validation_order` | the order in which pointers may safely be null-checked |
 | `.doc` | the parsed documentation, links and all |
 
@@ -95,7 +95,8 @@ step needs what the one before it settles.
 
 ```
 1  parameters      which C arguments the caller actually supplies (Section 4.3)
-2  coerce inputs   the input contract: kind, rank, exact conversion; raise naming the argument (Section 4.5)
+2  coerce inputs   the input contract: kind, rank, exact conversion; raise naming the argument (Section 4.5);
+                   then a negative size the caller passes (`extents.caller_passed_extents`)
 3  producers       call DM_OUTPUT_FROM(AUTO) producers (Section 4.3)
 4  derive extents  from the arrays, shape arguments and masks you were given (Section 4.3)
 5  cross-check     arguments sharing an extent must agree (Section 4.3)
@@ -129,7 +130,7 @@ think about for a new host.
 | **Array order** | C-order by default, so a rank-≥2 input may cost a **transposing copy** | already column-major — free | Fortran is column-major. Julia and MATLAB are too (free); Lua tables and NumPy defaults are not. This decides whether rank-≥2 inputs are cheap or copied |
 | **Rank 1** | the two orders coincide — no copy | same | never pay for a transpose at rank 1 |
 | **Contiguity** | `np.ascontiguousarray` / `asfortranarray` as the rank requires | R vectors are contiguous | a host with strided or lazy arrays must materialise before passing a pointer |
-| **Element count** | product of `size_extents` | same | C sees one flat block; the rank lives only in your wrapper |
+| **Element count** | product of `size_extents` | same, in `double` and refused past `R_XLEN_T_MAX` naming the array (`tox_count`): an `int` product wrapped into a buffer the callee wrote past (#215) | C sees one flat block; the rank lives only in your wrapper. Compute the count where it cannot wrap, and allocate a computed axis (`n_points - 1`) at least empty, as Fortran does (`extents.clamped`) |
 
 ### 4.2 Ownership and mutation
 
@@ -158,6 +159,10 @@ both *asked for* and *derived* is silently overwritten. There is a parity test f
 Two producer subtleties: match producer inputs to consumer arguments **by name** unless the
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);
 and if the producer refines a value you handed it — capping it, say — adopt what it returned.
+Pass `plan.binding_inputs`, not `plan.inputs`: the derived ones are the producer binding's own to
+work out. And raise the producer's error again in the consumer's words — its argument is the
+producer's, which your caller never wrote: re-decode its code at the position of the consumer
+argument that supplied it (none for a constant), as `_consumer_error` does in Python.
 In Python the producer import goes *inside* the function, because two modules may size each
 other's outputs and a module-level import would be circular.
 
@@ -178,7 +183,7 @@ other's outputs and a module-level import would be circular.
 | **character in** | a `c_char` buffer with the length as the **leading extent** | encode, then **blank-pad every slot to the full width**. The item size *is* the string length, measured in **bytes** (so UTF-8 is never truncated by the sizing). Pad the encoded bytes, not the host's string |
 | **character out** | the same buffer | **blank-fill it** (Section 4.6), and strip trailing blanks — not NULs — on the way back |
 | **mode argument** | an integer, but the caller passes a **string** | match it **whole** against `.mode` (case aside, trailing blanks dropped as for any string) and refuse anything else listing the modes, then lower-case it and let the C wrapper map it. Matching in the host is not optional: the buffer is only as wide as the longest mode, so an unmatched longer value would be cut down to a valid one |
-| **missing values** | nothing — Fortran has no `NA` | check where the check is free. R's shim checks integers (`INTEGER_NO_NA` first, ALTREP-aware so `1:n` is O(1)), logicals and characters while converting them, never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
+| **missing values** | nothing — Fortran has no `NA` | check where the check is free. R's shim checks integers (`INTEGER_NO_NA` first, ALTREP-aware so `1:n` is O(1)), logicals and characters while converting them, never doubles (`NA_real_` is a NaN payload Fortran already catches) -- and never bit-mask words (`roles.is_bitmask`), every int32 bit pattern of which is a word, `NA_integer_`'s included. A host with a distinct missing marker needs the same table, and the same exception if its marker is a valid int32; one without needs none of it |
 | **the input contract** | — | one table for every host (`../design/language-layers.md`, "what an argument accepts"): check the input's **kind** first by an allowlist, then accept only if converting to the Fortran type and back is exact; refuse a string that is not valid Unicode, holds a NUL or is longer than a declared length; never flatten a wrong rank. Write it once, in a module or file every wrapper calls (`_contract.py`, `tox_validate.R`), not per argument |
 | **complex** | `c_double_complex`: two doubles, real part first | an array is the host's complex array (numpy's `complex128`, R's complex vector). A single value needs a box **16 bytes** wide: `ctypes` has no complex type, so Python passes `(c_double * 2)` -- allocated for an output, filled from the checked value for an input or an `intent(inout)` -- and returns `complex(z[0], z[1])`. A one-`c_double` box lost an output's imaginary part and let Fortran write 8 bytes past it, and read an input's from past it (#221 WP8) |
 | **kinds with no mapping** | — | already an error upstream. Never guess a mapping: a wrong guess compiles and lies |
@@ -189,6 +194,7 @@ other's outputs and a module-level import would be circular.
 |---|---|
 | **numeric output** | allocate **uninitialised** (`np.empty`). Fortran fills it; zeroing is an O(n) write of data about to be overwritten, and where Fortran fills only part, zeros *look like results* while garbage looks like garbage |
 | **character output** | allocate **blank-filled**. Fortran fills a character buffer only partially, and an uninitialised byte past the written data is read back *as part of a string*. Blanks rather than nulls because the Fortran side is now a `character(len=n)` pointer view of this very buffer, so what it writes and what it leaves are both read with Fortran's own convention: `trim`, `len_trim` and comparison all work on blanks. Nothing scans for a NUL any more, so a zero-filled buffer would come back with the padding attached to the string |
+| **on an error** | the outputs are discarded, so do not pay for converting them back: R's shim converts a buffered one only when the call succeeded (`tox_failed`, a status counting as success); Python's numpy arrays need nothing |
 | **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements along the **last** axis, where *n* is the argument named: the first *n* columns of a matrix, every other axis whole |
 | **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework. Give an array of strings its type explicitly (`dtype=str`): numpy makes an empty list float64, so an array of no strings came back as numbers |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |

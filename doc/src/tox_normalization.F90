@@ -18,10 +18,12 @@ module tox_normalization
     use tox_normalization_impl, only: normalize_by_std_dev_impl, normalize_unit_length_impl, quantile_normalization_impl, root_mean_sq_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
+    use tox_loess, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
-    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_arg_pos
+    use tox_errors, only: set_err_once, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -71,7 +73,15 @@ contains
             n_dims = n_dims,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalize_unit_length
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalization_pipeline_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalization_pipeline_expert]] to prepare it yourself.
@@ -152,8 +162,18 @@ contains
             max_neighborhood_size = n_genes,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                call set_err_arg_pos(ierr, 1_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_expr_copy(n_replicates, n_genes))
         M_ALLOCATE(tmp_loess_y(n_genes))
         M_ALLOCATE(tmp_indices_used(n_genes))
@@ -195,7 +215,21 @@ contains
             use_quantile = use_quantile,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:6_int32)
+                ! the same position here
+            case (22_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (23_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (24_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalization_pipeline
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalization_pipeline_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalization_pipeline]] does both.
@@ -236,7 +270,7 @@ contains
             !! Number of tissues
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -245,7 +279,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -344,7 +378,15 @@ contains
             use_quantile = use_quantile,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:24_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalization_pipeline_expert
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalize_by_std_dev_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalize_by_std_dev_expert]] to prepare it yourself.
@@ -415,8 +457,18 @@ contains
             max_neighborhood_size = n_genes,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                call set_err_arg_pos(ierr, 1_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_loess_x(n_genes))
         M_ALLOCATE(tmp_loess_y(n_genes))
         M_ALLOCATE(tmp_indices_used(n_genes))
@@ -455,7 +507,19 @@ contains
             degree = degree,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (20_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (21_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalize_by_std_dev
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_by_std_dev_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalize_by_std_dev]] does both.
@@ -496,7 +560,7 @@ contains
             !! Number of replicates per gene
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -505,7 +569,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -591,7 +655,15 @@ contains
             degree = degree,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:21_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalize_by_std_dev_expert
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
@@ -782,7 +854,15 @@ contains
             transformed_expr = transformed_expr,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine log2_transformation
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):calc_tiss_avg_impl]].
@@ -833,6 +913,11 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !|
+    !| That subtraction is a `log2 fold change` only because `expr` is already on a
+    !| `log2` scale. Passing tissue averages that have not been log-transformed yields a
+    !| plain difference of expression levels instead, which is not a fold change.
+    !|
     !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
     !| reported as ERR_NAN_INF instead of being written into the result as Inf.
     pure subroutine calc_fchange(&
@@ -860,7 +945,9 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_tissues`.
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
-            !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+            !! Gene Expression matrix on a `log2` scale, i.e. the result of
+            !! [[tox_normalization(module):normalization_pipeline(subroutine)]] or of
+            !! [[tox_normalization(module):log2_transformation(subroutine)]]
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
         integer(int32), intent(out) :: ierr
@@ -887,7 +974,15 @@ contains
             fold_changes = fold_changes,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:7_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine calc_fchange
 
 end module tox_normalization

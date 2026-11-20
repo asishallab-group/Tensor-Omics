@@ -33,26 +33,26 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
 #'
 #' @param zip_filename a string. Zip filename
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param gene_ids a character vector. Gene ids array, will be saved if provided
+#' @param gene_ids a character vector. Gene ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #'   A factor is taken by its labels.
 #' @param gene_ids_file a string. Name of the gene ids file
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param expression a numeric matrix. Expression vectors array, will be saved if provided
+#' @param expression a numeric matrix. Expression vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param expression_file a string. Name of the expression file
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param gene_to_family a integer vector. Gene to family mapping array, will be saved if provided
+#' @param gene_to_family a integer vector. Gene to family mapping array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param gene_to_family_file a string. Name of the gene to family mapping file
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param family_ids a character vector. Family ids array, will be saved if provided
+#' @param family_ids a character vector. Family ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #'   A factor is taken by its labels.
 #' @param family_ids_file a string. Name of the family ids file
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param family_centroids a numeric matrix. Family centroids array, will be saved if provided
+#' @param family_centroids a numeric matrix. Family centroids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param family_centroids_file a string. Name of the family centroids file
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
-#' @param shift_vectors a numeric matrix. Shift vectors array, will be saved if provided
+#' @param shift_vectors a numeric matrix. Shift vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param shift_vectors_file a string. Name of the shift vectors file
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return invisibly `NULL`; called for its effect.
@@ -157,7 +157,8 @@ get_tox_data_dims <- function(zip_filename) {
 #' @export
 read_tox_data_into <- function(zip_filename) {
     zip_filename <- .tox_as_string(zip_filename, "zip_filename")
-    .get_tox_data_dims_result <- get_tox_data_dims(zip_filename = zip_filename)
+    .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr")
+    .get_tox_data_dims_result <- tryCatch(get_tox_data_dims(zip_filename = zip_filename), tox_error = function(e) .tox_consumer_error(e, c(zip_filename = 1L), .arguments))
     n_gene_ids <- .get_tox_data_dims_result$n_gene_ids
     gene_id_len <- .get_tox_data_dims_result$gene_id_len
     n_expression_rows <- .get_tox_data_dims_result$n_expression_rows
@@ -171,7 +172,6 @@ read_tox_data_into <- function(zip_filename) {
     n_shift_vectors_cols <- .get_tox_data_dims_result$n_shift_vectors_cols
 
     .result <- .Call("read_tox_data_into_call", zip_filename, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols)
-    .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(

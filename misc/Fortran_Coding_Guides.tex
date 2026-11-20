@@ -94,8 +94,11 @@ On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use
 
 \textbf{Intel Fortran Compiler} --- with maximum performance flags:
 \begin{lstlisting}[language=bash]
-./build.sh --max-performance FC=ifx
+./build.sh --max-performance --compiler=ifx
 \end{lstlisting}
+
+\textbf{NVIDIA nvfortran} (\texttt{--compiler=nvfortran}) is supported for local builds but not
+run in CI; the \emph{Build options} section of \texttt{README.md} says what differs there.
 
 \subsection{Fortran Standard Reference}
 
@@ -112,7 +115,7 @@ Fortran source files in this project use \emph{two} extensions with a precise me
 
 \begin{itemize}
   \item \textbf{\texttt{.F90}} (uppercase F): The file is passed through the C preprocessor before compilation.
-    Use this extension whenever the file contains \texttt{\#include}, \texttt{\#define}, or any other preprocessor directive (e.g., \texttt{\#include "macros.h"}).
+    Use this extension whenever the file contains \texttt{\#include}, \texttt{\#define}, or any other preprocessor directive (e.g., \texttt{\#include <src/macros.h>}).
   \item \textbf{\texttt{.f90}} (lowercase f): Plain Fortran, \emph{no} preprocessor. Use this for files that contain no macros or includes.
 \end{itemize}
 
@@ -168,9 +171,13 @@ over genes costs a quarter as much --- and it is the kind C, Python and R alread
 mask crosses the boundary with no copy at all. Before this, every generated C wrapper declared
 an automatic array of default \texttt{logical} and converted elementwise on the way in and out.
 
-\textbf{Two exceptions, both because there is no storage to save.} A \texttt{logical,
-parameter} is a named constant. A \texttt{logical function} result is a scalar, and a condition
-accepts any logical kind, so nothing forces it either way. Neither is worth the noise.
+\textbf{Three exceptions.} Two because there is no storage to save: a \texttt{logical,
+parameter} is a named constant, and a \texttt{logical function} result is a scalar, which a
+condition accepts in any logical kind, so nothing forces it either way. Neither is worth the
+noise. The third is a prologue's \texttt{handled} argument (\texttt{DM\_PROLOGUE}): the generated
+wrapper declares its own flag as a default \texttt{logical} and passes that, so the prologue
+declares \texttt{handled} as a default \texttt{logical} too, and the generator refuses any other
+kind.
 
 \textbf{A literal needs the kind too.} \texttt{.true.} is default kind, and argument
 association does not convert kinds, so passing it to a \texttt{logical(c\_bool)} dummy is a
@@ -232,7 +239,7 @@ Pattern & Meaning & Example \\
 \texttt{\_idx} & Calculated / derived index & \texttt{family\_idx}, \texttt{out\_idx} \\
 \texttt{tmp\_} & Work array (not input or output) & \texttt{tmp\_perm}, \texttt{tmp\_loess\_y} \\
 \texttt{\_perm} & Permutation vector for \texttt{<name>} & \texttt{sort\_perm}, \texttt{gene\_perm} \\
-\texttt{\_impl} & Core implementation subroutine, and the module holding it & \texttt{k\_means\_assign\_cluster\_impl} \\
+\texttt{\_impl} & Core implementation subroutine, and the module holding it & \texttt{mean\_vector\_impl} \\
 \texttt{\_c} & C-interoperable wrapper (generated) & \texttt{compute\_shift\_vector\_field\_c} \\
 \texttt{\_expert} & Full-control wrapper with all work arrays exposed (generated) & \texttt{compute\_family\_scaling\_expert} \\
 \texttt{ierr} & Error code argument (always this name) & \texttt{integer(int32), intent(out) :: ierr} \\
@@ -253,13 +260,16 @@ family_idx = gene_to_fam(i_gene)
 
 \subsection{Boolean / Selection Arrays}
 
-Use the \texttt{\_mask} or \texttt{\_selection} suffix for logical index arrays. Every logical
+Use the \texttt{\_mask} or \texttt{\_selection\_mask} suffix for logical index arrays; the
+generator then derives the count named \texttt{n\_selected\_<x>} from the mask, so a Python or R
+caller passes the mask alone (\texttt{axes\_selection\_mask} is counted by
+\texttt{n\_selected\_axes}). Every logical
 that occupies storage is declared \texttt{logical(c\_bool)} --- one byte rather than four, and
 the kind the bindings already use, so a mask crosses to C, Python and R without being copied:
 
 \begin{lstlisting}[language=Fortran]
 logical(c_bool), intent(in) :: vecs_selection_mask(n_vecs)
-logical(c_bool), intent(in) :: axes_selection(n_axes)
+logical(c_bool), intent(in) :: axes_selection_mask(n_axes)
 \end{lstlisting}
 
 % =============================================================================
@@ -270,8 +280,8 @@ You write \textbf{one} procedure per computation: the implementation. The code g
 and writes everything around it — the validating and allocating entry points, the \texttt{bind(C)}
 wrapper, the Python and R bindings, their documentation, and the VS~Code snippets. None of those
 may be edited by hand; a change belongs in the implementation or in its annotations. This section
-is the whole contract. \texttt{codegen\_guide.md} in the repository root works through it case by
-case, with an example for each.
+summarises the contract; \texttt{codegen\_guide.md} in the repository root states it in full, case
+by case, with an example for each, and lists everything the generator refuses.
 
 \subsection{The Implementation}
 
@@ -287,19 +297,27 @@ case, with an example for each.
         Declare it \texttt{pure} unless the algorithm genuinely cannot be. Purity is derived, not
         declared, for everything above it.
   \item An argument named \texttt{tmp\_<name>} is a \textbf{work array}: the allocating entry point
-        allocates it and drops it from the signature the caller sees.
-  \item An argument named \texttt{<base>\_perm} is a \textbf{sorting permutation} for \texttt{<base>}:
-        the allocating entry point initialises and heapsorts it for you.
+        allocates it and drops it from the signature the caller sees. Declare it
+        \texttt{intent(out)}. \texttt{intent(inout)} is accepted too, but an \texttt{intent(inout)}
+        real is an input, which the expert entry point checks for NaN and infinity;
+        \texttt{intent(in)} is refused.
+  \item An argument named \texttt{<base>\_perm}, where \texttt{<base>} is an argument too, is a
+        \textbf{sorting permutation} for \texttt{<base>}: the allocating entry point initialises
+        and heapsorts it for you. Not when it is a \texttt{tmp\_} work array, which is the
+        implementation's own scratch, and not when a \texttt{DM\_PROLOGUE} builds it as
+        \texttt{intent(out)}. An \texttt{intent(out)} \texttt{<base>\_perm} is refused: the
+        entry point builds it itself and would throw the result away.
 \end{itemize}
 
 \subsection{Documentation Macros (\texttt{DM\_} prefix)}
 
 Every constraint the generated layers need is written as a \texttt{DM\_} macro in the argument's own
-\texttt{!!} comment. They are documentation macros: they expand to the English sentence that ends up
+\texttt{!!} comment --- all but \texttt{DM\_PROLOGUE}, which belongs to the procedure and goes in its
+\texttt{!>}/\texttt{!|} block. They are documentation macros: they expand to the English sentence that ends up
 in the Fortran, C, Python and R documentation, \emph{and} the generator reads them to emit the
 matching validation. One statement, one place, no way for the check and the prose to disagree.
 
-\begin{tabular}{ll}
+\begin{tabular}{lp{8.6cm}}
 \toprule
 Macro & Purpose \\
 \midrule
@@ -308,11 +326,16 @@ Macro & Purpose \\
 \texttt{DM\_SENTINEL(EXPR)} & One extra value accepted outside the bounds \\
 \texttt{DM\_ALLOW\_NAN} & Permit NaN (rejected by default for every real argument) \\
 \texttt{DM\_ALLOW\_INFINITE} & Permit $\pm\infty$ (rejected by default for every real argument) \\
-\texttt{DM\_DEFAULT(VAL)} & Default for an \texttt{optional} argument \\
+\texttt{DM\_EQUALS(EXPR)} & This integer must equal \texttt{EXPR}; on an extent, on top of its dimension check \\
+\texttt{DM\_DEFAULT(VAL)} & Default value (optional scalars only) \\
 \texttt{DM\_RESULT\_SIZE\_IS(ARG)} & Only the first \texttt{ARG} elements of this output are filled \\
-\texttt{DM\_OUTPUT\_FROM(...)} & Compute this argument by calling a sizing routine \\
+\begin{tabular}[t]{@{}l@{}}\texttt{DM\_OUTPUT\_FROM(OUT,}\\\quad\texttt{PROC, MOD, MODE)}\end{tabular}
+  & An \texttt{intent(in)} value: output \texttt{OUT} of the published \texttt{PROC} in
+\texttt{MOD} --- a generated \texttt{foo} or an \texttt{M\_EXPORT\_C} routine, never \texttt{foo\_impl}
+or \texttt{foo\_expert}. As \texttt{MODE}, \texttt{AUTO} calls it for the caller and \texttt{JUST\_INFO}
+only documents it (\texttt{codegen\_guide.md}, 5.9) \\
 \texttt{DM\_REQUIRED\_IF\_MODE(...)} & This optional argument is required in one mode \\
-\texttt{DM\_PROLOGUE(PROC, MOD)} & Run \texttt{PROC} before the implementation, and let it short-circuit \\
+\texttt{DM\_PROLOGUE(PROC, MOD)} & Run \texttt{PROC} before the implementation, and let it short-circuit; on the procedure, not on an argument \\
 \bottomrule
 \end{tabular}
 
@@ -321,25 +344,30 @@ Macro & Purpose \\
 infinity unless it opts out. A bound may be an expression, including another argument
 (\texttt{DM\_MAX(n\_array)}) or an exclusive bound (\texttt{DM\_MIN(above(0.0\_real64))}).
 
+\noindent From \texttt{src/tox/data\_integration/tox\_data\_integration\_preprocessing\_impl.F90}:
+
 \begin{lstlisting}[language=Fortran]
-pure subroutine quantile_normalization_impl(expr, n_genes, n_replicates, &
-    normalized_expr, rank_means, tmp_col, tmp_perm)
-  integer(int32), intent(in) :: n_genes
-    !! Number of genes (rows)
-  integer(int32), intent(in) :: n_replicates
-    !! Number of replicates per gene
-  real(real64), intent(in)  :: expr(n_replicates, n_genes)
-    !! Gene expression matrix
-    !! DM_ALLOW_NAN
-    !! DM_ALLOW_INFINITE
-  real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
-    !! Normalized `expr`
-  real(real64), intent(in)  :: rank_means(n_replicates)
-    !! The mean of each rank across tissues
-  real(real64), intent(out) :: tmp_col(n_genes)      ! work array
-  integer(int32), intent(out) :: tmp_perm(n_genes)   ! permutation work array
-  ! ... pure implementation: no ierr, no validation, no allocation ...
-end subroutine
+!> summary: Turn a sorted pool of per-gene mean expression values into reference points
+!| AUTHOR_FRANZ_ERIC_SILL
+!| This takes the pool already built; `pool_study_means` pools the means of two studies
+!| first, if that is what is at hand.
+pure subroutine pool_means_impl(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
+    integer(int32), intent(in), target :: pool_size
+        !! Number of means in the pool, usually `n_genes_S1 + n_genes_S2`
+    integer(int32), intent(in) :: n_points
+        !! Number of reference points to define
+    integer(int32), intent(out) :: n_pool
+        !! Total number of included (non-NaN) pooled mean-expression values
+    real(real64), intent(in) :: pooled_means(pool_size)
+        !! Pooled means
+        !! DM_ALLOW_NAN
+    integer(int32), intent(in) :: pooled_means_perm(pool_size)
+        !! Sorting permutation for `pooled_means`
+    real(real64), intent(out) :: x_star(n_points)
+        !! Mean-expression reference points
+
+    ! ... the implementation: no ierr, no validation, no allocation ...
+end subroutine pool_means_impl
 \end{lstlisting}
 
 \subsection{What Comes Out}
@@ -347,7 +375,8 @@ end subroutine
 Two Fortran entry points, and the bindings around them:
 
 \begin{itemize}
-  \item \texttt{foo} — validates, allocates the work arrays, sorts the permutations, and calls the
+  \item \texttt{foo} — validates, calls the \texttt{DM\_OUTPUT\_FROM} producers, allocates the work
+        arrays, seeds and sorts the permutations, runs the \texttt{DM\_PROLOGUE}, and calls the
         implementation. \textbf{The entry point a caller reaches for first}, and it takes
         \texttt{ierr} last, after the optional arguments.
   \item \texttt{foo\_expert} — validates and calls the implementation with what you supply,
@@ -457,13 +486,19 @@ call validate_in_range_real(span, ierr, min=0.0_real64, max=1.0_real64, arg_pos=
 call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
 \end{lstlisting}
 
-\texttt{arg\_pos} must match the argument's position in the public (non-\texttt{\_impl}) subroutine
-that callers actually invoke, never its position in whichever internal routine happens to run the
-check — Python and R index their argument-name tuple with it.
+\texttt{arg\_pos} numbers the dummy list of the procedure that sets it, and Python and R index
+their argument-name tuple with it. In a hand-written \texttt{M\_EXPORT\_C} procedure that list is
+the public one. In an \texttt{\_impl} it is the implementation's own list, and every generated
+wrapper translates the position into its own (\texttt{codegen\_guide.md}, 5.14). A position that a
+helper you call sets numbers the \emph{helper's} list: translate it at that call with
+\texttt{map\_err\_arg\_pos} or \texttt{set\_err\_arg\_pos}, or drop it with
+\texttt{clear\_err\_arg\_pos}. Blame only inputs the caller provides: an error about an output, a
+work array or a computed size carries no position.
 
 When the valid range of an argument is itself defined by \texttt{CM\_} macros
 (Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the
-validated range can never disagree.
+validated range can never disagree. That is for a real range; the accepted values of a mode are
+its table, not a range.
 
 \subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
 
@@ -546,7 +581,7 @@ Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external
 Fortran does not support default values in argument lists. Use the \texttt{M\_DEFAULT\_VAL} macro to assign defaults after a \texttt{PRESENT} check:
 
 \begin{lstlisting}[language=Fortran]
-#include "macros.h"
+#include <src/macros.h>
 subroutine my_routine(data, n, span, degree)
   real(real64), intent(in), optional :: span
   integer(int32), intent(in), optional :: degree
@@ -556,8 +591,6 @@ subroutine my_routine(data, n, span, degree)
   M_DEFAULT_VAL(span, actual_span, 0.7_real64)
   M_DEFAULT_VAL(degree, actual_degree, 2_int32)
 \end{lstlisting}
-
-\textbf{Never} use optional arguments in C wrappers; \texttt{bind(C)} is incompatible with them.
 
 % =============================================================================
 \section{Parallelisation: \texttt{do concurrent}}
@@ -621,7 +654,7 @@ end do
 
 \subsection{No Allocations in Core Routines}
 
-\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point, and the generator enforces this. This rule:
+\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point. A local or a dummy declared \texttt{allocatable} is refused. The generator checks this only on what FORD shows it: it never sees a \texttt{private} procedure, and in a module that defaults to \texttt{private} it sees no locals either. Keep the rule by hand where it cannot look. This rule:
 \begin{itemize}
   \item Keeps core routines \texttt{pure} and deterministic.
   \item Allows callers to reuse pre-allocated work arrays across multiple calls, avoiding repeated \texttt{malloc}/\texttt{free} cycles over large datasets.
@@ -635,10 +668,10 @@ Avoid creating copies of input arrays. For large omics datasets (tens of thousan
 
 A logical mask is a \texttt{logical} array with the same shape as the data it describes: \texttt{.true.} marks an element to include, \texttt{.false.} marks it to exclude. Passing a mask alongside the full array lets a routine include or exclude elements in place — with a plain \texttt{if (mask(...))} check — instead of first allocating a smaller array and copying the kept elements into it. This saves both the allocation and the copy, which matters at big scale.
 
-Prefer adding a mask argument over asking the caller to pre-filter their data into a separate array. In \texttt{tox\_relative\_axis\_plane\_tools.F90}, \texttt{omics\_vector\_RAP\_projection} takes the full \texttt{vecs} matrix together with a \texttt{vecs\_selection\_mask}/\texttt{axes\_selection\_mask}, and only writes the selected entries into the (exactly-sized) output — the input matrix itself is never copied or filtered:
+Prefer adding a mask argument over asking the caller to pre-filter their data into a separate array. In \texttt{tox\_relative\_axis\_plane\_tools\_impl.F90}, \texttt{omics\_vector\_RAP\_projection\_impl} takes the full \texttt{vecs} matrix together with a \texttt{vecs\_selection\_mask}/\texttt{axes\_selection\_mask}, and only writes the selected entries into the (exactly-sized) output — the input matrix itself is never copied or filtered:
 
 \begin{lstlisting}[language=Fortran]
-logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+logical(c_bool), dimension(n_vecs), intent(in) :: vecs_selection_mask
     !! `.true.` for vectors where projection is to be computed
 ...
 do i_vec = 1, n_vecs
@@ -652,7 +685,7 @@ do i_vec = 1, n_vecs
 Similarly, in \texttt{tox\_data\_integration\_jsd\_impl.F90}, an optional \texttt{neighbor\_mask} lets \texttt{build\_residual\_histograms\_impl} skip specific neighbors while iterating the original, unfiltered array:
 
 \begin{lstlisting}[language=Fortran]
-logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
+logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
     !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 ...
 filter_neighbors = present(neighbor_mask)
@@ -681,12 +714,14 @@ end do
 
 Use masks wherever a routine only needs to act on part of its input: they are cheaper than copying, and they keep the calling convention uniform (same array, same shape, one extra \texttt{logical} argument) whether or not filtering is requested.
 
+\paragraph{Bit masks.} A mask that an implementation builds and combines itself -- the members of an ensemble, the candidates of a search, one mask per seed or subset -- is held as a bit mask from \texttt{f42\_bit\_masks\_impl} instead: 32 flags per \texttt{integer(int32)} word, an eighth of the memory of \texttt{logical(c\_bool)}, and whole-mask operations such as \texttt{bitmask\_and} or the fused \texttt{bitmask\_and\_count} handle 32 flags at once. A mask the user builds stays a \texttt{logical(c\_bool)} array, because that is what numpy and R build; convert at the edge with \texttt{bitmask\_from\_logical\_impl}. A bit mask TOX returns and takes back, as the paralog analysis does, crosses as an \texttt{int32} array (from numpy, view \texttt{uint32} words with \texttt{.view(np.int32)}); name such an argument \texttt{bitmask} or \texttt{bitmasks}, or end its name in \texttt{\_bitmask} / \texttt{\_bitmasks}, so that R passes every word, including the one with only bit 31 set, which R prints as \texttt{NA} (\texttt{codegen\_guide.md}, Section 5.18). Size a \texttt{tmp\_} bit mask with \texttt{M\_BIT\_MASK\_N\_WORDS(n)}. The words are plain arrays, not a derived type -- \texttt{misc/bench/bit\_masks/} records why -- so a column \texttt{bitmasks(:, i\_mask)} of an \texttt{(n\_words, n\_masks)} array is a mask of its own and passes to any procedure without a copy. In hot loops, work on whole words or step from one set flag to the next with \texttt{bitmask\_next}; where a loop must test single flags, the \texttt{M\_BIT\_MASK\_TEST} macro does it inline, since a procedure call per flag costs more than the flag. It indexes its first argument, so that must be an array name, not a section such as \texttt{bitmasks(:, i\_mask)}: pass the column to a procedure, or test it with \texttt{bitmask\_test\_impl}. A parallel loop writes a mask word by word, never flag by flag: two iterations setting flags in the same word race.
+
 \subsection{Work Arrays (\texttt{tmp\_})}
 
-Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention.
+Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention and are \texttt{intent(out)}.
 
 \begin{lstlisting}[language=Fortran]
-! tmp_perm holds the reusable sort permutation
+! scratch: a tmp_ permutation is the implementation's own, never seeded or sorted for it
 integer(int32), intent(out) :: tmp_perm(n_genes)
 real(real64),   intent(out) :: tmp_loess_y(n_genes)
 \end{lstlisting}
@@ -720,7 +755,9 @@ All source files that use macros must start with:
 instead. It expands to \texttt{implicit none (type, external)}, the F2018 form, which additionally
 requires an explicit interface for every external procedure — so calling one that the compiler has
 never seen becomes a compile error at the call site rather than a link-time surprise or, worse, a
-silently wrong ABI.
+silently wrong ABI. Under nvfortran, which accepts no specifier list, it is the plain
+\texttt{implicit none}; the external-procedure check then comes from the gfortran and ifx builds,
+which CI runs.
 
 \subsection{Available Macros}
 
@@ -728,7 +765,7 @@ silently wrong ABI.
 \toprule
 Macro & Purpose \\
 \midrule
-\texttt{M\_IMPLICIT\_NONE} & \texttt{implicit none (type, external)}; use it in every module \\
+\texttt{M\_IMPLICIT\_NONE} & \texttt{implicit none (type, external)}, plain under nvfortran \\
 \texttt{M\_EXPORT\_C} & Exports a hand-written procedure; see \texttt{codegen\_guide.md}, Part II \\
 \texttt{M\_DEFAULT\_VAL(OPT,LOC,DEF)} & Assigns \texttt{OPT} to \texttt{LOC} if present, else assigns \texttt{DEF} \\
 \texttt{M\_ALLOCATE(DECL)} & Allocates \texttt{DECL}; sets \texttt{ERR\_ALLOC\_FAIL} and returns on failure \\
@@ -738,6 +775,11 @@ Macro & Purpose \\
 \texttt{M\_POS\_INF} & IEEE positive infinity (double) \\
 \texttt{M\_GENE\_TO\_FAM\_SENTINEL} & The \texttt{gene\_to\_fam} value of a gene in no family \\
 \texttt{M\_GENE\_TO\_FAM\_DOC(ARG)} & The standard doc sentence for a \texttt{gene\_to\_fam} argument \\
+\texttt{M\_BIT\_MASK\_WORD\_BITS} & Flags per bit-mask word: \texttt{32\_int32} \\
+\texttt{M\_BIT\_MASK\_N\_WORDS(N)} & Words a bit mask of \texttt{N} flags takes; sizes a \texttt{tmp\_} bit mask \\
+\texttt{M\_BIT\_MASK\_WORD(I)} & The word that holds flag \texttt{I} \\
+\texttt{M\_BIT\_MASK\_BIT(I)} & The bit of that word that is flag \texttt{I} \\
+\texttt{M\_BIT\_MASK\_TEST(MASK, I)} & Whether flag \texttt{I} of the array \texttt{MASK} (not a section) is set \\
 \bottomrule
 \end{tabular}
 
@@ -758,23 +800,31 @@ integer(int32), parameter :: METHOD_WEIGHTED = CM_METHOD_WEIGHTED
 integer(int32), parameter :: METHOD_WARD     = CM_METHOD_WARD
 \end{lstlisting}
 
-\paragraph{Keeping FORD documentation in sync.} FORD does not resolve Fortran \texttt{parameter} values, but it does run the C preprocessor before generating docs, so a \texttt{CM\_} macro referenced inside a doc comment renders as-is. This lets a mode/method table stay anchored to the code instead of to a literal that can drift:
+\paragraph{A mode or method table links the parameters.} The value column of a mode/method table
+names each parameter with a FORD link, so the table stays anchored to the code instead of to a
+literal that can drift, and the generator reads it as the accepted set: Python and R pass the mode
+as its name (\texttt{"average"}), and the generated wrapper checks membership.
+
+\noindent From \texttt{src/tox/tox\_clustering\_impl.F90}:
 
 \begin{lstlisting}[language=Fortran]
-!! |      Method      |          Value         |
-!! |------------------|------------------------|
-!! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
-!! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
-!! |      Ward        |   CM_METHOD_WARD       |
+!! | Method | Value |
+!! |--------|-------|
+!! | Average / UPGMA | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]] |
+!! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
+!! | Ward | [[tox_clustering_impl(module):METHOD_WARD(variable)]] |
 \end{lstlisting}
 
-\paragraph{Use the macro in validation too.} When a \texttt{CM\_} macro defines the valid values or bounds of an argument, pass the macro itself to the corresponding \texttt{validate\_*} call instead of repeating the literal:
+A bare \texttt{CM\_METHOD\_AVERAGE} in that column is refused: the row does not name a parameter.
+Do not bound a mode with \texttt{CM\_} macros or \texttt{DM\_MIN}/\texttt{DM\_MAX} either: its
+accepted set is its table, which need not be contiguous, and a hand-written range goes stale the
+moment a mode is added.
 
-\begin{lstlisting}[language=Fortran]
-call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
-\end{lstlisting}
-
-This keeps the default/bound, the validation, and the documentation all traceable to one definition — if a mode is added or reordered, only the \texttt{\#define} block needs to change.
+\paragraph{Use the macro in a bound too.} When a \texttt{CM\_} macro defines a real range or a
+default, write the macro itself into the \texttt{DM\_} marker instead of repeating the literal.
+\texttt{tox\_loess\_impl} bounds its workspace sizes that way, with
+\texttt{DM\_MIN(CM\_MIN\_INT\_WORKSPACE\_SIZE)}, which keeps the default or bound, the validation,
+and the documentation all traceable to one definition.
 
 % =============================================================================
 \section{Derived Types (\texttt{type}): Use with Care}
@@ -819,8 +869,10 @@ use f42_sort_impl, only: sort_array
 
 \textbf{Any module that names a C kind must \texttt{use f42\_safeguard}} --- any
 \texttt{c\_bool}, \texttt{c\_int}, \texttt{c\_char} or the rest, whether or not the module has a
-\texttt{bind(C)} interface of its own. The code generator enforces this; a module that names one
-without the \texttt{use} is a build error.
+\texttt{bind(C)} interface of its own. The code generator enforces this for C kinds on the arguments
+of procedures FORD shows: a module that names one there without the \texttt{use} is a build error.
+A C kind on a \texttt{private} procedure's arguments, a local or a module variable needs the
+\texttt{use} just as much, but the generator does not see it.
 
 \begin{lstlisting}[language=Fortran]
 module tox_thing_impl
@@ -883,37 +935,52 @@ because on this platform every kind is present and correct.
 
 \subsection{Module and Subroutine Template}
 
+\noindent From \texttt{src/tox/tox\_gene\_centroids\_impl.F90}:
+
 \begin{lstlisting}[language=Fortran]
-!> Module for computing expression centroids of gene families.
-!| Contains the core scientific kernel. C and language wrappers are defined
-!| outside the module for compatibility.
-module tox_gene_centroids
-  use, intrinsic :: iso_fortran_env, only: real64, int32
-  M_IMPLICIT_NONE
+#include <src/macros.h>
+
+!> Expression centroids of gene families.
+!|
+!| `mean_vector` is the centroid of a set of expression vectors. `group_centroid_orthologs`
+!| and `group_centroid_all` take the centroid of a family: over its orthologs only, or over
+!| every gene in it -- two routines rather than one taking a flag, so which set a result is
+!| over is visible at the call site.
+module tox_gene_centroids_impl
+    use f42_safeguard
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
+    M_IMPLICIT_NONE
+
+    private
+    public :: mean_vector_impl, group_centroid_impl
+    ! ... the module's parameters ...
+
 contains
 
-  !> Computes the element-wise mean for a given set of gene expression vectors.
-  !| Returns a single centroid vector of length n_axes.
-  pure subroutine mean_vector(expression_vectors, n_axes, n_genes, &
-      gene_indices, n_selected_genes, centroid, ierr)
-    integer(int32), intent(in) :: n_axes
-      !! Number of axes (dimensions)
-    integer(int32), intent(in) :: n_genes
-      !! Total number of genes in the expression matrix
-    real(real64), intent(in) :: expression_vectors(n_axes, n_genes)
-      !! Gene expression matrix (n_axes x n_genes)
-    integer(int32), intent(in) :: n_selected_genes
-      !! Number of genes to include in the centroid
-    integer(int32), intent(in) :: gene_indices(n_selected_genes)
-      !! Column indices of selected genes in expression_vectors
-    real(real64), intent(out) :: centroid(n_axes)
-      !! Output centroid vector (n_axes)
-    integer(int32), intent(out) :: ierr
-      !! Error code: 0 = success
-    ! ... implementation ...
-  end subroutine mean_vector
+    !> summary: Computes the element-wise mean of the selected gene vectors.
+    !| AUTHOR_LUKA_FAENSEN
+    !| A selection without genes gives the zero vector.
+    pure subroutine mean_vector_impl(expression_vectors, n_axes, n_genes, genes_selection_mask, n_selected_genes, centroid)
+        integer(int32), intent(in) :: n_axes
+            !! Number of axes (tissues/dimensions).
+        integer(int32), intent(in) :: n_genes
+            !! Total number of genes in the input matrix.
+        real(real64), dimension(n_axes, n_genes), intent(in) :: expression_vectors
+            !! The input matrix of all gene expression vectors (n_axes x n_genes).
+        logical(c_bool), dimension(n_genes), intent(in) :: genes_selection_mask
+            !! `.true.` for the genes (columns of `expression_vectors`) to average
+        integer(int32), intent(in) :: n_selected_genes
+            !! count of `.true.` values in `genes_selection_mask`
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_axes), intent(out) :: centroid
+            !! The output vector representing the computed centroid.
 
-end module tox_gene_centroids
+        ! ... implementation ...
+    end subroutine mean_vector_impl
+
+    ! ... group_centroid_impl ...
+end module tox_gene_centroids_impl
 \end{lstlisting}
 
 \noindent Note the use of \texttt{!!} (two exclamation marks) to place the documentation comment on the line \emph{after} the declaration. This is the FORD convention used throughout the codebase.
@@ -931,7 +998,7 @@ open doc/index.html  # review in browser
 \section{Testing}
 % =============================================================================
 
-The project provides a structured test suite framework. See the \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/tree/main/test?ref_type=heads}{test directory README} for full details on how to add and run tests.
+The project provides a structured test suite framework. See the \href{https://github.com/asishallab-group/Tensor-Omics/blob/main/test/readme.md}{test directory README} for full details on how to add and run tests.
 
 \subsection{Where to Test What}
 

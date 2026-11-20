@@ -3,6 +3,7 @@ from dataclasses import replace
 import pytest
 
 from codegen.diagnostics import DiagnosticBag
+from codegen.ir.directives import Directives, Equals, Maximum, Minimum, Sentinel
 from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse
 from codegen.ir.types import Intent
@@ -993,6 +994,63 @@ class TestAPrologueFeedingARecommendRoutine:
         ), messages(bag)
 
 
+    def test_a_derived_producer_input_the_prologue_writes_is_rejected_too(self, bag):
+        # extent_size(n, x(n)) derives `n` in its own binding, but the Fortran wrapper calls it
+        # directly, above the prologue, and passes the `budget` the table maps `n` to
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode, Prologue
+        from codegen.ir.entities import Meta
+        from codegen.ir.roles import analyse_project
+        from codegen.synthesize import synthesize_wrappers
+
+        impl = Meta(summary="an implementation", author="AUTHOR")
+        producers = b.module("tox_prod_impl", b.procedure(
+            "extent_size_impl",
+            b.integer("n", Intent.IN, doc="values"),
+            b.real("x", Intent.IN, "(n)", doc="the values"),
+            b.integer("extent", Intent.OUT, doc="the size"),
+            meta=impl,
+        ))
+        consumer = b.module(
+            "tox_demo_impl",
+            b.procedure(
+                "guard",
+                b.integer("m", Intent.IN, doc="length"),
+                b.integer("budget", Intent.OUT, doc="decided here -- too late for extent_size"),
+                b.logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+                b.ierr(),
+                meta=Meta(summary="Guard", author="AUTHOR"),
+            ),
+            b.procedure(
+                "crunch_impl",
+                b.integer("m", Intent.IN, doc="length"),
+                b.real("x", Intent.IN, "(m)", doc="the data"),
+                b.integer("budget", Intent.INOUT, doc="how much room to plan for"),
+                b.integer("wsize", Intent.IN, doc=[
+                    "Work size.", "| Producer input | Supplied by |", "|---|---|",
+                    "| n | budget |"],
+                    directives=Directives(output_from=OutputFrom(
+                        "extent", "extent_size", "tox_prod", OutputFromMode.AUTO))),
+                b.real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+                b.real("result", Intent.OUT, "(m)", doc="the answer"),
+                meta=impl,
+                directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+            ),
+        )
+        project = synthesize_wrappers(b.project(producers, consumer),
+                                      diagnostics=DiagnosticBag()).project
+        analyse_project(project, DiagnosticBag())
+        plan = project.procedure("tox_demo", "crunch_expert").argument("wsize").roles.computed_from
+        assert [(s.name, s.argument, s.derived) for s in plan.inputs][0] == ("n", "budget", True)
+
+        validate_project(project, bag)
+
+        assert any(
+            "'extent_size' is passed 'budget', which the prologue only fills afterwards"
+            == d.message
+            for d in bag.errors
+        ), messages(bag)
+
+
 class TestPrologueAndTheModeSplit:
     """A prologue is declared once and runs in every wrapper, so it may only name what
     every wrapper has -- which is all of the implementation's arguments unless it splits per mode."""
@@ -1581,7 +1639,7 @@ class TestKinds:
             b.complex_("x", Intent.IN, "(n)", kind="real64"),
             b.complex_("x", Intent.IN, "(n)", kind="c_double_complex"),
             b.logical("x", Intent.IN, "(n)", kind="c_bool"),
-            b.logical("x", Intent.OUT),  # a default logical, as `mask_check_state` returns
+            b.logical("x", Intent.OUT),  # a default logical, which the C wrapper converts
         ],
         ids=lambda a: str(a.type),
     )
@@ -2089,3 +2147,51 @@ class TestFunctionResults:
         from codegen.ir.validate import function_result_problems
 
         assert function_result_problems(b.procedure("p", b.ierr())) == []
+
+
+class TestBitmasks:
+    """A `bitmask(s)` / `*_bitmask(s)` name says the argument holds bit-mask words (#206)."""
+
+    @staticmethod
+    def procedure(*arguments):
+        return b.procedure("p", b.integer("n_words", Intent.IN, doc="words"), *arguments, b.ierr())
+
+    def test_an_int32_array_is_accepted_and_gets_the_role(self, bag):
+        procedure = self.procedure(
+            b.integer("family_bitmasks", Intent.IN, "(n_words)", doc="the words"))
+        checked(procedure, bag)
+        assert bag.errors == ()
+        assert procedure.argument("family_bitmasks").roles.is_bitmask
+
+    def test_an_unrelated_name_does_not_get_it(self, bag):
+        procedure = self.procedure(b.integer("words", Intent.IN, "(n_words)", doc="the words"))
+        checked(procedure, bag)
+        assert not procedure.argument("words").roles.is_bitmask
+
+    @pytest.mark.parametrize("argument", [
+        b.integer("bitmask", Intent.IN, doc="a single value"),
+        b.real("bitmask", Intent.IN, "(n_words)", doc="reals"),
+        b.logical("bitmask", Intent.IN, "(n_words)", kind="c_bool", doc="flags"),
+    ])
+    def test_anything_but_an_int32_array_is_refused(self, bag, argument):
+        error = only_error(checked(self.procedure(argument), bag))
+        assert error.message == ("argument 'bitmask' is named as bit-mask words, but is not an "
+                                 "integer(int32) array")
+        assert "'_bitmask' / '_bitmasks'" in error.note
+
+    @pytest.mark.parametrize("directives, named", [
+        (Directives(minimum=Minimum("0_int32")), "DM_MIN"),
+        (Directives(maximum=Maximum("1_int32")), "DM_MAX"),
+        (Directives(sentinel=Sentinel("-1_int32")), "DM_SENTINEL"),
+        (Directives(minimum=Minimum("0_int32"), maximum=Maximum("1_int32")), "DM_MIN and DM_MAX"),
+    ])
+    def test_a_value_range_is_refused(self, bag, directives, named):
+        argument = b.integer("bitmasks", Intent.IN, "(n_words)", doc="words", directives=directives)
+        error = only_error(checked(self.procedure(argument), bag))
+        assert error.message == f"bit-mask argument 'bitmasks' has {named}"
+
+    def test_dm_equals_is_refused_as_well(self, bag):
+        # on an array DM_EQUALS is refused for that too; the bit-mask refusal names it alongside
+        argument = b.integer("bitmasks", Intent.IN, "(n_words)", doc="words",
+                             directives=Directives(equals=Equals("n_words")))
+        assert "bit-mask argument 'bitmasks' has DM_EQUALS" in messages(checked(self.procedure(argument), bag))

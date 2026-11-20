@@ -443,6 +443,31 @@ test_compute_family_scaling_consistency <- function() {
 
 }
 
+# A NaN or Inf distance is refused as ERR_NAN_INF naming `distances`, whatever the families. It
+# used to be let through in a one-member family (its gene got the most extreme tail probability)
+# and in the only multi-member family (it came back in loess_x).
+test_detect_outliers_refuses_nan_distance <- function() {
+  layouts <- list(
+    "one family" = list(n_families = 1L, gene_to_fam = c(1L, 1L, 1L, 1L)),
+    "one multi-member family and a singleton" = list(n_families = 2L, gene_to_fam = c(1L, 1L, 1L, 2L)),
+    "two multi-member families" = list(n_families = 2L, gene_to_fam = c(1L, 1L, 2L, 2L))
+  )
+  for (label in names(layouts)) {
+    layout <- layouts[[label]]
+    for (bad in c(NaN, Inf)) {
+      err <- tryCatch({
+        detect_outliers(layout$n_families, c(bad, 1, 2, 3), layout$gene_to_fam)
+        NULL
+      }, tox_error = function(e) e)
+      if (is.null(err)) stop(sprintf("%s: a %s distance was not refused", label, bad), call. = FALSE)
+      assert_true(identical(as.integer(err$code), ERR_NAN_INF),
+                  sprintf("%s, %s: expected ERR_NAN_INF, got %s", label, bad, err$code))
+      assert_true(identical(err$argument, "distances"),
+                  sprintf("%s, %s: expected 'distances' named, got '%s'", label, bad, err$argument))
+    }
+  }
+}
+
 # =====================
 # Run all tests
 # =====================

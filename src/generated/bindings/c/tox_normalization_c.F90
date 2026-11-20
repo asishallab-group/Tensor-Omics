@@ -180,7 +180,7 @@ contains
             !! Number of tissues
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -189,7 +189,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -402,7 +402,7 @@ contains
             !! Number of replicates per gene
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -411,7 +411,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -763,6 +763,11 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !|
+    !| That subtraction is a `log2 fold change` only because `expr` is already on a
+    !| `log2` scale. Passing tissue averages that have not been log-transformed yields a
+    !| plain difference of expression levels instead, which is not a fold change.
+    !|
     !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
     !| reported as ERR_NAN_INF instead of being written into the result as Inf.
     subroutine calc_fchange_c(&
@@ -792,7 +797,9 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_tissues`.
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
-            !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+            !! Gene Expression matrix on a `log2` scale, i.e. the result of
+            !! [[tox_normalization(module):normalization_pipeline(subroutine)]] or of
+            !! [[tox_normalization(module):log2_transformation(subroutine)]]
         real(c_double), dimension(n_pairs, n_genes), intent(out), target :: fold_changes
             !! Output matrix for fold changes
         integer(c_int), intent(out), target :: ierr

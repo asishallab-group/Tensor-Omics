@@ -332,12 +332,8 @@ contains
             !! Number of genes being processed.
         real(c_double), dimension(n_genes), intent(in), target :: rdi
             !! empirical distribution D
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_genes), intent(in), target :: sorted_rdi
             !! empirical distribution D with non negative values
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_genes), intent(out), target :: tail_probability
             !! Output array to store the computed upper-tail probability for each gene.
         real(c_double), intent(in), target :: c_const
@@ -391,12 +387,8 @@ contains
             !! Number of genes being processed.
         real(c_double), dimension(n_genes), intent(in), target :: rdi
             !! empirical distribution D
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_genes), intent(in), target :: sorted_rdi
             !! empirical distribution D with non negative values
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: sorted_rdi_perm
             !! Permutation of `sorted_rdi` in ascending order. The allocating entry point builds
             !! and heapsorts it for you; the expert one takes whatever order you supply.

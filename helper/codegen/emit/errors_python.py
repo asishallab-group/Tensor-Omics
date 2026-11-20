@@ -44,6 +44,9 @@ SIZE_MISMATCH = "ERR_SIZE_MISMATCH"
 #: the module defines them and the package re-exports them
 ARG_POS_FACTOR = "ARG_POS_FACTOR"
 CHECK_ERR_CODE = "check_err_code"
+#: The function a generated function raises a `DM_OUTPUT_FROM` producer's error again through,
+#: in its own words. The package's own, so underscored and not among `public_names`.
+CONSUMER_ERROR = "_consumer_error"
 
 
 def group_exceptions(catalogue: ErrorCatalogue) -> tuple[tuple[str, str], ...]:
@@ -84,6 +87,7 @@ class PythonErrorEmitter:
         self._codes(writer)
         self._tables(writer)
         self._check(writer)
+        self._consumer_error(writer)
         return writer.render(trailing_newline=True)
 
     def _header(self, writer: Writer) -> None:
@@ -287,6 +291,57 @@ class PythonErrorEmitter:
                 writer.line("message, code=code, name=_NAMES.get(code), argument=argument")
             writer.line(")")
         return None
+
+
+    def _consumer_error(self, writer: Writer) -> None:
+        """The error a producer raised, as the function that called it reports it.
+
+        A function that sizes something by calling another (`DM_OUTPUT_FROM`) hands it its own
+        arguments under the producer's names. The producer's error names the producer's
+        argument, which the caller never wrote; this names the caller's argument that supplied
+        it instead -- through `check_err_code`, so in the same words as the function's own
+        errors -- or no argument where nothing the caller passed did.
+        """
+        writer.blank(collapse=False)
+        writer.blank(collapse=False)
+        writer.line(f"def {CONSUMER_ERROR}(error, supplied_by, arguments=(), sources=()):")
+        with writer.indent():
+            writer.block(
+                '"""The error a producer raised, naming the caller\'s argument instead.\n'
+                "\n"
+                "Parameters\n"
+                "----------\n"
+                f"error : {BASE_EXCEPTION}\n"
+                "    What the producer raised.\n"
+                "supplied_by : dict of str to int\n"
+                "    For each producer argument the calling function supplied, the position\n"
+                "    of the argument that supplied it in `arguments`.\n"
+                "arguments, sources : sequence\n"
+                f"    The calling function's, as `{CHECK_ERR_CODE}` takes them.\n"
+                "\n"
+                "Returns\n"
+                "-------\n"
+                f"{BASE_EXCEPTION}\n"
+                "    The same error, of the same class, for the caller to raise.\n"
+                '"""'
+            )
+            writer.line("position = supplied_by.get(error.argument, 0)")
+            writer.line("if error.code is None:")
+            with writer.indent():
+                writer.line("# refused by the producer's binding before any code existed")
+                writer.line("argument = None")
+                writer.line("if 0 < position <= len(arguments):")
+                with writer.indent():
+                    writer.line("source = sources[position - 1] if position <= len(sources) else None")
+                    writer.line("argument = source or arguments[position - 1]")
+                writer.line(f"return {ARGUMENT_EXCEPTION}(str(error), argument=argument)")
+            writer.line("try:")
+            with writer.indent():
+                writer.line(f"{CHECK_ERR_CODE}(error.code + position * {ARG_POS_FACTOR}, arguments, sources)")
+            writer.line(f"except {BASE_EXCEPTION} as remapped:")
+            with writer.indent():
+                writer.line("return remapped")
+            writer.line("return error")
 
 
 def _quote(text: str) -> str:

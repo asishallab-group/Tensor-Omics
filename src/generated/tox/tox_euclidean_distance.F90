@@ -77,14 +77,19 @@ contains
         real(real64), dimension(n_tissues, n_genes), intent(in) :: genes
             !! Gene expression matrix (n_tissues × n_genes), column-major
         real(real64), dimension(n_tissues, n_families), intent(in) :: centroids
-            !! Family centroid matrix (n_tissues × n_families), column-major, `-1.0_real64` for unassigned genes
+            !! Family centroid matrix (n_tissues × n_families), column-major
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0_int32` for unassigned genes
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_families`.
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_genes), intent(out) :: distances
-            !! Output distances array
+            !! Euclidean distance from each gene to its own family's centroid. A gene carrying
+            !! `0_int32` in `gene_to_fam` has no centroid to measure against and
+            !! receives `-1.0_real64` instead of a distance -- a value no Euclidean
+            !! distance can take, so that summarising this array without excluding those genes is
+            !! visibly wrong rather than quietly biased. Which genes those are is `gene_to_fam`,
+            !! not a negative entry here.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 

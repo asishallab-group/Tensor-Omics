@@ -8,7 +8,7 @@
   },
   "cluster_factor_trajectories_k_means (call)": {
     "prefix": "tox:cluster_factor_trajectories_k_means",
-    "description": "cluster_factor_trajectories_k_means",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single",
     "body": [
       "call cluster_factor_trajectories_k_means( &",
       "    n_clusters=${1:n_clusters}, &",
@@ -25,7 +25,7 @@
   },
   "cluster_factor_trajectories_k_means (call, checked)": {
     "prefix": "tox:cluster_factor_trajectories_k_means.checked",
-    "description": "cluster_factor_trajectories_k_means (with error check)",
+    "description": "One sample is one point: its trajectory is flattened over factors and time into a single (with error check)",
     "body": [
       "call cluster_factor_trajectories_k_means( &",
       "    n_clusters=${1:n_clusters}, &",
@@ -1217,13 +1217,13 @@
   },
   "mean_vector (call)": {
     "prefix": "tox:mean_vector",
-    "description": "mean_vector",
+    "description": "A selection without genes gives the zero vector.",
     "body": [
       "call mean_vector( &",
       "    expression_vectors=${1:expression_vectors}, &",
       "    n_axes=${2:n_axes}, &",
       "    n_genes=${3:n_genes}, &",
-      "    gene_indices=${4:gene_indices}, &",
+      "    genes_selection_mask=${4:genes_selection_mask}, &",
       "    n_selected_genes=${5:n_selected_genes}, &",
       "    centroid=${6:centroid}, &",
       "    ierr=${7:ierr})"
@@ -1231,13 +1231,13 @@
   },
   "mean_vector (call, checked)": {
     "prefix": "tox:mean_vector.checked",
-    "description": "mean_vector (with error check)",
+    "description": "A selection without genes gives the zero vector. (with error check)",
     "body": [
       "call mean_vector( &",
       "    expression_vectors=${1:expression_vectors}, &",
       "    n_axes=${2:n_axes}, &",
       "    n_genes=${3:n_genes}, &",
-      "    gene_indices=${4:gene_indices}, &",
+      "    genes_selection_mask=${4:genes_selection_mask}, &",
       "    n_selected_genes=${5:n_selected_genes}, &",
       "    centroid=${6:centroid}, &",
       "    ierr=${7:ierr})",
@@ -1246,7 +1246,7 @@
   },
   "group_centroid_orthologs (call)": {
     "prefix": "tox:group_centroid_orthologs",
-    "description": "group_centroid_orthologs",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "call group_centroid_orthologs( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1261,7 +1261,7 @@
   },
   "group_centroid_orthologs (call, checked)": {
     "prefix": "tox:group_centroid_orthologs.checked",
-    "description": "group_centroid_orthologs (with error check)",
+    "description": "A family without selected genes gets the zero vector. (with error check)",
     "body": [
       "call group_centroid_orthologs( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1277,7 +1277,7 @@
   },
   "group_centroid_all (call)": {
     "prefix": "tox:group_centroid_all",
-    "description": "group_centroid_all",
+    "description": "A family without selected genes gets the zero vector.",
     "body": [
       "call group_centroid_all( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1291,7 +1291,7 @@
   },
   "group_centroid_all (call, checked)": {
     "prefix": "tox:group_centroid_all.checked",
-    "description": "group_centroid_all (with error check)",
+    "description": "A family without selected genes gets the zero vector. (with error check)",
     "body": [
       "call group_centroid_all( &",
       "    expression_vectors=${1:expression_vectors}, &",
@@ -1461,7 +1461,34 @@
     "prefix": "tox:loess.use",
     "description": "use tox_loess, only: ...",
     "body": [
-      "use tox_loess, only: ${1|loess_fit_plain,loess_fit_robust|}"
+      "use tox_loess, only: ${1|tox_loess_required_workspace,loess_fit_plain,loess_fit_robust|}"
+    ]
+  },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "call tox_loess_required_workspace( &",
+      "    n_dim=${1:n_dim}, &",
+      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
+      "    int_workspace_size=${3:int_workspace_size}, &",
+      "    real_workspace_size=${4:real_workspace_size}, &",
+      "    save_factorization=${5:save_factorization}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "tox_loess_required_workspace (call, checked)": {
+    "prefix": "tox:tox_loess_required_workspace.checked",
+    "description": "Computes the required sizes for integer and real workspace arrays. (with error check)",
+    "body": [
+      "call tox_loess_required_workspace( &",
+      "    n_dim=${1:n_dim}, &",
+      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
+      "    int_workspace_size=${3:int_workspace_size}, &",
+      "    real_workspace_size=${4:real_workspace_size}, &",
+      "    save_factorization=${5:save_factorization}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "loess_fit_plain (call)": {
@@ -1542,25 +1569,6 @@
       "    fitted_values=${12:fitted_values}, &",
       "    ierr=${13:ierr})",
       "if (is_err(ierr)) return"
-    ]
-  },
-  "tox_loess_impl (use)": {
-    "prefix": "tox:loess_impl.use",
-    "description": "use tox_loess_impl, only: ...",
-    "body": [
-      "use tox_loess_impl, only: ${1|tox_loess_required_workspace|}"
-    ]
-  },
-  "tox_loess_required_workspace (call)": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "description": "Computes the required sizes for integer and real workspace arrays.",
-    "body": [
-      "call tox_loess_required_workspace( &",
-      "    n_dim=${1:n_dim}, &",
-      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
-      "    int_workspace_size=${3:int_workspace_size}, &",
-      "    real_workspace_size=${4:real_workspace_size}, &",
-      "    save_factorization=${5:save_factorization})"
     ]
   },
   "tox_normalization (use)": {
@@ -1794,7 +1802,7 @@
     "prefix": "tox:paralog_analysis.use",
     "description": "use tox_paralog_analysis, only: ...",
     "body": [
-      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization|}"
+      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_paralog_subsets_bitmasks_size|}"
     ]
   },
   "detect_neofunctionalization (call)": {
@@ -1839,11 +1847,11 @@
       "    genes=${2:genes}, &",
       "    n_genes=${3:n_genes}, &",
       "    n_dims=${4:n_dims}, &",
-      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    filtered_paralogs_bitmask=${5:filtered_paralogs_bitmask}, &",
       "    n_mask_chunks=${6:n_mask_chunks}, &",
       "    n_results=${7:n_results}, &",
       "    max_subset_size=${8:max_subset_size}, &",
-      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
       "    n_paralog_subsets=${10:n_paralog_subsets}, &",
       "    max_angle=${11:max_angle}, &",
       "    gain_gamma=${12:gain_gamma}, &",
@@ -1859,11 +1867,11 @@
       "    genes=${2:genes}, &",
       "    n_genes=${3:n_genes}, &",
       "    n_dims=${4:n_dims}, &",
-      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    filtered_paralogs_bitmask=${5:filtered_paralogs_bitmask}, &",
       "    n_mask_chunks=${6:n_mask_chunks}, &",
       "    n_results=${7:n_results}, &",
       "    max_subset_size=${8:max_subset_size}, &",
-      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
       "    n_paralog_subsets=${10:n_paralog_subsets}, &",
       "    max_angle=${11:max_angle}, &",
       "    gain_gamma=${12:gain_gamma}, &",
@@ -1880,11 +1888,11 @@
       "    genes=${2:genes}, &",
       "    n_genes=${3:n_genes}, &",
       "    n_dims=${4:n_dims}, &",
-      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    filtered_paralogs_bitmask=${5:filtered_paralogs_bitmask}, &",
       "    n_mask_chunks=${6:n_mask_chunks}, &",
       "    n_results=${7:n_results}, &",
       "    max_subset_size=${8:max_subset_size}, &",
-      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
       "    n_paralog_subsets=${10:n_paralog_subsets}, &",
       "    rdi_threshold=${11:rdi_threshold}, &",
       "    paralog_norms=${12:paralog_norms}, &",
@@ -1901,11 +1909,11 @@
       "    genes=${2:genes}, &",
       "    n_genes=${3:n_genes}, &",
       "    n_dims=${4:n_dims}, &",
-      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    filtered_paralogs_bitmask=${5:filtered_paralogs_bitmask}, &",
       "    n_mask_chunks=${6:n_mask_chunks}, &",
       "    n_results=${7:n_results}, &",
       "    max_subset_size=${8:max_subset_size}, &",
-      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
       "    n_paralog_subsets=${10:n_paralog_subsets}, &",
       "    rdi_threshold=${11:rdi_threshold}, &",
       "    paralog_norms=${12:paralog_norms}, &",
@@ -1924,7 +1932,7 @@
       "    n_genes=${3:n_genes}, &",
       "    n_families=${4:n_families}, &",
       "    gene_to_fam=${5:gene_to_fam}, &",
-      "    masks=${6:masks}, &",
+      "    family_bitmasks=${6:family_bitmasks}, &",
       "    n_mask_chunks=${7:n_mask_chunks}, &",
       "    ierr=${8:ierr})"
     ]
@@ -1939,7 +1947,7 @@
       "    n_genes=${3:n_genes}, &",
       "    n_families=${4:n_families}, &",
       "    gene_to_fam=${5:gene_to_fam}, &",
-      "    masks=${6:masks}, &",
+      "    family_bitmasks=${6:family_bitmasks}, &",
       "    n_mask_chunks=${7:n_mask_chunks}, &",
       "    ierr=${8:ierr})",
       "if (is_err(ierr)) return"
@@ -1955,7 +1963,7 @@
       "    n_genes=${3:n_genes}, &",
       "    n_families=${4:n_families}, &",
       "    gene_to_fam=${5:gene_to_fam}, &",
-      "    masks=${6:masks}, &",
+      "    family_bitmasks=${6:family_bitmasks}, &",
       "    n_mask_chunks=${7:n_mask_chunks}, &",
       "    ierr=${8:ierr})"
     ]
@@ -1970,59 +1978,34 @@
       "    n_genes=${3:n_genes}, &",
       "    n_families=${4:n_families}, &",
       "    gene_to_fam=${5:gene_to_fam}, &",
-      "    masks=${6:masks}, &",
+      "    family_bitmasks=${6:family_bitmasks}, &",
       "    n_mask_chunks=${7:n_mask_chunks}, &",
       "    ierr=${8:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
-  "tox_paralog_analysis_impl (use)": {
-    "prefix": "tox:paralog_analysis_impl.use",
-    "description": "use tox_paralog_analysis_impl, only: ...",
-    "body": [
-      "use tox_paralog_analysis_impl, only: ${1|mask_check_state,mask_chunk_count,calc_work_arr_paralog_subsets_size|}"
-    ]
-  },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} = mask_check_state( &",
-      "    bit_mask=${2:bit_mask}, &",
-      "    i_gene=${3:i_gene})"
-    ]
-  },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
-    "body": [
-      "call mask_chunk_count( &",
-      "    n_genes=${1:n_genes}, &",
-      "    count=${2:count})"
-    ]
-  },
-  "calc_work_arr_paralog_subsets_size (call)": {
-    "prefix": "tox:calc_work_arr_paralog_subsets_size",
+  "calc_paralog_subsets_bitmasks_size (call)": {
+    "prefix": "tox:calc_paralog_subsets_bitmasks_size",
     "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
     "body": [
-      "call calc_work_arr_paralog_subsets_size( &",
+      "call calc_paralog_subsets_bitmasks_size( &",
       "    max_subset_size=${1:max_subset_size}, &",
       "    n_genes=${2:n_genes}, &",
       "    work_array_size=${3:work_array_size}, &",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask}, &",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask}, &",
       "    n_mask_chunks=${5:n_mask_chunks}, &",
       "    ierr=${6:ierr})"
     ]
   },
-  "calc_work_arr_paralog_subsets_size (call, checked)": {
-    "prefix": "tox:calc_work_arr_paralog_subsets_size.checked",
+  "calc_paralog_subsets_bitmasks_size (call, checked)": {
+    "prefix": "tox:calc_paralog_subsets_bitmasks_size.checked",
     "description": "The `detect_*` subroutines need a work array for the to be tested subsets. (with error check)",
     "body": [
-      "call calc_work_arr_paralog_subsets_size( &",
+      "call calc_paralog_subsets_bitmasks_size( &",
       "    max_subset_size=${1:max_subset_size}, &",
       "    n_genes=${2:n_genes}, &",
       "    work_array_size=${3:work_array_size}, &",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask}, &",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask}, &",
       "    n_mask_chunks=${5:n_mask_chunks}, &",
       "    ierr=${6:ierr})",
       "if (is_err(ierr)) return"
@@ -2037,7 +2020,7 @@
   },
   "omics_vector_RAP_projection (call)": {
     "prefix": "tox:omics_vector_RAP_projection",
-    "description": "omics_vector_RAP_projection",
+    "description": "A vector's projection is the vector minus the mean of its selected coordinates. A vector whose",
     "body": [
       "call omics_vector_RAP_projection( &",
       "    vecs=${1:vecs}, &",
@@ -2053,7 +2036,7 @@
   },
   "omics_vector_RAP_projection (call, checked)": {
     "prefix": "tox:omics_vector_RAP_projection.checked",
-    "description": "omics_vector_RAP_projection (with error check)",
+    "description": "A vector's projection is the vector minus the mean of its selected coordinates. A vector whose (with error check)",
     "body": [
       "call omics_vector_RAP_projection( &",
       "    vecs=${1:vecs}, &",
@@ -2070,7 +2053,7 @@
   },
   "omics_field_RAP_projection (call)": {
     "prefix": "tox:omics_field_RAP_projection",
-    "description": "omics_field_RAP_projection",
+    "description": "A field whose projected vector has all coordinates equal on the selected axes lies on the space",
     "body": [
       "call omics_field_RAP_projection( &",
       "    fields=${1:fields}, &",
@@ -2086,7 +2069,7 @@
   },
   "omics_field_RAP_projection (call, checked)": {
     "prefix": "tox:omics_field_RAP_projection.checked",
-    "description": "omics_field_RAP_projection (with error check)",
+    "description": "A field whose projected vector has all coordinates equal on the selected axes lies on the space (with error check)",
     "body": [
       "call omics_field_RAP_projection( &",
       "    fields=${1:fields}, &",
@@ -2103,7 +2086,7 @@
   },
   "clock_hand_angle_between_vectors (call)": {
     "prefix": "tox:clock_hand_angle_between_vectors",
-    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying",
+    "description": "The unsigned angle is the one between the two directions; their lengths do not matter, so",
     "body": [
       "call clock_hand_angle_between_vectors( &",
       "    v1=${1:v1}, &",
@@ -2116,7 +2099,7 @@
   },
   "clock_hand_angle_between_vectors (call, checked)": {
     "prefix": "tox:clock_hand_angle_between_vectors.checked",
-    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying (with error check)",
+    "description": "The unsigned angle is the one between the two directions; their lengths do not matter, so (with error check)",
     "body": [
       "call clock_hand_angle_between_vectors( &",
       "    v1=${1:v1}, &",
@@ -2130,7 +2113,7 @@
   },
   "clock_hand_angles_for_shift_vectors (call)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors",
-    "description": "Each selected field is angled by the rule of",
+    "description": "Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from",
     "body": [
       "call clock_hand_angles_for_shift_vectors( &",
       "    fields=${1:fields}, &",
@@ -2145,7 +2128,7 @@
   },
   "clock_hand_angles_for_shift_vectors (call, checked)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors.checked",
-    "description": "Each selected field is angled by the rule of (with error check)",
+    "description": "Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from (with error check)",
     "body": [
       "call clock_hand_angles_for_shift_vectors( &",
       "    fields=${1:fields}, &",
@@ -2270,7 +2253,7 @@
     "prefix": "tox:stc.use",
     "description": "use tox_stc, only: ...",
     "body": [
-      "use tox_stc, only: ${1|calculate_density_radius,calculate_labels_as_density,identify_ensemble_seeds,compute_ambient_density_stats,obtain_ensembles_global_radius,obtain_ensembles_seed_radius,merge_ensembles,grow_ensemble,compute_ensemble_observable,accept_ensemble|}"
+      "use tox_stc, only: ${1|calculate_density_radius,calculate_labels_as_density,identify_ensemble_seeds_global_radius,identify_ensemble_seeds,compute_ambient_density_stats,obtain_ensembles_global_radius,obtain_ensembles_seed_radius,merge_ensembles,grow_ensemble,compute_ensemble_observable,accept_ensemble|}"
     ]
   },
   "calculate_density_radius (call)": {
@@ -2329,6 +2312,39 @@
       "    kd_indices=${6:kd_indices}, &",
       "    n_tiles=${7:n_tiles}, &",
       "    label_densities=${8:label_densities}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "identify_ensemble_seeds_global_radius (call)": {
+    "prefix": "tox:identify_ensemble_seeds_global_radius",
+    "description": "Process all vectors in descending density order. A selected seed covers itself and",
+    "body": [
+      "call identify_ensemble_seeds_global_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    density_labels=${4:density_labels}, &",
+      "    k_seeding=${5:k_seeding}, &",
+      "    sorted_perm=${6:sorted_perm}, &",
+      "    n_seeds=${7:n_seeds}, &",
+      "    seed_mask=${8:seed_mask}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "identify_ensemble_seeds_global_radius (call, checked)": {
+    "prefix": "tox:identify_ensemble_seeds_global_radius.checked",
+    "description": "Process all vectors in descending density order. A selected seed covers itself and (with error check)",
+    "body": [
+      "call identify_ensemble_seeds_global_radius( &",
+      "    vectors=${1:vectors}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_vectors=${3:n_vectors}, &",
+      "    density_labels=${4:density_labels}, &",
+      "    k_seeding=${5:k_seeding}, &",
+      "    sorted_perm=${6:sorted_perm}, &",
+      "    n_seeds=${7:n_seeds}, &",
+      "    seed_mask=${8:seed_mask}, &",
       "    ierr=${9:ierr})",
       "if (is_err(ierr)) return"
     ]

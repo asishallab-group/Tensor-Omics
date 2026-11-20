@@ -5,7 +5,7 @@ module mod_test_get_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite
-  use tox_errors, only: get_err_code, ERR_INVALID_INPUT
+  use tox_errors, only: get_err_code, ERR_INVALID_INPUT, ERR_NAN_INF
   implicit none
   public
 
@@ -14,7 +14,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(27))
+    allocate(all_tests(28))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -43,6 +43,7 @@ contains
     all_tests(25) = test_case("test_family_scaling_non_finite_distance", test_family_scaling_non_finite_distance)
     all_tests(26) = test_case("test_family_scaling_fallback_returns_linear_scale", test_family_scaling_fallback_returns_linear_scale)
     all_tests(27) = test_case("test_family_scaling_degree_bounds", test_family_scaling_degree_bounds)
+    all_tests(28) = test_case("test_loess_points_finite_on_every_exit", test_loess_points_finite_on_every_exit)
 
   end function get_all_tests_get_outliers
 
@@ -840,6 +841,7 @@ contains
 
     call assert_equal_int(get_err_code(ierr), 201, 'Error code 201 for invalid family indices')
     call assert_true(all(dscale == -1.0_real64), 'dscale fallback to -1.0 on invalid indices')
+    call assert_true(all(excluded_low_sd == 1_int32), 'every family is left out of the fit on invalid indices')
   end subroutine test_invalid_family_indices
 
   subroutine test_single_gene_family_scaling()
@@ -875,8 +877,9 @@ contains
 
   !> A non-finite distance must surface as an error, not silently flow into log2.
   !| `compute_family_scaling` feeds family means/stddevs to `logx_helper` (non-validating) inside a
-  !| `do concurrent`. The callee validates those log2 arguments up front so a NaN/Inf distance -- which
-  !| propagates into a family mean -- is rejected with `ierr`, rather than producing a NaN/Inf scale.
+  !| `do concurrent`. The wrapper refuses a NaN/Inf distance before the implementation runs, so it
+  !| never propagates into a family mean; `test_loess_points_finite_on_every_exit` covers a finite
+  !| distance whose family sum overflows, which the implementation checks itself.
   subroutine test_family_scaling_non_finite_distance()
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf
@@ -1098,8 +1101,9 @@ contains
   end subroutine test_outliers_extreme_detection
 
 
-  !> Test: NaN Handling.
-  !> Validates that the presence of a NaN distance does not cause a crash and is handled safely.
+  !> A NaN distance is refused as ERR_NAN_INF naming `distances`, even in the one-family layout
+  !| that used to let it through: it reached `loess_x`, and its gene got the most extreme tail
+  !| probability.
   subroutine test_outliers_nan_handling()
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
@@ -1110,27 +1114,122 @@ contains
 
     real(real64)    :: distances(n_genes)
     integer(int32)  :: gene_to_fam(n_genes) = [1_int32, 1_int32, 1_int32, 1_int32]
-    real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
-    integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
+    real(real64)    :: lx(n_families), ly(n_families)
+    integer(int32)  :: ln(n_families), ierr
     logical(c_bool) :: is_outlier(n_genes)
     real(real64)    :: tail_probability(n_genes)
 
     distances = 1.0_real64
     distances(1) = ieee_value(1.0_real64, ieee_quiet_nan)
 
-    perm = [(i, i=1,n_genes)]
     call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, &
                          is_outlier, lx, ly, ln, tail_probability, ierr=ierr)
 
-    call assert_equal_int(get_err_code(ierr), 0, "Should handle NaN without ierr (test_outliers_nan_handling)")
-
-    ! Our design goal: NaNs should not be flagged as outliers.
-    call assert_false(is_outlier(1), "NaN distance gene should not be marked as outlier")
-
-    ! tail_probability sanity: should be in (0,1] (implementation may set NaN RDI to tail_probability=1 via guard logic)
-    call assert_true(tail_probability(1) > 0.0_real64 .and. tail_probability(1) <= 1.0_real64, "NaN gene tail_probability must be in (0,1]")
+    call assert_err(ierr, ERR_NAN_INF, "test_outliers_nan_handling: a NaN distance is refused", arg_pos=3_int32)
   end subroutine test_outliers_nan_handling
+
+  !> `loess_x` / `loess_y` never hold NaN or Inf, on whichever exit `compute_family_scaling` takes.
+  !| The wrapper refuses non-finite distances, but finite ones can still overflow a family's sum:
+  !| four distances of 1e308 sum to Inf, 1e200 squares to Inf. With a single multi-member family
+  !| the routine leaves early, before the LOESS fit, and that exit used to return such a mean as
+  !| it stood (`loess_x = [inf]`). Means of huge/2 survive the fit but overflow on the way back
+  !| from log2, which returned `[inf, inf]` with no error. An overflowing sum or back-transform is
+  !| ERR_NAN_INF; whether overflowing squares are caught depends on the compiler (`max(0, Inf - Inf)`
+  !| is 0 on gfortran, NaN on ifx), so those cases accept success too. Both outputs are checked
+  !| through `detect_outliers` and `compute_family_scaling`, and `excluded_low_sd` with them.
+  subroutine test_loess_points_finite_on_every_exit()
+    integer(int32), parameter :: n_genes = 4_int32
+    real(real64), parameter :: near_huge = 1.0e308_real64, squares_overflow = 1.0e200_real64, &
+                               half_huge = huge(1.0_real64)/2.0_real64
+    real(real64)   :: all_near_huge(n_genes), one_family_ordinary(n_genes), &
+                      one_family_squares_overflow(n_genes), all_half_huge(n_genes), two_half_huge(n_genes)
+    integer(int32) :: one_family(n_genes), one_family_and_singleton(n_genes), two_families(n_genes), &
+                      one_family_and_two_singletons(n_genes)
+
+    all_near_huge = near_huge
+    all_half_huge = half_huge
+    two_half_huge = [half_huge, half_huge, 1.0_real64, 2.0_real64]
+    one_family_and_two_singletons = [1_int32, 1_int32, 2_int32, 3_int32]
+    one_family_ordinary = [5.0_real64, 1.0_real64, 1.0_real64, 1.0_real64]
+    one_family_squares_overflow = [squares_overflow, 2.0_real64*squares_overflow, 3.0_real64*squares_overflow, 5.0_real64]
+    one_family = 1_int32
+    one_family_and_singleton = [1_int32, 1_int32, 1_int32, 2_int32]
+    two_families = [1_int32, 1_int32, 2_int32, 2_int32]
+
+    ! the early exit, n_valid = 1
+    call assert_loess_points_finite("one family, sum overflows", 1_int32, all_near_huge, &
+                                    one_family, ERR_NAN_INF)
+    call assert_loess_points_finite("one family, ordinary", 1_int32, one_family_ordinary, one_family, 0_int32)
+    call assert_loess_points_finite("one multi-member family and a singleton, squares overflow", 2_int32, &
+                                    one_family_squares_overflow, one_family_and_singleton, -1_int32)
+    call assert_loess_points_finite("one family of two at huge/2 and two singletons", 3_int32, two_half_huge, &
+                                    one_family_and_two_singletons, -1_int32)
+    ! the main path, n_valid = 2
+    call assert_loess_points_finite("two families, sum overflows", 2_int32, all_near_huge, &
+                                    two_families, ERR_NAN_INF)
+    ! the main path, back from log2: huge/2 + eps_mean is huge, log2 rounds to 1024
+    call assert_loess_points_finite("two families, huge/2", 2_int32, all_half_huge, two_families, ERR_NAN_INF)
+  end subroutine test_loess_points_finite_on_every_exit
+
+  !> Runs `detect_outliers` and `compute_family_scaling` on one input and asserts that their
+  !| `loess_x` / `loess_y` are finite. `expected_code` is the error code both must return, or -1
+  !| for "either success or ERR_NAN_INF". Also asserts that `compute_family_scaling`'s
+  !| `excluded_low_sd` is 0 exactly for the families `indices_used` lists and 1 for the others,
+  !| which on an error is every family.
+  subroutine assert_loess_points_finite(label, n_families, distances, gene_to_fam, expected_code)
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+    character(*), intent(in)   :: label
+    integer(int32), intent(in) :: n_families
+    real(real64), intent(in)   :: distances(:)
+    integer(int32), intent(in) :: gene_to_fam(size(distances))
+    integer(int32), intent(in) :: expected_code
+
+    real(real64)    :: loess_x(n_families), loess_y(n_families), dscale(n_families), low_sd_cutoff
+    real(real64)    :: tail_probability(size(distances))
+    integer(int32)  :: loess_n(n_families), excluded_low_sd(n_families), ierr, n_genes, i_family
+    logical         :: listed
+    logical(c_bool) :: is_outlier(size(distances))
+
+    n_genes = size(distances, kind=int32)
+
+    call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
+                         is_outlier, loess_x, loess_y, loess_n, tail_probability, ierr=ierr)
+    call assert_code(ierr, "detect_outliers")
+    call assert_true(all(ieee_is_finite(loess_x)) .and. all(ieee_is_finite(loess_y)), &
+                     "test_loess_points_finite_on_every_exit: "//label//": detect_outliers' loess_x / loess_y finite")
+
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
+                                loess_x, loess_y, loess_n, low_sd_cutoff=low_sd_cutoff, &
+                                excluded_low_sd=excluded_low_sd, ierr=ierr)
+    call assert_code(ierr, "compute_family_scaling")
+    call assert_true(all(ieee_is_finite(loess_x)) .and. all(ieee_is_finite(loess_y)), &
+                     "test_loess_points_finite_on_every_exit: "//label//": compute_family_scaling's loess_x / loess_y finite")
+    if (get_err_code(ierr) /= 0_int32) then
+      call assert_true(all(loess_n == 0_int32), &
+                       "test_loess_points_finite_on_every_exit: "//label//": an error leaves no LOESS point")
+    end if
+    do i_family = 1, n_families
+      listed = any(loess_n == i_family)
+      call assert_true(excluded_low_sd(i_family) == merge(0_int32, 1_int32, listed), &
+                       "test_loess_points_finite_on_every_exit: "//label//": excluded_low_sd is 0 exactly for the listed families")
+    end do
+
+  contains
+
+    subroutine assert_code(returned_ierr, procedure_name)
+      integer(int32), intent(in) :: returned_ierr
+      character(*), intent(in)   :: procedure_name
+
+      if (expected_code >= 0_int32) then
+        call assert_equal_int(get_err_code(returned_ierr), expected_code, &
+                              "test_loess_points_finite_on_every_exit: "//label//": "//procedure_name//" error code")
+      else
+        call assert_true(get_err_code(returned_ierr) == 0_int32 .or. get_err_code(returned_ierr) == ERR_NAN_INF, &
+                         "test_loess_points_finite_on_every_exit: "//label//": "//procedure_name//" succeeds or is ERR_NAN_INF")
+      end if
+    end subroutine assert_code
+  end subroutine assert_loess_points_finite
 
 
   !> The constant-fallback exit must return loess_x / loess_y on the linear scale, like the normal exit.

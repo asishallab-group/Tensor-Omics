@@ -1,0 +1,165 @@
+%% family_centroids.tex -- shared sub-recipe. Referenced by every analysis that
+%% measures a gene against its family, via \dependson{sub:family-centroids}.
+
+\begin{recipe}[label=sub:family-centroids]{Gene Family Centroids}
+
+\recipepurpose{Reduce each gene family to a single expression vector, its
+  centroid: the reference that later recipes measure divergence against.
+  Distances to the centroid, shift vectors from it, and the outlier test built
+  on those all inherit whichever set of family members you average here.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item Normalized expression vectors, one gene per column
+        (\code{(n\_axes, n\_genes)}), from the normalization sub-recipe.
+  \item A gene-to-family mapping: for each gene, the index of its family, or
+        \code{0} for a gene that belongs to none.
+  \item Optional, and only for the orthologs-only centroid: which genes are
+        the orthologs. This is \emph{your} data --- it comes from an orthology
+        pipeline (OrthoFinder, synteny/Cactus, OMAmer), not from Tensor Omics.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \dependson{sub:normalization}
+  \dependson{sub:gene-family-detection}
+\end{prerequisites}
+
+\begin{workflow}
+  \step{Number the families $1 \dots n$ and build the \code{gene\_to\_family}
+        vector, one entry per column of the expression matrix. Use \code{0}
+        for every gene that belongs to no family --- it is the sentinel the
+        library expects, and such genes are skipped.}
+  \step{Choose which members define the reference. \code{group\_centroid\_all}
+        averages every gene of the family; \code{group\_centroid\_orthologs}
+        averages only the genes marked in \code{ortholog\_set}. See the
+        interpretation below --- this choice is the substance of the step,
+        not a detail.}
+  \step{Compute the centroids. The result is an
+        \code{(n\_axes, n\_families)} matrix holding \emph{one centroid per
+        column}, in the same layout and orientation as the expression vectors
+        that went in.}
+  \step{Count, per family, how many genes actually contributed. A family with
+        no contributor is not reported by the library --- it silently receives
+        a zero centroid, which is a valid point in the space and will quietly
+        distort everything measured against it.}
+\end{workflow}
+
+\examplescript{python/examples/gene_family_centroids.py}{%
+  Builds the gene-to-family mapping from an OrthoFinder-style family table,
+  computes the centroids and writes them, reporting assignment coverage and
+  any family left without a contributing gene. Run unchanged from the
+  repository root, it computes all-genes centroids for the 458 bundled
+  families over \file{material/normalization.tsv} and writes
+  \file{results/family_centroids.tsv}; pass \optn{-{}-orthologs} with a list of
+  gene ids to take the orthologs-only centroid instead.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: the mapping, and which members define the centroid}]
+import numpy as np
+from tensor_omics import (group_centroid_all,
+                          group_centroid_orthologs)
+
+# --- one gene per COLUMN, as normalization produced it -----
+expr = np.asfortranarray(normalized)   # (n_axes, n_genes)
+
+# --- family index per gene, 1-based; 0 = no family ---------
+gene_to_family = np.array([1, 1, 2, 0, 2], dtype=np.int32)
+n_families = 2
+
+# --- (a) the family's actual mean, paralogs included -------
+centroids = group_centroid_all(
+    expr, gene_to_family, n_families)
+
+# --- (b) a conserved reference: orthologs only -------------
+ortholog_set = np.array([True, False, True, False, True])
+centroids = group_centroid_orthologs(
+    expr, gene_to_family, n_families, ortholog_set)
+#   -> (n_axes, n_families), one centroid per column
+\end{codefragment}
+
+\begin{note}
+  For a centroid over an arbitrary set of genes --- not a whole family ---
+  call \code{mean\_vector(expr, gene\_indices)} directly. Its
+  \code{gene\_indices} are 1-based column numbers, not a boolean mask.
+\end{note}
+
+\begin{parameters}
+  \param{gene\_to\_family}{Which family each gene belongs to; entry $i$ is the
+    family index of column $i$ of the expression matrix}{Values must be
+    \code{1}\dots\code{n\_families}, or \code{0} for an unassigned gene. Any
+    other value fails the call}
+  \param{n\_families}{How many centroids are produced, i.e.\ the number of
+    columns of the result}{Must be at least as large as the largest index in
+    \code{gene\_to\_family}. Indices above it fail the call; families with no
+    genes below it come back as zero centroids}
+  \param{ortholog\_set}{Which genes contribute when the orthologs-only
+    centroid is taken}{Required by \code{group\_centroid\_orthologs}, one
+    boolean per gene. A family with no ortholog among its members gets a zero
+    centroid}
+\end{parameters}
+
+\begin{expectedresults}
+  The result is \code{(n\_axes, n\_families)}, read-only, and each column is
+  the element-wise mean of the contributing genes --- so every centroid lies
+  inside the range its family's members span on each axis. On the bundled
+  data the script assigns 10\,234 of 85\,828 genes to 458 families (the rest
+  belong to none), family sizes run from 6 to 143 genes, and no family is left
+  empty. It also reports the 361 family members that have no row in the
+  expression table; a much larger number there means the gene identifiers of
+  the two files do not match.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: a family with no members gets a zero centroid]
+  A family that no gene contributes to --- because it has no members in the
+  expression table, or none of them is an ortholog --- does not raise an
+  error and is not flagged. It receives the zero vector, which is an ordinary
+  point at the origin of the space. Every later distance to that centroid is
+  then simply the gene's own norm, so the family looks maximally divergent for
+  a purely bookkeeping reason. Count the contributors per family and check
+  the count is never zero before going on.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: which members you average changes every later result]
+  The two entry points are not variants of one number. On the bundled data
+  the orthologs-only centroids shipped in
+  \file{material/centroids_orthologs_only.tsv} sit a median 13.5\% of their
+  own length away from the all-genes centroids of the same families, and up
+  to 1.56 units away --- both computed from the same expression table, so the
+  whole difference comes from the member set. Averaging \emph{all} genes folds
+  the very paralogs you may later test for divergence into the reference they
+  are tested against, which pulls the reference toward them and hides them.
+  Use the orthologs-only centroid whenever the analysis asks whether a copy
+  has diverged.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: marking unassigned genes with anything but zero]
+  \code{0} is the sentinel for ``no family'', and genes carrying it are
+  skipped. A negative index, or an index above \code{n\_families}, is not
+  treated as ``unassigned'' but fails the call with
+  \code{ToxInputError: invalid input arguments (argument 'gene\_to\_family')}.
+  Map every gene you want excluded to \code{0} explicitly rather than leaving
+  a placeholder behind.
+\end{pitfall}
+
+\begin{interpretation}
+  A centroid is the family's consensus expression profile, and the distance
+  of a member from it is that member's divergence from the family. What the
+  consensus \emph{means} is decided by the member set. The orthologs-only
+  centroid is a \emph{conserved} reference: it describes where the family's
+  expression sat before the copies you are testing diverged, which is what
+  makes a large distance interpretable as divergence of that copy. The
+  all-genes centroid is the family's actual centre of mass, including every
+  divergent copy --- the right reference when you want to describe the family
+  as it is, and the wrong one when you want to detect a member that moved.
+
+  Read a centroid alongside its contributor count. A centroid over two genes
+  is a midpoint, not a consensus, and distances measured against it carry the
+  noise of those two genes.
+\end{interpretation}
+
+\begin{references}
+  \reference{Emms \& Kelly (2019). OrthoFinder: phylogenetic orthology
+    inference for comparative genomics. \emph{Genome Biology} 20:238.}
+\end{references}
+
+\end{recipe}

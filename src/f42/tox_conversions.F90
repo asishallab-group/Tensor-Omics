@@ -72,9 +72,12 @@ contains
     !| literal anyway, because Fortran blank-pads the shorter operand.
     !|
     !| The result is a **view**, not a copy: it is valid only while `buffer` is, and writing
-    !| through `buffer` changes it. `buffer` must be contiguous, or `c_loc` takes the address
-    !| of a compiler temporary and the view dangles on return. Every caller here passes an
-    !| explicit-shape dummy or a `c_f_pointer`-mapped array, both of which are contiguous.
+    !| through `buffer` changes it. The actual argument must be *simply* contiguous -- an
+    !| explicit-shape array, or a pointer declared `contiguous` -- because only then does F2018
+    !| (15.5.2.4) keep pointers to the dummy associated with the actual. Anything else may be
+    !| copied into a temporary for this `contiguous` dummy, and the view dangles on return:
+    !| gfortran and ifx pass a contiguous plain pointer through, nvfortran copies it. The
+    !| generated C wrappers pass explicit-shape dummies; `get_zip_entry_name` a contiguous pointer.
     !|
     !| Replaced an allocating version. Nothing here allocates now, which is what lets the
     !| module sit on `Conventions.impl_import_whitelist` and be provably allocation-free.

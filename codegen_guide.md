@@ -12,7 +12,8 @@ TensorOmics generates its public API. There are two ways in, and the guide is sp
 
 Either way this guide is the author's side of the contract: **what to write so the generator can
 do its half**, case by case, with a real example for each. Every snippet here is taken from the
-current `src/` tree.
+current `src/` tree or, where no source uses the feature yet, from a named fixture under
+`helper/codegen/tests/fixtures/`.
 
 Related reading, once this is not enough:
 
@@ -54,6 +55,7 @@ Related reading, once this is not enough:
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
   - [5.16 A function](#516-a-function)
   - [5.17 An extent that must equal another size](#517-an-extent-that-must-equal-another-size)
+  - [5.18 Bit-mask words](#518-bit-mask-words)
 
 **Part II — the export path** (IO, infrastructure, and everything else)
 
@@ -176,7 +178,7 @@ each is addressed at a different caller.
 | `foo_expert` | a caller who wants control over what reaches the implementation | validates and calls `foo_impl` with what you supply. Allocates nothing, prepares nothing |
 
 A wrapper is **`pure` exactly when everything it calls is** — the implementation, the
-`DM_OUTPUT_FROM` producers and the prologue. `tox_errors`' validators and `f42_sort`'s
+`DM_OUTPUT_FROM` producers (a generated one by this same rule) and the prologue. `tox_errors`' validators and `f42_sort`'s
 `init_perm` / `sort_array_heapsort` already are, and `allocate(..., stat=)` is permitted in a
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
 nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
@@ -211,21 +213,21 @@ reader does not have to work out why there are two.
 ### Which path is yours
 
 Not everything is an implementation, and a sizeable part of the public API is not. File and archive
-IO, the f42 trees and statistics, the whole serde family, and the sizing routines the
-implementations themselves call are all **hand-written and exported**: the generator wraps them to
-C, Python and R, but does not write their Fortran.
+IO, the whole serde family, and the sizing routines the implementations themselves call are all
+**hand-written and exported**: the generator wraps them to C, Python and R, but does not write
+their Fortran.
 
 | Your procedure | Path | Where | Marker |
 |---|---|---|---|
 | a numeric procedure of the TOX pipeline | **Part I — implementation** | `src/tox/` | the `_impl` name |
+| library-agnostic numerics: the search trees, statistics and bit masks | **Part I — implementation** | `src/f42/` | the `_impl` name |
 | the data-set API: archive, CSV/TSV, validation, accessors | **Part II — export** | `src/tox/data/` | `M_EXPORT_C` |
-| library-agnostic infrastructure | **Part II — export** | `src/f42/` | `M_EXPORT_C` |
+| library-agnostic IO: the serde family | **Part II — export** | `src/f42/serde/` | `M_EXPORT_C` |
 | a sizing / utility routine an implementation or a caller needs | **Part II — export** | the implementation module, `public` | `M_EXPORT_C` |
 
-`src/tox/` in the first row is convention, not mechanism: the trigger is the name, so an `_impl`
-module under `src/f42/` would generate exactly the same way, into `src/generated/f42/`. Nothing
-there has been converted yet (Section 6.5 says why), but the mechanism no longer knows the
-difference.
+The directories are convention, not mechanism: the trigger is the name, so an `_impl` module
+generates wherever it sits — `src/f42/utils/f42_stats_impl.F90` into
+`src/generated/f42/utils/f42_stats.F90`, exactly as one under `src/tox/` does.
 
 The two paths share everything about the *bindings* — naming conventions, documentation, type
 rules, the refusals in Section 8. They differ in exactly one thing: **who writes the validation.**
@@ -244,10 +246,11 @@ The whole of `src/tox/tox_shift_vectors_impl.F90`, minus the body:
 ```fortran
 #include <src/macros.h>
 
-!> Implementation of the shift vector field for all genes.
+!> The shift vector field: where each gene sits relative to its family's centroid.
 !|
-!| Hand-written implementation only. The generator turns this into the entry point
-!| [[tox_shift_vectors(module):compute_shift_vector_field]] in module `tox_shift_vectors`.
+!| One vector per gene, from the centroid of the family it belongs to to the gene itself. It is
+!| the input the relative-axis plane tools project and measure angles in, and what the
+!| paralog-pattern detection reads a gene's direction and magnitude off.
 module tox_shift_vectors_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     M_IMPLICIT_NONE
@@ -258,8 +261,8 @@ contains
     !> summary: Compute the shift vector field for all genes.
     !| AUTHOR_ALEXANDER_SCHWARZPAUL
     !| Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
-    pure subroutine compute_shift_vector_field_impl(n_tissues, n_genes, n_families, expression_vectors, &
-                                                    family_centroids, gene_to_fam, shift_vectors)
+    pure subroutine compute_shift_vector_field_impl(n_tissues, n_genes, n_families, expression_vectors, family_centroids, &
+                                               gene_to_fam, shift_vectors)
         integer(int32), intent(in) :: n_tissues
             !! Expression vector dimension
         integer(int32), intent(in) :: n_genes
@@ -289,8 +292,12 @@ annotation lines on `gene_to_fam` — the only thing in the file that is not imp
 **What the generator writes** into `src/generated/tox/tox_shift_vectors.F90`:
 
 ```fortran
-    subroutine compute_shift_vector_field(&
-            n_tissues, n_genes, n_families, expression_vectors, family_centroids, gene_to_fam, shift_vectors, ierr)
+    pure subroutine compute_shift_vector_field(&
+            n_tissues,&
+            ...                                          ! one dummy per line, as declared
+            shift_vectors,&
+            ierr&
+        )
         ...                                              ! your declarations and your docs
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -302,8 +309,7 @@ annotation lines on `gene_to_fam` — the only thing in the file that is not imp
         call validate_dimension_size(n_families, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(expression_vectors, n_tissues * n_genes, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(family_centroids, n_tissues * n_families, ierr, arg_pos=5_int32)
-        call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=6_int32, &
-                                       min=1_int32, max=n_families, sentinel=0_int32)
+        call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=6_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -335,11 +341,12 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 
 | Requirement | Why |
 |---|---|
-| `#include <src/macros.h>` at the top of the file | a `DM_` that never expands is an error, as is a misspelt `M_`/`CM_`/`DM_` in any doc comment |
-| `M_IMPLICIT_NONE` in the module | `implicit none (type, external)` — a typo'd call is a compile error, not a link-time surprise |
+| `#include <src/macros.h>` at the top of the file | a `DM_` that never expands is an error, so a misspelt `DM_` in any doc comment is one too; a misspelt `M_`/`CM_` is a warning, since it only leaves the macro's name standing in the documentation |
+| `M_IMPLICIT_NONE` in the module | `implicit none (type, external)` — a typo'd call is a compile error, not a link-time surprise (plain `implicit none` under nvfortran, which accepts no specifier list; gfortran and ifx, which CI runs, still check externals) |
 | `private` + an explicit `public ::` list | the implementation is API by way of its wrapper, not by accident |
 | **The module's own name as the file name** (`tox_x_impl` in `tox_x_impl.F90`) | two independent things read that name and must agree: generation triggers on the *module* name, while the wrapper's path is mirrored from the *file* name. Let them diverge and `module tox_x` is written into a file named for something else — or, in a file that is not an `_impl` file, nowhere at all |
 | Explicit `intent` on every dummy | decides constness in C and R, and input/output/in-out everywhere |
+| **An extent or a character length declared above the argument it sizes**, never in the same statement (`:: n` before `:: values(n)`, not `:: values(n), n`) | referring to a dummy typed later is a GNU extension that gfortran rejects under `-std=`, and the array then takes an implicit type, which buries the real error. The generator checks this only on what Ford shows it: it never sees a `private` procedure, and in a module that defaults to `private` it sees no locals either. Keep the rule by hand where it cannot look. |
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
 | **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. A numeric kind is compared by value, so `c_int` and `c_double` are fine; a logical kind by name, so `logical(1)` is refused although it is `c_bool`'s value. `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
 | **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`), and the functions the R binding's C shim defines (`tox_int_in`, `tox_char_in`, ...). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`, `<x>_address` and `empty_view_anchor` beside an array of strings `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
@@ -347,6 +354,7 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **A procedure and module name the Python package does not already have** | `tensor_omics` binds every procedure at its top level beside everything its error module defines and its submodules, so none may be called like an error code (`err_ok`), an exception class (`toxinputerror`), `arg_pos_factor`, `check_err_code`, the submodules `library` and `error_handling`, or a module (a procedure named like its own module). Compared ignoring case, as Fortran compares names |
 | **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
 | **A `result(...)` clause on a function** | the result is published as an argument of its name (Section 5.16), and a result named after the function would share that name with the function the wrapper calls — no compiler accepts it |
+| **`use f42_safeguard` in a module whose procedure arguments name a C kind** (`logical(c_bool)`, `c_int`, ...) | `iso_c_binding` gives a C kind the platform lacks the value -1, which fails every declaration naming it; `f42_safeguard`'s guards say *which* kind is missing, but only if it is compiled first, and only a dependency orders that. Only the arguments of procedures Ford shows are checked, never a `private` procedure's: a C kind there, on a local or on a module variable needs the `use` just as much, but the generator does not see it |
 | **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. So is a prologue's `handled`, which the wrapper declares as a default `logical` (Section 5.13). Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
 | **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (Section 7) |
@@ -355,8 +363,8 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **No `ierr` for validation** | validation is the wrapper's job; see Section 5.14 for the one case where an implementation keeps an `ierr` |
 | **No `M_EXPORT_C` on the implementation** | the generated wrapper is what the bindings call; exporting the implementation beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of Section 5.9 — *are* exported: they have no wrapper |
 | **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which every author here reads as the allocating tier while being an ordinary second procedure beside the generated `foo` that is one (Section 6.5). Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (Section 5.7) |
-| **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local *or a dummy* declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
-| **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header. Every whitelisted module is itself checked to be allocation-free, so the bound is verified rather than promised |
+| **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. A local *or a dummy* declared `allocatable` is refused. The generator checks this only on what Ford shows it: it never sees a `private` procedure, and in a module that defaults to `private` it sees no locals either. Keep the rule by hand where it cannot look. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
+| **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `omp_lib`, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header. Every whitelisted module is itself checked to be allocation-free, so the bound is verified rather than promised |
 
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
@@ -367,13 +375,16 @@ the Fortran and C wrappers import it, and Python and R use its value, so it must
 constant the generator can evaluate. Or it may be `:` for an assumed-shape dummy, which is validated with
 the size of the array it is given.
 
-Python and R allocate every output and work array, and pad every string, **before** the call, so
-they compute those extents and lengths themselves. Such an extent has to mean the same number in
+Python and R allocate every output, and every work array of a tier they publish that leaves it to
+its caller (Section 2), and pad every string, **before** the call, so they compute those extents and
+lengths themselves. Such an extent has to mean the same number in
 Fortran, Python and C, which holds for argument names, module constants, integer literals (a kind
 suffix included, `0_int32`), `+ - * /`, parentheses, `max`, `min` and `size(a)` / `size(a, k)` --
 integer `/` truncating toward zero, as Fortran's does. Anything else (`mod`, `**`, `nint`, a real)
-is refused, as is an extent reading an output or an optional argument; obtain such a size from a
-recommend routine with `DM_OUTPUT_FROM` (Section 5.9).
+is refused where Python or R allocate the argument, as is an extent reading an output or an
+optional argument; obtain such a size from a recommend routine with `DM_OUTPUT_FROM` (Section 5.9).
+A work array only `foo` allocates is Fortran's alone, so `tmp_bits(M_BIT_MASK_N_WORDS(n))`, whose
+expansion uses `mod`, is accepted there.
 
 Every axis of an input is checked before the call, whatever its form, so a caller's short array is
 refused rather than read past. An extent named by an argument (`weights(n_cols)`) or fixed at a
@@ -426,15 +437,16 @@ appears in the Python and R documentation, because it was written as prose in th
 
 ### 5.2 A real that may be NaN or infinite
 
-**When** an argument legitimately carries non-finite values — a masked-out mean, a distance to
-something that is not there.
+**When** an argument legitimately carries non-finite values — a missing value in data that is
+still being prepared, such as data integration's NaN-as-missing. Only preprocessing inputs do:
+an analysis step refuses NaN and Inf.
 
 **Write** the opt-out. Finiteness is the *default*: every real argument is checked unless it
 says otherwise, and each failure mode opts out separately.
 
 ```fortran
-real(real64), intent(in) :: distances(n_genes)
-    !! Array of Euclidean distances for each gene
+real(real64), intent(in) :: expr(n_reps, n_genes)
+    !! Expression matrix
     !! DM_ALLOW_NAN
     !! DM_ALLOW_INFINITE
 ```
@@ -459,6 +471,10 @@ round: the common case (must be finite) is free, and the rare, dangerous case is
 | `<arg>_mask`, `<arg>_selection_mask` | a selection mask |
 | `n_selected_<arg>` | the count of `.true.` in that mask |
 
+A `DM_MIN`/`DM_MAX` on an extent replaces its dimension check with the range check, so
+`DM_MIN(0_int32)` permits an empty input, which `validate_dimension_size` refuses. A `DM_EQUALS`
+does not replace it; it comes on top (Section 5.17).
+
 ```fortran
 logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
     !! Logical array (n_axes), .TRUE. for axes to include in calculation
@@ -471,8 +487,7 @@ integer(int32), intent(in) :: n_selected_axes
 
 ```fortran
 call validate_in_range_int(n_selected_axes, ierr, arg_pos=7_int32, min=1_int32)
-if (count(axes_selection_mask, kind=int32) /= n_selected_axes) &
-    call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
 ```
 
 and Python/R callers who pass the mask alone — `n_selected_axes` is computed from it at the call.
@@ -482,9 +497,17 @@ required. A mask the procedure fills, a count it reports, or a mask that may be 
 nothing to count before the call, and is refused. To return a selection and its size, name the
 count something other than `n_selected_<arg>`.
 
-An extent is an input too: `intent(in)`, and readable off at least one array the caller must pass.
-One only optional arrays carry is refused — the bindings drop it from the signature and would then
-have nothing to read it off.
+An extent is an input too: `intent(in)`. Python and R read it off an input array it sizes; an extent
+that only outputs or work arrays carry is asked of the caller instead, since nothing the caller hands
+over has it yet (`n` of `fill(n, value, filled(n))`). One that only optional input arrays carry is
+refused — the bindings drop it from the signature and would then have nothing to read it off.
+
+Python and R allocate the outputs and work arrays before the call, so an extent they ask of the
+caller is refused there when it is negative, naming it, before anything is allocated by it
+(`'n_families' is a size and must not be negative, but it is -1`). Zero and a `DM_MIN`, `DM_MAX` or
+`DM_EQUALS` stay the wrapper's to check, with its codes. An output axis the declaration computes
+(`merge_i(n_points - 1)`) is allocated with at least zero elements, as Fortran sizes it, so no
+points is the wrapper's `ERR_EMPTY_INPUT`.
 
 ### 5.4 A distance matrix
 
@@ -507,12 +530,17 @@ gets the ordinary treatment.)
 
 **Write** `intent(in), optional` plus `DM_DEFAULT`, whose value must be a **constant
 expression** — the generator evaluates it at generation time so the binding languages can pass
-it. Use `M_DEFAULT_VAL` in the body to resolve it into a local.
+it. Use `M_DEFAULT_VAL` in the body to resolve it into a local. Only on an optional argument: on a
+required one `DM_DEFAULT` is refused.
 
 ```fortran
-real(real64), intent(in), optional :: span
-    !! Span parameter for LOESS smoothing
+real(real64), intent(in), optional     :: span
+    !! Span parameter for LOESS smoothing, passed straight to
+    !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
+    !! procedure's own range.
     !! DM_DEFAULT(CM_FAMILY_SPAN_DEFAULT)
+    !! DM_MIN(EPS_LOESS)
+    !! DM_MAX(1.0_real64)
 ```
 ```fortran
 real(real64) :: actual_span
@@ -594,15 +622,17 @@ untouched, so a Fortran caller still receives the full buffer plus the count, wh
 Fortran caller wants. Size the array for the worst case as usual — the language layers hide it.
 
 > The example is `fx_masked` in [`helper/codegen/tests/fixtures/src/fx_edges.F90`](helper/codegen/tests/fixtures/src/fx_edges.F90).
-> No implementation in `src/` uses this yet — f42's hand-written `compute_edf` does, on the
-> export path (Section 6.4) — so the fixture is the worked case for this path.
+> In `src/`, `compute_edf_impl` (`src/f42/utils/f42_stats_impl.F90`) trims both of its outputs,
+> `unique_values` and `cdf_values`, to `n_unique`.
 
 ### 5.7 Work arrays, and how the expert tier appears
 
 **When** your implementation needs scratch space it does not want to allocate itself (because a
 hot loop should not allocate, and because a Fortran caller may want to reuse a buffer).
 
-**Write** the argument with a `tmp_` prefix and an `intent(out)` or `intent(inout)`:
+**Write** the argument with a `tmp_` prefix and `intent(out)`. `intent(inout)` is accepted too, but
+an `intent(inout)` real is an input to validate: `foo_expert` checks it for NaN and infinity like
+any other, so a caller handing in scratch would have to fill it first.
 
 ```fortran
 integer(int32), intent(out) :: tmp_stack_left(n_genes)
@@ -628,8 +658,8 @@ prologue asking for arguments of its own (Section 5.13) — generates only `foo`
 > A `tmp_` argument that is `intent(in)` is an error. A work array is an output or an in-out;
 > nothing else makes sense.
 
-This is the *only* way an implementation module gets scratch space: an `allocatable` local
-anywhere in it is refused (Section 4). A buffer whose size is not an expression over the other
+This is the *only* way an implementation module gets scratch space: nothing in it may be
+`allocatable` (Section 4, which says where the generator can check it). A buffer whose size is not an expression over the other
 arguments is still a `tmp_` argument — `DM_OUTPUT_FROM(..., AUTO)` (Section 5.9) names the routine
 that sizes it. Where even that routine cannot be called ahead of time because the size depends on
 something only the implementation discovers, size the buffer at the **upper bound** and slice it:
@@ -684,20 +714,22 @@ base name is not a permutation by this convention; it stays an ordinary argument
 **When** a buffer's size can only be computed by calling something — netlib's LOESS workspaces
 are the standing example.
 
-**Write** `DM_OUTPUT_FROM(<size_arg>, <producer>, <its module>, AUTO)` on the size argument.
+**Write** `DM_OUTPUT_FROM(<producer's output>, <producer>, <its module>, AUTO)` on the size
+argument. The first parameter names the producer's own output argument whose value this one takes,
+which need not be spelled like yours; in the example below the two happen to share the name.
 Producer inputs are matched to your arguments **by name**; where the two spell a quantity
-differently, or where the producer wants a constant, a table says so:
+differently, or where the producer wants a constant, a table says so (`src/tox/tox_get_outliers_impl.F90`):
 
 ```fortran
-integer(int32), intent(in) :: int_workspace_size
+integer(int32), intent(in)    :: int_workspace_size
     !! Length of integer workspace.
-    !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_impl, AUTO)
+    !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess, AUTO)
     !!
-    !! | Producer input        | Supplied by |
-    !! |-----------------------|-------------|
-    !! | n_dim                 | 1_int32     |
-    !! | max_neighborhood_size | n_families  |
-    !! | save_factorization    | .false.     |
+    !! | Producer input | Supplied by |
+    !! |-----------------------|------------|
+    !! | n_dim                 | 1_int32    |
+    !! | max_neighborhood_size | n_families |
+    !! | save_factorization    | .false.    |
 integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
     !! Integer workspace array
 ```
@@ -705,12 +737,31 @@ integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
 **You get** the producer called for you in `foo`, before the allocation that needs it:
 
 ```fortran
-call tox_loess_required_workspace(n_dim = 1_int32, max_neighborhood_size = n_families, &
-                                  int_workspace_size = int_workspace_size, &
-                                  real_workspace_size = real_workspace_size, &
-                                  save_factorization = .false.)
+call tox_loess_required_workspace(&
+    n_dim = 1_int32,&
+    max_neighborhood_size = n_families,&
+    int_workspace_size = int_workspace_size,&
+    real_workspace_size = real_workspace_size,&
+    save_factorization = .false._c_bool,&
+    ierr = ierr&
+)
+if (is_err(ierr)) then
+    select case (get_err_arg_pos(ierr))
+    case (2_int32)
+        ! the same position here
+    case default
+        call clear_err_arg_pos(ierr)
+    end select
+    return
+end if
+M_ALLOCATE(tmp_perm(n_genes))
+...
 M_ALLOCATE(tmp_int_workspace(int_workspace_size))
 ```
+
+The producer's own error keeps its position where an argument of yours supplied that input
+(`max_neighborhood_size`, its second, is your `n_families`, also second) and loses it otherwise
+(Section 5.14).
 
 — and, in the `foo_expert` binding, the size argument still exposed with its documentation
 pointing at the routine that computes it. One annotation, two consumers.
@@ -719,11 +770,72 @@ The size argument is an input to the implementation, `intent(in)`: an `intent(ou
 the implementation's result, which `foo` computes with the producer itself and then throws away,
 so it is refused.
 
-The producer must be exported (`M_EXPORT_C`), so that a wrapper exists to call; recommend
-routines therefore live in the implementation module, public, tagged — they are not
-implementations themselves and the `_impl` rules of Section 4 leave them alone. Use `JUST_INFO`
-instead of `AUTO` when the caller genuinely has to make the call themselves — then the docs say
-where to get the value, and nothing is called for them.
+**The producer is a published entry point**, so that there is something to call: a hand-written
+`M_EXPORT_C` procedure (a recommend routine in the implementation module, public, tagged — not an
+implementation itself, so the `_impl` rules of Section 4 leave it alone), or **the plain-named
+generated wrapper of an implementation**, named in its generated module:
+
+```fortran
+    !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+```
+
+for `fx_scaled_size_impl` in `fx_producers_impl` (`helper/codegen/tests/fixtures/impl/`). Name
+`foo`, never `foo_impl` — the implementation is not published, and the generator refuses it with
+a note naming `foo` and its module — and never `foo_expert`: the plain-named wrapper is the one
+that prepares what it needs itself, and the generator refuses the expert tier with a note naming
+`foo`. A mode-split implementation has no `foo`; name the per-mode
+wrapper you mean (Section 5.11), which the refusal lists.
+
+A generated producer validates its inputs, so calling it can fail. What you get then:
+
+- **The error names your argument.** The producer reports a bad input by the position of its own
+  argument; `foo` translates it to the position of the argument of yours that supplied that input
+  (by name or through the table), and Python and R, where they call the producer's binding
+  themselves, raise its error again the same way. An input nothing of the caller's supplied — a
+  constant from the table — names no argument; the error code is unchanged either way.
+- **Each producer is checked before the next is called**, so with two producers the first one's
+  error is the one reported.
+- **`foo` is as pure as everything it calls**, the generated producer included (it is asked the
+  same question in turn).
+- **A producer in your own module works**: it is in scope, and the module does not `use` itself.
+
+`foo` calls the producer directly — once for each distinct set of inputs: two sizes from one
+producer through different table rows are two calls, each into its own size. Two arguments
+taking the *same* output with the same inputs would be one call holding one value, and are
+refused: use one argument. It passes every one of the producer's arguments:
+
+- **An input the producer refines in place** (`intent(inout)`, a cap it lowers) is written back
+  through whatever supplies it, so it must be supplied by a **required `intent(inout)`** argument
+  of yours — what the call can write, and what carries the refined value back to your caller.
+  Anything else is refused: an `intent(in)` argument, a constant from the table, an optional
+  argument (with or without `DM_DEFAULT`). Where only Python and R call the producer, they adopt
+  the refined value themselves, and nothing is refused.
+- **A refined value feeds that one producer call.** No other producer call may read it, and no
+  second one refine it — in `foo`, Python and R alike; one call filling several outputs from it
+  is one call. The allocations and your implementation see it refined. Where another producer
+  needs the same quantity, give it its own argument for it.
+- **Producers do not feed each other.** A producer input supplied by another `DM_OUTPUT_FROM`
+  value of yours — or by the very value it computes — is refused, in `foo`, Python and R alike:
+  chaining producers is rejected (`helper/codegen/design/impl-layer.md`). Size for an upper bound
+  the caller passes instead (the sizing formulas are monotone), or take the value as an argument
+  of the caller's.
+- **An output you do not take** goes into a local and is dropped — if it is a scalar. An array
+  output nothing takes is refused, since a local for it would need the producer's own extents.
+- **An input the producer's binding derives** — `n` of `extent_size(n, x(n))`, read off `x` — is
+  resolved like any other input: by name, by a table row, or as a constant. Python and R leave it
+  out, as the producer's own binding does, so it is an error only where `foo` calls the producer
+  and nothing supplies it. For a consumer `c(m, x(m))` the row is `| n | m |`.
+
+**Two modules may not consume each other's producers.** A generated wrapper that calls a producer
+in another module `use`s that module, so two modules sizing each other's arguments are a module
+cycle, which fpm stops on. **Nor may a producer come back to its consumer** through its own
+producers — one procedure sizing an argument by itself, or two sizing each other: each call would
+make the next until the stack ran out, so the generator refuses it, naming the chain.
+
+Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
+then the docs say where to get the value, and nothing is called for them. It names the producer the same
+way, so the link the docs render, in Ford as in Python and R, is to the published wrapper a
+reader can call, never to the implementation behind it.
 
 ### 5.10 A mode argument
 
@@ -734,14 +846,14 @@ against `MODE_*` / `METHOD_*` parameters, and document the accepted values in a 
 argument's own name decides the prefix, and the table's first column header must agree with it:
 
 ```fortran
-integer(int32), intent(in), optional :: mode
+integer(int32), intent(in), optional   :: mode
     !! Mode for LOESS fitting
     !! DM_DEFAULT(CM_FAMILY_MODE_DEFAULT)
     !!
     !! | Mode | Value |
     !! |------|-------|
-    !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
-    !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+    !! | Plain LOESS fitting | [[tox_get_outliers_impl(module):MODE_PLAIN(variable)]] |
+    !! | Robust LOESS fitting | [[tox_get_outliers_impl(module):MODE_ROBUST(variable)]] |
 ```
 
 **You get** two things. Python and R callers pass a **string** — the parameter name without its
@@ -754,17 +866,14 @@ arrive as `"plain"`. And the wrapper checks membership against exactly the value
 names:
 
 ```fortran
-if (present(mode)) then
-    if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) &
-        call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32)
-end if
+if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
 ```
 
 A mode may also be optional **without** a default (Section 5.5). Omitted from Python or R, it
 reaches your implementation absent, so test `present(mode)` before you read it.
 
 Do **not** bound a mode with `DM_MIN`/`DM_MAX`: the accepted set need not be contiguous, and a
-hand-written range goes stale the moment a mode is added — silently admitting the new value
+hand-written range goes stale the moment a mode is added — rejecting the new mode at run time
 everywhere it was not updated. The table is the source of truth, and the generator already reads
 it.
 
@@ -780,10 +889,10 @@ column *is* the opt-in; nothing else changes.
 integer(int32), intent(in) :: pattern_mode
     !! used pattern for detection
     !!
-    !! |         Mode         |                            Value                             |         Procedure           |
-    !! |----------------------|--------------------------------------------------------------|-----------------------------|
-    !! |    Dosage Effect     | [[tox_paralog_analysis_impl(module):MODE_DOSAGE_PATTERN(variable)]]  | detect_dosage_effect        |
-    !! | Subfunctionalization | [[tox_paralog_analysis_impl(module):MODE_SUBFUNC_PATTERN(variable)]] | detect_subfunctionalization |
+    !! |         Mode         |                                 Value                                  |          Procedure           |
+    !! |----------------------|------------------------------------------------------------------------|------------------------------|
+    !! |    Dosage Effect     |  [[tox_paralog_analysis_impl(module):MODE_DOSAGE_PATTERN(variable)]]   | detect_dosage_effect         |
+    !! | Subfunctionalization |  [[tox_paralog_analysis_impl(module):MODE_SUBFUNC_PATTERN(variable)]]  | detect_subfunctionalization  |
 ```
 
 **You get** one entry point per mode value — named from the column, with the `mode` dummy dropped
@@ -793,7 +902,8 @@ take over (Section 5.7): `detect_dosage_effect`, `detect_dosage_effect_expert`,
 no second tier) `filter_paralogs_by_pattern_dosage_effect` and
 `filter_paralogs_by_pattern_subfunctionalization`.
 
-Each validates its own arguments at its own positions, so no position remapping is needed
+Each validates its own arguments at its own positions, and translates a position the
+implementation returns into its own list (Section 5.14), so you write no position remapping
 anywhere — which is exactly what the hand-written per-mode wrappers used to spend a dozen
 `map_err_arg_pos` calls apiece on.
 
@@ -856,16 +966,26 @@ A name that is *nearly* one the implementation has is refused as a misspelling �
 `n_genes` would otherwise become a new argument silently, leaving the prologue and the
 implementation working from different numbers.
 
+No implementation in `src/` has a prologue yet; the worked case is `fx_clip_impl` in
+[`helper/codegen/tests/fixtures/impl/fx_prologue_impl.F90`](helper/codegen/tests/fixtures/impl/fx_prologue_impl.F90),
+whose prologue derives the clipping `level` from a `fraction` of the largest value:
+
 ```fortran
-!> summary: Flag directional outliers
-!| AUTHOR_A_N_AUTHOR
-!| DM_PROLOGUE(prepare_ranking, tox_outliers_impl)
+!> summary: Clip values at a level
+!| author: A Developer
+!| DM_PROLOGUE(fx_clip_guard, fx_prologue_impl)
+pure subroutine fx_clip_impl(n, values, level, tmp_work, clipped, ierr)
 ```
 ```fortran
-pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, handled, ierr)
+pure subroutine fx_clip_guard(n, values, fraction, level, handled, ierr)
+    ...
     logical, intent(out) :: handled
-        !! `.true.` when the data was degenerate and the outputs already hold the answer
+        !! never: the implementation always runs. A default logical, as the generated
+        !! wrapper declares its own (the prologue contract in src/macros.h)
 ```
+
+So `fx_clip(n, values, clipped, fraction, ierr)` takes the `fraction`, and
+`fx_clip_expert(n, values, level, tmp_work, clipped, ierr)` the `level`.
 
 `handled` is a **default** `logical`, not the `logical(c_bool)` of an argument that crosses to C:
 it never does, and the wrapper declares its flag as a default `logical` and passes that, so a
@@ -889,11 +1009,27 @@ on the `handled` path, the implementation overwrites it otherwise. An implementa
 implementation — and the implementation skipped when it says so:
 
 ```fortran
-M_ALLOCATE(tmp_valid_perm(n_genes))
-call prepare_ranking(z_scores = z_scores, n_genes = n_genes, &
-                     tmp_valid_perm = tmp_valid_perm, threshold = threshold, &
-                     handled = handled, ierr = ierr)
-if (is_err(ierr)) return
+M_ALLOCATE(tmp_work(n))
+
+call fx_clip_guard(&
+    n = n,&
+    values = values,&
+    fraction = fraction,&
+    level = level,&
+    handled = handled,&
+    ierr = ierr&
+)
+if (is_err(ierr)) then
+    select case (get_err_arg_pos(ierr))
+    case (1_int32:2_int32)
+        ! the same position here
+    case (3_int32)
+        call set_err_arg_pos(ierr, 4_int32)
+    case default
+        call clear_err_arg_pos(ierr)
+    end select
+    return
+end if
 if (handled) return
 ```
 
@@ -919,6 +1055,8 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
   `intent(in)` dummy to something that writes it
 - a value the prologue produces that the allocations, the permutation sorts or the recommend
   calls *above* it read — the name resolves either way, so it would compile and compute rubbish.
+  A recommend call reads every producer input it passes, including one the producer's own
+  binding derives, such as an extent (Section 5.9).
   (A permutation the prologue itself builds is not sorted above it, so rewriting that one's
   `<base>` is fine.)
 
@@ -939,23 +1077,56 @@ has no answer.
 documentation:
 
 ```fortran
-logical(c_bool) :: undefined_sign
+logical(c_bool) :: zero_vector, undefined_sign
+
 call set_ok(ierr)
-call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, &
-                                             signed_angle, undefined_sign)
+call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, .false._c_bool, &
+                                             signed_angle, zero_vector, undefined_sign)
+if (zero_vector) call set_err_once(ierr, ERR_DIVISION_BY_ZERO)
 ! not a bad argument on its own -- the reference only fails to orient *this* rotation,
 ! which no check on any single argument could have foreseen
 if (undefined_sign) call set_err_once(ierr, ERR_INVALID_INPUT)
 ```
 
-**You get** the code propagated to the caller — and the **argument position cleared**
-(`clear_err_arg_pos`) on the way out. That is deliberate: a position numbers the
-*implementation's* dummy list, the wrapper's list is a different one, and a position often
-propagates in unchanged from a private helper three frames down. A wrong argument name is worse
-than none, and position 0 means "not argument related".
+**You get** the code propagated to the caller, its **argument position translated** into each
+wrapper's own dummy list. A position your implementation returns numbers *its* dummy list; the
+wrapper's list is a different one (it drops work arrays, permutations, recommend-sized values and
+a fixed mode), so after the call it rewrites the position. In `fx_clip` (the fixture of Section 5.13),
+whose list drops the implementation's `level` and `tmp_work`:
 
-Keep `arg_pos=` in your implementation anyway. It is correct for a direct Fortran caller, and the
-Fortran test suite is one.
+```fortran
+if (is_err(ierr)) then
+    select case (get_err_arg_pos(ierr))
+    case (1_int32:2_int32)
+        ! the same position here
+    case (5_int32)
+        call set_err_arg_pos(ierr, 3_int32)
+    case default
+        call clear_err_arg_pos(ierr)
+    end select
+    return
+end if
+```
+
+An argument the wrapper passes from one of its own dummies keeps its name, wherever it sits in
+the wrapper's list; everything else -- a work array or permutation the wrapper prepared, a
+recommend-sized or prologue-produced value, the fixed mode, `ierr` itself -- lands in
+`case default` and becomes 0, "not argument related". The same block follows every prologue
+call, and every `DM_OUTPUT_FROM` producer call (Section 5.9). Python and R then name the argument:
+`compute_relative_axis_contributions(np.zeros(3))` raises `ERR_DIVISION_BY_ZERO` "(argument 'vec')".
+
+**Your part: every position your `ierr` returns numbers your own dummy list.** A position
+propagates unchanged through every call that does not rewrite it, so one a helper set numbers
+*the helper's* list. Translate it at that call, before positions from different helpers merge --
+`call map_err_arg_pos(ierr, 3_int32, 18_int32)` where the helper's third dummy is your
+eighteenth, or `set_err_arg_pos` inside a `select case` -- or drop it with `clear_err_arg_pos`
+where it names nothing your caller passed. Afterwards no `select case` can tell two helpers'
+3 apart. `detect_patterns_impl` clears what its private subset helpers return, whose checks
+guard counts the algorithm keeps and so carry no position at all.
+
+**Blame only inputs the caller provides.** An output, a `tmp_` work array or a size a producer
+computes is no argument a Python or R caller passed, yet a position on it would reach them by name.
+An error about one of those is internal: report it with no position.
 
 ### 5.15 A family too big for one file
 
@@ -994,12 +1165,15 @@ the parent's `interface`, once in the implementation) for encapsulation this alr
 
 **When** the implementation computes one value and is naturally a function.
 
-**Write** it as one, with a `result(...)` clause and a `!!` on the result as on any argument:
+**Write** it as one, with a `result(...)` clause and a `!!` on the result as on any argument. No
+implementation in `src/` is a function yet; the worked case is `fx_total_impl` in
+[`helper/codegen/tests/fixtures/impl/fx_functions_impl.F90`](helper/codegen/tests/fixtures/impl/fx_functions_impl.F90):
 
 ```fortran
 !> summary: The sum of the values
-!| AUTHOR_A_N_AUTHOR
-pure function values_sum_impl(n_values, values) result(total)
+!| author: A Developer
+!| An edge case: a scalar function result, published as `total` right before `ierr`.
+pure function fx_total_impl(n_values, values) result(total)
     integer(int32), intent(in) :: n_values
         !! number of values
     real(real64), intent(in) :: values(n_values)
@@ -1007,15 +1181,15 @@ pure function values_sum_impl(n_values, values) result(total)
     real(real64) :: total
         !! their sum
     total = sum(values)
-end function values_sum_impl
+end function fx_total_impl
 ```
 
 **You get** subroutines, as for every implementation: the result becomes an `intent(out)` argument
-of every tier, **right before `ierr`** — `values_sum(n_values, values, total, ierr)` — and the
-wrapper assigns the call to it; Python and R return it as the value of `values_sum(values)`.
+of every tier, **right before `ierr`** — `fx_total(n_values, values, total, ierr)` — and the
+wrapper assigns the call to it; Python and R return it as the value of `fx_total(values)`.
 Before your own `ierr` too, if you declare one (Section 5.14), and after a prologue's own
 arguments (Section 5.13), so the signature ends in `..., total, ierr` either way. Other
-implementations keep calling `values_sum_impl` as the function it is.
+implementations keep calling `fx_total_impl` as the function it is.
 
 The result is an output argument from here on, so everything about outputs applies: it is
 returned, documented, checked for kind and name. On top of that, refused: **no `result(...)`
@@ -1041,11 +1215,13 @@ them belong to each tissue, so the two must agree.
 integer(int32), intent(in) :: n_replicates
     !! Number of replicates per gene, the rows of `expr`
     !! DM_EQUALS(sum(reps_per_tissue))
-integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
-    !! Number of replicates per tissue in `expr`
-    !! DM_MIN(1_int32)
+...
 real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
     !! Gene Expression matrix
+integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
+    !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+    !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+    !! DM_MIN(1_int32)
 ```
 
 **You get** a comparison reporting `ERR_SIZE_MISMATCH` at the argument, emitted like a `DM_MIN`
@@ -1082,6 +1258,30 @@ If the array can be declared with the expression itself — `expr(sum(reps_per_t
 as `calc_tiss_avg_impl` does — that needs no marker and no extent argument at all (Section 4).
 `DM_EQUALS` is for a size that the implementation needs as an argument anyway.
 
+### 5.18 Bit-mask words
+
+**When** an `integer(int32)` array holds the words of a bit mask that the caller passes in or
+gets back, laid out as `f42_bit_masks_impl` documents.
+
+**Write** the name: the argument is called `bitmask` or `bitmasks`, or ends in `_bitmask` /
+`_bitmasks`.
+
+```fortran
+integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
+    !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+```
+
+**You get** an R binding that passes every word. Every int32 bit pattern is a word, and the one
+with only bit 31 set is the bit pattern R uses for `NA_integer_`, so an ordinary integer array
+would refuse it as NA (issue #206). Such an argument passes as the integer vector it is, that
+word included; R prints it as `NA`, and it comes back out of an output and goes in again
+unchanged. A double `NA` is still refused, with a hint to pass the words as an integer vector,
+and every other check stays. Python is unaffected: numpy has no integer NA.
+
+**Only** on an `integer(int32)` array, and without `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or
+`DM_EQUALS`: a word is no number to compare. `_bitmask` does not end in `_mask`, so a bit-mask
+argument is never a selection mask (Section 5.3).
+
 ---
 
 # Part II — the export path
@@ -1110,11 +1310,13 @@ Because the procedure is not a numeric procedure of the pipeline:
   `f42_kd_tree` were all hand-written exports until someone asked what a wrapper around them
   would do, and the answer was "validate what they were validating by hand, and allocate and sort
   what their callers were allocating and sorting" — so all three are implementations now.
-- **inside an implementation module** — a recommend/sizing routine
-  (`tox_loess_required_workspace`, `calc_neighborhood_size`) or a utility a caller genuinely
-  needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
-  wrapper to call (Section 5.9). The test is the same one: a wrapper around `calc_neighborhood_size`
-  would validate nothing and prepare nothing, so there is nothing to generate.
+- **inside an implementation module** — a recommend/sizing routine (`calc_neighborhood_size`) or
+  a utility a caller genuinely needs: a wrapper around either would validate
+  nothing and prepare nothing, so there is nothing to generate. Being a `DM_OUTPUT_FROM` producer
+  does not change that: a producer only has to be exported, by `M_EXPORT_C` or as an
+  implementation's generated wrapper (Section 5.9), and the same test decides which.
+  `tox_loess_required_workspace` was converted on purpose, not by a rule; see
+  `helper/codegen/design/impl-layer.md`.
 
 If your procedure is a numeric procedure of the pipeline, take Part I instead. "It was easier to
 export it directly" is how an unvalidated API gets shipped.
@@ -1131,11 +1333,9 @@ The marker goes in the procedure's Ford pre-comment, and that is the whole of it
 
 ```fortran
 !> M_EXPORT_C
-!| summary: Compute the Empirical Distribution Function (EDF) from pre-sorted permutation
-!| AUTHOR_JITU_DABA
-!| Returns the sorted unique values and their cumulative frequencies in [0,1].
-!| Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
-pure subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
+!| summary: Subroutine to serialize a flat integer array into a file
+!| AUTHOR_AARON_SCHROEDER
+subroutine serialize_int_helper(arr, n_elements, arr_shape, filename, ierr)
 ```
 
 `M_EXPORT_C` expands to a Ford `category` tag, and the generator reads the category from that
@@ -1166,8 +1366,8 @@ subroutine serialize_int_helper(arr, n_elements, arr_shape, filename, ierr)
     if (is_err(ierr)) return
 ```
 
-Because you own the numbering, `arg_pos` here is *correct* and stays — nothing clears it (contrast
-Section 5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
+Because you own the numbering, `arg_pos` here is *correct* and stays — no generated wrapper stands
+between it and the caller to translate it (contrast Section 5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
 `if (is_err(ierr)) return` before touching the data.
 
 An exported procedure with no `ierr` gets one synthesised, because the binding languages always
@@ -1297,9 +1497,10 @@ module should be exported (a recommend routine, a utility), that one is not an `
 6.1 already covers it.
 
 > Its bindings land in a module named for the file they came from, so the exports of
-> `tox_loess_impl` are published as the Python module `tox_loess_impl` beside the wrappers'
-> `tox_loess`. That is the one place the suffix is visible to a binding caller — a support routine
-> is not part of the tiered API and is not renamed into it.
+> `tox_data_integration_preprocessing_impl` (the recommend routine `calc_neighborhood_size`) are
+> published as the Python module `tox_data_integration_preprocessing_impl` beside the wrappers'
+> `tox_data_integration_preprocessing`. That is the one place the suffix is visible to a binding
+> caller — a support routine is not part of the tiered API and is not renamed into it.
 
 ---
 
@@ -1323,7 +1524,7 @@ docstring and the R `.Rd` help page. So:
   rewritten along these lines on 2026-08-12; `tox_get_outliers_impl` is a short worked example.
 - **Literals are rendered per language.** `0.7_real64` reaches Python and R as `0.7`; `.true.`
   becomes `True` / `TRUE`.
-- **Ford links resolve to what the reader can call.** `[[tox_loess_impl(module):MODE_PLAIN(variable)]]`
+- **Ford links resolve to what the reader can call.** `[[tox_get_outliers_impl(module):MODE_PLAIN(variable)]]`
   becomes the mode *string* in a Python or R doc, and a link to an implementation becomes a link
   to the binding that wraps it — never to an implementation the reader cannot reach.
 - **A link that names nothing is an error.** Name the module that *defines* the thing —
@@ -1380,7 +1581,8 @@ never flattened.
 ## 8. What the generator refuses
 
 Errors. Nothing is written until they are fixed. Each diagnostic points at the line in *your*
-source and carries a note saying what to write instead.
+source, and most carry a note saying what to write instead. Where a row quotes one, the names in
+it are an example's.
 
 | Refused | Why |
 |---|---|
@@ -1393,8 +1595,10 @@ source and carries a note saying what to write instead.
 | a kind the bindings cannot carry: anything but `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` and a default `logical` (numeric kinds compared by value, logicals by name) | R holds int32 and real64 only, and the validators take only those (Section 4) |
 | an argument named like a Python keyword or builtin, an R reserved word, a C keyword, a function of the R shim (`tox_int_in`), or like its procedure | a parse error in one binding language fails the whole package (Section 4) |
 | an argument named like something its generated Fortran wrapper calls, imports, uses as a kind or declares, there | the wrapper would not compile, and with it the library (Section 4) |
+| an argument named like one the C binding adds: `<x>_strlen` beside a string `x`, `n_<x>_elements` beside an assumed-shape `x` (`the wrapper needs an argument called 'label_strlen', but 'pr_strlen' already has one`) | the C wrapper would have two arguments of that name; rename yours |
 | a procedure named like a Python keyword or builtin, or an R reserved word | it is a Python and an R function of that name (Section 4) |
 | an `ierr` that is not the last argument | every published signature ends in the error code (Section 4) |
+| an `ierr` that is not a scalar integer, or that is `intent(in)` (`'ierr' is not a scalar integer`, `'ierr' is intent(in), so no error can be reported through it`) | it carries an encoded `tox_errors` code back to the caller |
 | a function without a `result(...)` clause | its result is published under the result's name, which would then be the function's (Section 5.16) |
 | a function result named `ierr`, with the `tmp_` prefix, or of assumed length (`len=*`) | the result is an output argument right before `ierr`, which a work array never is, and its length would come from a declaration no binding writes (Section 5.16) |
 | the same exported name in two modules, or twice in one, ignoring case | it is the C symbol and the name Python and R publish; two link as a duplicate symbol |
@@ -1402,35 +1606,58 @@ source and carries a note saying what to write instead.
 | an `intent(inout), optional` argument | no binding can return a value the caller may have omitted (Section 5.5) |
 | an `intent(inout)` character, or an `intent(inout)` logical array | both cross through a buffer the binding builds and cannot hand the change back; take it `intent(in)` and return a separate `intent(out)` |
 | a `DM_DEFAULT` on an array | a default is one value (Section 5.5) |
+| a `DM_DEFAULT` on a required argument (`argument 'factor' has a DM_DEFAULT but is not optional`) | a default is what an omitted argument takes, and only an optional one can be omitted; every layer's documentation would promise it to callers who must pass the argument anyway. The note says what to do for the case: drop it where Python and R derive the value, on any other extent (which cannot be optional), and on an output or in-out argument; otherwise declare it `optional` and resolve it with `M_DEFAULT_VAL` (Section 5.5) |
 | an extent that is not `intent(in)`, or that only optional arrays carry | the bindings read an extent off the arrays they are passed (Section 5.3) |
 | a mask and its `n_selected_` count that are not both `intent(in)`, or an optional mask with a count | the count is derived from the mask before the call (Section 5.3) |
 | a `DM_RESULT_SIZE_IS` naming an `intent(in)` count | the count is what the procedure reports back (Section 5.6) |
+| a `DM_RESULT_SIZE_IS` naming something that is not an argument, or that is not a scalar integer (`'picked' says its result size is 'n_chosen', which is not an argument of 'pr_rsize_missing_impl'`, `'n_picked' cannot be the result size of 'picked': a result size is a scalar integer`) | the count is a scalar the procedure sets (Section 5.6) |
 | a `DM_EQUALS` on anything but a required `intent(in)` scalar integer | the wrapper compares the value the caller passed, before the call (Section 5.17) |
+| an argument named `bitmask`, `bitmasks`, `*_bitmask` or `*_bitmasks` that is not an integer array (`argument 'bitmask' is named as bit-mask words, but is not an integer(int32) array`), or that has a `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or `DM_EQUALS` (`bit-mask argument 'bitmasks' has DM_MIN`) | the name says it holds bit-mask words, which R passes without its NA check and which no value range applies to (Section 5.18) |
 | an `intent(out)` `<base>_perm` whose base is an argument, or an `intent(out)` `DM_OUTPUT_FROM(..., AUTO)` value | `foo` builds or computes it itself and would discard the result (Sections 5.8, 5.9) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
+| a `<x>_shape` argument that is not `intent(in)`, or not a rank-1 integer array, or one whose `x` is not rank 1 (`shape argument 'values_shape' is not intent(in)`, `shape argument 'values_shape' is not a rank-1 integer array`, `'values' has a shape argument but is rank 2`) | a shape is the list of the flat array's extents, one integer per dimension, and is only read (Section 6.6) |
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
 | a module constant in an extent or a length that the generator cannot evaluate to an integer (`size(NAMES)` is one, though it is an integer) | Python and R allocate and pad with its value (Section 4) |
 | an input axis computed from arguments that reads an optional, an `intent(out)`, a string, a mode, a default `logical`, or an array whose own extent is computed (`x(size(a))` beside `a(n + 1)`) | C is given the axis's extent and the C wrapper compares it with the declaration before the call, which it cannot evaluate from those (Section 4) |
-| an extent of an output or a work array, or a string's length, outside the grammar the bindings compute in (`mod(n, 2)`, `n**2`, `nint(x)`, a real), or one reading an output, an optional argument or anything but an argument and a module constant | Python and R compute it before the call, and would get another number than Fortran or none at all; use `DM_OUTPUT_FROM` (Section 4) |
+| an extent of an output or a work array, or a string's length, where Python or R allocate it, outside the grammar the bindings compute in (`mod(n, 2)`, `n**2`, `nint(x)`, a real), or one reading an output, an optional argument or anything but an argument and a module constant | Python and R compute it before the call, and would get another number than Fortran or none at all; use `DM_OUTPUT_FROM` (Section 4) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |
 | a mode argument that is not a scalar integer | modes are compared against `MODE_*` parameters |
-| a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
-| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |
-| a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
+| a mode argument with no table, two tables, or a table with no rows (`mode argument 'mode' has no table of accepted values`, `mode argument 'mode' has 2 tables of accepted values`, `mode argument 'mode' has a table with no values`) | the table is what the C layer maps the caller's string through (Section 5.10) |
+| a mode table whose first column header does not match the argument's name (`the table of 'mode' is headed 'Method' but 'mode' is a mode argument`) | the header and the argument name decide the parameter prefix together, `MODE_` or `METHOD_` (Section 5.10) |
+| a mode-table row that does not link a parameter, links the module itself, or links a parameter without the argument's prefix (`row 1 of the mode table of 'mode' does not name a parameter`, `row 1 of the mode table of 'mode' links to module 'pr_m_impl' rather than to a parameter in it`, `'METHOD_A' is not a valid mode parameter`) | the mode string a caller passes is the parameter's name without its prefix (Section 5.10) |
+| a split mode table whose third column does not name a procedure, or names one twice, and a mode table that maps one mode string twice (`row 2 of the mode table of 'mode' has no valid procedure name in its third column`, `the mode table of 'mode' names procedure(s) pr_twice more than once`, `the mode table of 'mode' maps a more than once`) | each row is one mode and, in a split, one generated procedure (Section 5.11) |
+| a defaulted mode whose default is not in its table (`the default of 'mode' (3) matches no value in its mode table`) | the binding passes the default as its mode string, which must be one the table names |
+| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
+| a `DM_OUTPUT_FROM` naming a producer that does not exist, or an output the producer does not have (`'work_size' is computed from 'pr_nothing' in 'pr_p_impl', which does not exist`, `'n' is not an output of 'pr_size_of'`) | the first parameter names the producer's output, the next two the producer and its module (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer-input table that is one of two, has an empty cell, or maps a name the producer does not have (`'work_size' has 2 tables mapping the inputs of 'pr_size_of'`, `row 1 of the producer-input table of 'work_size' has an empty cell`, `the producer-input table of 'work_size' maps 'm', which is not an argument of 'pr_size_of'`) | the table says what each producer input is supplied by, and the generator will not guess (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
+| an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls, supplied by anything but a required `intent(inout)` argument (an `intent(in)` argument, a constant, an optional) | the producer writes it back through what supplies it: an `intent(in)` argument or a constant does not compile, and the local an optional goes through would swallow the refined value (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer input supplied by another `DM_OUTPUT_FROM` value of the consumer, or by the value it computes itself | chaining producers is rejected: size for an upper bound, or take the value as an argument of the caller's (Section 5.9) |
+| a value a `DM_OUTPUT_FROM` producer refines in place (its `intent(inout)` input) that another producer call reads or refines too | what the other call saw would depend on the call order; a refined value feeds that one call (Section 5.9) |
+| two arguments taking the same output of one `DM_OUTPUT_FROM` producer, given the same inputs | one call fills both with one value; use one argument (Section 5.9) |
+| an array output, or a string output whose length is not a literal, of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes (`'work_size' is computed from 'pr_size_label', whose output 'label' nothing here takes, and it is not a scalar the generated wrapper can drop`) | the call must pass it, and a local for it would need the producer's own sizes (Section 5.9) |
+| a misspelt `DM_` in any doc comment | an unexpanded directive is silently ignored, and the wrapper comes out quietly wrong. A misspelt `M_`/`CM_` is a warning (below) |
+| a directive given twice on one entity (`duplicate DM_MIN directive`) | an entity can carry each directive only once |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
 | an implementation module in a file not named after it | generation reads the module name while the wrapper's path is mirrored from the file name — the module would be written into a file named for something else (Section 4) |
 | an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` that reads as the allocating tier beside the generated `foo` that is one (Section 6.5), the second a second procedure called `foo_expert` (Section 4) |
-| an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (Sections 4 and 5.7) |
+| an `allocatable` dummy or local the generator sees in an **implementation module** | the generated `foo` owns the memory, not the implementation. The generator checks this only on what Ford shows it: it never sees a `private` procedure, and in a module that defaults to `private` it sees no locals either. Keep the rule by hand where it cannot look. (Sections 4 and 5.7) |
 | a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (Section 4) |
+| an `allocatable` local or dummy in a whitelisted module (`whitelisted module 'tox_conversions' allocates in 'grow': 'buffer'`) | an implementation may `use` it, so the allocation rule would not hold across modules otherwise (Section 4). The check sees a local only because those modules are public by default; a private procedure or a module defaulting to `private` would hide it |
+| a C kind on a procedure argument in a module that does not `use f42_safeguard` (`module 'pr_s_impl' names 'c_bool' without using 'f42_safeguard'`) | the safeguard's guards name a C kind the platform lacks only if it is compiled first, which only the dependency arranges (Section 4) |
+| an extent or a character length declared below the argument it sizes, or in the same statement (`'values' is sized by 'n', which is not declared above it`), in any procedure Ford shows | gfortran rejects it under `-std=`, and the array then takes an implicit type, which buries the real error (Section 4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (Section 5.13) |
 | a prologue with no `handled`, or one that is not a scalar `logical, intent(out)`, or one of another kind than the default `logical` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13); and it passes its own default `logical` flag, which a `logical(c_bool)` dummy does not take |
 | a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (Section 5.13) |
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (Section 5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (Section 5.13) |
-| a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
+| a prologue writing a value the implementation reads that also sizes something the caller still passes or receives (`prologue writes 'n', which 'pr_local_impl' reads and the wrapper cannot make a local`) | it would have to become a local and stay a dummy at once, and Fortran will not hand an `intent(in)` dummy to something that writes it (Section 5.13) |
+| a prologue producing something the setup above it reads: a work array's extent, the base of a permutation sorted there, a producer's input (`'tmp_work' is sized by 'm', which the prologue only fills afterwards`, `'values_perm' is sorted against 'values' before the prologue rewrites it`, `'pr_size_of' is passed 'k', which the prologue only fills afterwards`) | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
 | a procedure or module named, ignoring case, like an export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), a submodule of the Python package (`library`, `error_handling`), or another module | `tensor_omics` binds all of them at its top level, so one would hide the other; a module called `error_handling` would overwrite the error module's file (Section 7) |
 | a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
 
@@ -1442,6 +1669,9 @@ errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 - a value table on an argument that is *not* named as a mode (`baseline` rather than
   `baseline_mode`) — the table is then documentation only, and the value crosses the binding as
   a bare integer instead of its name
+- a module with no `!>` documentation — the published module would have none either (Section 7)
+- a misspelt `M_` or `CM_` macro in a doc comment, or one used without `#include <src/macros.h>` —
+  its name is left standing in the documentation (a `DM_` is an error instead)
 
 
 ---
@@ -1528,6 +1758,8 @@ Two things that will bite when you convert an existing procedure to an implement
       other arguments `DM_EQUALS`. Every real that may be non-finite carries the matching
       `DM_ALLOW_*` — and no other real does.
 - [ ] No validation in the implementation; no `ierr` unless it reports a genuine runtime failure.
+- [ ] Every position that `ierr` returns numbers the implementation's own dummy list: one a
+      helper set is translated or cleared at that call (Section 5.14).
 - [ ] The generated wrapper was read once, and validates what you expected it to — and where two
       were generated, the plain one prepares what you meant it to.
 

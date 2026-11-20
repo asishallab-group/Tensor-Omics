@@ -307,3 +307,36 @@ def check_err_code(ierr, arguments=(), sources=(), shapes=(), equals=()):
     raise _EXCEPTIONS.get(code, ToxError)(
         message, code=code, name=_NAMES.get(code), argument=argument
     )
+
+
+def _consumer_error(error, supplied_by, arguments=(), sources=()):
+    """The error a producer raised, naming the caller's argument instead.
+
+    Parameters
+    ----------
+    error : ToxError
+        What the producer raised.
+    supplied_by : dict of str to int
+        For each producer argument the calling function supplied, the position
+        of the argument that supplied it in `arguments`.
+    arguments, sources : sequence
+        The calling function's, as `check_err_code` takes them.
+
+    Returns
+    -------
+    ToxError
+        The same error, of the same class, for the caller to raise.
+    """
+    position = supplied_by.get(error.argument, 0)
+    if error.code is None:
+        # refused by the producer's binding before any code existed
+        argument = None
+        if 0 < position <= len(arguments):
+            source = sources[position - 1] if position <= len(sources) else None
+            argument = source or arguments[position - 1]
+        return ToxArgumentError(str(error), argument=argument)
+    try:
+        check_err_code(error.code + position * ARG_POS_FACTOR, arguments, sources)
+    except ToxError as remapped:
+        return remapped
+    return error

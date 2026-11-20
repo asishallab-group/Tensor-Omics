@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void calculate_density_radius_c(const double*, const int*, const int*, const double*, double*, int*);
@@ -66,7 +66,8 @@ SEXP calculate_labels_as_density_call(SEXP vectors, SEXP r, SEXP dimension_order
     const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
 
     // outputs and work space
-    SEXP label_densities = PROTECT(Rf_allocVector(REALSXP, n_vectors)); _nprot++;
+    R_xlen_t _n_label_densities = tox_count("label_densities", (double) n_vectors);
+    SEXP label_densities = PROTECT(Rf_allocVector(REALSXP, _n_label_densities)); _nprot++;
     int ierr = 0;
 
     calculate_labels_as_density_c(
@@ -102,9 +103,11 @@ SEXP identify_ensemble_seeds_global_radius_call(SEXP vectors, SEXP density_label
     int _v_k_seeding = Rf_asInteger(k_seeding);
 
     // outputs and work space
-    SEXP sorted_perm = PROTECT(Rf_allocVector(INTSXP, n_vectors)); _nprot++;
+    R_xlen_t _n_sorted_perm = tox_count("sorted_perm", (double) n_vectors);
+    SEXP sorted_perm = PROTECT(Rf_allocVector(INTSXP, _n_sorted_perm)); _nprot++;
     int n_seeds = 0;
-    unsigned char* _c_seed_mask = tox_bool_alloc(n_vectors);
+    R_xlen_t _n_seed_mask = tox_count("seed_mask", (double) n_vectors);
+    unsigned char* _c_seed_mask = tox_bool_alloc(_n_seed_mask);
     int ierr = 0;
 
     identify_ensemble_seeds_global_radius_c(
@@ -119,8 +122,11 @@ SEXP identify_ensemble_seeds_global_radius_call(SEXP vectors, SEXP density_label
         &ierr
     );
 
-    // convert the outputs back
-    SEXP seed_mask = PROTECT(tox_bool_out(_c_seed_mask, n_vectors)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP seed_mask = R_NilValue;
+    if (!tox_failed(ierr)) {
+        seed_mask = PROTECT(tox_bool_out(_c_seed_mask, _n_seed_mask)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, sorted_perm);
@@ -152,10 +158,13 @@ SEXP identify_ensemble_seeds_call(SEXP vectors, SEXP density_labels, SEXP dimens
     const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
 
     // outputs and work space
-    SEXP sorted_perm = PROTECT(Rf_allocVector(INTSXP, n_vectors)); _nprot++;
+    R_xlen_t _n_sorted_perm = tox_count("sorted_perm", (double) n_vectors);
+    SEXP sorted_perm = PROTECT(Rf_allocVector(INTSXP, _n_sorted_perm)); _nprot++;
     int n_seeds = 0;
-    unsigned char* _c_seed_mask = tox_bool_alloc(n_vectors);
-    SEXP seed_radii = PROTECT(Rf_allocVector(REALSXP, n_vectors)); _nprot++;
+    R_xlen_t _n_seed_mask = tox_count("seed_mask", (double) n_vectors);
+    unsigned char* _c_seed_mask = tox_bool_alloc(_n_seed_mask);
+    R_xlen_t _n_seed_radii = tox_count("seed_radii", (double) n_vectors);
+    SEXP seed_radii = PROTECT(Rf_allocVector(REALSXP, _n_seed_radii)); _nprot++;
     int ierr = 0;
 
     identify_ensemble_seeds_c(
@@ -174,8 +183,11 @@ SEXP identify_ensemble_seeds_call(SEXP vectors, SEXP density_labels, SEXP dimens
         &ierr
     );
 
-    // convert the outputs back
-    SEXP seed_mask = PROTECT(tox_bool_out(_c_seed_mask, n_vectors)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP seed_mask = R_NilValue;
+    if (!tox_failed(ierr)) {
+        seed_mask = PROTECT(tox_bool_out(_c_seed_mask, _n_seed_mask)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 5)); _nprot++;
     SET_VECTOR_ELT(_out, 0, sorted_perm);
@@ -245,8 +257,10 @@ SEXP obtain_ensembles_global_radius_call(SEXP vectors, SEXP dimension_order, SEX
     const int* _c_seed_indices = tox_int_in(seed_indices, "seed_indices");
 
     // outputs and work space
-    unsigned char* _c_ensemble_matrix = tox_bool_alloc(n_vectors * n_seeds);
-    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, n_seeds)); _nprot++;
+    R_xlen_t _n_ensemble_matrix = tox_count("ensemble_matrix", (double) n_vectors * (double) n_seeds);
+    unsigned char* _c_ensemble_matrix = tox_bool_alloc(_n_ensemble_matrix);
+    R_xlen_t _n_stop_reasons = tox_count("stop_reasons", (double) n_seeds);
+    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, _n_stop_reasons)); _nprot++;
     double mad_ambient = 0;
     int ierr = 0;
 
@@ -270,9 +284,12 @@ SEXP obtain_ensembles_global_radius_call(SEXP vectors, SEXP dimension_order, SEX
         &ierr
     );
 
-    // convert the outputs back
-    SEXP ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, n_vectors * n_seeds)); _nprot++;
-    { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
+    // convert the outputs back, unless the library reports an error
+    SEXP ensemble_matrix = R_NilValue;
+    if (!tox_failed(ierr)) {
+        ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, _n_ensemble_matrix)); _nprot++;
+        { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, ensemble_matrix);
@@ -308,8 +325,10 @@ SEXP obtain_ensembles_seed_radius_call(SEXP vectors, SEXP dimension_order, SEXP 
     const int* _c_seed_indices = tox_int_in(seed_indices, "seed_indices");
 
     // outputs and work space
-    unsigned char* _c_ensemble_matrix = tox_bool_alloc(n_vectors * n_seeds);
-    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, n_seeds)); _nprot++;
+    R_xlen_t _n_ensemble_matrix = tox_count("ensemble_matrix", (double) n_vectors * (double) n_seeds);
+    unsigned char* _c_ensemble_matrix = tox_bool_alloc(_n_ensemble_matrix);
+    R_xlen_t _n_stop_reasons = tox_count("stop_reasons", (double) n_seeds);
+    SEXP stop_reasons = PROTECT(Rf_allocVector(INTSXP, _n_stop_reasons)); _nprot++;
     double mad_ambient = 0;
     int ierr = 0;
 
@@ -333,9 +352,12 @@ SEXP obtain_ensembles_seed_radius_call(SEXP vectors, SEXP dimension_order, SEXP 
         &ierr
     );
 
-    // convert the outputs back
-    SEXP ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, n_vectors * n_seeds)); _nprot++;
-    { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
+    // convert the outputs back, unless the library reports an error
+    SEXP ensemble_matrix = R_NilValue;
+    if (!tox_failed(ierr)) {
+        ensemble_matrix = PROTECT(tox_bool_out(_c_ensemble_matrix, _n_ensemble_matrix)); _nprot++;
+        { SEXP _dim_ensemble_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_ensemble_matrix)[0] = n_vectors; INTEGER(_dim_ensemble_matrix)[1] = n_seeds; Rf_setAttrib(ensemble_matrix, R_DimSymbol, _dim_ensemble_matrix); UNPROTECT(1); }
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, ensemble_matrix);
@@ -365,7 +387,8 @@ SEXP merge_ensembles_call(SEXP raw_masks, SEXP min_overlap_coefficient) {
     unsigned char* _c_raw_masks = tox_bool_in(raw_masks, "raw_masks");
 
     // outputs and work space
-    unsigned char* _c_merged_masks = tox_bool_alloc(n_vectors * n_seeds);
+    R_xlen_t _n_merged_masks = tox_count("merged_masks", (double) n_vectors * (double) n_seeds);
+    unsigned char* _c_merged_masks = tox_bool_alloc(_n_merged_masks);
     int n_ensembles = 0;
     int ierr = 0;
 
@@ -379,9 +402,12 @@ SEXP merge_ensembles_call(SEXP raw_masks, SEXP min_overlap_coefficient) {
         &ierr
     );
 
-    // convert the outputs back
-    SEXP merged_masks = PROTECT(tox_bool_out(_c_merged_masks, n_vectors * n_seeds)); _nprot++;
-    { SEXP _dim_merged_masks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_merged_masks)[0] = n_vectors; INTEGER(_dim_merged_masks)[1] = n_seeds; Rf_setAttrib(merged_masks, R_DimSymbol, _dim_merged_masks); UNPROTECT(1); }
+    // convert the outputs back, unless the library reports an error
+    SEXP merged_masks = R_NilValue;
+    if (!tox_failed(ierr)) {
+        merged_masks = PROTECT(tox_bool_out(_c_merged_masks, _n_merged_masks)); _nprot++;
+        { SEXP _dim_merged_masks = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_merged_masks)[0] = n_vectors; INTEGER(_dim_merged_masks)[1] = n_seeds; Rf_setAttrib(merged_masks, R_DimSymbol, _dim_merged_masks); UNPROTECT(1); }
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
     SET_VECTOR_ELT(_out, 0, merged_masks);
@@ -412,7 +438,8 @@ SEXP grow_ensemble_call(SEXP vectors, SEXP ensemble_mask, SEXP r, SEXP dimension
     const int* _c_kd_indices = tox_int_in(kd_indices, "kd_indices");
 
     // outputs and work space
-    unsigned char* _c_grown_mask = tox_bool_alloc(n_vectors);
+    R_xlen_t _n_grown_mask = tox_count("grown_mask", (double) n_vectors);
+    unsigned char* _c_grown_mask = tox_bool_alloc(_n_grown_mask);
     int ierr = 0;
 
     grow_ensemble_c(
@@ -429,8 +456,11 @@ SEXP grow_ensemble_call(SEXP vectors, SEXP ensemble_mask, SEXP r, SEXP dimension
         &ierr
     );
 
-    // convert the outputs back
-    SEXP grown_mask = PROTECT(tox_bool_out(_c_grown_mask, n_vectors)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP grown_mask = R_NilValue;
+    if (!tox_failed(ierr)) {
+        grown_mask = PROTECT(tox_bool_out(_c_grown_mask, _n_grown_mask)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, grown_mask);

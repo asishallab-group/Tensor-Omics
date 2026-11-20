@@ -52,9 +52,21 @@ from .f42_binary_search_tree import (
     bst_range_query,
     bst_range_query_expert,
 )
+from .f42_bit_masks import (
+    bitmask_n_words,
+    bitmask_test,
+    bitmask_from_logical,
+    bitmask_to_logical,
+    bitmasks_from_logical_2D,
+    bitmasks_to_logical_2D,
+)
 from .f42_kd_tree import (
     build_kd_index,
     build_spherical_kd,
+    kd_knn_query,
+    kd_range_query_mask,
+    kd_range_query_list,
+    kd_range_query_count,
     vicinity_vectors,
     vicinity_vectors_count,
 )
@@ -169,11 +181,9 @@ from .tox_get_outliers import (
     detect_outliers,
 )
 from .tox_loess import (
+    tox_loess_required_workspace,
     loess_fit_plain,
     loess_fit_robust,
-)
-from .tox_loess_impl import (
-    tox_loess_required_workspace,
 )
 from .tox_normalization import (
     normalize_unit_length,
@@ -191,11 +201,7 @@ from .tox_paralog_analysis import (
     detect_subfunctionalization,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
-)
-from .tox_paralog_analysis_impl import (
-    mask_check_state,
-    mask_chunk_count,
-    calc_work_arr_paralog_subsets_size,
+    calc_paralog_subsets_bitmasks_size,
 )
 from .tox_relative_axis_plane_tools import (
     omics_vector_RAP_projection,
@@ -287,6 +293,12 @@ __all__ = [
     "ERR_UNKNOWN",
     "check_err_code",
     "accept_ensemble",
+    "bitmask_from_logical",
+    "bitmask_n_words",
+    "bitmask_test",
+    "bitmask_to_logical",
+    "bitmasks_from_logical_2D",
+    "bitmasks_to_logical_2D",
     "bst_range_query",
     "bst_range_query_expert",
     "build_bst_index",
@@ -295,10 +307,10 @@ __all__ = [
     "build_spherical_kd",
     "calc_fchange",
     "calc_neighborhood_size",
+    "calc_paralog_subsets_bitmasks_size",
     "calc_quantile",
     "calc_quantile_expert",
     "calc_tiss_avg",
-    "calc_work_arr_paralog_subsets_size",
     "calculate_density_radius",
     "calculate_labels_as_density",
     "clock_hand_angle_between_vectors",
@@ -360,13 +372,15 @@ __all__ = [
     "identify_ensemble_seeds_global_radius",
     "identify_outliers",
     "k_means_clustering",
+    "kd_knn_query",
+    "kd_range_query_count",
+    "kd_range_query_list",
+    "kd_range_query_mask",
     "linkage_clustering",
     "loess_fit_plain",
     "loess_fit_robust",
     "loess_smooth_2d",
     "log2_transformation",
-    "mask_check_state",
-    "mask_chunk_count",
     "mean_vector",
     "merge_ensembles",
     "normalization_pipeline",

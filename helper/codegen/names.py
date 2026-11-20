@@ -105,9 +105,10 @@ C_KEYWORDS = frozenset({
 #: emitter writes, both ways.
 R_SHIM_HELPERS = frozenset({
     "tox_bool_alloc", "tox_bool_in", "tox_bool_out", "tox_char_alloc", "tox_char_in",
-    "tox_char_out", "tox_imax", "tox_imin", "tox_int_copy", "tox_int_in", "tox_max_strlen",
-    "tox_prod", "tox_refuse", "tox_refuse_element", "tox_refuse_na", "tox_refuse_type",
-    "tox_shape_of", "tox_show", "tox_sum_true", "tox_utf8", "tox_utf8_valid",
+    "tox_char_out", "tox_count", "tox_dmax", "tox_dmin", "tox_failed", "tox_imax", "tox_imin",
+    "tox_int_copy", "tox_int_extent", "tox_int_in", "tox_max_strlen", "tox_prod", "tox_refuse",
+    "tox_refuse_element", "tox_refuse_na", "tox_refuse_type", "tox_shape_of", "tox_show",
+    "tox_sum_true", "tox_utf8", "tox_utf8_valid", "tox_words_copy", "tox_words_in",
 })
 
 
@@ -158,7 +159,15 @@ PYTHON_PACKAGE_IMPORTS = (
     (f".{PYTHON_LIBRARY_MODULE}", (("load_library", "_load_library"),
                                    ("nullable", "_nullable"))),
 )
+#: What a module imports besides, where a function in it calls a `DM_OUTPUT_FROM` producer's
+#: binding: the producer's error is caught and raised again in the caller's words
+#: (`emit.errors_python.CONSUMER_ERROR`)
+PYTHON_PRODUCER_IMPORTS = (
+    f".{PYTHON_ERROR_MODULE}", (("ToxError", "_ToxError"), ("_consumer_error", "_consumer_error")),
+)
 #: The names those are bound to, as the generated code spells them
+PYTHON_TOX_ERROR = "_ToxError"
+PYTHON_CONSUMER_ERROR = "_consumer_error"
 PYTHON_NUMPY = "_np"
 PYTHON_CTYPES = "_ctypes"
 PYTHON_CHECK_ERR_CODE = "_check_err_code"
@@ -173,6 +182,7 @@ PYTHON_CAUGHT_ERROR = "_error"
 PYTHON_BOUND = frozenset(
     [bound for _, bound in PYTHON_STDLIB_IMPORTS + PYTHON_THIRD_PARTY_IMPORTS]
     + [bound for _, names in PYTHON_PACKAGE_IMPORTS for _, bound in names]
+    + [bound for _, bound in PYTHON_PRODUCER_IMPORTS[1]]
     + [PYTHON_CAUGHT_ERROR]
 )
 
@@ -195,6 +205,8 @@ DIM = "dim"
 OPTIONAL_DIM_ATTRIBUTE = "d"
 #: The C buffer a logical or a string is converted into
 BUFFER = "c"
+#: The element count of an output or a work array, as the shim allocates it (`tox_count`)
+COUNT = "n"
 #: The copy of an array modified in place, so the caller's stays intact
 INOUT_COPY = "out"
 #: The count of protected objects, a local of every shim function
@@ -222,6 +234,9 @@ MODE_POINTER = "_mode_p"
 VIEW_ADDRESS = "_address"
 #: Fortran wrapper: an omitted optional's default, materialised for a recommend routine
 DEFAULT_VALUE = "_value"
+#: Fortran wrapper: a scalar output of a recommend routine that the wrapper has no use for,
+#: but has to pass all the same
+UNUSED_OUTPUT = "_unused"
 #: Fortran wrapper: the flag a prologue sets, which is the prologue's contract and so a
 #: convention
 FORTRAN_HANDLED = CONVENTIONS.prologue_handled_arg

@@ -12,7 +12,8 @@ import ctypes
 # Adjust the path if your module is in a different directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import compute_scaled_distance_tail_probability as _compute_scaled_distance_tail_probability
-from test_helpers import run_all_tests
+from tensor_omics.error_handling import ERR_NAN_INF
+from test_helpers import run_all_tests, assert_error
 
 
 def compute_scaled_distance_tail_probability(distribution, c_const):
@@ -161,6 +162,26 @@ def test_tail_probability_extremes():
     # d=3 -> values >=3 are [3,10] -> count=2 -> (2+c)/(n+c)
     expected = (2.0 + c_const) / denom
     assert abs(tail_probability[3] - expected) < 1e-12, "d=3 -> tail_probability=(2+c)/(n+c)"
+
+
+def test_tail_probability_refuses_non_finite_input():
+    """rdi and sorted_rdi refuse NaN and Inf as ERR_NAN_INF naming the argument.
+
+    One case per argument and value, so a DM_ALLOW_NAN or DM_ALLOW_INFINITE put back on either
+    fails here.
+    """
+    rdi = np.array([0.5, 1.0, 1.5, 2.0])
+    failures = []
+    for bad in (np.nan, np.inf):
+        bad_rdi = rdi.copy()
+        bad_rdi[1] = bad
+        for argument, call in (("rdi", lambda: _compute_scaled_distance_tail_probability(bad_rdi, rdi, 1.0)),
+                               ("sorted_rdi", lambda: _compute_scaled_distance_tail_probability(rdi, bad_rdi, 1.0))):
+            try:
+                assert_error(call, f"{argument} {bad}", ERR_NAN_INF, argument=argument)
+            except AssertionError as failure:
+                failures.append(str(failure))
+    assert not failures, "\n".join(failures)
 
 
 if __name__ == "__main__":

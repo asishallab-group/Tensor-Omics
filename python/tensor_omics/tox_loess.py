@@ -29,6 +29,19 @@ from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
 
+_lib.tox_loess_required_workspace_c.restype = None
+_lib.tox_loess_required_workspace_c.argtypes = (
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_TOX_LOESS_REQUIRED_WORKSPACE_ARGUMENTS = ("n_dim", "max_neighborhood_size", "int_workspace_size", "real_workspace_size", "save_factorization", "ierr",)
+
 _lib.loess_fit_plain_c.restype = None
 _lib.loess_fit_plain_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
@@ -71,6 +84,74 @@ _lib.loess_fit_robust_c.argtypes = (
 _LOESS_FIT_ROBUST_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "fitted_values", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _LOESS_FIT_ROBUST_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, None, None, None, None, None, None,)
+
+def tox_loess_required_workspace(
+        n_dim,
+        max_neighborhood_size,
+        save_factorization,
+):
+    r"""Recommend workspace sizes based on Netlib exact formulas
+
+    Computes the required sizes for integer and real workspace arrays.
+    These sizes depend on the dimensionality of the data and the maximum neighborhood size.
+
+    Parameters
+    ----------
+    n_dim : int
+        Dimensionality of the data
+    max_neighborhood_size : int
+        Maximum neighborhood size
+    save_factorization : bool
+        Save matrix factorization flag
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        int_workspace_size : int
+            Required size of the integer workspace array
+        real_workspace_size : int
+            Required size of the real workspace array
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_loess::tox_loess_required_workspace`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    n_dim = _contract.integer(n_dim, "n_dim")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
+
+    # outputs and work arrays, which the caller never sees
+    int_workspace_size = _ctypes.c_int(0)
+    real_workspace_size = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
+
+    _lib.tox_loess_required_workspace_c(
+        _ctypes.byref(_ctypes.c_int(n_dim)),
+        _ctypes.byref(_ctypes.c_int(max_neighborhood_size)),
+        _ctypes.byref(int_workspace_size),
+        _ctypes.byref(real_workspace_size),
+        _ctypes.byref(_ctypes.c_bool(save_factorization)),
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _TOX_LOESS_REQUIRED_WORKSPACE_ARGUMENTS)
+
+    return {
+        "int_workspace_size": int_workspace_size.value,
+        "real_workspace_size": real_workspace_size.value,
+    }
 
 def loess_fit_plain(
         x,

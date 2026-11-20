@@ -6,13 +6,13 @@ import os
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
-    mask_check_state,
+    bitmask_test,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
-    calc_work_arr_paralog_subsets_size,
+    calc_paralog_subsets_bitmasks_size,
     detect_dosage_effect,
     detect_subfunctionalization,
-    mask_chunk_count,
+    bitmask_n_words,
     detect_neofunctionalization,
     normalize_unit_length
 )
@@ -34,12 +34,12 @@ def test_paralog_functions():
 
     n_paralogs = 5
     i_paralog = 2
-    chunk_count = mask_chunk_count(n_paralogs)
+    chunk_count = bitmask_n_words(n_paralogs)
     assert chunk_count == 1, f"Chunk count for {n_paralogs} paralogs should be 1, got " + str(chunk_count)
 
-    bit_mask = np.zeros(chunk_count, dtype=np.int32)
-    bit_mask[i_paralog // 32] = 1 << (i_paralog % 32)
-    state = mask_check_state(bit_mask, i_paralog + 1)
+    bitmask = np.zeros(chunk_count, dtype=np.int32)
+    bitmask[i_paralog // 32] = 1 << (i_paralog % 32)
+    state = bitmask_test(n_paralogs, bitmask, i_paralog + 1)
     assert state, f"Paralog {i_paralog + 1} should be active"
 
     # Testing Pattern Filtering
@@ -63,7 +63,7 @@ def test_paralog_functions():
     # Testing Work Array Size Calculation
 
     max_subset_size = 3
-    sizes = calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, dosage_mask)
+    sizes = calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs, dosage_mask)
     work_array_size = sizes["work_array_size"]
     actual_max_subset_size = sizes["max_subset_size"]
     assert work_array_size == 3, "Expected work_array_size to be 3, got " + str(work_array_size)
@@ -80,33 +80,33 @@ def test_paralog_functions():
     dosage_result = detect_dosage_effect(
         ancestor=ancestor,
         genes=paralogs,
-        filtered_paralogs_mask=dosage_mask,
+        filtered_paralogs_bitmask=dosage_mask,
         max_subset_size=actual_max_subset_size,
         gain_gamma=0.1,
         max_angle=math.pi
     )
-    assert (dosage_result['work_arr_paralog_subsets'] == [[6, 3, 5]]).all(), "Dosage Effect results should be [[6, 3, 5]], got " + str(dosage_result['work_arr_paralog_subsets'])
+    assert (dosage_result['paralog_subsets_bitmasks'] == [[6, 3, 5]]).all(), "Dosage Effect results should be [[6, 3, 5]], got " + str(dosage_result['paralog_subsets_bitmasks'])
     assert dosage_result['n_results'] == 3, "Expected Dosage Effect n_results to be 3, got " + str(dosage_result['n_results'])
 
-    # an over-large max_subset_size is capped by calc_work_arr_paralog_subsets_size (inout
+    # an over-large max_subset_size is capped by calc_paralog_subsets_bitmasks_size (inout
     # feedback): the same result comes back at once, not after a runaway subset-size loop
     capped = detect_dosage_effect(
         ancestor=ancestor,
         genes=paralogs,
-        filtered_paralogs_mask=dosage_mask,
+        filtered_paralogs_bitmask=dosage_mask,
         max_subset_size=2_000_000_000,
         gain_gamma=0.1,
         max_angle=math.pi
     )
     assert capped['n_results'] == 3, "Over-large max_subset_size should be capped, got n_results " + str(capped['n_results'])
-    assert (capped['work_arr_paralog_subsets'] == [[6, 3, 5]]).all(), "Capped run should match, got " + str(capped['work_arr_paralog_subsets'])
+    assert (capped['paralog_subsets_bitmasks'] == [[6, 3, 5]]).all(), "Capped run should match, got " + str(capped['paralog_subsets_bitmasks'])
 
     # Testing Subfunctionalization Detection
 
     norms = np.sqrt(np.sum(paralogs**2, axis=0))
     sorted_perm = np.argsort(norms).astype(np.int32) + 1
 
-    subfunc_sizes = calc_work_arr_paralog_subsets_size(max_subset_size, n_paralogs, subfunc_mask)
+    subfunc_sizes = calc_paralog_subsets_bitmasks_size(max_subset_size, n_paralogs, subfunc_mask)
     subfunc_work_size = subfunc_sizes["work_array_size"]
     subfunc_max_subset_size = subfunc_sizes["max_subset_size"]
 
@@ -114,22 +114,23 @@ def test_paralog_functions():
         ancestor=ancestor,
         genes=paralogs,
         rdi_threshold=0.5,
-        filtered_paralogs_mask=subfunc_mask,
+        filtered_paralogs_bitmask=subfunc_mask,
         max_subset_size=subfunc_max_subset_size,
         paralog_norms=norms,
         sorted_paralog_norms_perm=sorted_perm
     )
-    assert (subfunc_result['work_arr_paralog_subsets'] == []).all(), "Subfunctionalization results should be empty array, got " + str(subfunc_result['work_arr_paralog_subsets'])
+    assert (subfunc_result['paralog_subsets_bitmasks'] == []).all(), "Subfunctionalization results should be empty array, got " + str(subfunc_result['paralog_subsets_bitmasks'])
     assert subfunc_result['n_results'] == 0, "Expected Subfunctionalization n_results to be zero, got " + str(subfunc_result['n_results'])
 
     # Testing Edge Cases
 
     try:
-        empty_mask = mask_chunk_count(0)
+        empty_mask = bitmask_n_words(0)
     except Exception as e:
-        raise AssertionError("mask_chunk_count throws error for empty mask")
+        raise AssertionError("bitmask_n_words throws error for empty mask")
+    assert empty_mask == 0, "An empty mask should take no words, got " + str(empty_mask)
 
-    single_mask = mask_chunk_count(1)
+    single_mask = bitmask_n_words(1)
     assert single_mask == 1, "Single paralog mask chunk count should be 1, got " + str(single_mask)
 
 

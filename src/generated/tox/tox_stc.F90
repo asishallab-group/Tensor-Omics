@@ -13,8 +13,8 @@ module tox_stc
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
-    use tox_errors, only: validate_in_range_int, validate_in_range_real
+    use tox_errors, only: get_err_arg_pos, set_err, set_err_arg_pos, validate_all_in_range_int
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -68,6 +68,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_mean_vec
         real(real64), dimension(:), allocatable :: tmp_distances
         integer(int32), dimension(:), allocatable :: tmp_perm
+        logical(c_bool), dimension(:), allocatable :: tmp_all_selected
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -81,6 +82,7 @@ contains
         M_ALLOCATE(tmp_mean_vec(n_dimensions))
         M_ALLOCATE(tmp_distances(n_vectors))
         M_ALLOCATE(tmp_perm(n_vectors))
+        M_ALLOCATE(tmp_all_selected(n_vectors))
 
         call calculate_density_radius_impl(&
             vectors = vectors,&
@@ -89,11 +91,24 @@ contains
             tmp_mean_vec = tmp_mean_vec,&
             tmp_distances = tmp_distances,&
             tmp_perm = tmp_perm,&
+            tmp_all_selected = tmp_all_selected,&
             mean_to_other_vecs_dist_quant = mean_to_other_vecs_dist_quant,&
             radius = radius,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:3_int32)
+                ! the same position here
+            case (8_int32)
+                call set_err_arg_pos(ierr, 4_int32)
+            case (9_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine calculate_density_radius
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):calculate_density_radius_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):calculate_density_radius]] does both.
@@ -104,6 +119,7 @@ contains
             tmp_mean_vec,&
             tmp_distances,&
             tmp_perm,&
+            tmp_all_selected,&
             mean_to_other_vecs_dist_quant,&
             radius,&
             ierr&
@@ -120,6 +136,8 @@ contains
             !! Preallocated workspace for calculated distances
         integer(int32), dimension(n_vectors), intent(out) :: tmp_perm
             !! Preallocated workspace for permutation indices
+        logical(c_bool), dimension(n_vectors), intent(out) :: tmp_all_selected
+            !! Preallocated workspace selecting every vector for the data centroid
         real(real64), intent(in), optional :: mean_to_other_vecs_dist_quant
             !! Quantile of the distances to the data centroid that becomes the density radius
             !! The minimum valid value is `0.0_real64`.
@@ -134,7 +152,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
-        call validate_in_range_real(mean_to_other_vecs_dist_quant, ierr, arg_pos=7_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(mean_to_other_vecs_dist_quant, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
@@ -146,11 +164,20 @@ contains
             tmp_mean_vec = tmp_mean_vec,&
             tmp_distances = tmp_distances,&
             tmp_perm = tmp_perm,&
+            tmp_all_selected = tmp_all_selected,&
             mean_to_other_vecs_dist_quant = mean_to_other_vecs_dist_quant,&
             radius = radius,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:9_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine calculate_density_radius_expert
 
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):calculate_labels_as_density_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):calculate_labels_as_density_expert]] to prepare it yourself.
@@ -217,7 +244,17 @@ contains
             label_densities = label_densities,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:7_int32)
+                ! the same position here
+            case (9_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine calculate_labels_as_density
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):calculate_labels_as_density_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):calculate_labels_as_density]] does both.
@@ -284,7 +321,15 @@ contains
             label_densities = label_densities,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:9_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine calculate_labels_as_density_expert
 
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):identify_ensemble_seeds_global_radius_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):identify_ensemble_seeds_global_radius_expert]] to prepare it yourself.
@@ -855,7 +900,31 @@ contains
             mad_ambient = mad_ambient,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case (10_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (13_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (14_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (15_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (23_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case (24_int32)
+                call set_err_arg_pos(ierr, 15_int32)
+            case (25_int32)
+                call set_err_arg_pos(ierr, 16_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine obtain_ensembles_global_radius
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):obtain_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):obtain_ensembles_global_radius]] does both.
@@ -1000,7 +1069,45 @@ contains
             mad_ambient = mad_ambient,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case (10_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (13_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (14_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (15_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (16_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case (17_int32)
+                call set_err_arg_pos(ierr, 15_int32)
+            case (18_int32)
+                call set_err_arg_pos(ierr, 16_int32)
+            case (19_int32)
+                call set_err_arg_pos(ierr, 17_int32)
+            case (20_int32)
+                call set_err_arg_pos(ierr, 18_int32)
+            case (21_int32)
+                call set_err_arg_pos(ierr, 19_int32)
+            case (22_int32)
+                call set_err_arg_pos(ierr, 20_int32)
+            case (23_int32)
+                call set_err_arg_pos(ierr, 21_int32)
+            case (24_int32)
+                call set_err_arg_pos(ierr, 22_int32)
+            case (25_int32)
+                call set_err_arg_pos(ierr, 23_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine obtain_ensembles_global_radius_expert
 
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):obtain_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):obtain_ensembles_seed_radius_expert]] to prepare it yourself.
@@ -1138,7 +1245,31 @@ contains
             mad_ambient = mad_ambient,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case (11_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (13_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (14_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (15_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (23_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case (24_int32)
+                call set_err_arg_pos(ierr, 15_int32)
+            case (25_int32)
+                call set_err_arg_pos(ierr, 16_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine obtain_ensembles_seed_radius
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):obtain_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):obtain_ensembles_seed_radius]] does both.
@@ -1283,7 +1414,45 @@ contains
             mad_ambient = mad_ambient,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case (11_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (13_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (14_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (15_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (16_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case (17_int32)
+                call set_err_arg_pos(ierr, 15_int32)
+            case (18_int32)
+                call set_err_arg_pos(ierr, 16_int32)
+            case (19_int32)
+                call set_err_arg_pos(ierr, 17_int32)
+            case (20_int32)
+                call set_err_arg_pos(ierr, 18_int32)
+            case (21_int32)
+                call set_err_arg_pos(ierr, 19_int32)
+            case (22_int32)
+                call set_err_arg_pos(ierr, 20_int32)
+            case (23_int32)
+                call set_err_arg_pos(ierr, 21_int32)
+            case (24_int32)
+                call set_err_arg_pos(ierr, 22_int32)
+            case (25_int32)
+                call set_err_arg_pos(ierr, 23_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine obtain_ensembles_seed_radius_expert
 
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):merge_ensembles_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):merge_ensembles_expert]] to prepare it yourself.
@@ -1341,7 +1510,17 @@ contains
             n_ensembles = n_ensembles,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:5_int32)
+                ! the same position here
+            case (8_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine merge_ensembles
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):merge_ensembles_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):merge_ensembles]] does both.
@@ -1400,7 +1579,15 @@ contains
             n_ensembles = n_ensembles,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine merge_ensembles_expert
 
     !> summary: Validates its inputs, prepares what [[tox_stc_impl(module):grow_ensemble_impl]] needs, then calls it. The entry point to reach for first; see [[tox_stc(module):grow_ensemble_expert]] to prepare it yourself.
@@ -1491,7 +1678,17 @@ contains
             grown_mask = grown_mask,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:9_int32)
+                ! the same position here
+            case (15_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine grow_ensemble
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):grow_ensemble_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_stc(module):grow_ensemble]] does both.
@@ -1586,7 +1783,15 @@ contains
             grown_mask = grown_mask,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:15_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine grow_ensemble_expert
 
     !> summary: Validates its inputs, then calls [[tox_stc_impl(module):compute_ensemble_observable_impl]].

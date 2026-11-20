@@ -11,14 +11,14 @@
 #' @export
 deserialize_char_helper <- function(filename) {
     filename <- .tox_as_string(filename, "filename")
-    .get_array_metadata_result <- get_array_metadata(filename = filename, dims_out_capacity = 5L)
+    .arguments <- c("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr")
+    .sources <- c(NA_character_, "arr", NA_character_, "arr", NA_character_, NA_character_)
+    .shapes <- c("n_strings", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .get_array_metadata_result <- tryCatch(get_array_metadata(filename = filename, dims_out_capacity = 5L), tox_error = function(e) .tox_consumer_error(e, c(filename = 5L), .arguments, .sources))
     strlen <- .get_array_metadata_result$type_code
     arr_shape <- .get_array_metadata_result$dims_out
 
     .result <- .Call("deserialize_char_helper_call", strlen, arr_shape, filename)
-    .arguments <- c("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr")
-    .sources <- c(NA_character_, "arr", NA_character_, "arr", NA_character_, NA_character_)
-    .shapes <- c("n_strings", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$arr

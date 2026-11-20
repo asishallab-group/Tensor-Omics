@@ -247,12 +247,8 @@ contains
             !! Number of genes being processed.
         real(real64), intent(in) :: rdi(n_genes)
             !! empirical distribution D
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: sorted_rdi(n_genes)
             !! empirical distribution D with non negative values
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(out) :: tail_probability(n_genes)
             !! Output array to store the computed upper-tail probability for each gene.
         real(real64), intent(in) :: c_const

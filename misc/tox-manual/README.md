@@ -17,9 +17,15 @@ misc/tox-manual/
   tox_manual.tex       master document — \input each recipe here
   recipes/
     _template.tex      copy this to start a new recipe
-    snd_detection.tex  worked example (exercises every environment)
+    outlier_detection.tex  divergent-gene analysis
+    trajectory_contributions.tex  signed contribution analysis
+    snd_detection.tex      SND analysis
   shared/
-    gene_family_detection.tex   example reusable sub-recipe
+    tox_dataset.tex             creating a TOX dataset
+    normalization.tex           the normalization sub-recipe
+    family_centroids.tex        the family-centroid sub-recipe
+    clustering.tex              k-means and linkage
+    gene_family_detection.tex   families and orthologs from OrthoFinder
   references.bib       starter bibliography
   latexmkrc  Makefile  build tooling (pinned to pdfLaTeX)
 ```
@@ -60,7 +66,8 @@ Keep it **simple, safe, clear, concise**. Link to full scripts with
 | Command / environment | Purpose |
 | --- | --- |
 | `\recipepurpose{…}` | One–two-sentence purpose box. |
-| `\recipemaintainer{Name}` | Who owns/maintains this recipe. |
+| `\nomaintainer` | Marks the recipe as team-owned. **Use this by default.** Prints the name set by `\toxteammaintainer{}` (default: Tensor Omics Developers). |
+| `\recipemaintainer{Name}` | Names an individual owner instead. Only when one person really owns the workflow. |
 | `\begin{requiredinputs} \item … \end{requiredinputs}` | Data the user must have. |
 | `\begin{prerequisites} \dependson{sub:x} \end{prerequisites}` | Depends-on box; each `\dependson` links to another recipe by its label and prints its title + chapter number. |
 

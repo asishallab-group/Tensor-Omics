@@ -265,3 +265,25 @@ check_err_code <- function(ierr, arguments = character(), sources = character(),
     .tox_raise(message, class, code = code, name = .tox_names[key],
                                                 argument = argument)
 }
+
+#' Signal a producer's error again, naming the caller's argument
+#'
+#' @param e the condition the producer raised
+#' @param supplied_by for each producer argument the calling function supplied,
+#'   named by it, the position of the argument that supplied it in `arguments`
+#' @param arguments,sources the calling function's, as `check_err_code` takes them
+#' @keywords internal
+.tox_consumer_error <- function(e, supplied_by, arguments, sources = character()) {
+    known <- !is.na(e$argument) && e$argument %in% names(supplied_by)
+    position <- if (known) supplied_by[[e$argument]] else 0L
+    if (is.na(e$code)) {
+        # refused by the producer's binding before any code existed
+        argument <- NA_character_
+        if (position > 0L && position <= length(arguments)) {
+            source <- if (position <= length(sources)) sources[[position]] else NA_character_
+            argument <- if (is.na(source)) arguments[[position]] else source
+        }
+        .tox_argument_error(conditionMessage(e), class(e)[1], argument)
+    }
+    check_err_code(e$code + position * ARG_POS_FACTOR, arguments, sources)
+}

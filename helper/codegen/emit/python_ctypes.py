@@ -33,25 +33,30 @@ from ..names import (
     PYTHON_LOAD_LIBRARY,
     PYTHON_NULLABLE,
     PYTHON_NUMPY as _NP,
+    PYTHON_CONSUMER_ERROR,
     PYTHON_PACKAGE_IMPORTS,
     PYTHON_PACKAGE_MODULES,
+    PYTHON_PRODUCER_IMPORTS,
+    PYTHON_TOX_ERROR,
     PYTHON_STDLIB_IMPORTS,
     PYTHON_THIRD_PARTY_IMPORTS,
 )
 from ..render import Writer
 from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
+from .producer_calls import auto_plans, returns_single, supplied_by
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
 
-def _python_extent(extent: str) -> str:
-    """A Fortran extent expression as Python, through the one grammar the bindings evaluate.
+def _allocated_extent(extent: str) -> str:
+    """An extent the binding allocates or pads by, as Python, through the one grammar the
+    bindings evaluate, and never negative (`extents.clamped`).
 
-    `generate` has refused every extent a binding computes that lies outside it
+    `generate` has refused every extent a binding computes that lies outside the grammar
     (`abi.extents.check_binding_extents`), so this cannot fail on one that is emitted.
     """
-    return extents.to_python(extent)
+    return extents.to_python(extents.clamped(extent))
 
 def check_package_names(binding, catalogue: ErrorCatalogue,
                         diagnostics: DiagnosticBag) -> None:
@@ -220,7 +225,7 @@ def _character_dtype(argument: CArgument) -> str:
     extent = character_length(argument)
     if extent.isdigit():
         return f'"S{extent}"'
-    return 'f"S{' + _python_extent(extent) + '}"'
+    return 'f"S{' + _allocated_extent(extent) + '}"'
 
 
 def character_length(argument: CArgument) -> str:
@@ -239,7 +244,7 @@ def _pad_width(argument: CArgument) -> str | None:
     length = argument.source.type.length if argument.source else None
     if length is not None and length.is_assumed and argument.intent.is_input:
         return None
-    return _python_extent(character_length(argument))
+    return _allocated_extent(character_length(argument))
 
 
 def character_rank(argument: CArgument) -> int:
@@ -418,7 +423,10 @@ class PythonEmitter:
             for module_name, bound in group:
                 writer.line(f"import {module_name} as {bound}")
             writer.blank()
+        calls_producers = any(auto_plans(wrapper) for wrapper in module)
         for module_name, names in PYTHON_PACKAGE_IMPORTS:
+            if calls_producers and module_name == PYTHON_PRODUCER_IMPORTS[0]:
+                names = names + PYTHON_PRODUCER_IMPORTS[1]
             imported = ", ".join(f"{name} as {bound}" for name, bound in names)
             writer.line(f"from {module_name} import {imported}")
         writer.blank()
@@ -516,6 +524,7 @@ class PythonEmitter:
             writer.block(render_docstring(wrapper, self))
             self._stash_raw(writer, wrapper)
             self._prepare_inputs(writer, wrapper)
+            self._check_extents(writer, wrapper)
             # extents a producer reads must be settled before it is called; extents read
             # off what a producer *makes* can only be settled after. So the derivation
             # brackets the producers: the plain ones first, the produced-from ones after.
@@ -588,6 +597,21 @@ class PythonEmitter:
             writer.line("# check every input by the input contract, converting only when C needs it")
             writer.extend(lines)
             writer.blank()
+
+    @staticmethod
+    def _check_extents(writer: Writer, wrapper: CWrapper) -> None:
+        """Refuse a negative size the caller passed, before anything is allocated by it (#215).
+
+        After the input contract, which has made it an int, and before a producer is called or
+        an output allocated. Zero and every documented bound stay the library's to check.
+        """
+        checked = extents.caller_passed_extents(wrapper)
+        if not checked:
+            return
+        writer.line("# the outputs are allocated by a size the caller passes, which must not be negative")
+        for argument in checked:
+            writer.line(f'{PYTHON_CONTRACT}.extent({argument.name}, "{argument.name}")')
+        writer.blank()
 
     def _prepare(self, argument: CArgument) -> str:
         """Prepare one input, reading its shape off first if that travels separately.
@@ -798,11 +822,8 @@ class PythonEmitter:
         original is kept aside first.
         """
         stashes: dict[str, str] = {}
-        for argument in wrapper:
-            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
-            if plan is None or not plan.is_automatic:
-                continue
-            for supply in plan.inputs:
+        for _, plan in auto_plans(wrapper):
+            for supply in plan.binding_inputs:
                 if supply.is_constant:
                     continue
                 name = supply.argument
@@ -827,6 +848,9 @@ class PythonEmitter:
         checking, so this just calls it. Its inputs -- the extents it reads -- are already
         derived (those that do not themselves come from a producer are), so it just passes
         them, taking the stashed pre-conversion value of any input preparation replaced.
+        What the producer's binding derives itself it is not passed.
+
+        Its error is raised again in this function's words (`_producer_call`).
 
         One call serves every argument it supplies. Producers are not cheap -- the one
         behind `read_tox_data_into` unpacks a zip archive -- so calling it once per
@@ -836,10 +860,7 @@ class PythonEmitter:
         calls: dict[tuple, str] = {}
         stashes = self._raw_stashes(wrapper)
         consumer_module = wrapper.procedure.module
-        for argument in wrapper:
-            plan = argument.source.roles.computed_from if argument.source and argument.source.roles else None
-            if plan is None or not plan.is_automatic:
-                continue
+        for argument, plan in auto_plans(wrapper):
             producer = stripped_name(plan.producer)
             if plan.producer.module is not consumer_module:
                 # Imported here rather than at the top of the file: two modules may size
@@ -849,17 +870,19 @@ class PythonEmitter:
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
                 f"{supply.name}={self._producer_value(supply, stashes)}"
-                for supply in plan.inputs)
-            single = self._producer_returns_single(plan.producer)
+                for supply in plan.binding_inputs)
+            single = returns_single(plan.producer)
             if single:
-                lines.line(f"{argument.name} = {producer}({call_args})")
+                self._producer_call(lines, wrapper, plan,
+                                    f"{argument.name} = {producer}({call_args})")
                 continue
 
             key = (producer, call_args)
             if key not in calls:
                 calls[key] = f"_{producer}_result" if len(calls) == 0 else \
                     f"_{producer}_result_{len(calls)}"
-                lines.line(f"{calls[key]} = {producer}({call_args})")
+                self._producer_call(lines, wrapper, plan,
+                                    f"{calls[key]} = {producer}({call_args})")
                 for supply in plan.inout_feedback:
                     # the producer refined a value we handed it (e.g. capped it); adopt it
                     lines.line(f'{supply.argument} = {calls[key]}["{supply.name}"]')
@@ -869,18 +892,27 @@ class PythonEmitter:
             writer.extend(lines)
             writer.blank()
 
-    @staticmethod
-    def _producer_returns_single(producer) -> bool:
-        """Whether the producer's wrapper returns one value (not a dict of outputs)."""
-        outputs = [
-            a for a in producer.arguments
-            if a.intent and a.intent.is_output
-            and a.name.lower() != "ierr"
-            and not (a.roles and a.roles.is_temporary)
-        ]
-        if producer.result is not None:
-            outputs.append(producer.result)
-        return len(outputs) == 1
+    def _producer_call(self, lines: Writer, wrapper: CWrapper, plan, call: str) -> None:
+        """The producer call, its error raised again naming this function's argument.
+
+        The producer reports a bad input by its own parameter's name, which the caller of
+        this function never wrote: `supplied_by` maps it to the argument here that supplied
+        it, and nothing else to anything.
+        """
+        positions = ", ".join(f'"{name}": {position}'
+                              for name, position in supplied_by(plan, wrapper))
+        tables = [f"_{wrapper.stripped_name.upper()}_ARGUMENTS"]
+        if any(sources_of(wrapper.procedure)):
+            tables.append(f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES")
+        lines.line("try:")
+        with lines.indent():
+            lines.line(call)
+        lines.line(f"except {PYTHON_TOX_ERROR} as {PYTHON_CAUGHT_ERROR}:")
+        with lines.indent():
+            lines.line(
+                f"raise {PYTHON_CONSUMER_ERROR}({PYTHON_CAUGHT_ERROR}, {{{positions}}}, "
+                f"{', '.join(tables)}) from None"
+            )
 
     def _derive_extents(self, writer: Writer, wrapper: CWrapper,
                         from_computed: bool) -> None:
@@ -1082,10 +1114,10 @@ class PythonEmitter:
             # fills only partly). The zeros are what makes such an element read back as ""
             # rather than as garbage: numpy drops the trailing nulls of an `S` item.
             # Not `np.full(..., b" ")`, which fills each item with one blank and nulls.
-            shape = ", ".join(_python_extent(e) for e in argument.dimension.extents[1:]) or "1"
+            shape = ", ".join(_allocated_extent(e) for e in argument.dimension.extents[1:]) or "1"
             return f"{_NP}.zeros(({shape},), dtype={dtype_of(argument)})"
 
-        shape = ", ".join(_python_extent(e) for e in argument.dimension.extents)
+        shape = ", ".join(_allocated_extent(e) for e in argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
         return f"{_NP}.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
 

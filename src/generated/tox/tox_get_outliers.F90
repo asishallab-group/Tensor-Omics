@@ -4,8 +4,10 @@
 !|
 !| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
 !| a relative distance index, scaled per family so families of different spread are comparable.
-!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
-!| applies the threshold and reports which genes exceed it.
+!| `compute_family_scaling` produces that scaling: it fits each family's spread -- the standard
+!| deviation of its members' distances -- against its mean distance with LOESS over all families,
+!| so that a family too small for a usable empirical estimate is scaled by the trend instead.
+!| `identify_outliers` applies the threshold and reports which genes exceed it.
 !|
 !| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 !|
@@ -16,10 +18,12 @@ module tox_get_outliers
     use tox_get_outliers_impl, only: detect_outliers_impl, identify_outliers_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
+    use tox_loess, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
-    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
-    use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_arg_pos
+    use tox_errors, only: set_err_once, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
+    use tox_errors, only: validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -58,10 +62,8 @@ contains
             !! Total number of gene families
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
-            !! Mapping of each gene to its family (1-based)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(real64), dimension(n_families), intent(out) :: dscale
             !! Array of scaling factors per family (output)
         real(real64), dimension(n_families), intent(out) :: loess_x
@@ -77,7 +79,7 @@ contains
         real(real64), intent(in), optional :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! The default value is `0.7_real64`.
             !! The minimum valid value is `EPS_LOESS`.
             !! The maximum valid value is `1.0_real64`.
@@ -100,7 +102,10 @@ contains
         real(real64), intent(out) :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(int32), dimension(n_families), intent(out) :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), dimension(:), allocatable :: tmp_perm
@@ -126,6 +131,7 @@ contains
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(span, ierr, arg_pos=9_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=10_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
         if (is_err(ierr)) return
 #endif
@@ -135,8 +141,18 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -185,7 +201,27 @@ contains
             tmp_means_aux = tmp_means_aux,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case (24_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (25_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (26_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (27_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (28_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (29_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_family_scaling
 
     !> summary: Validates its inputs, then calls [[tox_get_outliers_impl(module):compute_family_scaling_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_get_outliers(module):compute_family_scaling]] does both.
@@ -229,7 +265,7 @@ contains
             !! Total number of gene families
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -238,7 +274,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -247,10 +283,8 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
-            !! Mapping of each gene to its family (1-based)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(real64), dimension(n_families), intent(out) :: dscale
             !! Array of scaling factors per family (output)
         real(real64), dimension(n_families), intent(out) :: loess_x
@@ -292,7 +326,7 @@ contains
         real(real64), intent(in), optional :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
-            !! procedure's own range rather than to the NaN tolerance the distance data carries.
+            !! procedure's own range.
             !! The default value is `0.7_real64`.
             !! The minimum valid value is `EPS_LOESS`.
             !! The maximum valid value is `1.0_real64`.
@@ -315,7 +349,10 @@ contains
         real(real64), intent(out) :: low_sd_cutoff
             !! cutoff used to filter families with low std
         integer(int32), dimension(n_families), intent(out) :: excluded_low_sd
-            !! Mask to save those families that have low sd
+            !! Whether each family is left out of the LOESS fit: `0` for the families `indices_used`
+            !! lists, `1` for every other one -- a family with no or a single member, or with a spread
+            !! below `low_sd_cutoff`. With too few families for a fit, the one family with several
+            !! members (if any) is `0`, as in `indices_used`. On an error return every family is `1`.
         real(real64), dimension(n_families), intent(out) :: tmp_means_aux
             !! Work array for saving raw means
         integer(int32), intent(out) :: ierr
@@ -329,6 +366,7 @@ contains
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=15_int32)
         call validate_in_range_real(span, ierr, arg_pos=24_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=25_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(tmp_diagl, n_families, ierr, arg_pos=16_int32)
         call validate_all_in_range_real(tmp_eval_points, n_families * 1, ierr, arg_pos=18_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=26_int32); end if
@@ -368,7 +406,15 @@ contains
             tmp_means_aux = tmp_means_aux,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:30_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_family_scaling_expert
 
     !> summary: Validates its inputs, prepares what [[tox_get_outliers_impl(module):compute_rdi_impl]] needs, then calls it. The entry point to reach for first; see [[tox_get_outliers(module):compute_rdi_expert]] to prepare it yourself.
@@ -387,14 +433,10 @@ contains
             !! Total number of genes
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(real64), dimension(:), intent(in) :: dscale
             !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(out) :: rdi
             !! Output array of RDI values for each gene
         real(real64), dimension(n_genes), intent(out) :: sorted_rdi
@@ -409,6 +451,8 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(dscale, (size(dscale, 1)), ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -446,14 +490,10 @@ contains
             !! Total number of genes
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(real64), dimension(:), intent(in) :: dscale
             !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(out) :: rdi
             !! Output array of RDI values for each gene
         real(real64), dimension(n_genes), intent(out) :: sorted_rdi
@@ -470,6 +510,8 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(dscale, (size(dscale, 1)), ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -504,12 +546,8 @@ contains
             !! Total number of genes
         real(real64), dimension(n_genes), intent(in) :: rdi
             !! Array of RDI values for each gene
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_genes), intent(in) :: sorted_rdi
             !! Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: perm
             !! Permutation array with sorted indices
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
@@ -533,6 +571,8 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_in_range_real(quantile_level, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(rdi, n_genes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(sorted_rdi, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -572,10 +612,8 @@ contains
             !! Total number of gene families
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
@@ -628,6 +666,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(quantile_level, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -636,8 +675,18 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false._c_bool&
+            save_factorization = .false._c_bool,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -692,7 +741,27 @@ contains
             quantile_level = quantile_level,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (27_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (28_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (29_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (30_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (31_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (32_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_outliers
 
     !> summary: Validates its inputs, then calls [[tox_get_outliers_impl(module):detect_outliers_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_get_outliers(module):detect_outliers]] does both.
@@ -741,7 +810,7 @@ contains
             !! Total number of gene families
         integer(int32), intent(in) :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -750,7 +819,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(int32), intent(in) :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -759,10 +828,8 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_genes), intent(in) :: distances
             !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         integer(int32), dimension(n_genes), intent(out) :: tmp_perm
             !! Permutation array for sorting
         integer(int32), dimension(n_genes), intent(out) :: tmp_stack_left
@@ -835,6 +902,7 @@ contains
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
         call validate_in_range_real(quantile_level, ierr, arg_pos=32_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(distances, n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -873,7 +941,15 @@ contains
             quantile_level = quantile_level,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:32_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_outliers_expert
 
 end module tox_get_outliers

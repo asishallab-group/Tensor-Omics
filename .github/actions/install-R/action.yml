@@ -7,7 +7,7 @@ runs:
     - name: Install R, make and gcc (to compile the C .Call shims)
       shell: bash
       run: |
-        pacman -Sy --needed --noconfirm r make gcc
+        pacman -Syu --needed --noconfirm r make gcc
         pacman -Scc --noconfirm
 
     - name: Show R version for reproducibility

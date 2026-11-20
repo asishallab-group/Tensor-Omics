@@ -1,7 +1,7 @@
 from sys import argv as args, exit
 import numpy as np
 from tensor_omics import error_handling as _errors
-from tensor_omics.error_handling import ARG_POS_FACTOR, ToxError
+from tensor_omics.error_handling import ARG_POS_FACTOR, ToxArgumentError, ToxError
 
 ANSI_START = "\033["
 FG256_START = f"{ANSI_START}38;5;"
@@ -85,7 +85,7 @@ def _code_label(code):
     return f"{name} ({code})" if name else f"code {code}"
 
 
-def assert_error(func, msg, code=None):
+def assert_error(func, msg, code=None, argument=None):
     """Fail unless calling `func` raises the expected error.
 
     `code` is a bare tox_errors code -- ERR_INVALID_INPUT, not the `ierr` the Fortran packs
@@ -95,6 +95,8 @@ def assert_error(func, msg, code=None):
     Omit `code` to demand an error that carries no tox code at all: the binding's own
     ToxArgumentError (a ValueError and a TypeError too), raised before the library is ever
     called.
+
+    `argument`, if given, is the name the error must blame (ToxError.argument).
     """
     if code is not None and code >= ARG_POS_FACTOR:
         raise AssertionError(
@@ -113,6 +115,9 @@ def assert_error(func, msg, code=None):
             raise AssertionError(
                 f"{msg}: expected {_code_label(code)}, but got "
                 f"{_code_label(error.code)}: {error}") from None
+        if argument is not None and error.argument != argument:
+            raise AssertionError(
+                f"{msg}: expected '{argument}' named, but got {error.argument!r}: {error}") from None
     except (RuntimeError, ValueError, TypeError, FileNotFoundError) as error:
         if code is not None:
             raise AssertionError(
@@ -120,3 +125,22 @@ def assert_error(func, msg, code=None):
                 f"{type(error).__name__}: {error}") from None
     else:
         raise AssertionError(f"{msg}: nothing was raised")
+
+
+def assert_refused_by_name(func, msg, argument):
+    """Fail unless calling `func` raises the binding's own ToxArgumentError naming `argument`.
+
+    Stricter than `assert_error` without a code, which a plain ValueError from numpy satisfies
+    too: a refusal the binding did not make names no argument.
+    """
+    try:
+        func()
+    except ToxArgumentError as error:
+        if error.code is not None or error.argument != argument:
+            raise AssertionError(f"{msg}: expected '{argument}' refused by the binding, but got "
+                                 f"{error.argument!r} with code {error.code}: {error}") from None
+        return error
+    except Exception as error:
+        raise AssertionError(f"{msg}: expected a ToxArgumentError naming '{argument}', but got "
+                             f"{type(error).__name__}: {error}") from None
+    raise AssertionError(f"{msg}: nothing was raised")

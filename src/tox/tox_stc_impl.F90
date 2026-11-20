@@ -49,7 +49,7 @@ contains
     !> summary: Compute the density-label radius from distances to the data centroid.
     !| AUTHOR_SALIH_ALBAYRAK
     pure subroutine calculate_density_radius_impl(vectors, n_dimensions, n_vectors, &
-                                                    tmp_mean_vec, tmp_distances, tmp_perm, &
+                                                    tmp_mean_vec, tmp_distances, tmp_perm, tmp_all_selected, &
                                                     mean_to_other_vecs_dist_quant, radius, ierr)
 
         integer(int32), intent(in) :: n_dimensions
@@ -64,6 +64,8 @@ contains
         !! Preallocated workspace for calculated distances
         integer(int32), intent(out) :: tmp_perm(n_vectors)
         !! Preallocated workspace for permutation indices
+        logical(c_bool), intent(out) :: tmp_all_selected(n_vectors)
+        !! Preallocated workspace selecting every vector for the data centroid
         real(real64), intent(in), optional :: mean_to_other_vecs_dist_quant
         !! Quantile of the distances to the data centroid that becomes the density radius
         !! DM_MIN(0.0_real64)
@@ -84,8 +86,9 @@ contains
         ! Initializing perm
         call init_perm(tmp_perm)
 
-        ! Calculating mean vector
-        call mean_vector_impl(vectors, n_dimensions, n_vectors, tmp_perm, n_vectors, tmp_mean_vec)
+        ! The data centroid is the mean of every vector.
+        tmp_all_selected = .true.
+        call mean_vector_impl(vectors, n_dimensions, n_vectors, tmp_all_selected, n_vectors, tmp_mean_vec)
 
         ! Calculating each vector distance to mean vector
         do concurrent(i_vec=1:n_vectors) shared(vectors, tmp_mean_vec, n_dimensions, tmp_distances)
