@@ -57,7 +57,9 @@ contains
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
         integer(int32), intent(in) :: n_permutations
@@ -96,7 +98,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_samples, ierr, arg_pos=3_int32, min=2_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_in_range_int(factor_idx, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_in_range_int(dependent_idx, ierr, arg_pos=6_int32, min=1_int32, max=n_factors)
@@ -161,7 +163,9 @@ contains
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
         integer(int32), intent(in) :: n_permutations
@@ -202,7 +206,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_samples, ierr, arg_pos=3_int32, min=2_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_in_range_int(factor_idx, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_in_range_int(dependent_idx, ierr, arg_pos=6_int32, min=1_int32, max=n_factors)

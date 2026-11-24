@@ -73,7 +73,9 @@ contains
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! DM_MIN(2_int32)
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories

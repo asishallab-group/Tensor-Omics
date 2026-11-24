@@ -259,9 +259,10 @@ contains
                          "test_perform_permutation_test_random_seed: another seed draws otherwise")
     end subroutine test_perform_permutation_test_random_seed
 
-    !> Each dimension on its own, the others valid: `n_factors` (argument 2), `n_samples` (3),
-    !| `n_timepoints` (4) and `n_permutations` (9) are ERR_EMPTY_INPUT at 0 and ERR_INVALID_INPUT
-    !| at -1.
+    !> Each dimension on its own, the others valid: `n_factors` (argument 2), `n_timepoints` (4)
+    !| and `n_permutations` (9) are ERR_EMPTY_INPUT at 0 and ERR_INVALID_INPUT at -1. `n_samples`
+    !| (3) has the minimum 2, so 0 and -1 are both ERR_INVALID_INPUT; 1 is in
+    !| `test_perform_permutation_test_single_sample`.
     subroutine test_perform_permutation_test_dimensions()
         integer(int32), parameter :: n_samples = 3, n_permutations = 2
         integer(int32), parameter :: SIZE_VALUES(2) = [0, -1]
@@ -270,7 +271,7 @@ contains
                                                    "n_permutations"]
         real(real64) :: trajectories(MARK_N_FACTORS, n_samples, MARK_N_TIMEPOINTS)
         real(real64) :: local_contributions(MARK_N_TIMEPOINTS, n_permutations), total_contributions(n_permutations)
-        integer(int32) :: dims(4), positions(4), i_dim, i_value, ierr
+        integer(int32) :: dims(4), positions(4), i_dim, i_value, expected_code, ierr
 
         call fill_sample_marking(n_samples, trajectories)
         positions = [2, 3, 4, 9]
@@ -280,7 +281,8 @@ contains
                 dims(i_dim) = SIZE_VALUES(i_value)
                 call perform_permutation_test(trajectories, dims(1), dims(2), dims(3), 1, 1, 1, MODE_BASELINE_RAW, &
                                               dims(4), local_contributions, total_contributions, 42_int32, ierr)
-                call assert_err(ierr, EXPECTED_CODES(i_value), "test_perform_permutation_test_dimensions: " &
+                expected_code = merge(ERR_INVALID_INPUT, EXPECTED_CODES(i_value), i_dim == 2)
+                call assert_err(ierr, expected_code, "test_perform_permutation_test_dimensions: " &
                                 //trim(DIM_NAMES(i_dim))//" = "//merge(" 0", "-1", i_value == 1), positions(i_dim))
             end do
         end do
@@ -358,7 +360,8 @@ contains
     !| sample 2 and reads `trajectories` past its end: a runtime error under bounds checking
     !| (--diagnostics), whatever lies behind the array otherwise. Issue #99 asks for a sample
     !| "!= sample", and the unused `select_random_sample` refuses n_samples < 2 with
-    !| ERR_INVALID_INPUT; this expects the same, blaming `n_samples` (argument 3).
+    !| ERR_INVALID_INPUT; this expects the same, blaming `n_samples` (argument 3), which FES
+    !| decided: n_samples has the minimum 2, checked before any draw.
     subroutine test_perform_permutation_test_single_sample()
         real(real64) :: trajectories(MARK_N_FACTORS, 1, MARK_N_TIMEPOINTS)
         real(real64) :: local_contributions(MARK_N_TIMEPOINTS, 2), total_contributions(2)

@@ -108,6 +108,13 @@ def test_perform_permutation_test_rejects_a_sample_index_out_of_range():
                  "sample_idx past n_samples", ERR_INVALID_INPUT, argument="sample_idx")
 
 
+def test_perform_permutation_test_rejects_a_single_sample():
+    # n_samples has the minimum 2: a permutation draws another sample; the extent is read off
+    # `trajectories`, so that is the argument named
+    assert_error(lambda: perform_permutation_test(_sample_marking(1), 1, 2, 1, "baseline_raw", 2, random_seed=42),
+                 "a single sample", ERR_INVALID_INPUT, argument="trajectories")
+
+
 def test_perform_permutation_test_rejects_zero_permutations():
     assert_error(lambda: perform_permutation_test(_trajectories(), 1, 2, 1, "baseline_raw", 0, random_seed=42),
                  "no permutations", ERR_EMPTY_INPUT, argument="n_permutations")

@@ -55,7 +55,9 @@ contains
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
         integer(c_int), intent(in), target :: n_permutations
@@ -162,7 +164,9 @@ contains
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
         integer(c_int), intent(in), target :: n_permutations

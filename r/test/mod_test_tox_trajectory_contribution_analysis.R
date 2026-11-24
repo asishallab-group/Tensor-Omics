@@ -93,6 +93,13 @@ test_perform_permutation_test_rejects_a_sample_index_out_of_range <- function() 
                   "sample_idx past n_samples", ERR_INVALID_INPUT, "sample_idx")
 }
 
+test_perform_permutation_test_rejects_a_single_sample <- function() {
+  # n_samples has the minimum 2: a permutation draws another sample; the extent is read off
+  # `trajectories`, so that is the argument named
+  .assert_refused(perform_permutation_test(.sample_marking(1L), 1L, 2L, 1L, "baseline_raw", 2L, random_seed = 42L),
+                  "a single sample", ERR_INVALID_INPUT, "trajectories")
+}
+
 test_perform_permutation_test_rejects_zero_permutations <- function() {
   .assert_refused(perform_permutation_test(.trajectories(), 1L, 2L, 1L, "baseline_raw", 0L, random_seed = 42L),
                   "no permutations", ERR_EMPTY_INPUT, "n_permutations")
