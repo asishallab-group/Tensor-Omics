@@ -1,6 +1,6 @@
 !> The `compute_acceleration_from_velocity_trajectory` cases: the first differences of one
 !| velocity series, which are the second differences of its positions, the three smallest sizes,
-!| and the NaN/Inf check. Every difference is exact.
+!| and the dimension and NaN/Inf checks. Every difference is exact.
 !|
 !| `n_timepoints` counts the positions, so `velocity` has n_timepoints - 1 elements and the
 !| acceleration n_timepoints - 2.
@@ -22,7 +22,7 @@ contains
     function get_all_tests_compute_acceleration_from_velocity_trajectory() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(5))
+        allocate (all_tests(6))
         all_tests(1) = test_case("test_compute_acceleration_from_velocity_trajectory_values", &
                                  test_compute_acceleration_from_velocity_trajectory_values)
         all_tests(2) = test_case("test_compute_acceleration_from_velocity_trajectory_three", &
@@ -33,6 +33,8 @@ contains
                                  test_compute_acceleration_from_velocity_trajectory_one)
         all_tests(5) = test_case("test_compute_acceleration_from_velocity_trajectory_nan_inf", &
                                  test_compute_acceleration_from_velocity_trajectory_nan_inf)
+        all_tests(6) = test_case("test_compute_acceleration_from_velocity_trajectory_dimensions", &
+                                 test_compute_acceleration_from_velocity_trajectory_dimensions)
     end function get_all_tests_compute_acceleration_from_velocity_trajectory
 
     !> Calls the procedure for `n_timepoints` positions and checks `ierr` OK and the
@@ -105,6 +107,20 @@ contains
         call assert_equal_real(acceleration(1), UNWRITTEN, 0.0_real64, &
                                "test_compute_acceleration_from_velocity_trajectory_one: nothing written")
     end subroutine test_compute_acceleration_from_velocity_trajectory_one
+
+    !> `n_timepoints` (argument 3) has the minimum 1, as for the velocity procedures (FES): 0 and
+    !| -1 are ERR_INVALID_INPUT, although both size an empty velocity and acceleration; 1 is in
+    !| `test_compute_acceleration_from_velocity_trajectory_one`.
+    subroutine test_compute_acceleration_from_velocity_trajectory_dimensions()
+        real(real64) :: velocity(1), acceleration(1)
+        integer(int32) :: ierr
+
+        velocity = 1.0_real64
+        call compute_acceleration_from_velocity_trajectory(velocity, acceleration, 0, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_acceleration_from_velocity_trajectory_dimensions: 0", 3)
+        call compute_acceleration_from_velocity_trajectory(velocity, acceleration, -1, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_acceleration_from_velocity_trajectory_dimensions: -1", 3)
+    end subroutine test_compute_acceleration_from_velocity_trajectory_dimensions
 
     !> NaN, +Inf and -Inf in `velocity` (argument 1) are ERR_NAN_INF; each sits in the last
     !| element, so the check must cover every one.

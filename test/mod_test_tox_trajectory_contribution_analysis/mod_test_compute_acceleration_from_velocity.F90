@@ -111,7 +111,9 @@ contains
     end subroutine test_compute_acceleration_from_velocity_one_timepoint
 
     !> `n_factors` (argument 3) and `n_samples` (4) are ERR_EMPTY_INPUT at 0 and
-    !| ERR_INVALID_INPUT at -1, each with the other valid.
+    !| ERR_INVALID_INPUT at -1, each with the others valid. `n_timepoints` (5) has the minimum 1,
+    !| as for the velocity procedures (FES): 0 and -1 are ERR_INVALID_INPUT, although both size an
+    !| empty velocity and acceleration; 1 is in `test_compute_acceleration_from_velocity_one_timepoint`.
     subroutine test_compute_acceleration_from_velocity_dimensions()
         real(real64) :: velocity(2, 2, 2), acceleration(1, 2, 2)
         integer(int32) :: ierr
@@ -125,6 +127,11 @@ contains
         call assert_err(ierr, ERR_EMPTY_INPUT, "test_compute_acceleration_from_velocity_dimensions: n_samples = 0", 4)
         call compute_acceleration_from_velocity(velocity, acceleration, 2, -1, 3, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_acceleration_from_velocity_dimensions: n_samples = -1", 4)
+        call compute_acceleration_from_velocity(velocity, acceleration, 2, 2, 0, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_acceleration_from_velocity_dimensions: n_timepoints = 0", 5)
+        call compute_acceleration_from_velocity(velocity, acceleration, 2, 2, -1, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_compute_acceleration_from_velocity_dimensions: n_timepoints = -1", 5)
     end subroutine test_compute_acceleration_from_velocity_dimensions
 
     !> NaN, +Inf and -Inf in `velocity` (argument 1) are ERR_NAN_INF; each sits in the last

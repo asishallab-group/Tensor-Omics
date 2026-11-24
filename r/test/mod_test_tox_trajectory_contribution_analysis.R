@@ -322,9 +322,16 @@ test_compute_acceleration_from_velocity_trajectory_rejects_na <- function() {
 test_a_computed_axis_cannot_overflow_into_an_allocation <- function() {
   # acceleration has max(0, n_timepoints - 2) elements. In C int arithmetic -2147483647 - 2
   # overflowed (undefined, in practice 2147483647: a 16 GB vector); the shim now computes every
-  # axis in double, so it is 0, as Fortran sizes it, and nothing is allocated (#215)
-  r <- compute_acceleration_from_velocity_trajectory(numeric(0), -2147483647L)
-  assert_true(is.double(r) && length(r) == 0L, "an empty acceleration, not an allocation")
+  # axis in double, so it is 0, as Fortran sizes it, and nothing is allocated (#215). Since
+  # n_timepoints has the minimum 1, the library then refuses the call, naming it
+  .assert_refused(compute_acceleration_from_velocity_trajectory(numeric(0), -2147483647L),
+                  "a hugely negative n_timepoints", ERR_INVALID_INPUT, "n_timepoints")
+}
+
+test_compute_acceleration_from_velocity_trajectory_rejects_zero_timepoints <- function() {
+  # n_timepoints has the minimum 1, as for the velocity procedures
+  .assert_refused(compute_acceleration_from_velocity_trajectory(numeric(0), 0L),
+                  "zero time points", ERR_INVALID_INPUT, "n_timepoints")
 }
 
 # -----------------------------------------------------------------------------------------------
@@ -375,6 +382,12 @@ test_compute_acceleration_from_velocity_rejects_too_few_velocities <- function()
   # `velocity` has n_timepoints - 1 steps; 3 against 6 timepoints used to be read past (#221)
   .assert_refused(compute_acceleration_from_velocity(array(1, dim = c(3L, 1L, 2L)), 6L),
                   "too few velocity steps", ERR_SIZE_MISMATCH, "velocity")
+}
+
+test_compute_acceleration_from_velocity_rejects_zero_timepoints <- function() {
+  # n_timepoints has the minimum 1, as for the velocity procedures
+  .assert_refused(compute_acceleration_from_velocity(array(numeric(0), dim = c(0L, 1L, 2L)), 0L),
+                  "zero time points", ERR_INVALID_INPUT, "n_timepoints")
 }
 
 test_compute_acceleration_from_velocity_rejects_infinity <- function() {

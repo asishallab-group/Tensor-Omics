@@ -332,6 +332,12 @@ def test_compute_acceleration_from_velocity_trajectory_rejects_too_few_velocitie
                  "too few velocity steps", ERR_SIZE_MISMATCH, argument="velocity")
 
 
+def test_compute_acceleration_from_velocity_trajectory_rejects_zero_timepoints():
+    # n_timepoints has the minimum 1, as for the velocity procedures
+    assert_error(lambda: compute_acceleration_from_velocity_trajectory(np.empty(0), 0),
+                 "zero time points", ERR_INVALID_INPUT, argument="n_timepoints")
+
+
 def test_compute_acceleration_from_velocity_trajectory_rejects_nan():
     assert_error(lambda: compute_acceleration_from_velocity_trajectory([1.0, np.nan, 3.0], 4),
                  "a NaN velocity", ERR_NAN_INF, argument="velocity")
@@ -391,6 +397,12 @@ def test_compute_acceleration_from_velocity_rejects_too_few_velocities():
     # `velocity` has n_timepoints - 1 steps; 3 against 6 timepoints used to be read past (#221)
     assert_error(lambda: compute_acceleration_from_velocity(np.ones((3, 1, 2)), 6),
                  "too few velocity steps", ERR_SIZE_MISMATCH, argument="velocity")
+
+
+def test_compute_acceleration_from_velocity_rejects_zero_timepoints():
+    # n_timepoints has the minimum 1, as for the velocity procedures
+    assert_error(lambda: compute_acceleration_from_velocity(np.empty((0, 1, 2)), 0),
+                 "zero time points", ERR_INVALID_INPUT, argument="n_timepoints")
 
 
 def test_compute_acceleration_from_velocity_rejects_infinity():
