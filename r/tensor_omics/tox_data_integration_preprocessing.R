@@ -67,6 +67,7 @@ compute_residuals <- function(expr, means) {
 pool_means <- function(pooled_means, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
+    .tox_check_extent(n_points, "n_points")
     .result <- .Call("pool_means_call", pooled_means, n_points)
     .arguments <- c("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr")
     .sources <- c(NA_character_, "pooled_means", NA_character_, NA_character_, NA_character_, NA_character_)
@@ -101,6 +102,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
     pooled_means_perm <- .tox_as_integer_vector(pooled_means_perm, "pooled_means_perm")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
+    .tox_check_extent(n_points, "n_points")
     if (length(pooled_means_perm) != length(pooled_means))
         .tox_shape_error("pooled_means_perm", 1L, length(pooled_means_perm), "'pooled_means' implies pool_size == ", length(pooled_means), "pool_size")
 
@@ -136,6 +138,7 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
     mean_S2 <- .tox_as_double_vector(mean_S2, "mean_S2")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
+    .tox_check_extent(n_points, "n_points")
     .result <- .Call("pool_study_means_call", mean_S1, mean_S2, n_points)
     .arguments <- c("n_genes_S1", "mean_S1", "n_genes_S2", "mean_S2", "n_points", "n_pool", "x_star", "ierr")
     .sources <- c("mean_S1", NA_character_, "mean_S2", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
@@ -179,6 +182,7 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors, n_omp_
     resid_S <- .tox_as_double_matrix(resid_S, "resid_S")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     n_omp_threads <- .tox_as_integer_scalar(n_omp_threads, "n_omp_threads")
+    .tox_check_extent(n_neighbors, "n_neighbors")
     if (dim(resid_S)[2] != length(mean_S))
         .tox_shape_error("resid_S", 2L, dim(resid_S)[2], "'mean_S' implies n_genes_S == ", length(mean_S), "n_reps_S, n_genes_S")
 

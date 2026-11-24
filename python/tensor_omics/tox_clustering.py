@@ -353,10 +353,10 @@ def linkage_clustering(
         raise _ToxArgumentError(f"'distances' has {distances.shape[1]} along axis 1, but 'distances' implies n_points == {n_points}; 'distances' is declared with shape (n_points, n_points)", argument="distances")
 
     # outputs and work arrays, which the caller never sees
-    merge_i = _np.empty((n_points - 1,), dtype=_np.int32, order='C')
-    merge_j = _np.empty((n_points - 1,), dtype=_np.int32, order='C')
-    heights = _np.empty((n_points - 1,), dtype=_np.float64, order='C')
-    cluster_sizes = _np.empty((n_points - 1,), dtype=_np.int32, order='C')
+    merge_i = _np.empty((max(0, n_points - 1),), dtype=_np.int32, order='C')
+    merge_j = _np.empty((max(0, n_points - 1),), dtype=_np.int32, order='C')
+    heights = _np.empty((max(0, n_points - 1),), dtype=_np.float64, order='C')
+    cluster_sizes = _np.empty((max(0, n_points - 1),), dtype=_np.int32, order='C')
     ierr = _ctypes.c_int(0)
 
     _lib.linkage_clustering_c(

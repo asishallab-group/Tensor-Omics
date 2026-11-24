@@ -9,7 +9,7 @@ and each is a compile error in generated code, which fails the whole library.
 Python and the R shim are out of this: every name they bind beside the arguments starts with
 `_` (`names`), which no Fortran name can. A Fortran wrapper cannot do that, so it is the
 argument that is refused -- but only where it really collides. `count` is a perfectly good
-argument of `mask_chunk_count`, whose C wrapper counts nothing, and main publishes it there.
+argument of a procedure with no `n_selected_` count, whose wrapper calls no `count(...)`.
 
 "Where it collides" is read off the wrapper as it is emitted, not off a second list of what
 each emitter might write: the wrappers are rendered, their macros expanded, and every dummy is

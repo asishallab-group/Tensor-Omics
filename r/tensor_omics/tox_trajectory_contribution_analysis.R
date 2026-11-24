@@ -31,6 +31,7 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
     if (!is.null(random_seed))
         random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    .tox_check_extent(n_permutations, "n_permutations")
     .result <- .Call("perform_permutation_test_call", trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "random_seed", "ierr")
     .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)

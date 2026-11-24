@@ -16,8 +16,9 @@ module tox_trajectory_contribution_analysis
     use tox_trajectory_contribution_analysis_impl, only: perform_permutation_test_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
-    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_arg_pos
+    use tox_errors, only: set_err_once, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -126,7 +127,17 @@ contains
             random_seed = random_seed,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:11_int32)
+                ! the same position here
+            case (14_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine perform_permutation_test
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_trajectory_contribution_analysis(module):perform_permutation_test]] does both.
@@ -219,7 +230,15 @@ contains
             random_seed = random_seed,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:14_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine perform_permutation_test_expert
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_p_values_impl]].
@@ -325,7 +344,15 @@ contains
             total_contribution = total_contribution,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:6_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_contributions
 
     !> summary: Validates its inputs, prepares what [[tox_trajectory_contribution_analysis_impl(module):compute_all_contributions_impl]] needs, then calls it. The entry point to reach for first; see [[tox_trajectory_contribution_analysis(module):compute_all_contributions_expert]] to prepare it yourself.
@@ -411,7 +438,15 @@ contains
             tmp_dependent = tmp_dependent,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:11_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_all_contributions
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_all_contributions_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_trajectory_contribution_analysis(module):compute_all_contributions]] does both.
@@ -498,7 +533,15 @@ contains
             tmp_dependent = tmp_dependent,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:13_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_all_contributions_expert
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_baselines_factor_dependent_impl]].
@@ -548,7 +591,15 @@ contains
             dependent_baseline = dependent_baseline,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:6_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_baselines_factor_dependent
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_velocity_trajectory_impl]].
@@ -771,7 +822,23 @@ contains
             acceleration_contribution_series = acceleration_contribution_series,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:5_int32)
+                ! the same position here
+            case (9_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (10_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (11_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (12_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_velocity_acceleration_contributions
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_velocity_acceleration_contributions_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_trajectory_contribution_analysis(module):compute_velocity_acceleration_contributions]] does both.
@@ -858,7 +925,15 @@ contains
             acceleration_contribution_series = acceleration_contribution_series,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:12_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_velocity_acceleration_contributions_expert
 
 end module tox_trajectory_contribution_analysis

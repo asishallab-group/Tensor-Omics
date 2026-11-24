@@ -311,8 +311,7 @@ class FortranWrapperEmitter:
 
     def _error_imports(self, module: Module) -> list[str]:
         names = {"set_ok", "is_err"}
-        if self._emits_arg_pos_clear(module):
-            names.add("clear_err_arg_pos")
+        names |= self._position_imports(module)
         for procedure in module:
             for argument in procedure.arguments:
                 validator = self._validator_for(argument)
@@ -321,7 +320,6 @@ class FortranWrapperEmitter:
         if any(self._is_allocating(p, module) for p in module):
             # M_ALLOCATE reports through set_err / ERR_ALLOC_FAIL
             names |= {"set_err", "ERR_ALLOC_FAIL"}
-        names |= self._producer_error_imports(module)
         if any(self._is_distance_matrix(a) for p in module for a in p.arguments):
             names.add("validate_distance_matrix")
         # both the mask-count convention and the mode-membership check report this way
@@ -392,19 +390,43 @@ class FortranWrapperEmitter:
             groups.setdefault(own.roles.computed_from.call, []).append(own)
         return list(groups.values())
 
-    def _producer_error_imports(self, module: Module) -> set[str]:
-        """What the error check after a producer call names (`_producer_error_check`)."""
+    def _error_returns(self, module: Module):
+        """The position pairs of every `_error_return` a body here emits, one list per call.
+
+        After each producer, prologue and implementation call that takes `ierr`, in the order
+        the bodies make them. The one source of truth for both the emitted blocks and the `use`
+        list -- deciding the two separately is how a missing import gets shipped.
+        """
+        for procedure in module:
+            foo = procedure
+            if self._is_allocating(procedure, module):
+                foo = self._sibling(module, procedure)
+                prologue = self._prologue_for(foo, module)
+                taken = taken_over_arguments(
+                    self._impl_arguments(foo), self.conventions, prologue
+                )
+                for group in self._producer_groups(foo, taken):
+                    if group[0].roles.computed_from.producer.has_error_argument:
+                        yield self._producer_positions(group, procedure)
+                if prologue is not None:
+                    actuals = self._prologue_actuals(prologue, procedure, taken)
+                    yield self._call_positions(prologue.arguments, actuals, procedure)
+            if self._impl_declares_error(foo, module):
+                yield self._impl_positions(foo, module, procedure)
+
+    def _position_imports(self, module: Module) -> set[str]:
+        """What the blocks `_error_return` writes here name from `tox_errors`.
+
+        `clear_err_arg_pos` for any block, `get_err_arg_pos` once a position maps at all, and
+        `set_err_arg_pos` only where one moves.
+        """
         names: set[str] = set()
-        for alloc, _, group in self._producer_calls(module):
-            producer = group[0].roles.computed_from.producer
-            if not producer.has_error_argument:
-                continue
+        for positions in self._error_returns(module):
             names.add("clear_err_arg_pos")
-            positions = self._producer_positions(group, alloc)
             if positions:
                 names.add("get_err_arg_pos")
             if any(old != new for old, new in positions):
-                names.add("map_err_arg_pos")
+                names.add("set_err_arg_pos")
         return names
 
     def _has_permutations(self, module: Module) -> bool:
@@ -475,7 +497,7 @@ class FortranWrapperEmitter:
         writer.blank()
         self._validation(writer, foo)
         writer.blank()
-        self._impl_call(writer, foo, module)
+        self._impl_call(writer, foo, module, foo)
 
     def _allocating_body(
         self, writer: Writer, alloc: Procedure, module: Module
@@ -502,7 +524,9 @@ class FortranWrapperEmitter:
         # Below the work arrays, because preparing them is what a prologue is for -- it is the
         # sugar this tier adds over the expert one, which lets a caller prepare them instead.
         self._prologue_call(writer, prologue, alloc, module, taken)
-        self._impl_call(writer, foo, module, allocating=True)
+        # mapped to `alloc`'s own dummy list: `foo` is the expert sibling, whose work arrays
+        # and recommend-sized values are locals here
+        self._impl_call(writer, foo, module, alloc)
 
     # -- prologue ---------------------------------------------------------------
 
@@ -536,6 +560,14 @@ class FortranWrapperEmitter:
         """
         if prologue is None:
             return
+        actuals = self._prologue_actuals(prologue, wrapper, taken)
+        self._call(writer, prologue.name, actuals)
+        self._error_return(writer, self._call_positions(prologue.arguments, actuals, wrapper))
+        writer.line(f"if ({self.conventions.prologue_handled_arg}) return")
+        writer.blank()
+
+    def _prologue_actuals(self, prologue, wrapper: Procedure, taken) -> list[tuple[str, str]]:
+        """The prologue call's `(dummy, actual)` pairs, as `_prologue_call` makes it."""
         error = self.conventions.error_arg
         handled = self.conventions.prologue_handled_arg
         local = {argument.name.lower() for argument in taken}
@@ -548,11 +580,7 @@ class FortranWrapperEmitter:
                 actuals.append((dummy.name, handled))
             elif wrapper.argument(dummy.name) is not None or lowered in local:
                 actuals.append((dummy.name, dummy.name))
-        self._call(writer, prologue.name, actuals)
-        self._clear_arg_pos(writer)
-        writer.line(f"if (is_err({error})) return")
-        writer.line(f"if ({handled}) return")
-        writer.blank()
+        return actuals
 
     def _purity(self, procedure: Procedure, module: Module,
                 visiting: frozenset = frozenset()) -> Purity:
@@ -674,23 +702,11 @@ class FortranWrapperEmitter:
         return [a for a in foo.arguments if a.name.lower() != error]
 
     def _impl_declares_error(self, foo: Procedure, module: Module) -> bool:
-        """Whether the implementation takes `ierr`, so the wrapper has a position to clear."""
+        """Whether the implementation takes `ierr`, so the wrapper has a position to translate."""
         error = self.conventions.error_arg.lower()
         return any(
             a.name.lower() == error for a in self._impl_call_arguments(foo, module)
         )
-
-    def _emits_arg_pos_clear(self, module: Module) -> bool:
-        """Whether any body here calls out to hand-written code that returns `ierr`.
-
-        The one source of truth for both the emitted call and the `use` list -- deciding the
-        two separately is how a missing import gets shipped.
-        """
-        return any(
-            self._impl_declares_error(procedure, module)
-            for procedure in module
-            if not self._is_allocating(procedure, module)
-        ) or bool(self._prologues(module))
 
     def _impl_call_arguments(self, foo: Procedure, module: Module) -> list[Argument]:
         """The implementation's own signature, for the call.
@@ -1097,7 +1113,7 @@ class FortranWrapperEmitter:
                     actuals.append((dummy.name, self._actual(value, materialized)))
             self._call(writer, producer.name, actuals)
             if producer.has_error_argument:
-                self._producer_error_check(writer, self._producer_positions(group, alloc))
+                self._error_return(writer, self._producer_positions(group, alloc))
 
     def _producer_positions(self, group: list[Argument], alloc: Procedure) -> list[tuple[int, int]]:
         """(producer position, wrapper position) for each producer input a dummy supplied.
@@ -1119,25 +1135,37 @@ class FortranWrapperEmitter:
             if supply.argument is not None and supply.argument.lower() in own
         ]
 
-    def _producer_error_check(self, writer: Writer, positions: list[tuple[int, int]]) -> None:
-        """Return on a producer's error, its position translated to this wrapper's or cleared."""
+    def _error_return(self, writer: Writer, positions: list[tuple[int, int]]) -> None:
+        """Return on a callee's error, its position translated into this wrapper's dummy list.
+
+        The one block written after every producer, prologue and implementation call that
+        takes `ierr`. `positions` pairs a callee position with the position of the wrapper's
+        own dummy that supplied it (`_call_positions`, `_producer_positions`): one it shares is
+        kept, one that moved is rewritten, and everything else -- a work array or permutation
+        the wrapper prepared, a recommend-sized or prologue-produced local, a mode fixed to its
+        parameter, an argument another mode takes, a position outside the callee's list --
+        names nothing the caller wrote and is cleared: 0, "not argument related".
+
+        Guarded by `is_err`, so an OK `ierr` is left exactly as the callee returned it, and so
+        the `select` only runs on an error. That the callee numbers its *own* dummy list is
+        its author's job (codegen_guide.md 5.14); this only translates.
+        """
         error = self.conventions.error_arg
         writer.line(f"if (is_err({error})) then")
         with writer.indent():
             if positions:
                 writer.line(f"select case (get_err_arg_pos({error}))")
-                # a position the dummy has here as well needs no rewriting, only keeping
-                same = [old for old, new in positions if old == new]
-                if same:
-                    writer.line(f"case ({', '.join(f'{old}_int32' for old in same)})")
+                kept = sorted(old for old, new in positions if old == new)
+                if kept:
+                    writer.line(f"case ({_position_ranges(kept)})")
                     with writer.indent():
                         writer.line("! the same position here")
-                for old, new in positions:
+                for old, new in sorted(positions):
                     if old == new:
                         continue
                     writer.line(f"case ({old}_int32)")
                     with writer.indent():
-                        writer.line(f"call map_err_arg_pos({error}, {old}_int32, {new}_int32)")
+                        writer.line(f"call set_err_arg_pos({error}, {new}_int32)")
                 writer.line("case default")
                 with writer.indent():
                     writer.line(f"call clear_err_arg_pos({error})")
@@ -1146,6 +1174,26 @@ class FortranWrapperEmitter:
                 writer.line(f"call clear_err_arg_pos({error})")
             writer.line("return")
         writer.line("end if")
+
+    def _call_positions(self, callee_arguments, actuals, wrapper: Procedure) -> list[tuple[int, int]]:
+        """(callee position, wrapper position) for each callee dummy passed one of `wrapper`'s own.
+
+        Keyed on the actual as the call was built, not on the dummy's name: only an actual that
+        IS a dummy of the wrapper being emitted maps -- for `foo`, `foo`'s own list, not its
+        expert sibling's. A fixed mode is passed its parameter and a prepared work array a
+        local, so neither maps. `ierr` and the prologue's `handled` never do: an error is not
+        about either.
+        """
+        never = {self.conventions.error_arg.lower(), self.conventions.prologue_handled_arg.lower()}
+        callee_position = {
+            dummy.name.lower(): index for index, dummy in enumerate(callee_arguments, start=1)
+        }
+        own = {dummy.name.lower(): index for index, dummy in enumerate(wrapper.arguments, start=1)}
+        return [
+            (callee_position[dummy.lower()], own[value.lower()])
+            for dummy, value in actuals
+            if dummy.lower() not in never and value.lower() not in never and value.lower() in own
+        ]
 
     def _unused_locals(self, foo: Procedure, taken) -> list[tuple[int, Argument, str]]:
         """The local each producer output the wrapper must pass and then drops goes into.
@@ -1220,21 +1268,39 @@ class FortranWrapperEmitter:
     # -- the implementation call --------------------------------------------------------
 
     def _impl_call(self, writer: Writer, foo: Procedure, module: Module,
-                   allocating: bool = False) -> None:
-        """Call the implementation with every argument this variant supplies, by name.
+                   wrapper: Procedure) -> None:
+        """Call the implementation, translating the position it returns into `wrapper`'s list.
 
-        `allocating` for the allocating body, which hands an OpenMP root the thread count it
-        sized the work arrays with rather than the caller's (`_allocations`). Every other tier
-        passes the caller's on: its caller sized the arrays, or there are none.
+        `foo` carries the implementation's full picture (the expert sibling, in the allocating
+        body); `wrapper` is the procedure being emitted, whose dummy list the caller numbers.
         """
         impl = self._impl_name(foo, module)
+        actuals = self._impl_actuals(foo, module, wrapper)
+        # A function is called for its value, which goes to the argument its result is
+        # published as (`synthesize.published_result`): of the same name, on both tiers.
+        implementation = self._impl(foo, module)
+        result = implementation.result if implementation is not None else None
+        published = result is not None and foo.argument(result.name) is not None
+        self._call(writer, impl, actuals, result=result.name if published else None)
+        if self._impl_declares_error(foo, module):
+            self._error_return(writer, self._impl_positions(foo, module, wrapper))
+
+    def _impl_actuals(self, foo: Procedure, module: Module,
+                      wrapper: Procedure) -> list[tuple[str, str]]:
+        """The implementation call's `(dummy, actual)` pairs, as `wrapper` makes the call.
+
+        The allocating body (`wrapper` is not `foo`, its expert sibling) hands an OpenMP root
+        the thread count it sized the work arrays with rather than the caller's
+        (`_allocations`); that actual is no dummy of `wrapper`, so its position does not map.
+        Every other tier passes the caller's on: its caller sized the arrays, or there are none.
+        """
+        allocating = wrapper is not foo
         arguments = self._impl_call_arguments(foo, module)
         mode_fix = self._mode_fix(foo)
         # the validating wrapper carries exactly the implementation arguments this variant
         # supplies (as dummies, or -- in the allocating body -- as the locals it prepared);
         # anything else is a mode fixed to its parameter, or an argument another mode takes and
-        # this
-        # one omits (an absent optional)
+        # this one omits (an absent optional)
         present = {a.name.lower() for a in foo.arguments}
         actuals = []
         for argument in arguments:
@@ -1246,27 +1312,16 @@ class FortranWrapperEmitter:
                 if allocating and self._is_omp_threads(argument):
                     value = self._omp_n_threads(argument.name)
                 actuals.append((argument.name, value))
-        # A function is called for its value, which goes to the argument its result is
-        # published as (`synthesize.published_result`): of the same name, on both tiers.
-        implementation = self._impl(foo, module)
-        result = implementation.result if implementation is not None else None
-        published = result is not None and foo.argument(result.name) is not None
-        self._call(writer, impl, actuals, result=result.name if published else None)
-        if self._impl_declares_error(foo, module):
-            self._clear_arg_pos(writer)
+        return actuals
 
-    def _clear_arg_pos(self, writer: Writer) -> None:
-        """Drop the position an `ierr` carried in from a hand-written procedure.
-
-        It is that procedure's own numbering -- or a private helper's, further down, since a
-        position propagates unchanged through every call that does not rewrite it -- so it
-        names nothing in this wrapper's dummy list. The code itself is still true.
-
-        Safe because `ierr` is provably OK when the call is made: validation ends with
-        `if (is_err(ierr)) return`, and so do the prologue and recommend calls. Nothing this
-        clears can be a position the wrapper itself set.
-        """
-        writer.line(f"call clear_err_arg_pos({self.conventions.error_arg})")
+    def _impl_positions(self, foo: Procedure, module: Module,
+                        wrapper: Procedure) -> list[tuple[int, int]]:
+        """`_call_positions` for the implementation call `_impl_call` makes."""
+        return self._call_positions(
+            self._impl_call_arguments(foo, module),
+            self._impl_actuals(foo, module, wrapper),
+            wrapper,
+        )
 
     def _call(self, writer: Writer, name: str, actuals, result: str | None = None) -> None:
         """`call name(dummy = value, ...)`, or `result = name(...)` for a function."""
@@ -1276,6 +1331,19 @@ class FortranWrapperEmitter:
                 separator = "&" if index == len(actuals) - 1 else ",&"
                 writer.line(f"{dummy} = {value}{separator}")
         writer.line(")")
+
+
+def _position_ranges(positions: list[int]) -> str:
+    """Sorted positions as `case` selectors, a contiguous run as one range: `1_int32:4_int32, 6_int32`."""
+    runs: list[list[int]] = []
+    for position in positions:
+        if runs and position == runs[-1][-1] + 1:
+            runs[-1].append(position)
+        else:
+            runs.append([position])
+    return ", ".join(
+        f"{run[0]}_int32" if len(run) == 1 else f"{run[0]}_int32:{run[-1]}_int32" for run in runs
+    )
 
 
 def _size_identifiers(argument: Argument) -> list[str]:

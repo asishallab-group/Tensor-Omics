@@ -28,7 +28,7 @@ from tensor_omics import (
     serialize_int_helper, serialize_real_helper, serialize_char_helper,
     deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
 )
-from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
+from test_helpers import run_all_tests, assert_error, assert_refused_by_name, TEST_N_OMP_THREADS
 from tensor_omics.error_handling import ERR_FILE_OPEN, ERR_INVALID_INPUT
 
 
@@ -345,6 +345,14 @@ def test_an_array_of_no_strings():
         for name in written:
             if os.path.exists(name):
                 os.remove(name)
+
+
+def test_a_negative_length_or_count_of_the_gene_ids_is_refused_by_name():
+    # both size the strings the binding allocates before the file is even opened (#215)
+    assert_refused_by_name(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", -1, 3, 1, 1),
+                           "gene_ids_strlen = -1", "gene_ids_strlen")
+    assert_refused_by_name(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", 8, -1, 1, 1),
+                           "n_gene_ids_elements = -1", "n_gene_ids_elements")
 
 
 if __name__ == "__main__":
