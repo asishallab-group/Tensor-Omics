@@ -126,6 +126,7 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
     n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
     if (!is.null(neighbor_mask))
         neighbor_mask <- .tox_as_logical_matrix(neighbor_mask, "neighbor_mask")
+    .tox_check_extent(n_bins, "n_bins")
     if (!is.null(neighbor_mask) && dim(neighbor_mask)[1] != dim(neighborhood_residuals)[2])
         .tox_shape_error("neighbor_mask", 1L, dim(neighbor_mask)[1], "'neighborhood_residuals' implies n_neighbors == ", dim(neighborhood_residuals)[2], "n_neighbors, n_points")
     if (!is.null(neighbor_mask) && dim(neighbor_mask)[2] != dim(neighborhood_residuals)[3])

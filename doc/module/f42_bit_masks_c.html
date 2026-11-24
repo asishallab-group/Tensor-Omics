@@ -141,12 +141,12 @@
       </a>
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bit_mask_n_words_c">bit_mask_n_words_c</a>
-            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bit_mask_test_c">bit_mask_test_c</a>
-            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bit_mask_from_logical_c">bit_mask_from_logical_c</a>
-            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bit_mask_to_logical_c">bit_mask_to_logical_c</a>
-            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bit_masks_from_logical_2d_c">bit_masks_from_logical_2D_c</a>
-            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bit_masks_to_logical_2d_c">bit_masks_to_logical_2D_c</a>
+            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bitmask_n_words_c">bitmask_n_words_c</a>
+            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bitmask_test_c">bitmask_test_c</a>
+            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bitmask_from_logical_c">bitmask_from_logical_c</a>
+            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bitmask_to_logical_c">bitmask_to_logical_c</a>
+            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bitmasks_from_logical_2d_c">bitmasks_from_logical_2D_c</a>
+            <a class="list-group-item" href="../module/f42_bit_masks_c.html#proc-bitmasks_to_logical_2d_c">bitmasks_to_logical_2D_c</a>
         </div>
       </div>
     </div>
@@ -174,16 +174,19 @@ the order numpy's <code>np.unpackbits(words.view(np.uint8), bitorder="little")</
 <code>intToBits(words)</code> decode.</p>
 <p><strong>All 32 bits are used.</strong> A word whose bit 31 is set is negative, so a word is tested against
 zero with <code>/= 0</code>, never with <code>&gt; 0</code>.</p>
+<p><strong>In R the word with only bit 31 set prints as <code>NA</code>.</strong> Its bit pattern is the one R uses for
+<code>NA_integer_</code>, and it is still that word: it passes back to any procedure here unchanged, and
+<code>intToBits()</code> decodes it, while <code>bitwAnd()</code> and arithmetic take it for a missing value.</p>
 <p><strong>The bits past <code>n_bits</code> in the last word are always zero.</strong> Every procedure here keeps it that
-way, and the counts, <a href="../proc/bit_mask_all.html">bit_mask_all</a> and
-<a href="../proc/bit_mask_equal.html">bit_mask_equal</a> rely on it.</p>
+way, and the counts, <a href="../proc/bitmask_all.html">bitmask_all</a> and
+<a href="../proc/bitmask_equal.html">bitmask_equal</a> rely on it.</p>
 <p><strong>Several masks</strong> are the columns of a <code>(n_words, n_masks)</code> array. Every column starts on a
-new word, so <code>bit_masks(:, i_mask)</code> is a mask of its own and passes to any procedure here
+new word, so <code>bitmasks(:, i_mask)</code> is a mask of its own and passes to any procedure here
 without a copy.</p>
 <p><strong>Parallel loops write whole words.</strong> Two iterations that set flags in the same word race, so
 a <code>do concurrent</code> over flags may only read a mask; one that writes runs over words or columns.</p>
 <p><strong>Hot loops</strong> use the whole-mask procedures, or step from one set flag to the next with
-<a href="../proc/bit_mask_next.html">bit_mask_next</a>. A procedure call per flag costs more
+<a href="../proc/bitmask_next.html">bitmask_next</a>. A procedure call per flag costs more
 than the flag, because nothing is inlined across modules; where a loop must touch single
 flags, the bit-mask macros in <code>src/macros.h</code> test a flag or locate its word inline, and one
 of them sizes a mask.</p>
@@ -194,8 +197,8 @@ of them sizes a mask.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -215,11 +218,11 @@ of them sizes a mask.</p>
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bit_mask_n_words_c"></span> <h3>public  subroutine <a href='../proc/bit_mask_n_words_c.html'>bit_mask_n_words_c</a>(n_bits, n_words, ierr) bind(C, name="bit_mask_n_words_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-bitmask_n_words_c"></span> <h3>public  subroutine <a href='../proc/bitmask_n_words_c.html'>bitmask_n_words_c</a>(n_bits, n_words, ierr) bind(C, name="bitmask_n_words_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/bit_mask_n_words.html">bit_mask_n_words</a></p><a href="../proc/bit_mask_n_words_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/bitmask_n_words.html">bitmask_n_words</a></p><a href="../proc/bitmask_n_words_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -265,7 +268,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~417"></span>
+              <span class="anchor" id="variable-ierr~321"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -286,11 +289,11 @@ The minimum valid value is <code>0_int32</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bit_mask_test_c"></span> <h3>public  subroutine <a href='../proc/bit_mask_test_c.html'>bit_mask_test_c</a>(n_bits, n_words, bit_mask, i_bit, is_set, ierr) bind(C, name="bit_mask_test_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-bitmask_test_c"></span> <h3>public  subroutine <a href='../proc/bitmask_test_c.html'>bitmask_test_c</a>(n_bits, n_words, bitmask, i_bit, is_set, ierr) bind(C, name="bitmask_test_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/bit_mask_test.html">bit_mask_test</a></p><a href="../proc/bit_mask_test_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/bitmask_test.html">bitmask_test</a></p><a href="../proc/bitmask_test_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -338,7 +341,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-bit_mask~24"></span>
+              <span class="anchor" id="variable-bitmask~24"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -346,7 +349,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
               dimension(n_words), target
             </td>
             <td>::</td>
-            <td><strong>bit_mask</strong></td>
+            <td><strong>bitmask</strong></td>
             <td>
 <p>the mask</p>
             </td>
@@ -385,7 +388,7 @@ The maximum valid value is <code>n_bits</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~418"></span>
+              <span class="anchor" id="variable-ierr~322"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -406,11 +409,11 @@ The maximum valid value is <code>n_bits</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bit_mask_from_logical_c"></span> <h3>public  subroutine <a href='../proc/bit_mask_from_logical_c.html'>bit_mask_from_logical_c</a>(n_bits, n_words, flags, bit_mask, ierr) bind(C, name="bit_mask_from_logical_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-bitmask_from_logical_c"></span> <h3>public  subroutine <a href='../proc/bitmask_from_logical_c.html'>bitmask_from_logical_c</a>(n_bits, n_words, flags, bitmask, ierr) bind(C, name="bitmask_from_logical_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/bit_mask_from_logical.html">bit_mask_from_logical</a></p><a href="../proc/bit_mask_from_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/bitmask_from_logical.html">bitmask_from_logical</a></p><a href="../proc/bitmask_from_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -458,7 +461,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~16"></span>
+              <span class="anchor" id="variable-flags~10"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -473,7 +476,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-bit_mask~25"></span>
+              <span class="anchor" id="variable-bitmask~25"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -481,14 +484,14 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
               dimension(n_words), target
             </td>
             <td>::</td>
-            <td><strong>bit_mask</strong></td>
+            <td><strong>bitmask</strong></td>
             <td>
 <p>the mask, flag <code>i</code> set where <code>flags(i)</code> is <code>.true.</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~419"></span>
+              <span class="anchor" id="variable-ierr~323"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -509,11 +512,11 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bit_mask_to_logical_c"></span> <h3>public  subroutine <a href='../proc/bit_mask_to_logical_c.html'>bit_mask_to_logical_c</a>(n_bits, n_words, bit_mask, flags, ierr) bind(C, name="bit_mask_to_logical_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-bitmask_to_logical_c"></span> <h3>public  subroutine <a href='../proc/bitmask_to_logical_c.html'>bitmask_to_logical_c</a>(n_bits, n_words, bitmask, flags, ierr) bind(C, name="bitmask_to_logical_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/bit_mask_to_logical.html">bit_mask_to_logical</a></p><a href="../proc/bit_mask_to_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/bitmask_to_logical.html">bitmask_to_logical</a></p><a href="../proc/bitmask_to_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -561,7 +564,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-bit_mask~26"></span>
+              <span class="anchor" id="variable-bitmask~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -569,14 +572,14 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
               dimension(n_words), target
             </td>
             <td>::</td>
-            <td><strong>bit_mask</strong></td>
+            <td><strong>bitmask</strong></td>
             <td>
 <p>the mask</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~17"></span>
+              <span class="anchor" id="variable-flags~11"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -591,7 +594,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~420"></span>
+              <span class="anchor" id="variable-ierr~324"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -612,11 +615,11 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bit_masks_from_logical_2d_c"></span> <h3>public  subroutine <a href='../proc/bit_masks_from_logical_2d_c.html'>bit_masks_from_logical_2D_c</a>(n_bits, n_masks, n_words, flags, bit_masks, ierr) bind(C, name="bit_masks_from_logical_2D_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-bitmasks_from_logical_2d_c"></span> <h3>public  subroutine <a href='../proc/bitmasks_from_logical_2d_c.html'>bitmasks_from_logical_2D_c</a>(n_bits, n_masks, n_words, flags, bitmasks, ierr) bind(C, name="bitmasks_from_logical_2D_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/bit_masks_from_logical_2d.html">bit_masks_from_logical_2D</a></p><a href="../proc/bit_masks_from_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/bitmasks_from_logical_2d.html">bitmasks_from_logical_2D</a></p><a href="../proc/bitmasks_from_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -679,7 +682,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~18"></span>
+              <span class="anchor" id="variable-flags~12"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -694,7 +697,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-bit_masks~5"></span>
+              <span class="anchor" id="variable-bitmasks~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -702,14 +705,14 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
               dimension(n_words, n_masks), target
             </td>
             <td>::</td>
-            <td><strong>bit_masks</strong></td>
+            <td><strong>bitmasks</strong></td>
             <td>
 <p>the masks, column <code>j</code> packed from <code>flags(:, j)</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~421"></span>
+              <span class="anchor" id="variable-ierr~325"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -730,11 +733,11 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bit_masks_to_logical_2d_c"></span> <h3>public  subroutine <a href='../proc/bit_masks_to_logical_2d_c.html'>bit_masks_to_logical_2D_c</a>(n_bits, n_masks, n_words, bit_masks, flags, ierr) bind(C, name="bit_masks_to_logical_2D_c")  
+    <div class="card-header codesum"><span class="anchor" id="proc-bitmasks_to_logical_2d_c"></span> <h3>public  subroutine <a href='../proc/bitmasks_to_logical_2d_c.html'>bitmasks_to_logical_2D_c</a>(n_bits, n_masks, n_words, bitmasks, flags, ierr) bind(C, name="bitmasks_to_logical_2D_c")  
 </h3></div>
     <div class="card-body">
           
-  <p>C-wrapper for <a href="../proc/bit_masks_to_logical_2d.html">bit_masks_to_logical_2D</a></p><a href="../proc/bit_masks_to_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>C-wrapper for <a href="../proc/bitmasks_to_logical_2d.html">bitmasks_to_logical_2D</a></p><a href="../proc/bitmasks_to_logical_2d_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -797,7 +800,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-bit_masks~6"></span>
+              <span class="anchor" id="variable-bitmasks~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -805,14 +808,14 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
               dimension(n_words, n_masks), target
             </td>
             <td>::</td>
-            <td><strong>bit_masks</strong></td>
+            <td><strong>bitmasks</strong></td>
             <td>
 <p>the masks, one per column</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-flags~19"></span>
+              <span class="anchor" id="variable-flags~13"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -822,12 +825,12 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
             <td>::</td>
             <td><strong>flags</strong></td>
             <td>
-<p>the flags, column <code>j</code> unpacked from <code>bit_masks(:, j)</code></p>
+<p>the flags, column <code>j</code> unpacked from <code>bitmasks(:, j)</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~422"></span>
+              <span class="anchor" id="variable-ierr~326"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -870,7 +873,7 @@ The maximum valid value is <code>((n_bits)/32_int32 + min(1_int32, mod((n_bits),
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:50 +0000             </p>
+ on 2026-11-19 11:49 +0000             </p>
           </div>
         </div>
         <br>

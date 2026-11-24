@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void deserialize_char_helper_c(char*, const int*, const int*, const int*, const int*, const char*, const int*, int*);
@@ -11,7 +11,7 @@ void deserialize_char_helper_c(char*, const int*, const int*, const int*, const 
 SEXP deserialize_char_helper_call(SEXP strlen, SEXP arr_shape, SEXP filename) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_strings = tox_prod(arr_shape);
+    int n_strings = tox_int_extent("arr", tox_prod(arr_shape));
     int n_arr_shape_elements = (int) Rf_length(arr_shape);
     int filename_strlen = tox_max_strlen(filename);
 
@@ -22,7 +22,8 @@ SEXP deserialize_char_helper_call(SEXP strlen, SEXP arr_shape, SEXP filename) {
     char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
-    char* _c_arr = tox_char_alloc(_v_strlen, tox_prod(arr_shape));
+    R_xlen_t _n_arr = tox_count("arr", tox_prod(arr_shape));
+    char* _c_arr = tox_char_alloc("arr", _v_strlen, _n_arr);
     int ierr = 0;
 
     deserialize_char_helper_c(
@@ -36,9 +37,12 @@ SEXP deserialize_char_helper_call(SEXP strlen, SEXP arr_shape, SEXP filename) {
         &ierr
     );
 
-    // convert the outputs back
-    SEXP arr = PROTECT(tox_char_out(_c_arr, _v_strlen, tox_prod(arr_shape))); _nprot++;
-    Rf_setAttrib(arr, R_DimSymbol, arr_shape);
+    // convert the outputs back, unless the library reports an error
+    SEXP arr = R_NilValue;
+    if (!tox_failed(ierr)) {
+        arr = PROTECT(tox_char_out(_c_arr, _v_strlen, _n_arr)); _nprot++;
+        Rf_setAttrib(arr, R_DimSymbol, arr_shape);
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, arr);

@@ -29,7 +29,7 @@ module tox_paralog_analysis_c
     public :: detect_subfunctionalization_expert_c
     public :: filter_paralogs_by_pattern_dosage_effect_c
     public :: filter_paralogs_by_pattern_subfunctionalization_c
-    public :: calc_work_arr_paralog_subsets_size_c
+    public :: calc_paralog_subsets_bitmasks_size_c
 
 contains
 
@@ -105,11 +105,11 @@ contains
             genes,&
             n_genes,&
             n_dims,&
-            filtered_paralogs_mask,&
+            filtered_paralogs_bitmask,&
             n_mask_chunks,&
             n_results,&
             max_subset_size,&
-            work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks,&
             n_paralog_subsets,&
             max_angle,&
             gain_gamma,&
@@ -122,30 +122,30 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
-            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]].
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
             !! expression vector of ancestral ortholog
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
             !! expression vectors of genes
-        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
+        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
-            !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
+            !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(c_int), intent(in), target :: max_subset_size
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
-            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl(subroutine)]] first.
+            !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
             !! Zero is in range and means there is no subset to check -- the sizing routine reports
             !! it whenever the filtered families hold a single gene each. It reports a work array
             !! of zero slots along with it, which this routine does not accept, so a caller that
             !! gets zero back has nothing to detect and should not call here at all.
             !! The minimum valid value is `0_int32`.
-        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
+        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
             !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
@@ -174,19 +174,19 @@ contains
         M_CHECK_NON_NULL(gain_gamma)
         M_CHECK_ARRAY_NON_NULL(ancestor, n_dims)
         M_CHECK_ARRAY_NON_NULL(genes, n_dims * n_genes)
-        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_mask, n_mask_chunks)
-        M_CHECK_ARRAY_NON_NULL(work_arr_paralog_subsets, n_mask_chunks * n_paralog_subsets)
+        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_bitmask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(paralog_subsets_bitmasks, n_mask_chunks * n_paralog_subsets)
 
         call detect_dosage_effect(&
             ancestor = ancestor,&
             genes = genes,&
             n_genes = n_genes,&
             n_dims = n_dims,&
-            filtered_paralogs_mask = filtered_paralogs_mask,&
+            filtered_paralogs_bitmask = filtered_paralogs_bitmask,&
             n_mask_chunks = n_mask_chunks,&
             n_results = n_results,&
             max_subset_size = max_subset_size,&
-            work_arr_paralog_subsets = work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks = paralog_subsets_bitmasks,&
             n_paralog_subsets = n_paralog_subsets,&
             max_angle = max_angle,&
             gain_gamma = gain_gamma,&
@@ -200,13 +200,13 @@ contains
             genes,&
             n_genes,&
             n_dims,&
-            filtered_paralogs_mask,&
+            filtered_paralogs_bitmask,&
             n_mask_chunks,&
             n_results,&
             max_subset_size,&
-            work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks,&
             n_paralog_subsets,&
-            tmp_active_mask,&
+            tmp_active_bitmask,&
             tmp_paralog_vector,&
             max_angle,&
             gain_gamma,&
@@ -219,35 +219,35 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
-            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]].
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
             !! expression vector of ancestral ortholog
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
             !! expression vectors of genes
-        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
+        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
-            !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
+            !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(c_int), intent(in), target :: max_subset_size
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
-            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl(subroutine)]] first.
+            !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
             !! Zero is in range and means there is no subset to check -- the sizing routine reports
             !! it whenever the filtered families hold a single gene each. It reports a work array
             !! of zero slots along with it, which this routine does not accept, so a caller that
             !! gets zero back has nothing to detect and should not call here at all.
             !! The minimum valid value is `0_int32`.
-        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
+        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
             !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
-        integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_mask
+        integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_bitmask
             !! working array to hold the extended subsets
         real(c_double), dimension(n_dims), intent(out), target :: tmp_paralog_vector
             !! vector used for pruning subsets
@@ -275,9 +275,9 @@ contains
         M_CHECK_NON_NULL(gain_gamma)
         M_CHECK_ARRAY_NON_NULL(ancestor, n_dims)
         M_CHECK_ARRAY_NON_NULL(genes, n_dims * n_genes)
-        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_mask, n_mask_chunks)
-        M_CHECK_ARRAY_NON_NULL(work_arr_paralog_subsets, n_mask_chunks * n_paralog_subsets)
-        M_CHECK_ARRAY_NON_NULL(tmp_active_mask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_bitmask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(paralog_subsets_bitmasks, n_mask_chunks * n_paralog_subsets)
+        M_CHECK_ARRAY_NON_NULL(tmp_active_bitmask, n_mask_chunks)
         M_CHECK_ARRAY_NON_NULL(tmp_paralog_vector, n_dims)
 
         call detect_dosage_effect_expert(&
@@ -285,13 +285,13 @@ contains
             genes = genes,&
             n_genes = n_genes,&
             n_dims = n_dims,&
-            filtered_paralogs_mask = filtered_paralogs_mask,&
+            filtered_paralogs_bitmask = filtered_paralogs_bitmask,&
             n_mask_chunks = n_mask_chunks,&
             n_results = n_results,&
             max_subset_size = max_subset_size,&
-            work_arr_paralog_subsets = work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks = paralog_subsets_bitmasks,&
             n_paralog_subsets = n_paralog_subsets,&
-            tmp_active_mask = tmp_active_mask,&
+            tmp_active_bitmask = tmp_active_bitmask,&
             tmp_paralog_vector = tmp_paralog_vector,&
             max_angle = max_angle,&
             gain_gamma = gain_gamma,&
@@ -305,11 +305,11 @@ contains
             genes,&
             n_genes,&
             n_dims,&
-            filtered_paralogs_mask,&
+            filtered_paralogs_bitmask,&
             n_mask_chunks,&
             n_results,&
             max_subset_size,&
-            work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks,&
             n_paralog_subsets,&
             rdi_threshold,&
             paralog_norms,&
@@ -323,30 +323,30 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
-            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]].
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
             !! expression vector of ancestral ortholog
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
             !! expression vectors of genes
-        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
+        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
-            !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
+            !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(c_int), intent(in), target :: max_subset_size
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
-            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl(subroutine)]] first.
+            !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
             !! Zero is in range and means there is no subset to check -- the sizing routine reports
             !! it whenever the filtered families hold a single gene each. It reports a work array
             !! of zero slots along with it, which this routine does not accept, so a caller that
             !! gets zero back has nothing to detect and should not call here at all.
             !! The minimum valid value is `0_int32`.
-        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
+        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
             !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
@@ -375,8 +375,8 @@ contains
         M_CHECK_NON_NULL(rdi_threshold)
         M_CHECK_ARRAY_NON_NULL(ancestor, n_dims)
         M_CHECK_ARRAY_NON_NULL(genes, n_dims * n_genes)
-        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_mask, n_mask_chunks)
-        M_CHECK_ARRAY_NON_NULL(work_arr_paralog_subsets, n_mask_chunks * n_paralog_subsets)
+        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_bitmask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(paralog_subsets_bitmasks, n_mask_chunks * n_paralog_subsets)
         M_CHECK_ARRAY_NON_NULL(paralog_norms, n_genes)
         M_CHECK_ARRAY_NON_NULL(sorted_paralog_norms_perm, n_genes)
 
@@ -385,11 +385,11 @@ contains
             genes = genes,&
             n_genes = n_genes,&
             n_dims = n_dims,&
-            filtered_paralogs_mask = filtered_paralogs_mask,&
+            filtered_paralogs_bitmask = filtered_paralogs_bitmask,&
             n_mask_chunks = n_mask_chunks,&
             n_results = n_results,&
             max_subset_size = max_subset_size,&
-            work_arr_paralog_subsets = work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks = paralog_subsets_bitmasks,&
             n_paralog_subsets = n_paralog_subsets,&
             rdi_threshold = rdi_threshold,&
             paralog_norms = paralog_norms,&
@@ -404,13 +404,13 @@ contains
             genes,&
             n_genes,&
             n_dims,&
-            filtered_paralogs_mask,&
+            filtered_paralogs_bitmask,&
             n_mask_chunks,&
             n_results,&
             max_subset_size,&
-            work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks,&
             n_paralog_subsets,&
-            tmp_active_mask,&
+            tmp_active_bitmask,&
             tmp_paralog_vector,&
             rdi_threshold,&
             paralog_norms,&
@@ -425,35 +425,35 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
-            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size]].
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
             !! expression vector of ancestral ortholog
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
             !! expression vectors of genes
-        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
+        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
-            !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
+            !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(c_int), intent(in), target :: max_subset_size
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
-            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl(subroutine)]] first.
+            !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
             !! Zero is in range and means there is no subset to check -- the sizing routine reports
             !! it whenever the filtered families hold a single gene each. It reports a work array
             !! of zero slots along with it, which this routine does not accept, so a caller that
             !! gets zero back has nothing to detect and should not call here at all.
             !! The minimum valid value is `0_int32`.
-        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
+        integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
             !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
-        integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_mask
+        integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_bitmask
             !! working array to hold the extended subsets
         real(c_double), dimension(n_dims), intent(out), target :: tmp_paralog_vector
             !! vector used for pruning subsets
@@ -483,9 +483,9 @@ contains
         M_CHECK_NON_NULL(rdi_threshold)
         M_CHECK_ARRAY_NON_NULL(ancestor, n_dims)
         M_CHECK_ARRAY_NON_NULL(genes, n_dims * n_genes)
-        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_mask, n_mask_chunks)
-        M_CHECK_ARRAY_NON_NULL(work_arr_paralog_subsets, n_mask_chunks * n_paralog_subsets)
-        M_CHECK_ARRAY_NON_NULL(tmp_active_mask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_bitmask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(paralog_subsets_bitmasks, n_mask_chunks * n_paralog_subsets)
+        M_CHECK_ARRAY_NON_NULL(tmp_active_bitmask, n_mask_chunks)
         M_CHECK_ARRAY_NON_NULL(tmp_paralog_vector, n_dims)
         M_CHECK_ARRAY_NON_NULL(paralog_norms, n_genes)
         M_CHECK_ARRAY_NON_NULL(sorted_paralog_norms_perm, n_genes)
@@ -496,13 +496,13 @@ contains
             genes = genes,&
             n_genes = n_genes,&
             n_dims = n_dims,&
-            filtered_paralogs_mask = filtered_paralogs_mask,&
+            filtered_paralogs_bitmask = filtered_paralogs_bitmask,&
             n_mask_chunks = n_mask_chunks,&
             n_results = n_results,&
             max_subset_size = max_subset_size,&
-            work_arr_paralog_subsets = work_arr_paralog_subsets,&
+            paralog_subsets_bitmasks = paralog_subsets_bitmasks,&
             n_paralog_subsets = n_paralog_subsets,&
-            tmp_active_mask = tmp_active_mask,&
+            tmp_active_bitmask = tmp_active_bitmask,&
             tmp_paralog_vector = tmp_paralog_vector,&
             rdi_threshold = rdi_threshold,&
             paralog_norms = paralog_norms,&
@@ -520,7 +520,7 @@ contains
             n_genes,&
             n_families,&
             gene_to_fam,&
-            masks,&
+            family_bitmasks,&
             n_mask_chunks,&
             ierr&
         ) bind(C, name="filter_paralogs_by_pattern_dosage_effect_c")
@@ -545,7 +545,7 @@ contains
             !! a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_families`.
-        integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: masks
+        integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: family_bitmasks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -558,7 +558,7 @@ contains
         M_CHECK_NON_NULL(n_mask_chunks)
         M_CHECK_ARRAY_NON_NULL(gene_angles, n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
-        M_CHECK_ARRAY_NON_NULL(masks, n_mask_chunks * n_families)
+        M_CHECK_ARRAY_NON_NULL(family_bitmasks, n_mask_chunks * n_families)
 
         call filter_paralogs_by_pattern_dosage_effect(&
             gene_angles = gene_angles,&
@@ -566,7 +566,7 @@ contains
             n_genes = n_genes,&
             n_families = n_families,&
             gene_to_fam = gene_to_fam,&
-            masks = masks,&
+            family_bitmasks = family_bitmasks,&
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
@@ -580,7 +580,7 @@ contains
             n_genes,&
             n_families,&
             gene_to_fam,&
-            masks,&
+            family_bitmasks,&
             n_mask_chunks,&
             ierr&
         ) bind(C, name="filter_paralogs_by_pattern_subfunctionalization_c")
@@ -605,7 +605,7 @@ contains
             !! a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_families`.
-        integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: masks
+        integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: family_bitmasks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -618,7 +618,7 @@ contains
         M_CHECK_NON_NULL(n_mask_chunks)
         M_CHECK_ARRAY_NON_NULL(gene_angles, n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
-        M_CHECK_ARRAY_NON_NULL(masks, n_mask_chunks * n_families)
+        M_CHECK_ARRAY_NON_NULL(family_bitmasks, n_mask_chunks * n_families)
 
         call filter_paralogs_by_pattern_subfunctionalization(&
             gene_angles = gene_angles,&
@@ -626,27 +626,27 @@ contains
             n_genes = n_genes,&
             n_families = n_families,&
             gene_to_fam = gene_to_fam,&
-            masks = masks,&
+            family_bitmasks = family_bitmasks,&
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
     end subroutine filter_paralogs_by_pattern_subfunctionalization_c
 
-    !> summary: C-wrapper for [[tox_paralog_analysis(module):calc_work_arr_paralog_subsets_size(subroutine)]]
+    !> summary: C-wrapper for [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size(subroutine)]]
     !| The `detect_*` subroutines need a work array for the to be tested subsets.
     !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
     !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
     !|
     !| This subroutine calculates the needed size for the work array.
-    subroutine calc_work_arr_paralog_subsets_size_c(&
+    subroutine calc_paralog_subsets_bitmasks_size_c(&
             max_subset_size,&
             n_genes,&
             work_array_size,&
-            filtered_paralogs_mask,&
+            filtered_paralogs_bitmask,&
             n_mask_chunks,&
             ierr&
-        ) bind(C, name="calc_work_arr_paralog_subsets_size_c")
-        use tox_paralog_analysis, only: calc_work_arr_paralog_subsets_size
+        ) bind(C, name="calc_paralog_subsets_bitmasks_size_c")
+        use tox_paralog_analysis, only: calc_paralog_subsets_bitmasks_size
 
         integer(c_int), intent(in), target :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
@@ -657,7 +657,7 @@ contains
             !! @warning
             !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
             !!
-            !! Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+            !! Also, size will be set to number of genes in `filtered_paralogs_bitmask` if larger.
             !! @endwarning
         integer(c_int), intent(in), target :: n_genes
             !! number of genes
@@ -665,7 +665,7 @@ contains
             !! The maximum valid value is `n_mask_chunks * 32`.
         integer(c_int), intent(out), target :: work_array_size
             !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
-        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_mask
+        integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! Output mask with all genes disabled that did not pass the filter
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -676,17 +676,17 @@ contains
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(work_array_size)
         M_CHECK_NON_NULL(n_mask_chunks)
-        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_mask, n_mask_chunks)
+        M_CHECK_ARRAY_NON_NULL(filtered_paralogs_bitmask, n_mask_chunks)
 
-        call calc_work_arr_paralog_subsets_size(&
+        call calc_paralog_subsets_bitmasks_size(&
             max_subset_size = max_subset_size,&
             n_genes = n_genes,&
             work_array_size = work_array_size,&
-            filtered_paralogs_mask = filtered_paralogs_mask,&
+            filtered_paralogs_bitmask = filtered_paralogs_bitmask,&
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
-    end subroutine calc_work_arr_paralog_subsets_size_c
+    end subroutine calc_paralog_subsets_bitmasks_size_c
 
 end module tox_paralog_analysis_c
 #endif

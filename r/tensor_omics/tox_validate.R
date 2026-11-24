@@ -46,6 +46,14 @@
       "tox_type_error", name)
 }
 
+# A size the caller passed, which the shim allocates by (a whole number by now): refused when
+# negative, before anything is allocated, since R would refuse it in its own words. Zero and
+# every documented bound stay the library's to check.
+.tox_check_extent <- function(x, name) {
+  if (x < 0L)
+    .tox_argument_error(sprintf("'%s' is a size and must not be negative, but it is %d", name, x), "tox_type_error", name)
+}
+
 .tox_as_double_vector <- function(x, name) {
   .tox_check_number(x, name, "a numeric vector")
   if (.tox_rank(x) != 1L) .tox_type_error(name, "a numeric vector", x)

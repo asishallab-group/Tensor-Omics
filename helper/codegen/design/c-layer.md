@@ -234,10 +234,11 @@ read off (`readable_owners`), never an output: naming an output blamed something
 wrote. One that sizes only outputs is the caller's own argument and keeps its name, unless it is an
 `n_selected_<x>` count, which names its mask.
 
-`map_err_arg_pos` in `tox_errors` stays for hand-written code where two dummy lists really are
-known to correspond. What a *generated* wrapper does with an inherited position is the opposite
-and is decided elsewhere: see "The argument position an `ierr` carries" in
-[`impl-layer.md`](impl-layer.md).
+The Fortran position a binding receives is already the generated Fortran wrapper's own: that
+wrapper translates whatever its implementation, prologue or producer returned into its own
+dummy list, and clears what names nothing its caller wrote (see "The argument position an `ierr`
+carries" in [`impl-layer.md`](impl-layer.md)). `map_err_arg_pos` in `tox_errors` stays for
+hand-written code, the author's tool for a helper's position.
 
 ## Decision: nullable optionals are `OPTIONAL`, not pointers
 
@@ -275,9 +276,11 @@ C passes a real `bool`, so Python and R hand over a boolean rather than a 0/1 in
 **And since 2026-08-14 the sources are `logical(c_bool)` too**, so there is no copy at all:
 the wrapper hands the caller's buffer straight to the implementation. It used to declare an
 automatic array of default `logical` and convert elementwise, because `c_bool` is one byte and
-a default `logical` is four. 31 such array temporaries across 16 wrappers are now one — a
-scalar, and only because `mask_check_state` is a `logical function` whose *result* stays
-default-kind, where there is no memory to win and a condition accepts any kind anyway.
+a default `logical` is four. 31 such array temporaries across 16 wrappers became one — a
+scalar, the *result* of the `logical function` `mask_check_state`, which stayed default-kind,
+where there was no memory to win and a condition accepts any kind anyway. That function went
+with the port of `tox_paralog_analysis` onto `f42_bit_masks_impl`, so no wrapper declares one
+now.
 
 The decision was memory, not speed: no boundary buffer, and a quarter of the bytes for every
 mask in the library. `misc/bench/logical-kinds/RESULTS.md` has the measurements, and they point the same way

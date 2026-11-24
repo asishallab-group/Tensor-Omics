@@ -293,9 +293,13 @@ test_contributions_keep_the_axis_order <- function() {
 }
 
 test_contributions_reject_a_zero_vector <- function() {
+  # the implementation's own runtime error, at its own position 1, which the wrapper
+  # translates into its own list: `vec`, not "not argument related"
   for (name in names(CONTRIBUTION_PROCEDURES)) {
     assert_error(CONTRIBUTION_PROCEDURES[[name]](c(0, 0, 0)), paste0(name, ": nothing to apportion"),
                  ERR_DIVISION_BY_ZERO)
+    err <- tryCatch({ CONTRIBUTION_PROCEDURES[[name]](c(0, 0, 0)); NULL }, tox_error = function(e) e)
+    assert_true(identical(err$argument, "vec"), paste0(name, ": blames ", toString(err$argument)))
   }
 }
 

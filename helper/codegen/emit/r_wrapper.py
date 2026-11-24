@@ -12,8 +12,9 @@ classed conditions a caller can `tryCatch`, naming the argument in the caller's 
 from __future__ import annotations
 
 from .error_arguments import equalities_of, shapes_of, sources_of
-from .errors_r import CONSUMER_ERROR
+from .errors_r import CONSUMER_ERROR, NEGATIVE_EXTENT_MESSAGE
 from .producer_calls import auto_plans, returns_single, supplied_by
+from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
@@ -42,7 +43,7 @@ class RWrapperEmitter:
         never scanned (an NA is a NaN payload Fortran itself catches). See
         `design/language-layers.md`.
         """
-        return _VALIDATORS
+        return _VALIDATORS.replace("__NEGATIVE_EXTENT_MESSAGE__", NEGATIVE_EXTENT_MESSAGE)
 
     def module(self, module: CWrapperModule) -> str:
         # a module constant in an extent is its value here: this language cannot name it
@@ -65,6 +66,7 @@ class RWrapperEmitter:
         writer.line(f"{wrapper.stripped_name} <- function({params}) {{")
         with writer.indent():
             self._validate(writer, wrapper)
+            self._check_extents(writer, wrapper)
             self._compute_auto(writer, wrapper)
             self._check_shapes(writer, wrapper)
             self._call(writer, wrapper)
@@ -228,6 +230,16 @@ class RWrapperEmitter:
                     writer.line(line)
             else:
                 writer.line(line)
+
+    @staticmethod
+    def _check_extents(writer: Writer, wrapper: CWrapper) -> None:
+        """Refuse a negative size the caller passed, before the shim allocates by it (#215).
+
+        After the scalar contract, which has made it a whole number, and before a producer is
+        called; zero and every documented bound stay the library's to check.
+        """
+        for argument in extents.caller_passed_extents(wrapper):
+            writer.line(f'.tox_check_extent({argument.name}, "{argument.name}")')
 
     def _coercion(self, argument: CArgument) -> str:
         name = f'"{argument.name}"'
@@ -488,6 +500,14 @@ _VALIDATORS = r'''# Generated. Do not edit.
     .tox_argument_error(
       sprintf("'%s' must be a whole number in the integer range, not %s", name, format(x, digits = 15)),
       "tox_type_error", name)
+}
+
+# A size the caller passed, which the shim allocates by (a whole number by now): refused when
+# negative, before anything is allocated, since R would refuse it in its own words. Zero and
+# every documented bound stay the library's to check.
+.tox_check_extent <- function(x, name) {
+  if (x < 0L)
+    .tox_argument_error(sprintf("__NEGATIVE_EXTENT_MESSAGE__", name, x), "tox_type_error", name)
 }
 
 .tox_as_double_vector <- function(x, name) {
