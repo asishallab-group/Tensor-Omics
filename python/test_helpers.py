@@ -1,7 +1,7 @@
 from sys import argv as args, exit
 import numpy as np
 from tensor_omics import error_handling as _errors
-from tensor_omics.error_handling import ARG_POS_FACTOR, ToxError
+from tensor_omics.error_handling import ARG_POS_FACTOR, ToxArgumentError, ToxError
 
 ANSI_START = "\033["
 FG256_START = f"{ANSI_START}38;5;"
@@ -130,3 +130,22 @@ def assert_error(func, msg, code=None, argument=None):
                 f"{type(error).__name__}: {error}") from None
     else:
         raise AssertionError(f"{msg}: nothing was raised")
+
+
+def assert_refused_by_name(func, msg, argument):
+    """Fail unless calling `func` raises the binding's own ToxArgumentError naming `argument`.
+
+    Stricter than `assert_error` without a code, which a plain ValueError from numpy satisfies
+    too: a refusal the binding did not make names no argument.
+    """
+    try:
+        func()
+    except ToxArgumentError as error:
+        if error.code is not None or error.argument != argument:
+            raise AssertionError(f"{msg}: expected '{argument}' refused by the binding, but got "
+                                 f"{error.argument!r} with code {error.code}: {error}") from None
+        return error
+    except Exception as error:
+        raise AssertionError(f"{msg}: expected a ToxArgumentError naming '{argument}', but got "
+                             f"{type(error).__name__}: {error}") from None
+    raise AssertionError(f"{msg}: nothing was raised")

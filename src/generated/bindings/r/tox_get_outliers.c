@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_family_scaling_c(const int*, const int*, const double*, const int*, double*, double*, double*, int*, const double*, const int*, const char*, const int*, double*, int*, int*);
@@ -27,12 +27,17 @@ SEXP compute_family_scaling_call(SEXP n_families, SEXP distances, SEXP gene_to_f
     char* _c_mode = tox_char_in(mode, 6, "mode");
 
     // outputs and work space
-    SEXP dscale = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP loess_x = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP loess_y = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP indices_used = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
+    R_xlen_t _n_dscale = tox_count("dscale", (double) _v_n_families);
+    SEXP dscale = PROTECT(Rf_allocVector(REALSXP, _n_dscale)); _nprot++;
+    R_xlen_t _n_loess_x = tox_count("loess_x", (double) _v_n_families);
+    SEXP loess_x = PROTECT(Rf_allocVector(REALSXP, _n_loess_x)); _nprot++;
+    R_xlen_t _n_loess_y = tox_count("loess_y", (double) _v_n_families);
+    SEXP loess_y = PROTECT(Rf_allocVector(REALSXP, _n_loess_y)); _nprot++;
+    R_xlen_t _n_indices_used = tox_count("indices_used", (double) _v_n_families);
+    SEXP indices_used = PROTECT(Rf_allocVector(INTSXP, _n_indices_used)); _nprot++;
     double low_sd_cutoff = 0;
-    SEXP excluded_low_sd = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
+    R_xlen_t _n_excluded_low_sd = tox_count("excluded_low_sd", (double) _v_n_families);
+    SEXP excluded_low_sd = PROTECT(Rf_allocVector(INTSXP, _n_excluded_low_sd)); _nprot++;
     int ierr = 0;
 
     compute_family_scaling_c(
@@ -84,9 +89,12 @@ SEXP compute_rdi_call(SEXP distances, SEXP gene_to_fam, SEXP dscale) {
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP rdi = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
-    SEXP sorted_rdi = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
-    SEXP perm = PROTECT(Rf_allocVector(INTSXP, n_genes)); _nprot++;
+    R_xlen_t _n_rdi = tox_count("rdi", (double) n_genes);
+    SEXP rdi = PROTECT(Rf_allocVector(REALSXP, _n_rdi)); _nprot++;
+    R_xlen_t _n_sorted_rdi = tox_count("sorted_rdi", (double) n_genes);
+    SEXP sorted_rdi = PROTECT(Rf_allocVector(REALSXP, _n_sorted_rdi)); _nprot++;
+    R_xlen_t _n_perm = tox_count("perm", (double) n_genes);
+    SEXP perm = PROTECT(Rf_allocVector(INTSXP, _n_perm)); _nprot++;
     int ierr = 0;
 
     compute_rdi_c(
@@ -128,9 +136,11 @@ SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP quantile_
     const int* _c_perm = tox_int_in(perm, "perm");
 
     // outputs and work space
-    unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
+    R_xlen_t _n_is_outlier = tox_count("is_outlier", (double) n_genes);
+    unsigned char* _c_is_outlier = tox_bool_alloc(_n_is_outlier);
     double threshold = 0;
-    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_tail_probability = tox_count("tail_probability", (double) n_genes);
+    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, _n_tail_probability)); _nprot++;
     int ierr = 0;
 
     identify_outliers_c(
@@ -145,8 +155,11 @@ SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP quantile_
         &ierr
     );
 
-    // convert the outputs back
-    SEXP is_outlier = PROTECT(tox_bool_out(_c_is_outlier, n_genes)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP is_outlier = R_NilValue;
+    if (!tox_failed(ierr)) {
+        is_outlier = PROTECT(tox_bool_out(_c_is_outlier, _n_is_outlier)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, is_outlier);
@@ -176,11 +189,16 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
-    SEXP loess_x = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP loess_y = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP loess_n = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_is_outlier = tox_count("is_outlier", (double) n_genes);
+    unsigned char* _c_is_outlier = tox_bool_alloc(_n_is_outlier);
+    R_xlen_t _n_loess_x = tox_count("loess_x", (double) _v_n_families);
+    SEXP loess_x = PROTECT(Rf_allocVector(REALSXP, _n_loess_x)); _nprot++;
+    R_xlen_t _n_loess_y = tox_count("loess_y", (double) _v_n_families);
+    SEXP loess_y = PROTECT(Rf_allocVector(REALSXP, _n_loess_y)); _nprot++;
+    R_xlen_t _n_loess_n = tox_count("loess_n", (double) _v_n_families);
+    SEXP loess_n = PROTECT(Rf_allocVector(INTSXP, _n_loess_n)); _nprot++;
+    R_xlen_t _n_tail_probability = tox_count("tail_probability", (double) n_genes);
+    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, _n_tail_probability)); _nprot++;
     int ierr = 0;
 
     detect_outliers_c(
@@ -197,8 +215,11 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
         &ierr
     );
 
-    // convert the outputs back
-    SEXP is_outlier = PROTECT(tox_bool_out(_c_is_outlier, n_genes)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP is_outlier = R_NilValue;
+    if (!tox_failed(ierr)) {
+        is_outlier = PROTECT(tox_bool_out(_c_is_outlier, _n_is_outlier)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 6)); _nprot++;
     SET_VECTOR_ELT(_out, 0, is_outlier);

@@ -345,8 +345,8 @@ class TestEachProducerCallIsChecked:
         assert "select case (get_err_arg_pos(ierr))" in check
         # n_items keeps its position: kept, not rewritten -- the default would clear it
         assert "case (1_int32)\n" in check
-        assert "map_err_arg_pos(ierr, 1_int32" not in check
-        assert "call map_err_arg_pos(ierr, 2_int32, 3_int32)" in check
+        assert "set_err_arg_pos(ierr, 1_int32" not in check
+        assert "case (2_int32)\n                call set_err_arg_pos(ierr, 3_int32)" in check
         assert "case default\n" in check and "call clear_err_arg_pos(ierr)" in check
         assert check.rstrip().endswith("return")
 
@@ -366,8 +366,10 @@ class TestEachProducerCallIsChecked:
         synthesis, _ = analysed(producers(), work_consumer())
         header = fortran(synthesis).split("contains", 1)[0]
 
-        for name in ("get_err_arg_pos", "map_err_arg_pos", "clear_err_arg_pos"):
+        for name in ("get_err_arg_pos", "set_err_arg_pos", "clear_err_arg_pos"):
             assert name in header
+        # the author's tool for a helper's position, which no generated wrapper calls
+        assert "map_err_arg_pos" not in header
 
     def test_one_producer_given_two_sets_of_inputs_is_called_once_for_each(self):
         cons = consumer(

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void build_kd_index_c(const double*, const int*, const int*, int*, const int*, int*);
@@ -23,7 +23,8 @@ SEXP build_kd_index_call(SEXP points, SEXP dimension_order) {
     const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
 
     // outputs and work space
-    SEXP kd_indices = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    R_xlen_t _n_kd_indices = tox_count("kd_indices", (double) n_points);
+    SEXP kd_indices = PROTECT(Rf_allocVector(INTSXP, _n_kd_indices)); _nprot++;
     int ierr = 0;
 
     build_kd_index_c(
@@ -56,7 +57,8 @@ SEXP build_spherical_kd_call(SEXP points, SEXP dimension_order) {
     const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
 
     // outputs and work space
-    SEXP kd_indices = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    R_xlen_t _n_kd_indices = tox_count("kd_indices", (double) n_points);
+    SEXP kd_indices = PROTECT(Rf_allocVector(INTSXP, _n_kd_indices)); _nprot++;
     int ierr = 0;
 
     build_spherical_kd_c(
@@ -93,8 +95,10 @@ SEXP kd_knn_query_call(SEXP points, SEXP kd_indices, SEXP dimension_order, SEXP 
     const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
 
     // outputs and work space
-    SEXP neighbors = PROTECT(Rf_allocVector(INTSXP, _v_k_neighbors)); _nprot++;
-    SEXP distances = PROTECT(Rf_allocVector(REALSXP, _v_k_neighbors)); _nprot++;
+    R_xlen_t _n_neighbors = tox_count("neighbors", (double) _v_k_neighbors);
+    SEXP neighbors = PROTECT(Rf_allocVector(INTSXP, _n_neighbors)); _nprot++;
+    R_xlen_t _n_distances = tox_count("distances", (double) _v_k_neighbors);
+    SEXP distances = PROTECT(Rf_allocVector(REALSXP, _n_distances)); _nprot++;
     int ierr = 0;
 
     kd_knn_query_c(
@@ -137,7 +141,8 @@ SEXP kd_range_query_mask_call(SEXP points, SEXP kd_indices, SEXP dimension_order
     const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
 
     // outputs and work space
-    unsigned char* _c_in_radius_mask = tox_bool_alloc(n_points);
+    R_xlen_t _n_in_radius_mask = tox_count("in_radius_mask", (double) n_points);
+    unsigned char* _c_in_radius_mask = tox_bool_alloc(_n_in_radius_mask);
     int ierr = 0;
 
     kd_range_query_mask_c(
@@ -152,8 +157,11 @@ SEXP kd_range_query_mask_call(SEXP points, SEXP kd_indices, SEXP dimension_order
         &ierr
     );
 
-    // convert the outputs back
-    SEXP in_radius_mask = PROTECT(tox_bool_out(_c_in_radius_mask, n_points)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP in_radius_mask = R_NilValue;
+    if (!tox_failed(ierr)) {
+        in_radius_mask = PROTECT(tox_bool_out(_c_in_radius_mask, _n_in_radius_mask)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, in_radius_mask);
@@ -180,7 +188,8 @@ SEXP kd_range_query_list_call(SEXP points, SEXP kd_indices, SEXP dimension_order
     const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
 
     // outputs and work space
-    SEXP neighbors = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    R_xlen_t _n_neighbors = tox_count("neighbors", (double) n_points);
+    SEXP neighbors = PROTECT(Rf_allocVector(INTSXP, _n_neighbors)); _nprot++;
     int n_found = 0;
     int ierr = 0;
 

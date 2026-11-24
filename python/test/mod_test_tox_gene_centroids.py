@@ -21,7 +21,7 @@ from tensor_omics import (
     group_centroid_orthologs,
     mean_vector,
 )
-from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
+from test_helpers import run_all_tests, assert_error, assert_refused_by_name, TEST_N_OMP_THREADS
 from tensor_omics.error_handling import (
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
@@ -179,6 +179,28 @@ def test_group_centroid_all_rejects_a_long_gene_to_family():
     # the binding's own extent check, before the library is called
     assert_error(lambda: group_centroid_all(_expression_vectors(), np.ones(N_GENES + 1, dtype=np.int32), 1, TEST_N_OMP_THREADS),
                  "gene_to_family longer than n_genes")
+
+
+def test_a_negative_n_families_is_refused_by_name_before_anything_is_allocated():
+    # n_families sizes the output the binding allocates before the library is called (#215):
+    # numpy refused -1 there itself, as "negative dimensions are not allowed"
+    calls = {
+        "group_centroid_all": lambda: group_centroid_all(
+            _expression_vectors(), np.ones(N_GENES, dtype=np.int32), -1, TEST_N_OMP_THREADS),
+        "group_centroid_orthologs": lambda: group_centroid_orthologs(
+            _expression_vectors(), np.ones(N_GENES, dtype=np.int32), -1, TEST_N_OMP_THREADS,
+            np.ones(N_GENES, dtype=bool)),
+    }
+    for name, call in calls.items():
+        error = assert_refused_by_name(call, name, "n_families")
+        assert "'n_families' is a size and must not be negative, but it is -1" in str(error), (name, error)
+
+
+def test_zero_families_is_still_the_librarys_to_refuse():
+    # only a negative size is the binding's; zero keeps the library's code and names n_families
+    assert_error(lambda: group_centroid_all(_expression_vectors(), np.zeros(N_GENES, dtype=np.int32), 0,
+                                    TEST_N_OMP_THREADS),
+                 "no families", ERR_EMPTY_INPUT, argument="n_families")
 
 
 if __name__ == '__main__':

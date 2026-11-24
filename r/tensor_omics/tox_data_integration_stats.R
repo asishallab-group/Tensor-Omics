@@ -37,6 +37,7 @@ gjct_permutation_test <- function(neighborhood_residuals_S1, neighborhood_residu
         neighbor_mask_S1 <- .tox_as_logical_matrix(neighbor_mask_S1, "neighbor_mask_S1")
     if (!is.null(neighbor_mask_S2))
         neighbor_mask_S2 <- .tox_as_logical_matrix(neighbor_mask_S2, "neighbor_mask_S2")
+    .tox_check_extent(n_permutations, "n_permutations")
     if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])
         .tox_shape_error("neighborhood_residuals_S2", 2L, dim(neighborhood_residuals_S2)[2], "'neighborhood_residuals_S1' implies n_neighbors == ", dim(neighborhood_residuals_S1)[2], "n_reps_S2, n_neighbors, n_points")
     if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])

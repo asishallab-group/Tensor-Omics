@@ -165,4 +165,26 @@ test_group_centroid_all_rejects_a_long_gene_to_family <- function() {
                "gene_to_family longer than n_genes")
 }
 
+test_a_negative_n_families_is_refused_by_name_before_anything_is_allocated <- function() {
+  # n_families sizes the output the shim allocates before the library is called (#215): R
+  # refused -1 there itself, as "negative length vectors are not allowed"
+  for (call in list(quote(group_centroid_all(.expression_vectors(), rep(1L, N_GENES), -1L, TEST_N_OMP_THREADS)),
+                    quote(group_centroid_orthologs(.expression_vectors(), rep(1L, N_GENES), -1L, TEST_N_OMP_THREADS,
+                                                   rep(TRUE, N_GENES))))) {
+    err <- tryCatch(eval(call), error = function(e) e)
+    assert_true(inherits(err, "tox_input_error") && is.na(err$code) && identical(err$argument, "n_families"),
+                "a negative n_families is refused by name, with no tox code")
+    assert_true(identical(conditionMessage(err),
+                          "'n_families' is a size and must not be negative, but it is -1"),
+                "the refusal says what is wrong")
+  }
+}
+
+test_zero_families_is_still_the_librarys_to_refuse <- function() {
+  # only a negative size is the binding's; zero keeps the library's code and names n_families
+  err <- tryCatch(group_centroid_all(.expression_vectors(), rep(0L, N_GENES), 0L, TEST_N_OMP_THREADS), error = function(e) e)
+  assert_true(identical(err$code, ERR_EMPTY_INPUT) && identical(err$argument, "n_families"),
+              "zero families is the library's ERR_EMPTY_INPUT at n_families")
+}
+
 run_all_tests()

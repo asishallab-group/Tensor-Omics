@@ -13,7 +13,7 @@ from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
 from codegen.ir.types import Intent
 from codegen.synthesize import synthesize_wrappers
 
-from builders import C_BINDING
+from builders import C_BINDING, ierr, integer, real
 
 from test_synthesize import alloc_impl_module, ierr_impl_module, impl_module
 
@@ -39,6 +39,43 @@ def emitted_with_info(module_source):
     return FortranWrapperEmitter(project=synthesis.project).module(
         synthesis.project.module("tox_demo"), info
     )
+
+
+def translation(text, wrapper, callee):
+    """What the block after `wrapper`'s call of `callee` does to each position, as a function.
+
+    Read back from the emitted `select case`: a position in a no-op case is kept, one in a
+    `case (k)` becomes the position its `set_err_arg_pos` names, and everything else falls to
+    `case default`, which clears it (0). So a test can state the mapping as the probe table
+    does, `{callee position: wrapper position}`, instead of the text that encodes it.
+    """
+    import re
+
+    start = text.index(f"subroutine {wrapper}(")
+    body = text[start : text.index(f"end subroutine {wrapper}\n", start)]
+    call = body.index(f"{callee}(&")
+    block = body[body.index("if (is_err(ierr)) then", call):]
+    lines = [line.strip() for line in block[: block.index("end if")].splitlines() if line.strip()]
+    assert lines[-1] == "return", lines
+    if "select case (get_err_arg_pos(ierr))" not in lines:
+        assert lines[1:] == ["call clear_err_arg_pos(ierr)", "return"], lines
+        return lambda position: 0
+    assert lines[-4:] == ["case default", "call clear_err_arg_pos(ierr)", "end select", "return"], lines
+    kept, moved = set(), {}
+    for index, line in enumerate(lines):
+        selector = re.fullmatch(r"case \((.*)\)", line)
+        if selector is None:
+            continue
+        rewrite = re.fullmatch(r"call set_err_arg_pos\(ierr, (\d+)_int32\)", lines[index + 1])
+        if rewrite is not None:
+            moved[int(selector.group(1).removesuffix("_int32"))] = int(rewrite.group(1))
+            continue
+        assert lines[index + 1] == "! the same position here", lines
+        for part in selector.group(1).split(", "):
+            low, _, high = part.partition(":")
+            low = int(low.removesuffix("_int32"))
+            kept |= set(range(low, int(high.removesuffix("_int32")) + 1 if high else low + 1))
+    return lambda position: position if position in kept else moved.get(position, 0)
 
 
 def demo():
@@ -152,10 +189,10 @@ class TestModuleShell:
     def test_the_wrapper_is_public(self):
         assert "public :: scale_vector" in demo()
 
-    def test_no_position_is_cleared_when_the_impl_reports_nothing(self):
-        # an implementation with no ierr cannot have packed a position, so neither the call nor the
-        # import belongs here
-        assert "clear_err_arg_pos" not in demo()
+    def test_no_position_is_translated_when_the_impl_reports_nothing(self):
+        # an implementation with no ierr cannot have packed a position, so neither the block nor
+        # the imports belong here
+        assert "err_arg_pos" not in demo()
 
     def test_the_module_carries_a_generated_doc(self):
         # a non-empty module doc avoids a Ford "module has no documentation" warning
@@ -325,15 +362,17 @@ class TestImplThatDeclaresIerr:
         assert "call set_ok(ierr)" in text
         assert "if (is_err(ierr)) return" in text
 
-    def test_the_argument_position_the_impl_packed_is_cleared(self):
-        # whatever position came back numbers the implementation's dummy list -- or a private
-        # helper's, further down -- so it names nothing the wrapper's caller passed
-        text = self.demo_ierr()
-        after_call = text.split("call risky_impl(&", 1)[1]
-        assert "call clear_err_arg_pos(ierr)" in after_call
+    def test_the_argument_position_the_impl_packed_is_translated(self):
+        # the position numbers the implementation's own dummy list; a lone wrapper's is the same
+        # list, so every position but ierr's is kept, and anything else is cleared
+        translate = translation(self.demo_ierr(), "risky", "risky_impl")
+        assert {k: translate(k) for k in range(1, 6)} == {1: 1, 2: 2, 3: 3, 4: 0, 5: 0}
 
-    def test_and_the_clear_is_imported(self):
-        assert "clear_err_arg_pos" in self.demo_ierr().split("contains", 1)[0]
+    def test_and_only_what_the_block_names_is_imported(self):
+        header = self.demo_ierr().split("contains", 1)[0]
+        assert "clear_err_arg_pos" in header and "get_err_arg_pos" in header
+        # nothing moves in a lone wrapper
+        assert "set_err_arg_pos" not in header
 
 
 class TestModeSplitEmit:
@@ -1020,3 +1059,269 @@ class TestAFunctionImplementation:
         text = self.text(real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"))
 
         assert text.count("total = add_up_impl(&") == 2
+
+
+class TestTheArgumentPositionIsTranslated:
+    """An implementation's or a prologue's `ierr` position numbers ITS dummy list; the wrapper
+    translates it into its own (codegen_guide.md 5.14, design/impl-layer.md).
+
+    Each case states the whole mapping, `{callee position: wrapper position}`, one past the
+    callee's last dummy included: 0 is "not argument related", what every position the
+    wrapper's caller did not write must become -- a prepared work array or permutation, a
+    recommend-sized or prologue-produced local, a fixed mode, an argument another mode takes,
+    `ierr` itself, a position outside the list.
+    """
+
+    @staticmethod
+    def allocating_module():
+        from builders import Meta, module, procedure
+
+        return module(
+            "tox_demo_impl",
+            procedure(  # the recommend routine sizing tmp_work
+                "work_size",
+                integer("n", Intent.IN, doc="length"),
+                integer("wsize", Intent.OUT, doc="recommended work size"),
+                meta=C_BINDING,
+            ),
+            procedure(
+                "crunch_impl",
+                real("values", Intent.IN, "(n)", doc="the data"),
+                integer("n", Intent.IN, doc="length of `values`"),
+                integer("values_perm", Intent.IN, "(n)", doc="ascending permutation of `values`"),
+                real("tmp_scratch", Intent.OUT, "(n)", doc="scratch space"),
+                integer("wsize", Intent.IN, doc="work-buffer size", directives=Directives(
+                    output_from=OutputFrom("wsize", "work_size", "tox_demo_impl", OutputFromMode.AUTO))),
+                real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+                # kept arguments after the dropped ones: numbered by the expert list, 7 and 8
+                # would name `scale`'s and `result`'s neighbours in the plain one
+                real("scale", Intent.IN, optional=True, doc="a factor"),
+                real("result", Intent.OUT, "(n)", doc="the result"),
+                ierr(),
+                meta=Meta(summary="Crunch", author="AUTHOR"),
+            ),
+            path="src/tox/tox_demo_impl.F90",
+        )
+
+    def allocating(self):
+        from builders import project
+
+        return emitted(project(self.allocating_module()))
+
+    def test_the_allocating_tier_maps_against_its_own_dummy_list(self):
+        # crunch(values, n, scale, result, ierr): the permutation, both work arrays and the
+        # recommend-sized wsize are locals here, so they are cleared, and scale and result move
+        translate = translation(self.allocating(), "crunch", "crunch_impl")
+
+        assert {k: translate(k) for k in range(1, 11)} == {
+            1: 1, 2: 2, 3: 0, 4: 0, 5: 0, 6: 0, 7: 3, 8: 4, 9: 0, 10: 0,
+        }
+
+    def test_the_expert_tier_keeps_every_position_but_ierr(self):
+        translate = translation(self.allocating(), "crunch_expert", "crunch_impl")
+
+        assert {k: translate(k) for k in range(1, 11)} == {k: (k if k <= 8 else 0) for k in range(1, 11)}
+
+    def test_a_run_of_kept_positions_is_one_range(self):
+        text = self.allocating()
+        start = text.index("subroutine crunch_expert(")
+        block = text[text.index("call crunch_impl(&", start):]
+
+        assert "case (1_int32:8_int32)\n" in block[: block.index("end select")]
+        assert "set_err_arg_pos" not in block[: block.index("end select")]
+
+    def test_set_err_arg_pos_is_imported_where_a_position_moves(self):
+        header = self.allocating().split("contains", 1)[0]
+
+        for name in ("clear_err_arg_pos", "get_err_arg_pos", "set_err_arg_pos"):
+            assert name in header
+        # the author's tool, not the generator's
+        assert "map_err_arg_pos" not in header
+
+    @staticmethod
+    def mode_split():
+        from builders import Meta, module, procedure, project
+        from codegen.ir.directives import RequiredIfMode
+
+        table = [
+            "Which pattern to detect.",
+            "| Mode | Value | Procedure |",
+            "|------|-------|-----------|",
+            "| dosage effect | [[tox_demo_impl(module):MODE_DOSAGE(variable)]] | detect_dosage_effect |",
+            "| subfunctionalisation | [[tox_demo_impl(module):MODE_SUBFUNC(variable)]] | detect_subfunctionalization |",
+        ]
+        return emitted_with_info(project(module(
+            "tox_demo_impl",
+            procedure(
+                "detect_patterns_impl",
+                real("genes", Intent.IN, "(n)", doc="gene values"),
+                integer("n", Intent.IN, doc="number of genes"),
+                integer("pattern_mode", Intent.IN, doc=table),
+                real("tmp_work", Intent.OUT, "(n)", doc="scratch"),
+                real("threshold", Intent.IN, optional=True, doc="dosage threshold",
+                     directives=Directives(required_if_mode=RequiredIfMode(
+                         "pattern_mode", "tox_demo_impl", "MODE_DOSAGE"))),
+                real("result", Intent.OUT, "(n)", doc="pattern score per gene"),
+                ierr(),
+                meta=Meta(summary="Detect paralog patterns", author="AUTHOR"),
+            ),
+        )))
+
+    def test_a_mode_split_maps_each_tier_and_mode_against_its_own_list(self):
+        # the mode is passed its parameter, not a dummy, so it is cleared in every wrapper; the
+        # subfunctionalisation wrappers do not pass `threshold` at all
+        text = self.mode_split()
+        expected = {
+            # (genes, n, threshold, result, ierr)
+            "detect_dosage_effect": {1: 1, 2: 2, 3: 0, 4: 0, 5: 3, 6: 4, 7: 0},
+            # (genes, n, tmp_work, threshold, result, ierr)
+            "detect_dosage_effect_expert": {1: 1, 2: 2, 3: 0, 4: 3, 5: 4, 6: 5, 7: 0},
+            # (genes, n, result, ierr)
+            "detect_subfunctionalization": {1: 1, 2: 2, 3: 0, 4: 0, 5: 0, 6: 3, 7: 0},
+            # (genes, n, tmp_work, result, ierr)
+            "detect_subfunctionalization_expert": {1: 1, 2: 2, 3: 0, 4: 3, 5: 0, 6: 4, 7: 0},
+        }
+        for wrapper, mapping in expected.items():
+            translate = translation(text, wrapper, "detect_patterns_impl")
+            assert {k: translate(k) for k in mapping} == mapping, wrapper
+
+    @staticmethod
+    def with_prologue(guard_arguments=None):
+        from builders import Meta, logical, module, procedure, project
+        from codegen.ir.directives import Prologue
+
+        if guard_arguments is None:
+            guard_arguments = (
+                integer("n", Intent.IN, doc="length"),
+                real("values", Intent.IN, "(n)", doc="the data"),
+                real("fraction", Intent.IN, doc="the level as a fraction of the largest value"),
+                real("level", Intent.OUT, doc="the level to clip at"),
+                logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+                ierr(),
+            )
+        return emitted(project(module(
+            "tox_demo_impl",
+            procedure("guard", *guard_arguments, meta=Meta(summary="Guard", author="AUTHOR")),
+            procedure(
+                "crunch_impl",
+                integer("n", Intent.IN, doc="length"),
+                real("values", Intent.IN, "(n)", doc="the data"),
+                real("level", Intent.IN, doc="the level to clip at"),
+                real("tmp_work", Intent.OUT, "(n)", doc="scratch"),
+                real("clipped", Intent.OUT, "(n)", doc="the answer"),
+                ierr(),
+                meta=Meta(summary="Crunch", author="AUTHOR"),
+                directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+            ),
+        )))
+
+    def test_the_prologue_maps_against_the_wrapper_it_runs_in(self):
+        # crunch(n, values, clipped, fraction, ierr): the prologue's own `fraction` joined the
+        # signature before ierr; `level` is the local it produces, `handled` is never an argument
+        translate = translation(self.with_prologue(), "crunch", "guard")
+
+        assert {k: translate(k) for k in range(1, 8)} == {1: 1, 2: 2, 3: 4, 4: 0, 5: 0, 6: 0, 7: 0}
+
+    def test_the_implementation_behind_a_prologue_too(self):
+        # the prologue-produced level and the work array are locals of crunch
+        text = self.with_prologue()
+
+        crunch = translation(text, "crunch", "crunch_impl")
+        assert {k: crunch(k) for k in range(1, 8)} == {1: 1, 2: 2, 3: 0, 4: 0, 5: 3, 6: 0, 7: 0}
+        expert = translation(text, "crunch_expert", "crunch_impl")
+        assert {k: expert(k) for k in range(1, 8)} == {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 0, 7: 0}
+
+    def test_where_nothing_maps_the_block_only_clears(self):
+        from builders import logical
+
+        text = self.with_prologue((
+            logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            ierr(),
+        ))
+        start = text.index("subroutine crunch(")
+        block = text[text.index("call guard(&", start):]
+        block = block[block.index("if (is_err(ierr)) then"): block.index("end if")]
+
+        assert [line.strip() for line in block.splitlines() if line.strip()] == [
+            "if (is_err(ierr)) then", "call clear_err_arg_pos(ierr)", "return",
+        ]
+
+    def test_a_function_result_moves_nothing(self):
+        from builders import Meta, module, procedure, project
+
+        text = emitted(project(module(
+            "tox_demo_impl",
+            procedure(
+                "share_impl",
+                integer("n", Intent.IN, doc="length"),
+                real("values", Intent.IN, "(n)", doc="the data"),
+                real("tmp_copy", Intent.OUT, "(n)", doc="scratch"),
+                ierr(),
+                result=real("share", Intent.OUT, doc="their sum", is_result=True),
+                meta=Meta(summary="Share", author="AUTHOR"),
+            ),
+        )))
+
+        # share(n, values, share, ierr): the result has no dummy in the implementation
+        plain = translation(text, "share", "share_impl")
+        assert {k: plain(k) for k in range(1, 6)} == {1: 1, 2: 2, 3: 0, 4: 0, 5: 0}
+        expert = translation(text, "share_expert", "share_impl")
+        assert {k: expert(k) for k in range(1, 6)} == {1: 1, 2: 2, 3: 3, 4: 0, 5: 0}
+
+    def test_the_mapping_is_keyed_on_the_actual_not_on_the_name(self):
+        # On main every dummy whose actual is not its own name (a fixed mode) is also missing
+        # from the wrapper, so the shapes above cannot tell the two keys apart. A wrapper that
+        # keeps a dummy of that name and still passes the callee something else -- the
+        # allocating tier of an OpenMP root passing `M_OMP_N_THREADS(n_omp_threads)` -- must not
+        # map it.
+        from builders import procedure
+
+        wrapper = procedure(
+            "pr", integer("n", doc="n"), integer("mode", doc="m"), integer("weight", doc="w"), ierr(),
+        )
+        callee = (integer("n", doc="n"), integer("mode", doc="m"), integer("weight", doc="w"), ierr())
+        actuals = [("n", "n"), ("mode", "MODE_A"), ("weight", "weight"), ("ierr", "ierr")]
+
+        assert FortranWrapperEmitter()._call_positions(callee, actuals, wrapper) == [(1, 1), (3, 3)]
+
+    def test_a_position_only_the_prologue_moves_is_imported_too(self):
+        # Every other shape's implementation block already moves a position, so the import
+        # list would be right even if it never asked the prologue call. Here the implementation
+        # keeps every position it has -- its work array and prologue-produced level come last --
+        # and only the prologue, which takes `values` and `n` in the other order, moves any.
+        from builders import Meta, logical, module, procedure, project
+        from codegen.ir.directives import Prologue
+
+        text = emitted(project(module(
+            "tox_demo_impl",
+            procedure(
+                "guard",
+                real("values", Intent.IN, "(n)", doc="the data"),
+                integer("n", Intent.IN, doc="length"),
+                real("level", Intent.OUT, doc="the level"),
+                logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+                ierr(),
+                meta=Meta(summary="Guard", author="AUTHOR"),
+            ),
+            procedure(
+                "tail_impl",
+                integer("n", Intent.IN, doc="length"),
+                real("values", Intent.IN, "(n)", doc="the data"),
+                real("clipped", Intent.OUT, "(n)", doc="the answer"),
+                real("level", Intent.IN, doc="the level"),
+                real("tmp_work", Intent.OUT, "(n)", doc="scratch"),
+                ierr(),
+                meta=Meta(summary="Tail", author="AUTHOR"),
+                directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+            ),
+        )))
+
+        # the premise: nothing but the prologue's block moves a position
+        implementation = translation(text, "tail", "tail_impl")
+        assert {k: implementation(k) for k in range(1, 7)} == {1: 1, 2: 2, 3: 3, 4: 0, 5: 0, 6: 0}
+        expert = translation(text, "tail_expert", "tail_impl")
+        assert {k: expert(k) for k in range(1, 7)} == {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 0}
+        prologue = translation(text, "tail", "guard")
+        assert {k: prologue(k) for k in range(1, 6)} == {1: 2, 2: 1, 3: 0, 4: 0, 5: 0}
+
+        assert "set_err_arg_pos" in text.split("contains", 1)[0]

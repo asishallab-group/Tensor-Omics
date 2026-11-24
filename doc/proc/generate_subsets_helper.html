@@ -151,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_mask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, work_arr_paralog_subsets, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)  
+    <h2>public pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_bitmask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -204,7 +204,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~12"></span>
+              <span class="anchor" id="variable-filtered_paralogs_bitmask~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -212,7 +212,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>filtered_paralogs_mask</strong></td>
+            <td><strong>filtered_paralogs_bitmask</strong></td>
             <td>
                 <p>bit mask that will have indices of genes kept by pattern set to 1, else 0</p>
             </td>
@@ -282,7 +282,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~17"></span>
+              <span class="anchor" id="variable-genes~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -297,7 +297,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~104"></span>
+              <span class="anchor" id="variable-n_genes~71"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -312,7 +312,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~30"></span>
+              <span class="anchor" id="variable-n_dims~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -342,7 +342,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~10"></span>
+              <span class="anchor" id="variable-paralog_subsets_bitmasks~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout),</td>
@@ -350,7 +350,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
               dimension(n_mask_chunks, n_paralog_subsets)
             </td>
             <td>::</td>
-            <td><strong>work_arr_paralog_subsets</strong></td>
+            <td><strong>paralog_subsets_bitmasks</strong></td>
             <td>
                 <p>working array to hold bitmask encoded subsets for detection; the results and active
 subsets already in it are kept</p>
@@ -368,7 +368,7 @@ subsets already in it are kept</p>
             <td>::</td>
             <td><strong>n_paralog_subsets</strong></td>
             <td>
-                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>. <strong><em>USE <code>calc_work_arr_paralog_subsets_size_impl</code> TO DETERMINE THIS NUMBER</em></strong></p>
+                <p>number of gene subsets that can be stored in <code>paralog_subsets_bitmasks</code>. <strong><em>USE <code>calc_paralog_subsets_bitmasks_size_impl</code> TO DETERMINE THIS NUMBER</em></strong></p>
             </td>
         </tr>
         <tr>
@@ -383,7 +383,7 @@ subsets already in it are kept</p>
             <td>::</td>
             <td><strong>n_results</strong></td>
             <td>
-                <p>number of results in <code>work_arr_paralog_subsets</code></p>
+                <p>number of results in <code>paralog_subsets_bitmasks</code></p>
             </td>
         </tr>
         <tr>
@@ -398,7 +398,7 @@ subsets already in it are kept</p>
             <td>::</td>
             <td><strong>n_active_masks</strong></td>
             <td>
-                <p>number of active subsets in <code>work_arr_paralog_subsets</code></p>
+                <p>number of active subsets in <code>paralog_subsets_bitmasks</code></p>
             </td>
         </tr>
         <tr>
@@ -413,7 +413,7 @@ subsets already in it are kept</p>
             <td>::</td>
             <td><strong>n_new_active_masks</strong></td>
             <td>
-                <p>number of new active subsets in <code>work_arr_paralog_subsets</code></p>
+                <p>number of new active subsets in <code>paralog_subsets_bitmasks</code></p>
             </td>
         </tr>
         <tr>
@@ -508,7 +508,7 @@ subsets already in it are kept</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~424"></span>
+              <span class="anchor" id="variable-ierr~260"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -555,7 +555,7 @@ subsets already in it are kept</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-13 09:50 +0000             </p>
+ on 2026-11-19 11:49 +0000             </p>
           </div>
         </div>
         <br>
