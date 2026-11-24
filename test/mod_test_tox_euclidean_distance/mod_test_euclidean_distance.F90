@@ -25,7 +25,7 @@ contains
     function get_all_tests_euclidean_distance() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(10))
+        allocate (all_tests(12))
         all_tests(1) = test_case("test_euclidean_distance_pythagorean", test_euclidean_distance_pythagorean)
         all_tests(2) = test_case("test_euclidean_distance_one_element", test_euclidean_distance_one_element)
         all_tests(3) = test_case("test_euclidean_distance_identical_vectors", test_euclidean_distance_identical_vectors)
@@ -37,6 +37,8 @@ contains
         all_tests(8) = test_case("test_euclidean_distance_largest_magnitudes", test_euclidean_distance_largest_magnitudes)
         all_tests(9) = test_case("test_euclidean_distance_dimension", test_euclidean_distance_dimension)
         all_tests(10) = test_case("test_euclidean_distance_rejects_nan_and_inf", test_euclidean_distance_rejects_nan_and_inf)
+        all_tests(11) = test_case("test_euclidean_distance_squares_past_huge", test_euclidean_distance_squares_past_huge)
+        all_tests(12) = test_case("test_euclidean_distance_squares_below_tiny", test_euclidean_distance_squares_below_tiny)
     end function get_all_tests_euclidean_distance
 
     !> Calls the procedure on (`vec1`, `vec2`) and on (`vec2`, `vec1`), and checks `ierr` OK and
@@ -232,5 +234,47 @@ contains
                             //trim(NON_FINITE_NAMES(i_value)), 2)
         end do
     end subroutine test_euclidean_distance_rejects_nan_and_inf
+
+    !> BUG: a distance whose squares overflow is +Inf, with `ierr` OK, although it is finite.
+    !| The sum of squares is taken unscaled, so it overflows once a difference passes about 1e154:
+    !| - [3*2**600, 4*2**600] to the origin is 5*2**600 (about 2e181); today +Inf;
+    !| - [huge] to [0] is huge; today +Inf.
+    !| #223's rule for sums of squares (scale by a constant power of two chosen from the largest
+    !| magnitude, as f42's `norm` does) gives both exactly, so this expects them.
+    subroutine test_euclidean_distance_squares_past_huge()
+        real(real64), parameter :: LARGE_SCALE = 2.0_real64**600
+        real(real64) :: vec1(2), vec2(2), single1(1), single2(1)
+
+        vec1 = [3.0_real64, 4.0_real64]*LARGE_SCALE
+        vec2 = 0.0_real64
+        call check_distance(2, vec1, vec2, 5.0_real64*LARGE_SCALE, &
+                            "test_euclidean_distance_squares_past_huge: [3, 4]*2**600 to the origin")
+
+        single1 = huge(1.0_real64)
+        single2 = 0.0_real64
+        call check_distance(1, single1, single2, huge(1.0_real64), "test_euclidean_distance_squares_past_huge: [huge] to [0]")
+    end subroutine test_euclidean_distance_squares_past_huge
+
+    !> BUG: a distance whose squares underflow is 0, or wrong, with `ierr` OK. The sum of squares
+    !| is taken unscaled, so the squares of differences below about 1e-162 are subnormal or 0:
+    !| - [3*2**-540, 4*2**-540] to the origin is 5*2**-540 (about 1.4e-162); today 0, because
+    !|   both squares (9 and 16 times 2**-1080) are below the smallest subnormal 2**-1074;
+    !| - [3*2**-538] to [0] is 3*2**-538; today sqrt(2)*2**-537, about 6% short, because the
+    !|   square 2.25*2**-1074 rounds to the subnormal 2*2**-1074.
+    !| #223's rule for sums of squares gives both exactly, so this expects them.
+    subroutine test_euclidean_distance_squares_below_tiny()
+        real(real64), parameter :: SMALL_SCALE = 2.0_real64**(-540)
+        real(real64) :: vec1(2), vec2(2), single1(1), single2(1)
+
+        vec1 = [3.0_real64, 4.0_real64]*SMALL_SCALE
+        vec2 = 0.0_real64
+        call check_distance(2, vec1, vec2, 5.0_real64*SMALL_SCALE, &
+                            "test_euclidean_distance_squares_below_tiny: [3, 4]*2**-540 to the origin")
+
+        single1 = 3.0_real64*2.0_real64**(-538)
+        single2 = 0.0_real64
+        call check_distance(1, single1, single2, 3.0_real64*2.0_real64**(-538), &
+                            "test_euclidean_distance_squares_below_tiny: [3*2**-538] to [0]")
+    end subroutine test_euclidean_distance_squares_below_tiny
 
 end module mod_test_euclidean_distance

@@ -31,7 +31,7 @@ contains
     function get_all_tests_distance_to_centroid() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(11))
+        allocate (all_tests(13))
         all_tests(1) = test_case("test_distance_to_centroid_values", test_distance_to_centroid_values)
         all_tests(2) = test_case("test_distance_to_centroid_smallest_sizes", test_distance_to_centroid_smallest_sizes)
         all_tests(3) = test_case("test_distance_to_centroid_unassigned_genes", test_distance_to_centroid_unassigned_genes)
@@ -44,6 +44,8 @@ contains
         all_tests(10) = test_case("test_distance_to_centroid_dimensions", test_distance_to_centroid_dimensions)
         all_tests(11) = test_case("test_distance_to_centroid_rejects_nan_and_inf", &
                                   test_distance_to_centroid_rejects_nan_and_inf)
+        all_tests(12) = test_case("test_distance_to_centroid_squares_past_huge", test_distance_to_centroid_squares_past_huge)
+        all_tests(13) = test_case("test_distance_to_centroid_squares_below_tiny", test_distance_to_centroid_squares_below_tiny)
     end function get_all_tests_distance_to_centroid
 
     !> Calls the procedure and checks `ierr` OK and every element of `distances` exactly.
@@ -343,5 +345,51 @@ contains
                             //trim(NON_FINITE_NAMES(i_value)), 4)
         end do
     end subroutine test_distance_to_centroid_rejects_nan_and_inf
+
+    !> BUG: distances whose squares overflow are +Inf, with `ierr` OK, although they are finite
+    !| (see `test_euclidean_distance_squares_past_huge`: the procedure takes the same unscaled
+    !| sum of squares). Two tissues, two genes, two families:
+    !| - gene 1 [4*2**600, 3*2**600] in family [2**600, -2**600], offset [3, 4]*2**600: distance
+    !|   5*2**600; today +Inf;
+    !| - gene 2 [huge, 0] in family [0, 0]: distance huge; today +Inf.
+    subroutine test_distance_to_centroid_squares_past_huge()
+        integer(int32), parameter :: n_tissues = 2, n_genes = 2, n_families = 2
+        real(real64), parameter :: LARGE_SCALE = 2.0_real64**600
+        real(real64) :: genes(n_tissues, n_genes), centroids(n_tissues, n_families), expected(n_genes)
+        integer(int32) :: gene_to_fam(n_genes)
+
+        centroids(:, 1) = [1.0_real64, -1.0_real64]*LARGE_SCALE
+        centroids(:, 2) = 0.0_real64
+        genes(:, 1) = [4.0_real64, 3.0_real64]*LARGE_SCALE
+        genes(:, 2) = [huge(1.0_real64), 0.0_real64]
+        gene_to_fam = [1, 2]
+
+        expected(1) = 5.0_real64*LARGE_SCALE
+        expected(2) = huge(1.0_real64)
+        call check_distances(n_tissues, n_genes, n_families, genes, centroids, gene_to_fam, expected, &
+                             "test_distance_to_centroid_squares_past_huge")
+    end subroutine test_distance_to_centroid_squares_past_huge
+
+    !> BUG: distances whose squares underflow are 0, or wrong, with `ierr` OK (see
+    !| `test_euclidean_distance_squares_below_tiny`). Two tissues, two genes, one family
+    !| [2**-540, 0]:
+    !| - gene 1 [4*2**-540, 4*2**-540], offset [3, 4]*2**-540: distance 5*2**-540; today 0;
+    !| - gene 2 [2**-540, 0], at its centroid: distance 0, today too.
+    subroutine test_distance_to_centroid_squares_below_tiny()
+        integer(int32), parameter :: n_tissues = 2, n_genes = 2, n_families = 1
+        real(real64), parameter :: SMALL_SCALE = 2.0_real64**(-540)
+        real(real64) :: genes(n_tissues, n_genes), centroids(n_tissues, n_families), expected(n_genes)
+        integer(int32) :: gene_to_fam(n_genes)
+
+        centroids(:, 1) = [1.0_real64, 0.0_real64]*SMALL_SCALE
+        genes(:, 1) = [4.0_real64, 4.0_real64]*SMALL_SCALE
+        genes(:, 2) = centroids(:, 1)
+        gene_to_fam = 1
+
+        expected(1) = 5.0_real64*SMALL_SCALE
+        expected(2) = 0.0_real64
+        call check_distances(n_tissues, n_genes, n_families, genes, centroids, gene_to_fam, expected, &
+                             "test_distance_to_centroid_squares_below_tiny")
+    end subroutine test_distance_to_centroid_squares_below_tiny
 
 end module mod_test_distance_to_centroid
