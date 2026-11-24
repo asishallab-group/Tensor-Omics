@@ -4,8 +4,9 @@
 !| gives two zero vectors), more families than genes, many genes, extreme magnitudes, the
 !| smallest sizes, the family-id range, the dimension checks and the NaN/Inf checks.
 !|
-!| Every expected value is written out by hand. The inputs are small integers or exact powers
-!| of two, so every difference is exact and every comparison has tolerance 0.
+!| Every expected value is written out by hand. The inputs are small integers, exact powers of
+!| two or `huge` and its exact halves, so every difference is exact (or overflows by design, as
+!| one case documents) and every comparison has tolerance 0.
 module mod_test_compute_shift_vector_field
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -140,7 +141,7 @@ contains
     end subroutine test_compute_shift_vector_field_values
 
     !> Kept from the old suite (`test_multiple_genes_per_family`), which compared 4 of the 16
-    !| elements and expected wrong values in 3 of the 12 it never compared. 2 tissues, genes
+    !| elements and expected wrong values in 5 of the 12 it never compared (3 vectors). 2 tissues, genes
     !| [1, 2], [3, 4], [5, 6], [7, 8] in families [1, 2, 1, 2], families [10, 20] and [30, 40]:
     !| - gene 1: centroid [10, 20], shift [-9, -18];
     !| - gene 2: centroid [30, 40], shift [-27, -36];
