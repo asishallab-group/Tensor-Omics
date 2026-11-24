@@ -31,7 +31,7 @@ contains
     function get_all_tests_perform_permutation_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(9))
+        allocate (all_tests(10))
         all_tests(1) = test_case("test_perform_permutation_test_values", test_perform_permutation_test_values)
         all_tests(2) = test_case("test_perform_permutation_test_expert", test_perform_permutation_test_expert)
         all_tests(3) = test_case("test_perform_permutation_test_two_samples", &
@@ -47,6 +47,8 @@ contains
                                  test_perform_permutation_test_invalid_mode)
         all_tests(9) = test_case("test_perform_permutation_test_rejects_nan_and_inf", &
                                  test_perform_permutation_test_rejects_nan_and_inf)
+        all_tests(10) = test_case("test_perform_permutation_test_single_sample", &
+                                  test_perform_permutation_test_single_sample)
     end function get_all_tests_perform_permutation_test
 
     !> The sample-marking data: in each of `n_samples` samples the factor is [1, 0] and the
@@ -351,5 +353,22 @@ contains
                             //trim(NON_FINITE_NAMES(i_value)), 1)
         end do
     end subroutine test_perform_permutation_test_rejects_nan_and_inf
+
+    !> BUG: n_samples = 1 is accepted, but there is no other sample to draw. The draw then picks
+    !| sample 2 and reads `trajectories` past its end: a runtime error under bounds checking
+    !| (--diagnostics), whatever lies behind the array otherwise. Issue #99 asks for a sample
+    !| "!= sample", and the unused `select_random_sample` refuses n_samples < 2 with
+    !| ERR_INVALID_INPUT; this expects the same, blaming `n_samples` (argument 3).
+    subroutine test_perform_permutation_test_single_sample()
+        real(real64) :: trajectories(MARK_N_FACTORS, 1, MARK_N_TIMEPOINTS)
+        real(real64) :: local_contributions(MARK_N_TIMEPOINTS, 2), total_contributions(2)
+        integer(int32) :: ierr
+
+        call fill_sample_marking(1, trajectories)
+        call perform_permutation_test(trajectories, MARK_N_FACTORS, 1, MARK_N_TIMEPOINTS, MARK_FACTOR_IDX, &
+                                      MARK_DEPENDENT_IDX, 1, MODE_BASELINE_RAW, 2, local_contributions, &
+                                      total_contributions, 42_int32, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_perform_permutation_test_single_sample", 3)
+    end subroutine test_perform_permutation_test_single_sample
 
 end module mod_test_perform_permutation_test
