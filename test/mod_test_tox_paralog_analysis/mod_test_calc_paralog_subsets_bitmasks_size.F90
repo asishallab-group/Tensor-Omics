@@ -30,13 +30,14 @@ contains
     function get_all_tests_calc_paralog_subsets_bitmasks_size() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(6))
+        allocate (all_tests(7))
         all_tests(1) = test_case("test_calc_size_small_families", test_calc_size_small_families)
         all_tests(2) = test_case("test_calc_size_zero_subset_size", test_calc_size_zero_subset_size)
         all_tests(3) = test_case("test_calc_size_counts_kept_bits", test_calc_size_counts_kept_bits)
         all_tests(4) = test_case("test_calc_size_largest_uncapped", test_calc_size_largest_uncapped)
         all_tests(5) = test_case("test_calc_size_enough_for_worst_case", test_calc_size_enough_for_worst_case)
         all_tests(6) = test_case("test_calc_size_bounds", test_calc_size_bounds)
+        all_tests(7) = test_case("test_calc_size_caps_at_largest_fit", test_calc_size_caps_at_largest_fit)
     end function get_all_tests_calc_paralog_subsets_bitmasks_size
 
     !> Calls the routine and checks `ierr` OK, the subset size it hands back and the work array size.
@@ -220,5 +221,31 @@ contains
         call calc_paralog_subsets_bitmasks_size(max_subset_size, 1, work_array_size, mask, -1, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_calc_size_bounds: n_mask_chunks -1", 2)
     end subroutine test_calc_size_bounds
+
+    !> BUG (fails today): the subset size is to be cut to "the maximum valid size" when the work
+    !| array size would pass `huge`, but it is cut where an intermediate product of the routine's
+    !| count, C(F, s - 1)*(F - s + 1), passes `huge`, far below. The largest valid sizes, by the
+    !| count in this module's header (int32's `huge` is 2,147,483,647):
+    !| - F = 30, m = 30: 2**29 - 1 = 536,870,911 fits; today (14, 268,435,455);
+    !| - F = 32, m = 32: 2**31 - 1, `huge` itself, fits; today (11, 160,645,503);
+    !| - F = 33, m = 33: 15 is the largest size that fits, 1,846,943,452 (16 would be
+    !|   2,448,023,842); today (11, 236,618,692);
+    !| - F = 100, m = 16 (the old suite's overflow case, which only checked that the size changed):
+    !|   6 fits, 1,195,978,575 (7 would be 16,083,010,119); today (5, 75,449,319).
+    subroutine test_calc_size_caps_at_largest_fit()
+        integer(int32) :: one_word(1), two_words(2), four_words(4)
+
+        one_word = 1073741823
+        call check_size(30, 1, one_word, 30, 30, 536870911, "test_calc_size_caps_at_largest_fit: F = 30")
+
+        one_word = -1
+        call check_size(32, 1, one_word, 32, 32, huge(0_int32), "test_calc_size_caps_at_largest_fit: F = 32")
+
+        two_words = [-1, 1]
+        call check_size(33, 2, two_words, 33, 15, 1846943452, "test_calc_size_caps_at_largest_fit: F = 33")
+
+        four_words = [-1, -1, -1, 15]
+        call check_size(100, 4, four_words, 16, 6, 1195978575, "test_calc_size_caps_at_largest_fit: F = 100")
+    end subroutine test_calc_size_caps_at_largest_fit
 
 end module mod_test_calc_paralog_subsets_bitmasks_size
