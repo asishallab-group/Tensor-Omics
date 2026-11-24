@@ -46,8 +46,8 @@ contains
                                  test_compute_shift_vector_field_unassigned_genes)
         all_tests(6) = test_case("test_compute_shift_vector_field_all_unassigned", &
                                  test_compute_shift_vector_field_all_unassigned)
-        all_tests(7) = test_case("test_compute_shift_vector_field_more_families_than_genes", &
-                                 test_compute_shift_vector_field_more_families_than_genes)
+        all_tests(7) = test_case("test_compute_shift_vector_field_unused_families", &
+                                 test_compute_shift_vector_field_unused_families)
         all_tests(8) = test_case("test_compute_shift_vector_field_many_genes", test_compute_shift_vector_field_many_genes)
         all_tests(9) = test_case("test_compute_shift_vector_field_extreme_magnitudes", &
                                  test_compute_shift_vector_field_extreme_magnitudes)
@@ -285,7 +285,7 @@ contains
     !| [10, 10], [20, 20], [30, 30], [40, 40]:
     !| - gene 1, family 4: centroid [40, 40], shift [-39, -39];
     !| - gene 2, family 2: centroid [20, 20], shift [-18, -18].
-    subroutine test_compute_shift_vector_field_more_families_than_genes()
+    subroutine test_compute_shift_vector_field_unused_families()
         integer(int32), parameter :: n_tissues = 2, n_genes = 2, n_families = 4
         real(real64) :: expression_vectors(n_tissues, n_genes), family_centroids(n_tissues, n_families)
         real(real64) :: expected(n_tissues, 2, n_genes)
@@ -304,8 +304,8 @@ contains
         expected(:, 1, 2) = 20.0_real64
         expected(:, 2, 2) = -18.0_real64
         call check_shift_vectors(n_tissues, n_genes, n_families, expression_vectors, family_centroids, gene_to_fam, &
-                                 expected, "test_compute_shift_vector_field_more_families_than_genes")
-    end subroutine test_compute_shift_vector_field_more_families_than_genes
+                                 expected, "test_compute_shift_vector_field_unused_families")
+    end subroutine test_compute_shift_vector_field_unused_families
 
     !> 1000 genes over 3 tissues and 7 families, every fifth gene unassigned. The inputs are
     !| built from the result: family f's centroid is 1000*f in every tissue, and gene g in family
@@ -401,23 +401,28 @@ contains
     subroutine test_compute_shift_vector_field_family_id_range()
         integer(int32), parameter :: n_tissues = 2, n_genes = 3, n_families = 3
         integer(int32), parameter :: N_OUT_OF_RANGE = 3
-        integer(int32), parameter :: OUT_OF_RANGE(N_OUT_OF_RANGE) = [n_families + 1_int32, -1_int32, huge(1_int32)]
-        character(*), parameter :: OUT_OF_RANGE_NAMES(N_OUT_OF_RANGE) = ["n_families + 1", "-1            ", &
-                                                                         "huge          "]
+        integer(int32) :: out_of_range(N_OUT_OF_RANGE)
+        character(len=14) :: out_of_range_names(N_OUT_OF_RANGE)
         real(real64) :: expression_vectors(n_tissues, n_genes), family_centroids(n_tissues, n_families)
         real(real64) :: shift_vectors(n_tissues, 2, n_genes)
         integer(int32) :: gene_to_fam(n_genes), ierr, i_id
 
+        out_of_range(1) = n_families + 1_int32
+        out_of_range(2) = -1_int32
+        out_of_range(3) = huge(1_int32)
+        out_of_range_names(1) = "n_families + 1"
+        out_of_range_names(2) = "-1"
+        out_of_range_names(3) = "huge"
         expression_vectors = 1.0_real64
         family_centroids = 2.0_real64
         do i_id = 1, N_OUT_OF_RANGE
             gene_to_fam(1) = 1_int32
             gene_to_fam(2) = n_families
-            gene_to_fam(3) = OUT_OF_RANGE(i_id)
+            gene_to_fam(3) = out_of_range(i_id)
             call compute_shift_vector_field(n_tissues, n_genes, n_families, expression_vectors, family_centroids, &
                                             gene_to_fam, shift_vectors, ierr)
             call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_shift_vector_field_family_id_range: " &
-                            //trim(OUT_OF_RANGE_NAMES(i_id)), 6)
+                            //trim(out_of_range_names(i_id)), 6)
         end do
     end subroutine test_compute_shift_vector_field_family_id_range
 
