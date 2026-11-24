@@ -1152,7 +1152,9 @@ contains
 
     !> An unassigned gene has no centroid to shift from, so a field that gives it a non-zero
     !| centroid, or a non-zero shift, is not what compute_shift_vector_field writes: refused
-    !| with ERR_INVALID_INPUT.
+    !| with ERR_INVALID_INPUT. compute_shift_vector_field writes exact zeros, so even a tiny
+    !| value is refused: its column holding 1e-11, as a shift taken from a zero centroid of an
+    !| expression near 0 would.
     subroutine test_validate_shift_vectors_refuses_nonzero_unassigned()
         real(real64) :: expression_vectors(2, 3), family_centroids(2, 2), field(4, 3)
         integer(int32) :: small_gene_to_fam(3), ierr
@@ -1166,5 +1168,10 @@ contains
         field(4, 2) = 1.0_real64
         call validate_shift_vectors(field, expression_vectors, family_centroids, small_gene_to_fam, 2, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_validate_shift_vectors_refuses_nonzero_unassigned: shift")
+
+        call unassigned_gene_data(expression_vectors, family_centroids, small_gene_to_fam, field)
+        field(3, 2) = 1.0e-11_real64
+        call validate_shift_vectors(field, expression_vectors, family_centroids, small_gene_to_fam, 2, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_validate_shift_vectors_refuses_nonzero_unassigned: 1e-11")
     end subroutine test_validate_shift_vectors_refuses_nonzero_unassigned
 end module mod_test_tox_data
