@@ -326,11 +326,12 @@ def test_an_array_of_no_strings():
         data = read_tox_data_into("zero_genes.test.zip")
         assert data["gene_ids"] == [] and data["family_ids"] == [], data
 
-        expression, shifts = np.ones((3, 2)), np.ones((6, 2))
+        # genes in no family have zero shift vectors, as compute_shift_vector_field writes them
+        expression, shifts = np.ones((3, 2)), np.zeros((6, 2))
         validate_data_structure(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
                                 expression, np.ones((3, 0)), shifts)
         validate_all_data(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
-                          expression, np.ones((3, 0)), shifts, check_shift_consistency=False)
+                          expression, np.ones((3, 0)), shifts)
 
         with open(scratch("no_genes.test.tsv"), "w") as file:
             file.write("id\tv1\n")

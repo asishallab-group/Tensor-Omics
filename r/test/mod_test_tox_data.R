@@ -223,12 +223,13 @@ test_an_array_of_no_strings <- function() {
   data <- read_tox_data_into("zero_genes_R.test.zip")
   assert_true(length(data$gene_ids) == 0 && length(data$family_ids) == 0, "no gene, no family")
 
+  # genes in no family have zero shift vectors, as compute_shift_vector_field writes them
   expression <- matrix(1, 3, 2)
-  shifts <- matrix(1, 6, 2)
+  shifts <- matrix(0, 6, 2)
   validate_data_structure(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
                           expression, matrix(1, 3, 0), shifts)
   validate_all_data(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
-                    expression, matrix(1, 3, 0), shifts, check_shift_consistency = FALSE)
+                    expression, matrix(1, 3, 0), shifts)
 
   writeLines("id\tv1", scratch("no_genes_R.test.tsv"))
   ids <- read_gene_ids_from_tsv_file("no_genes_R.test.tsv", 8L, 0L, n_header_rows = 1L, gene_col = 1L)
