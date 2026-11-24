@@ -46,7 +46,7 @@ contains
     function get_all_tests_detect_subfunctionalization() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(12))
+        allocate (all_tests(13))
         all_tests(1) = test_case("test_detect_subfunc_binary_weights", test_detect_subfunc_binary_weights)
         all_tests(2) = test_case("test_detect_subfunc_threshold_inclusive", test_detect_subfunc_threshold_inclusive)
         all_tests(3) = test_case("test_detect_subfunc_pruning_bound", test_detect_subfunc_pruning_bound)
@@ -59,6 +59,7 @@ contains
         all_tests(10) = test_case("test_detect_subfunc_rejects_nan_and_inf", test_detect_subfunc_rejects_nan_and_inf)
         all_tests(11) = test_case("test_detect_subfunc_expert", test_detect_subfunc_expert)
         all_tests(12) = test_case("test_detect_subfunc_checks_the_order", test_detect_subfunc_checks_the_order)
+        all_tests(13) = test_case("test_detect_subfunc_suffix_minima", test_detect_subfunc_suffix_minima)
     end function get_all_tests_detect_subfunctionalization
 
     !> The binary-weights family (see BINARY_GENES), all five genes kept, `rdi_threshold` 1, each
@@ -483,5 +484,36 @@ contains
                                          BINARY_NORMS, descending, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_subfunc_checks_the_order: a descending order", 13)
     end subroutine test_detect_subfunc_checks_the_order
+
+    !> The smallest norm after each gene, gene by gene, as the pruning reads it from the norms'
+    !| ascending order. Ancestor [5, 0], genes [2, 0], [2, 0], [1, 0] and [4, 0], norms [2, 2, 1, 4],
+    !| ascending order [3, 1, 2, 4], `rdi_threshold` 0. Walking the order: gene 3 (norm 1) is the
+    !| smallest of genes 1 to 3; genes 1 and 2 come before it and change nothing; gene 4 (norm 4)
+    !| is the smallest of gene 4 alone. So the smallest norm after gene 1 is 1, after gene 2 is 1,
+    !| after gene 3 is 4. Then:
+    !| - pairs: {3, 4} sums to 5, residual 0, a result (the word 12); {1, 2} leaves 1 and grows, as
+    !|   gene 3's norm 1 follows it; {1, 3} and {2, 3} leave 2 and are pruned, only gene 4 (norm 4)
+    !|   following; pairs with gene 4 leave 1 and have no gene after them;
+    !| - triples: {1, 2, 3} sums to 5, a result (the word 7); {1, 2, 4} leaves -3, and stops.
+    !| The words 12 and 7. The minima per gene must read [1, 1, 1, 4]; a fill that let a later,
+    !| larger entry of the order overwrite earlier minima would read [1, 2, 4, 4], see 4 after
+    !| gene 2, prune {1, 2} and find 12 only.
+    subroutine test_detect_subfunc_suffix_minima()
+        integer(int32), parameter :: n_genes = 4, n_slots = 7
+        real(real64), parameter :: ancestor(2) = [5.0_real64, 0.0_real64]
+        real(real64), parameter :: genes(2, n_genes) = reshape([2.0_real64, 0.0_real64, 2.0_real64, 0.0_real64, 1.0_real64, &
+                                                                0.0_real64, 4.0_real64, 0.0_real64], [2, n_genes])
+        real(real64), parameter :: norms(n_genes) = [2.0_real64, 2.0_real64, 1.0_real64, 4.0_real64]
+        integer(int32), parameter :: ascending(n_genes) = [3, 1, 2, 4]
+        integer(int32), parameter :: expected(1, 2) = reshape([12, 7], [1, 2])
+        integer(int32) :: mask(1), subsets(1, n_slots), n_results, ierr
+
+        mask = 15
+        n_results = UNWRITTEN_COUNT
+        call detect_subfunctionalization(ancestor, genes, n_genes, 2, mask, 1, n_results, n_genes, subsets, n_slots, &
+                                         0.0_real64, norms, ascending, ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_subfunc_suffix_minima: ierr")
+        call check_subsets(1, n_slots, subsets, n_results, 2, expected, "test_detect_subfunc_suffix_minima")
+    end subroutine test_detect_subfunc_suffix_minima
 
 end module mod_test_detect_subfunctionalization

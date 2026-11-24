@@ -39,7 +39,7 @@ def _neofunc_inputs():
 
 def _pattern_inputs():
     """Three genes, each 0.75 times the ancestor [1, 1], all kept (the word 7): every pair is 1.5
-    times the ancestor, a dosage effect, and every pair of [1, 0] genes rebuilds [2, 0]."""
+    times the ancestor, a dosage effect."""
     ancestor = np.array([1.0, 1.0])
     genes = np.full((2, 3), 0.75, order='F')
     return ancestor, genes, np.array([7], dtype=np.int32)

@@ -105,8 +105,10 @@ contains
         call check_size(40, 2, two_words, 40, 3, 3, "test_calc_size_counts_kept_bits: genes 1, 32 and 40")
     end subroutine test_calc_size_counts_kept_bits
 
-    !> The largest family the routine sizes without cutting the subset size: all 29 genes kept
-    !| (the word 2**29 - 1), any size, need 2**28 - 1 = 268,435,455 subsets. Not allocated here.
+    !> All 29 genes kept (the word 2**29 - 1), any size: 2**28 - 1 = 268,435,455 subsets, not
+    !| allocated here. Today this is the largest family the routine sizes without cutting the
+    !| subset size, though families up to 32 genes fit whole; `test_calc_size_caps_at_largest_fit`
+    !| is that bug.
     subroutine test_calc_size_largest_uncapped()
         integer(int32) :: mask(1)
 

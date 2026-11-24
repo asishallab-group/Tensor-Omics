@@ -19,6 +19,7 @@ module mod_test_detect_dosage_effect
     use tox_errors
     use test_suite, only: test_case
     use f42_math_impl, only: PI
+    use f42_vector_impl, only: angle_between
     use mod_test_tox_paralog_analysis_fixtures, only: BIT_31, UNWRITTEN_COUNT, N_NON_FINITE, NON_FINITE_NAMES, &
                                                       non_finite_value, check_subsets, MIXED_N_DIMS, MIXED_N_GENES, &
                                                       MIXED_ANCESTOR, MIXED_GENES, MIXED_ANGLES
@@ -47,7 +48,7 @@ contains
     function get_all_tests_detect_dosage_effect() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(13))
+        allocate (all_tests(14))
         all_tests(1) = test_case("test_detect_dosage_effect_binary_weights", test_detect_dosage_effect_binary_weights)
         all_tests(2) = test_case("test_detect_dosage_effect_angle_bound", test_detect_dosage_effect_angle_bound)
         all_tests(3) = test_case("test_detect_dosage_effect_defaults", test_detect_dosage_effect_defaults)
@@ -61,6 +62,7 @@ contains
         all_tests(11) = test_case("test_detect_dosage_effect_rejects_nan_and_inf", test_detect_dosage_effect_rejects_nan_and_inf)
         all_tests(12) = test_case("test_detect_dosage_effect_expert", test_detect_dosage_effect_expert)
         all_tests(13) = test_case("test_detect_dosage_effect_any_scale", test_detect_dosage_effect_any_scale)
+        all_tests(14) = test_case("test_angle_between", test_angle_between)
     end function get_all_tests_detect_dosage_effect
 
     !> The binary-weights family (see BINARY_GENES), all five genes kept, `max_angle` 0 -- every
@@ -130,17 +132,17 @@ contains
     end subroutine test_detect_dosage_effect_angle_bound
 
     !> Without `max_angle` and `gain_gamma`, the documented defaults hold: pi, so no direction is
-    !| ruled out, and 0.1. Ancestor [1, 0], genes [-0.5, 0], [-0.5625, 0] and [-0.625, 0], all
-    !| pointing away from it, at angle pi:
-    !| - {1, 2} is 1.0625 long, short of 1.1, and grows; {1, 3} (1.125) and {2, 3} (1.1875) are
-    !|   results, and so is {1, 2, 3} (1.6875): the words 5, 6 and 7.
+    !| ruled out, and 0.1. Ancestor [1, 0], genes [-0.5, 0], [-0.5625, 0] and [-0.6171875, 0]
+    !| (-79/128), all pointing away from it, at angle pi:
+    !| - {1, 2} is 1.0625 long, short of 1.1, and grows; {1, 3} (1.1171875) and {2, 3} (1.1796875)
+    !|   are results, and so is {1, 2, 3} (1.6796875): the words 5, 6 and 7.
     !| A default angle below pi would find nothing; a default gain of 0.0625 or less would find
-    !| {1, 2}, one of 0.125 or more would miss {1, 3}.
+    !| {1, 2}, one above 0.1171875 -- 0.125, say -- would miss {1, 3}.
     subroutine test_detect_dosage_effect_defaults()
         integer(int32), parameter :: n_genes = 3, n_slots = 3
         real(real64), parameter :: ancestor(2) = [1.0_real64, 0.0_real64]
         real(real64), parameter :: genes(2, n_genes) = reshape([-0.5_real64, 0.0_real64, -0.5625_real64, 0.0_real64, &
-                                                                -0.625_real64, 0.0_real64], [2, n_genes])
+                                                                -0.6171875_real64, 0.0_real64], [2, n_genes])
         integer(int32), parameter :: expected(1, 3) = reshape([5, 6, 7], [1, 3])
         integer(int32) :: mask(1), subsets(1, n_slots), n_results, ierr
 
@@ -458,5 +460,58 @@ contains
                                "test_detect_dosage_effect_any_scale: by "//scale_names(i_scale))
         end do
     end subroutine test_detect_dosage_effect_any_scale
+
+    !> f42_vector's `angle_between`, which the dosage effect's angle bound is built on and which
+    !| has no suite of its own yet; it moves to the f42 suites with the f42 batch. Kept from the old
+    !| suite's `test_angle_between`, with values written by hand:
+    !| - [1, 0] to itself and to [2, 0]: the cosine is exactly 1, the angle exactly 0;
+    !| - [1, 0] to [-2, 0]: the cosine is exactly -1, the angle pi (the dosage effect's default
+    !|   bound relies on acos(-1) being `PI` exactly, see `test_detect_dosage_effect_defaults`);
+    !| - [1, 0] to [0, 3]: the cosine is exactly 0, the angle pi/2; and [1, 0] to [1, 1]: the
+    !|   cosine is 1/sqrt(2), rounded, the angle pi/4. Both within 2 ulps: acos comes from the
+    !|   compiler's library, which need not round correctly, and 1/sqrt(2) is itself rounded;
+    !| - scaling both vectors by 2**20 or 2**-20 changes no angle, to the last bit: every product
+    !|   and root scales exactly ([3, 4] to [5, 12], an angle of about 0.284).
+    !| The old case's 45-degree pair [0.7071, 0.7071] matched pi/4 only to 1e-5, under a tolerance
+    !| of epsilon; zero and huge vectors are #223's (see `test_detect_dosage_effect_any_scale`).
+    subroutine test_angle_between()
+        real(real64), parameter :: TWO_ULPS = 2*epsilon(1.0_real64)
+        real(real64), parameter :: scales(2) = [2.0_real64**20, 2.0_real64**(-20)]
+        real(real64) :: x_axis(2), other(2), angle, unscaled_angle, scaled_angle
+        integer(int32) :: ierr, i_scale
+
+        x_axis = [1.0_real64, 0.0_real64]
+
+        other = x_axis
+        call angle_between(x_axis, other, 2, angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_angle_between: to itself, ierr")
+        call assert_equal_real(angle, 0.0_real64, 0.0_real64, "test_angle_between: to itself")
+        other = [2.0_real64, 0.0_real64]
+        call angle_between(x_axis, other, 2, angle, ierr)
+        call assert_equal_real(angle, 0.0_real64, 0.0_real64, "test_angle_between: to twice itself")
+
+        other = [-2.0_real64, 0.0_real64]
+        call angle_between(x_axis, other, 2, angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_angle_between: opposite, ierr")
+        call assert_equal_real(angle, PI, 0.0_real64, "test_angle_between: opposite")
+
+        other = [0.0_real64, 3.0_real64]
+        call angle_between(x_axis, other, 2, angle, ierr)
+        call assert_equal_real(angle, PI/2, TWO_ULPS, "test_angle_between: perpendicular")
+        other = [1.0_real64, 1.0_real64]
+        call angle_between(x_axis, other, 2, angle, ierr)
+        call assert_equal_real(angle, PI/4, TWO_ULPS, "test_angle_between: 45 degrees")
+
+        x_axis = [3.0_real64, 4.0_real64]
+        other = [5.0_real64, 12.0_real64]
+        call angle_between(x_axis, other, 2, unscaled_angle, ierr)
+        do i_scale = 1, 2
+            x_axis = [3.0_real64, 4.0_real64]*scales(i_scale)
+            other = [5.0_real64, 12.0_real64]*scales(i_scale)
+            call angle_between(x_axis, other, 2, scaled_angle, ierr)
+            call assert_err(ierr, ERR_OK, "test_angle_between: scaled, ierr")
+            call assert_equal_real(scaled_angle, unscaled_angle, 0.0_real64, "test_angle_between: scaled by "//scales(i_scale))
+        end do
+    end subroutine test_angle_between
 
 end module mod_test_detect_dosage_effect
