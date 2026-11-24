@@ -326,6 +326,9 @@ def kd_knn_query(
     query_point = _contract.reals(query_point, "query_point", ndim=1)
     k_neighbors = _contract.integer(k_neighbors, "k_neighbors")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(k_neighbors, "k_neighbors")
+
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]
     n_points = points.shape[1]

@@ -187,6 +187,9 @@ def group_centroid_orthologs(
     n_families = _contract.integer(n_families, "n_families")
     ortholog_set = _contract.logicals(ortholog_set, "ortholog_set", ndim=1)
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
+
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
@@ -263,6 +266,9 @@ def group_centroid_all(
     expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
     gene_to_family = _contract.integers(gene_to_family, "gene_to_family", ndim=1)
     n_families = _contract.integer(n_families, "n_families")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]

@@ -49,4 +49,13 @@ test_k_means_clustering <- function() {
   assert_true(length(res$label_counts) == n_clusters)
 }
 
+test_linkage_of_no_points_is_the_librarys_empty_input <- function() {
+  # the merges of n points are n - 1 long, which the shim clamps at zero as Fortran sizes
+  # them: R refused -1 itself before the library could report the empty input (#215)
+  assert_error(linkage_clustering(matrix(0, 0, 0), "average"), "no points", ERR_EMPTY_INPUT)
+  merges <- linkage_clustering(matrix(0, 1, 1), "average")
+  merged <- merges[c("merge_i", "merge_j", "heights", "cluster_sizes")]
+  assert_true(all(lengths(merged) == 0L), "one point merges nothing")
+}
+
 run_all_tests()

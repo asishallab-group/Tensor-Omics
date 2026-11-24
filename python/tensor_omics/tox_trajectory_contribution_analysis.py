@@ -263,6 +263,9 @@ def perform_permutation_test(
     if random_seed is not None:
         random_seed = _contract.integer(random_seed, "random_seed")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_permutations, "n_permutations")
+
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
     n_samples = trajectories.shape[1]

@@ -109,6 +109,7 @@ fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_resi
     neighbor_mask_S2 <- .tox_as_logical_matrix(neighbor_mask_S2, "neighbor_mask_S2")
     n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    .tox_check_extent(n_bins, "n_bins")
     if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])
         .tox_shape_error("neighborhood_residuals_S2", 2L, dim(neighborhood_residuals_S2)[2], "'neighborhood_residuals_S1' implies n_neighbors == ", dim(neighborhood_residuals_S1)[2], "n_reps_S2, n_neighbors, n_points")
     if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])

@@ -21,6 +21,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -83,6 +84,16 @@
 
 static inline int tox_imax(int a, int b) { return a > b ? a : b; }
 static inline int tox_imin(int a, int b) { return a < b ? a : b; }
+static inline double tox_dmax(double a, double b) { return a > b ? a : b; }
+static inline double tox_dmin(double a, double b) { return a < b ? a : b; }
+
+// Whether the code the library returned reports an error, as check_err_code in
+// error_handling.R reads it: any code but ERR_OK and a status (STAT_*), the argument position
+// aside. The outputs are converted back only when it does not: on an error R discards them.
+static inline int tox_failed(int ierr) {
+    int code = ierr % 10000;
+    return code != 0;
+}
 
 // Refuse an argument: signal the condition the R wrapper's own refusals are
 // (.tox_argument_error in error_handling.R) -- class c(<condition>, "tox_input_error", "tox_error", "error", "condition"),
@@ -117,6 +128,28 @@ static inline void tox_refuse(const char* argument, const char* condition, const
 
 static inline void tox_refuse_na(const char* argument) {
     tox_refuse(argument, "tox_na_error", "'%s' contains NA, which tensor-omics cannot represent", argument);
+}
+
+// The element count of an array the shim allocates, from extents that are each an int but
+// whose product need not be: computed in double, which is exact for every count R can
+// allocate, and refused, naming the array, past R_XLEN_T_MAX -- so no product wraps into the
+// size of a buffer the callee then writes past (#215). Negative only for a .Call entry called
+// directly with a negative extent, which the R wrapper refuses.
+static inline R_xlen_t tox_count(const char* argument, double count) {
+    if (!(count >= 0 && count <= (double) R_XLEN_T_MAX))
+        tox_refuse(argument, "tox_shape_error",
+                   "'%s' would hold %.0f elements, which R cannot allocate", argument, count);
+    return (R_xlen_t) count;
+}
+
+// A count the library takes as an int32 extent, such as the element count of an output whose
+// shape travels in an argument of its own: refused, naming the array, past INT_MAX
+static inline int tox_int_extent(const char* argument, double count) {
+    if (!(count >= 0 && count <= (double) INT_MAX))
+        tox_refuse(argument, "tox_shape_error",
+                   "'%s' would hold %.0f elements, which the library cannot count in an int32",
+                   argument, count);
+    return (int) count;
 }
 
 // A value as a refusal shows it: R's own spelling of NA, NaN and the infinities
@@ -176,6 +209,33 @@ static inline const int* tox_int_in(SEXP x, const char* argument) {
 // checked as tox_int_in checks it, then copied or converted
 static inline SEXP tox_int_copy(SEXP x, const char* argument) {
     tox_int_in(x, argument);
+    return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
+}
+
+// Bit-mask words (an argument named bitmask, bitmasks or *_bitmask(s)), as the int32 Fortran is
+// handed. Every int32 bit pattern is a word, and the one with only bit 31 set is INT_MIN, which
+// R calls NA_integer_ -- so an integer vector passes as it stands, NA included: that NA is the
+// word. A double vector is converted as tox_int_in converts it, but its NA is no word, and its
+// refusal says how to pass one.
+static inline const int* tox_words_in(SEXP x, const char* argument) {
+    if (x == R_NilValue) return NULL;
+    if (TYPEOF(x) == INTSXP) return INTEGER(x);
+    if (TYPEOF(x) == REALSXP) {
+        const double* values = REAL(x);
+        for (R_xlen_t i = 0, n = XLENGTH(x); i < n; ++i)
+            if (ISNA(values[i]))
+                tox_refuse(argument, "tox_na_error",
+                           "'%s' contains NA, which is no bit-mask word as a double; pass the "
+                           "words as an integer vector, in which the word with only bit 31 set "
+                           "is NA_integer_", argument);
+    }
+    return tox_int_in(x, argument);
+}
+
+// Bit-mask words the callee modifies, as a fresh integer vector with x's attributes: checked as
+// tox_words_in checks them, then copied or converted
+static inline SEXP tox_words_copy(SEXP x, const char* argument) {
+    tox_words_in(x, argument);
     return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
 }
 
@@ -316,9 +376,14 @@ static inline char* tox_char_in(SEXP x, int len, const char* argument) {
 // A blank-filled c_char output buffer of len * n bytes. Blank and not zero, deliberately:
 // the callee may leave an element untouched (an early error return, a partly filled array),
 // and tox_char_out reads it back by trimming trailing blanks. A zero fill would leave NULs
-// there, which Rf_mkCharLen rejects outright with an embedded-nul error.
-static inline char* tox_char_alloc(int len, int n) {
-    size_t total = (size_t) len * (n > 0 ? n : 1);
+// there, which Rf_mkCharLen rejects outright with an embedded-nul error. The byte count is
+// computed in double and refused, naming the array, past what R can allocate.
+static inline char* tox_char_alloc(const char* argument, int len, R_xlen_t n) {
+    double bytes = (double) len * (double) (n > 0 ? n : 1);
+    if (!(bytes >= 0 && bytes <= (double) R_XLEN_T_MAX))
+        tox_refuse(argument, "tox_shape_error", "'%s' would take %.0f bytes, which R cannot allocate",
+                   argument, bytes);
+    size_t total = (size_t) bytes;
     char* buf = (char*) R_alloc(total, 1);
     memset(buf, ' ', total);
     return buf;
@@ -334,9 +399,9 @@ static inline char* tox_char_alloc(int len, int n) {
 // nothing else references it. Protecting on return -- which is what the caller's
 // PROTECT(tox_char_out(...)) does -- is too late; the window is the loop, and it grows with
 // n. Balanced before returning, so the caller's own PROTECT is still the one that keeps it.
-static inline SEXP tox_char_out(const char* buf, int len, int n) {
+static inline SEXP tox_char_out(const char* buf, int len, R_xlen_t n) {
     SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
-    for (int i = 0; i < n; ++i) {
+    for (R_xlen_t i = 0; i < n; ++i) {
         const char* p = buf + (size_t) i * len;
         int m = len;
         while (m > 0 && p[m - 1] == ' ') --m;
@@ -396,9 +461,10 @@ static inline unsigned char* tox_bool_in(SEXP x, const char* argument) {
 }
 
 // A zero-filled c_bool output buffer of n bytes.
-static inline unsigned char* tox_bool_alloc(int n) {
-    unsigned char* buf = (unsigned char*) R_alloc(n > 0 ? n : 1, 1);
-    memset(buf, 0, (size_t) (n > 0 ? n : 1));
+static inline unsigned char* tox_bool_alloc(R_xlen_t n) {
+    size_t total = (size_t) (n > 0 ? n : 1);
+    unsigned char* buf = (unsigned char*) R_alloc(total, 1);
+    memset(buf, 0, total);
     return buf;
 }
 
@@ -406,10 +472,10 @@ static inline unsigned char* tox_bool_alloc(int n) {
 // which must map to R's TRUE (1), not stay 255. Returned unprotected, and safely so: the one
 // allocation is the first statement and nothing after it allocates, so no GC can run while
 // the result is unreferenced.
-static inline SEXP tox_bool_out(const unsigned char* buf, int n) {
+static inline SEXP tox_bool_out(const unsigned char* buf, R_xlen_t n) {
     SEXP out = Rf_allocVector(LGLSXP, n);
     int* po = LOGICAL(out);
-    for (int i = 0; i < n; ++i) po[i] = buf[i] != 0 ? TRUE : FALSE;
+    for (R_xlen_t i = 0; i < n; ++i) po[i] = buf[i] != 0 ? TRUE : FALSE;
     return out;
 }
 
@@ -423,11 +489,13 @@ static inline SEXP tox_shape_of(SEXP x) {
     return s;
 }
 
-// The product of an integer shape vector: the flat element count of the array it describes.
-static inline int tox_prod(SEXP shape) {
-    int p = 1, n = (int) XLENGTH(shape);
+// The product of an integer shape vector: the flat element count of the array it describes,
+// in double, so that it cannot wrap; tox_count or tox_int_extent checks it before it is used.
+static inline double tox_prod(SEXP shape) {
+    double p = 1;
+    R_xlen_t n = XLENGTH(shape);
     const int* ps = INTEGER(shape);
-    for (int i = 0; i < n; ++i) p *= ps[i];
+    for (R_xlen_t i = 0; i < n; ++i) p *= ps[i];
     return p;
 }
 

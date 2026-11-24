@@ -45,6 +45,11 @@ CONDITION_FIELDS = ("message", "call", "code", "name", "argument")
 #: The message of an NA refused, as a `sprintf` format taking the argument's name
 NA_MESSAGE = "'%s' contains NA, which tensor-omics cannot represent"
 
+#: The message of a negative size the caller passed, refused before anything is allocated by it
+#: (`abi.extents.caller_passed_extents`), as a `sprintf` format taking the argument's name and
+#: its value. Python's input contract formats the same text with `%`.
+NEGATIVE_EXTENT_MESSAGE = "'%s' is a size and must not be negative, but it is %d"
+
 #: The function a generated function raises a `DM_OUTPUT_FROM` producer's error again through,
 #: in its own words (`errors_python.CONSUMER_ERROR` in R)
 CONSUMER_ERROR = ".tox_consumer_error"

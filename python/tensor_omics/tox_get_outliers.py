@@ -198,6 +198,9 @@ def compute_family_scaling(
     mode = _np.array([_contract.mode(mode, "mode", ("plain", "robust",)).ljust(6)], dtype="S6")
     n_iters = _contract.integer(n_iters, "n_iters")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
+
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
 
@@ -513,6 +516,9 @@ def detect_outliers(
     distances = _contract.reals(distances, "distances", ndim=1)
     gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
     quantile_level = _contract.real(quantile_level, "quantile_level")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]

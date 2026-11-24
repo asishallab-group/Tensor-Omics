@@ -126,6 +126,9 @@ def gjct_permutation_test(
     if neighbor_mask_S2 is not None:
         neighbor_mask_S2 = _contract.logicals(neighbor_mask_S2, "neighbor_mask_S2", ndim=2, order="F")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_permutations, "n_permutations")
+
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
     n_reps_S2 = neighborhood_residuals_S2.shape[0]

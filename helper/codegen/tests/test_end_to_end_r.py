@@ -53,7 +53,16 @@ def _generate(out: Path) -> None:
 
     # dll_name matches the library _build_lib produces, because R derives the routine it
     # calls from the file's basename -- which is exactly what this suite has to exercise
-    fortran, c, r = FortranCEmitter(), CCallEmitter(dll_name="libfixtures"), RWrapperEmitter()
+    errors = DiagnosticBag()
+    real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), errors).parse()
+    catalogue = ErrorCatalogue.from_module(
+        real.project.module("tox_errors"), errors,
+        real.project.constant_values(), arg_pos_factor=real.arg_pos_factor,
+    )
+    (out / "error_handling.R").write_text(RErrorEmitter(catalogue).module())
+
+    fortran, r = FortranCEmitter(), RWrapperEmitter()
+    c = CCallEmitter(dll_name="libfixtures", catalogue=catalogue)
     modules = list(binding)
     (out / "tox_marshal.h").write_text(c.marshal_header_content())
     (out / "init.c").write_text(c.registration(modules))
@@ -62,14 +71,6 @@ def _generate(out: Path) -> None:
         (out / f"{module.name}.F90").write_text(fortran.module(module))
         (out / f"{module.stripped_name}.c").write_text(c.module(module))
         (out / f"{module.stripped_name}.R").write_text(r.module(module))
-
-    errors = DiagnosticBag()
-    real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), errors).parse()
-    catalogue = ErrorCatalogue.from_module(
-        real.project.module("tox_errors"), errors,
-        real.project.constant_values(), arg_pos_factor=real.arg_pos_factor,
-    )
-    (out / "error_handling.R").write_text(RErrorEmitter(catalogue).module())
 
 
 def _r_cppflags() -> list[str]:

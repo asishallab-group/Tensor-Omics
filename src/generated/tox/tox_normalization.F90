@@ -21,7 +21,7 @@ module tox_normalization
     use tox_loess, only: tox_loess_required_workspace
     use tox_loess_impl, only: EPS_LOESS
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
-    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, map_err_arg_pos, set_err
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_arg_pos
     use tox_errors, only: set_err_once, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
     use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
@@ -73,7 +73,15 @@ contains
             n_dims = n_dims,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:2_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalize_unit_length
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalization_pipeline_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalization_pipeline_expert]] to prepare it yourself.
@@ -160,7 +168,7 @@ contains
         if (is_err(ierr)) then
             select case (get_err_arg_pos(ierr))
             case (2_int32)
-                call map_err_arg_pos(ierr, 2_int32, 1_int32)
+                call set_err_arg_pos(ierr, 1_int32)
             case default
                 call clear_err_arg_pos(ierr)
             end select
@@ -207,7 +215,21 @@ contains
             use_quantile = use_quantile,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:6_int32)
+                ! the same position here
+            case (22_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (23_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (24_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalization_pipeline
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalization_pipeline_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalization_pipeline]] does both.
@@ -356,7 +378,15 @@ contains
             use_quantile = use_quantile,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:24_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalization_pipeline_expert
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalize_by_std_dev_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalize_by_std_dev_expert]] to prepare it yourself.
@@ -433,7 +463,7 @@ contains
         if (is_err(ierr)) then
             select case (get_err_arg_pos(ierr))
             case (2_int32)
-                call map_err_arg_pos(ierr, 2_int32, 1_int32)
+                call set_err_arg_pos(ierr, 1_int32)
             case default
                 call clear_err_arg_pos(ierr)
             end select
@@ -477,7 +507,19 @@ contains
             degree = degree,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (20_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (21_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalize_by_std_dev
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_by_std_dev_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalize_by_std_dev]] does both.
@@ -613,7 +655,15 @@ contains
             degree = degree,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:21_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine normalize_by_std_dev_expert
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
@@ -804,7 +854,15 @@ contains
             transformed_expr = transformed_expr,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine log2_transformation
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):calc_tiss_avg_impl]].
@@ -916,7 +974,15 @@ contains
             fold_changes = fold_changes,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:7_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine calc_fchange
 
 end module tox_normalization
