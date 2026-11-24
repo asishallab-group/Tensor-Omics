@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void tox_loess_required_workspace_c(const int*, const int*, int*, int*, const unsigned char*, int*);
@@ -57,7 +57,8 @@ SEXP loess_fit_plain_call(SEXP x, SEXP y, SEXP weights, SEXP eval_points, SEXP s
     unsigned char _v_save_factorization = (Rf_asLogical(save_factorization) == TRUE) ? 1 : 0;
 
     // outputs and work space
-    SEXP fitted_values = PROTECT(Rf_allocVector(REALSXP, n)); _nprot++;
+    R_xlen_t _n_fitted_values = tox_count("fitted_values", (double) n);
+    SEXP fitted_values = PROTECT(Rf_allocVector(REALSXP, _n_fitted_values)); _nprot++;
     int ierr = 0;
 
     loess_fit_plain_c(
@@ -100,7 +101,8 @@ SEXP loess_fit_robust_call(SEXP x, SEXP y, SEXP weights, SEXP eval_points, SEXP 
     int _v_n_iters = Rf_asInteger(n_iters);
 
     // outputs and work space
-    SEXP fitted_values = PROTECT(Rf_allocVector(REALSXP, n)); _nprot++;
+    R_xlen_t _n_fitted_values = tox_count("fitted_values", (double) n);
+    SEXP fitted_values = PROTECT(Rf_allocVector(REALSXP, _n_fitted_values)); _nprot++;
     int ierr = 0;
 
     loess_fit_robust_c(

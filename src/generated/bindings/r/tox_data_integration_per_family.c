@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void fjct_compute_jsd_c(const int*, const int*, const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, double*, int*, int*, int*, double*, double*, int*);
@@ -32,12 +32,16 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
     const int* _c_neighborhood_genes_S2 = tox_int_in(neighborhood_genes_S2, "neighborhood_genes_S2");
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
-    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
-    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    R_xlen_t _n_js_divergences = tox_count("js_divergences", (double) n_points);
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, _n_js_divergences)); _nprot++;
+    R_xlen_t _n_included_n_reps_S1 = tox_count("included_n_reps_S1", (double) n_points);
+    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, _n_included_n_reps_S1)); _nprot++;
+    R_xlen_t _n_included_n_reps_S2 = tox_count("included_n_reps_S2", (double) n_points);
+    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, _n_included_n_reps_S2)); _nprot++;
     int total_included_n_reps = 0;
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    R_xlen_t _n_weights = tox_count("weights", (double) n_points);
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, _n_weights)); _nprot++;
     int ierr = 0;
 
     fjct_compute_jsd_c(
@@ -103,15 +107,21 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
     unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2, "neighbor_mask_S2");
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
-    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
-    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    R_xlen_t _n_js_divergences = tox_count("js_divergences", (double) n_points);
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, _n_js_divergences)); _nprot++;
+    R_xlen_t _n_included_n_reps_S1 = tox_count("included_n_reps_S1", (double) n_points);
+    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, _n_included_n_reps_S1)); _nprot++;
+    R_xlen_t _n_included_n_reps_S2 = tox_count("included_n_reps_S2", (double) n_points);
+    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, _n_included_n_reps_S2)); _nprot++;
     int total_included_n_reps = 0;
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
-    SEXP pmf_S1 = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    R_xlen_t _n_weights = tox_count("weights", (double) n_points);
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, _n_weights)); _nprot++;
+    R_xlen_t _n_pmf_S1 = tox_count("pmf_S1", (double) n_points * (double) _v_n_bins);
+    SEXP pmf_S1 = PROTECT(Rf_allocVector(REALSXP, _n_pmf_S1)); _nprot++;
     { SEXP _dim_pmf_S1 = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf_S1)[0] = n_points; INTEGER(_dim_pmf_S1)[1] = _v_n_bins; Rf_setAttrib(pmf_S1, R_DimSymbol, _dim_pmf_S1); UNPROTECT(1); }
-    SEXP pmf_S2 = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    R_xlen_t _n_pmf_S2 = tox_count("pmf_S2", (double) n_points * (double) _v_n_bins);
+    SEXP pmf_S2 = PROTECT(Rf_allocVector(REALSXP, _n_pmf_S2)); _nprot++;
     { SEXP _dim_pmf_S2 = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf_S2)[0] = n_points; INTEGER(_dim_pmf_S2)[1] = _v_n_bins; Rf_setAttrib(pmf_S2, R_DimSymbol, _dim_pmf_S2); UNPROTECT(1); }
     int ierr = 0;
 
@@ -171,8 +181,10 @@ SEXP fjct_compute_contribution_scores_call(SEXP global_js_divergences, SEXP tota
     const int* _c_total_included_n_reps_per_f = tox_int_in(total_included_n_reps_per_f, "total_included_n_reps_per_f");
 
     // outputs and work space
-    SEXP support_weights = PROTECT(Rf_allocVector(REALSXP, k_families)); _nprot++;
-    SEXP contribution_scores = PROTECT(Rf_allocVector(REALSXP, k_families)); _nprot++;
+    R_xlen_t _n_support_weights = tox_count("support_weights", (double) k_families);
+    SEXP support_weights = PROTECT(Rf_allocVector(REALSXP, _n_support_weights)); _nprot++;
+    R_xlen_t _n_contribution_scores = tox_count("contribution_scores", (double) k_families);
+    SEXP contribution_scores = PROTECT(Rf_allocVector(REALSXP, _n_contribution_scores)); _nprot++;
     int ierr = 0;
 
     fjct_compute_contribution_scores_c(

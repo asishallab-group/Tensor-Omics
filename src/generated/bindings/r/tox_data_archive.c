@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void create_zip_archive_c(const char*, const int*, const char*, const int*, const int*, const char*, const int*, const int*, int*);
@@ -293,14 +293,20 @@ SEXP read_tox_data_into_call(SEXP zip_filename, SEXP n_gene_ids, SEXP gene_id_le
     char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen, "zip_filename");
 
     // outputs and work space
-    char* _c_gene_ids = tox_char_alloc(_v_gene_id_len, _v_n_gene_ids);
-    SEXP expression = PROTECT(Rf_allocVector(REALSXP, _v_n_expression_rows * _v_n_expression_cols)); _nprot++;
+    R_xlen_t _n_gene_ids = tox_count("gene_ids", (double) _v_n_gene_ids);
+    char* _c_gene_ids = tox_char_alloc("gene_ids", _v_gene_id_len, _n_gene_ids);
+    R_xlen_t _n_expression = tox_count("expression", (double) _v_n_expression_rows * (double) _v_n_expression_cols);
+    SEXP expression = PROTECT(Rf_allocVector(REALSXP, _n_expression)); _nprot++;
     { SEXP _dim_expression = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_expression)[0] = _v_n_expression_rows; INTEGER(_dim_expression)[1] = _v_n_expression_cols; Rf_setAttrib(expression, R_DimSymbol, _dim_expression); UNPROTECT(1); }
-    SEXP gene_to_family = PROTECT(Rf_allocVector(INTSXP, _v_n_gene_to_family)); _nprot++;
-    char* _c_family_ids = tox_char_alloc(_v_family_id_len, _v_n_family_ids);
-    SEXP family_centroids = PROTECT(Rf_allocVector(REALSXP, _v_n_family_centroids_rows * _v_n_family_centroids_cols)); _nprot++;
+    R_xlen_t _n_gene_to_family = tox_count("gene_to_family", (double) _v_n_gene_to_family);
+    SEXP gene_to_family = PROTECT(Rf_allocVector(INTSXP, _n_gene_to_family)); _nprot++;
+    R_xlen_t _n_family_ids = tox_count("family_ids", (double) _v_n_family_ids);
+    char* _c_family_ids = tox_char_alloc("family_ids", _v_family_id_len, _n_family_ids);
+    R_xlen_t _n_family_centroids = tox_count("family_centroids", (double) _v_n_family_centroids_rows * (double) _v_n_family_centroids_cols);
+    SEXP family_centroids = PROTECT(Rf_allocVector(REALSXP, _n_family_centroids)); _nprot++;
     { SEXP _dim_family_centroids = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_family_centroids)[0] = _v_n_family_centroids_rows; INTEGER(_dim_family_centroids)[1] = _v_n_family_centroids_cols; Rf_setAttrib(family_centroids, R_DimSymbol, _dim_family_centroids); UNPROTECT(1); }
-    SEXP shift_vectors = PROTECT(Rf_allocVector(REALSXP, _v_n_shift_vectors_rows * _v_n_shift_vectors_cols)); _nprot++;
+    R_xlen_t _n_shift_vectors = tox_count("shift_vectors", (double) _v_n_shift_vectors_rows * (double) _v_n_shift_vectors_cols);
+    SEXP shift_vectors = PROTECT(Rf_allocVector(REALSXP, _n_shift_vectors)); _nprot++;
     { SEXP _dim_shift_vectors = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_shift_vectors)[0] = _v_n_shift_vectors_rows; INTEGER(_dim_shift_vectors)[1] = _v_n_shift_vectors_cols; Rf_setAttrib(shift_vectors, R_DimSymbol, _dim_shift_vectors); UNPROTECT(1); }
     int ierr = 0;
 
@@ -327,9 +333,13 @@ SEXP read_tox_data_into_call(SEXP zip_filename, SEXP n_gene_ids, SEXP gene_id_le
         &ierr
     );
 
-    // convert the outputs back
-    SEXP gene_ids = PROTECT(tox_char_out(_c_gene_ids, _v_gene_id_len, _v_n_gene_ids)); _nprot++;
-    SEXP family_ids = PROTECT(tox_char_out(_c_family_ids, _v_family_id_len, _v_n_family_ids)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP gene_ids = R_NilValue;
+    SEXP family_ids = R_NilValue;
+    if (!tox_failed(ierr)) {
+        gene_ids = PROTECT(tox_char_out(_c_gene_ids, _v_gene_id_len, _n_gene_ids)); _nprot++;
+        family_ids = PROTECT(tox_char_out(_c_family_ids, _v_family_id_len, _n_family_ids)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 7)); _nprot++;
     SET_VECTOR_ELT(_out, 0, gene_ids);

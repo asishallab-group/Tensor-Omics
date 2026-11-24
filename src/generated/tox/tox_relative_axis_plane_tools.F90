@@ -22,7 +22,7 @@ module tox_relative_axis_plane_tools
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, clear_err_arg_pos
-    use tox_errors, only: set_err_once, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: get_err_arg_pos, set_err_once, validate_all_in_range_real, validate_dimension_size
     M_IMPLICIT_NONE
     private
 
@@ -207,7 +207,15 @@ contains
             signed_angle = signed_angle,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:5_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine clock_hand_angle_between_vectors
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):clock_hand_angles_for_shift_vectors_impl]].
@@ -278,7 +286,15 @@ contains
             signed_angles = signed_angles,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:7_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine clock_hand_angles_for_shift_vectors
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):compute_relative_axis_contributions_impl]].
@@ -313,7 +329,15 @@ contains
             contributions = contributions,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:3_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_relative_axis_contributions
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):relative_axes_changes_from_shift_vector_impl]].
@@ -346,7 +370,15 @@ contains
             contributions = contributions,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:3_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine relative_axes_changes_from_shift_vector
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):relative_axes_expression_from_expression_vector_impl]].
@@ -379,7 +411,15 @@ contains
             contributions = contributions,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:3_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine relative_axes_expression_from_expression_vector
 
 end module tox_relative_axis_plane_tools

@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import k_means_clustering, linkage_clustering
 from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_NAN_INF
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_NAN_INF
 
 
 def test_k_means_clustering():
@@ -142,6 +142,15 @@ def test_linkage_methods():
             assert_error(lambda: linkage_clustering(dist.copy(order="F"), method), f"{label}: NaN case should raise an error", ERR_NAN_INF)
         except RuntimeError:
             raise AssertionError(f"{label}: Unexpected Error")
+
+
+def test_linkage_of_no_points_is_the_librarys_empty_input():
+    # the merges of n points are n - 1 long, which the binding clamps at zero as Fortran sizes
+    # them: numpy refused -1 itself before the library could report the empty input (#215)
+    assert_error(lambda: linkage_clustering(np.empty((0, 0), order="F"), "average"),
+                 "no points", ERR_EMPTY_INPUT, argument="distances")
+    merges = linkage_clustering(np.zeros((1, 1), order="F"), "average")
+    assert all(merges[name].shape == (0,) for name in merges), "one point merges nothing"
 
 
 if __name__ == "__main__":

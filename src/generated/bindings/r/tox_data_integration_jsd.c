@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void determine_shared_residual_range_c(const double*, const int*, double*, const double*, int*);
@@ -143,11 +143,14 @@ SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_res
     unsigned char* _c_neighbor_mask = tox_bool_in(neighbor_mask, "neighbor_mask");
 
     // outputs and work space
-    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * _v_n_bins)); _nprot++;
+    R_xlen_t _n_counts = tox_count("counts", (double) n_points * (double) _v_n_bins);
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, _n_counts)); _nprot++;
     { SEXP _dim_counts = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_counts)[0] = n_points; INTEGER(_dim_counts)[1] = _v_n_bins; Rf_setAttrib(counts, R_DimSymbol, _dim_counts); UNPROTECT(1); }
-    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    R_xlen_t _n_pmf = tox_count("pmf", (double) n_points * (double) _v_n_bins);
+    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, _n_pmf)); _nprot++;
     { SEXP _dim_pmf = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf)[0] = n_points; INTEGER(_dim_pmf)[1] = _v_n_bins; Rf_setAttrib(pmf, R_DimSymbol, _dim_pmf); UNPROTECT(1); }
-    SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    R_xlen_t _n_included_n_reps = tox_count("included_n_reps", (double) n_points);
+    SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, _n_included_n_reps)); _nprot++;
     int ierr = 0;
 
     build_residual_histograms_c(
@@ -186,7 +189,8 @@ SEXP compute_divergence_per_reference_point_call(SEXP pmf_S1, SEXP pmf_S2) {
     int n_bins = INTEGER(Rf_getAttrib(pmf_S1, R_DimSymbol))[1];
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    R_xlen_t _n_js_divergences = tox_count("js_divergences", (double) n_points);
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, _n_js_divergences)); _nprot++;
     int ierr = 0;
 
     compute_divergence_per_reference_point_c(
@@ -220,7 +224,8 @@ SEXP compute_weighted_global_divergence_call(SEXP js_divergences, SEXP included_
 
     // outputs and work space
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    R_xlen_t _n_weights = tox_count("weights", (double) n_points);
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, _n_weights)); _nprot++;
     int ierr = 0;
 
     compute_weighted_global_divergence_c(

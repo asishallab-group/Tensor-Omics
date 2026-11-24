@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_family_direction_c(const int*, const int*, const int*, const double*, const int*, double*, double*, int*, int*, const double*, const double*, int*);
@@ -31,11 +31,15 @@ SEXP compute_family_direction_call(SEXP n_families, SEXP expression_vectors, SEX
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP family_directions = PROTECT(Rf_allocVector(REALSXP, n_axes * _v_n_families)); _nprot++;
+    R_xlen_t _n_family_directions = tox_count("family_directions", (double) n_axes * (double) _v_n_families);
+    SEXP family_directions = PROTECT(Rf_allocVector(REALSXP, _n_family_directions)); _nprot++;
     { SEXP _dim_family_directions = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_family_directions)[0] = n_axes; INTEGER(_dim_family_directions)[1] = _v_n_families; Rf_setAttrib(family_directions, R_DimSymbol, _dim_family_directions); UNPROTECT(1); }
-    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP status = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
+    R_xlen_t _n_angular_dispersions = tox_count("angular_dispersions", (double) _v_n_families);
+    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _n_angular_dispersions)); _nprot++;
+    R_xlen_t _n_member_counts = tox_count("member_counts", (double) _v_n_families);
+    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _n_member_counts)); _nprot++;
+    R_xlen_t _n_status = tox_count("status", (double) _v_n_families);
+    SEXP status = PROTECT(Rf_allocVector(INTSXP, _n_status)); _nprot++;
     int ierr = 0;
 
     compute_family_direction_c(
@@ -81,7 +85,8 @@ SEXP compute_angular_deviations_call(SEXP expression_vectors, SEXP family_direct
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP angular_deviations = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_angular_deviations = tox_count("angular_deviations", (double) n_genes);
+    SEXP angular_deviations = PROTECT(Rf_allocVector(REALSXP, _n_angular_deviations)); _nprot++;
     int ierr = 0;
 
     compute_angular_deviations_c(
@@ -120,10 +125,14 @@ SEXP compute_family_direction_rap_call(SEXP n_families, SEXP signed_angles, SEXP
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP family_mean_angles = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP status = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
+    R_xlen_t _n_family_mean_angles = tox_count("family_mean_angles", (double) _v_n_families);
+    SEXP family_mean_angles = PROTECT(Rf_allocVector(REALSXP, _n_family_mean_angles)); _nprot++;
+    R_xlen_t _n_angular_dispersions = tox_count("angular_dispersions", (double) _v_n_families);
+    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _n_angular_dispersions)); _nprot++;
+    R_xlen_t _n_member_counts = tox_count("member_counts", (double) _v_n_families);
+    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _n_member_counts)); _nprot++;
+    R_xlen_t _n_status = tox_count("status", (double) _v_n_families);
+    SEXP status = PROTECT(Rf_allocVector(INTSXP, _n_status)); _nprot++;
     int ierr = 0;
 
     compute_family_direction_rap_c(
@@ -167,7 +176,8 @@ SEXP compute_angular_deviations_rap_call(SEXP signed_angles, SEXP family_mean_an
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP angular_deviations = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_angular_deviations = tox_count("angular_deviations", (double) n_genes);
+    SEXP angular_deviations = PROTECT(Rf_allocVector(REALSXP, _n_angular_deviations)); _nprot++;
     int ierr = 0;
 
     compute_angular_deviations_rap_c(
@@ -201,7 +211,8 @@ SEXP compute_relative_angular_deviations_call(SEXP angular_deviations, SEXP angu
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP relative_angular_deviations = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_relative_angular_deviations = tox_count("relative_angular_deviations", (double) n_genes);
+    SEXP relative_angular_deviations = PROTECT(Rf_allocVector(REALSXP, _n_relative_angular_deviations)); _nprot++;
     int ierr = 0;
 
     compute_relative_angular_deviations_c(
@@ -265,7 +276,8 @@ SEXP flag_angle_outliers_call(SEXP relative_angular_deviations, SEXP threshold) 
     double _v_threshold = Rf_asReal(threshold);
 
     // outputs and work space
-    unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
+    R_xlen_t _n_is_outlier = tox_count("is_outlier", (double) n_genes);
+    unsigned char* _c_is_outlier = tox_bool_alloc(_n_is_outlier);
     int ierr = 0;
 
     flag_angle_outliers_c(
@@ -276,8 +288,11 @@ SEXP flag_angle_outliers_call(SEXP relative_angular_deviations, SEXP threshold) 
         &ierr
     );
 
-    // convert the outputs back
-    SEXP is_outlier = PROTECT(tox_bool_out(_c_is_outlier, n_genes)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP is_outlier = R_NilValue;
+    if (!tox_failed(ierr)) {
+        is_outlier = PROTECT(tox_bool_out(_c_is_outlier, _n_is_outlier)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, is_outlier);
@@ -306,15 +321,22 @@ SEXP detect_angle_outliers_call(SEXP n_families, SEXP expression_vectors, SEXP g
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP family_directions = PROTECT(Rf_allocVector(REALSXP, n_axes * _v_n_families)); _nprot++;
+    R_xlen_t _n_family_directions = tox_count("family_directions", (double) n_axes * (double) _v_n_families);
+    SEXP family_directions = PROTECT(Rf_allocVector(REALSXP, _n_family_directions)); _nprot++;
     { SEXP _dim_family_directions = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_family_directions)[0] = n_axes; INTEGER(_dim_family_directions)[1] = _v_n_families; Rf_setAttrib(family_directions, R_DimSymbol, _dim_family_directions); UNPROTECT(1); }
-    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP status = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP relative_angular_deviations = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_angular_dispersions = tox_count("angular_dispersions", (double) _v_n_families);
+    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _n_angular_dispersions)); _nprot++;
+    R_xlen_t _n_member_counts = tox_count("member_counts", (double) _v_n_families);
+    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _n_member_counts)); _nprot++;
+    R_xlen_t _n_status = tox_count("status", (double) _v_n_families);
+    SEXP status = PROTECT(Rf_allocVector(INTSXP, _n_status)); _nprot++;
+    R_xlen_t _n_relative_angular_deviations = tox_count("relative_angular_deviations", (double) n_genes);
+    SEXP relative_angular_deviations = PROTECT(Rf_allocVector(REALSXP, _n_relative_angular_deviations)); _nprot++;
     double threshold = 0;
-    unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
-    SEXP gene_status = PROTECT(Rf_allocVector(INTSXP, n_genes)); _nprot++;
+    R_xlen_t _n_is_outlier = tox_count("is_outlier", (double) n_genes);
+    unsigned char* _c_is_outlier = tox_bool_alloc(_n_is_outlier);
+    R_xlen_t _n_gene_status = tox_count("gene_status", (double) n_genes);
+    SEXP gene_status = PROTECT(Rf_allocVector(INTSXP, _n_gene_status)); _nprot++;
     int ierr = 0;
 
     detect_angle_outliers_c(
@@ -337,8 +359,11 @@ SEXP detect_angle_outliers_call(SEXP n_families, SEXP expression_vectors, SEXP g
         &ierr
     );
 
-    // convert the outputs back
-    SEXP is_outlier = PROTECT(tox_bool_out(_c_is_outlier, n_genes)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP is_outlier = R_NilValue;
+    if (!tox_failed(ierr)) {
+        is_outlier = PROTECT(tox_bool_out(_c_is_outlier, _n_is_outlier)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 9)); _nprot++;
     SET_VECTOR_ELT(_out, 0, family_directions);
@@ -380,14 +405,21 @@ SEXP detect_angle_outliers_rap_call(SEXP n_families, SEXP signed_angles, SEXP ge
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP family_mean_angles = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
-    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP status = PROTECT(Rf_allocVector(INTSXP, _v_n_families)); _nprot++;
-    SEXP relative_angular_deviations = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_family_mean_angles = tox_count("family_mean_angles", (double) _v_n_families);
+    SEXP family_mean_angles = PROTECT(Rf_allocVector(REALSXP, _n_family_mean_angles)); _nprot++;
+    R_xlen_t _n_angular_dispersions = tox_count("angular_dispersions", (double) _v_n_families);
+    SEXP angular_dispersions = PROTECT(Rf_allocVector(REALSXP, _n_angular_dispersions)); _nprot++;
+    R_xlen_t _n_member_counts = tox_count("member_counts", (double) _v_n_families);
+    SEXP member_counts = PROTECT(Rf_allocVector(INTSXP, _n_member_counts)); _nprot++;
+    R_xlen_t _n_status = tox_count("status", (double) _v_n_families);
+    SEXP status = PROTECT(Rf_allocVector(INTSXP, _n_status)); _nprot++;
+    R_xlen_t _n_relative_angular_deviations = tox_count("relative_angular_deviations", (double) n_genes);
+    SEXP relative_angular_deviations = PROTECT(Rf_allocVector(REALSXP, _n_relative_angular_deviations)); _nprot++;
     double threshold = 0;
-    unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
-    SEXP gene_status = PROTECT(Rf_allocVector(INTSXP, n_genes)); _nprot++;
+    R_xlen_t _n_is_outlier = tox_count("is_outlier", (double) n_genes);
+    unsigned char* _c_is_outlier = tox_bool_alloc(_n_is_outlier);
+    R_xlen_t _n_gene_status = tox_count("gene_status", (double) n_genes);
+    SEXP gene_status = PROTECT(Rf_allocVector(INTSXP, _n_gene_status)); _nprot++;
     int ierr = 0;
 
     detect_angle_outliers_rap_c(
@@ -409,8 +441,11 @@ SEXP detect_angle_outliers_rap_call(SEXP n_families, SEXP signed_angles, SEXP ge
         &ierr
     );
 
-    // convert the outputs back
-    SEXP is_outlier = PROTECT(tox_bool_out(_c_is_outlier, n_genes)); _nprot++;
+    // convert the outputs back, unless the library reports an error
+    SEXP is_outlier = R_NilValue;
+    if (!tox_failed(ierr)) {
+        is_outlier = PROTECT(tox_bool_out(_c_is_outlier, _n_is_outlier)); _nprot++;
+    }
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 9)); _nprot++;
     SET_VECTOR_ELT(_out, 0, family_mean_angles);

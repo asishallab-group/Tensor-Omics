@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void normalize_unit_length_c(double*, const int*, int*);
@@ -59,7 +59,8 @@ SEXP normalization_pipeline_call(SEXP expr, SEXP reps_per_tissue, SEXP span, SEX
     const int* _c_reps_per_tissue = tox_int_in(reps_per_tissue, "reps_per_tissue");
 
     // outputs and work space
-    SEXP log_transformed_expr = PROTECT(Rf_allocVector(REALSXP, n_tissues * n_genes)); _nprot++;
+    R_xlen_t _n_log_transformed_expr = tox_count("log_transformed_expr", (double) n_tissues * (double) n_genes);
+    SEXP log_transformed_expr = PROTECT(Rf_allocVector(REALSXP, _n_log_transformed_expr)); _nprot++;
     { SEXP _dim_log_transformed_expr = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_log_transformed_expr)[0] = n_tissues; INTEGER(_dim_log_transformed_expr)[1] = n_genes; Rf_setAttrib(log_transformed_expr, R_DimSymbol, _dim_log_transformed_expr); UNPROTECT(1); }
     int ierr = 0;
 
@@ -98,7 +99,8 @@ SEXP normalize_by_std_dev_call(SEXP expr, SEXP span, SEXP degree) {
     int _v_degree = Rf_asInteger(degree);
 
     // outputs and work space
-    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, n_replicates * n_genes)); _nprot++;
+    R_xlen_t _n_normalized_expr = tox_count("normalized_expr", (double) n_replicates * (double) n_genes);
+    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, _n_normalized_expr)); _nprot++;
     { SEXP _dim_normalized_expr = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_normalized_expr)[0] = n_replicates; INTEGER(_dim_normalized_expr)[1] = n_genes; Rf_setAttrib(normalized_expr, R_DimSymbol, _dim_normalized_expr); UNPROTECT(1); }
     int ierr = 0;
 
@@ -130,7 +132,8 @@ SEXP root_mean_sq_normalization_call(SEXP expr) {
     int n_replicates = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
 
     // outputs and work space
-    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, n_replicates * n_genes)); _nprot++;
+    R_xlen_t _n_normalized_expr = tox_count("normalized_expr", (double) n_replicates * (double) n_genes);
+    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, _n_normalized_expr)); _nprot++;
     { SEXP _dim_normalized_expr = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_normalized_expr)[0] = n_replicates; INTEGER(_dim_normalized_expr)[1] = n_genes; Rf_setAttrib(normalized_expr, R_DimSymbol, _dim_normalized_expr); UNPROTECT(1); }
     int ierr = 0;
 
@@ -160,9 +163,11 @@ SEXP quantile_normalization_call(SEXP expr) {
     int n_replicates = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
 
     // outputs and work space
-    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, n_replicates * n_genes)); _nprot++;
+    R_xlen_t _n_normalized_expr = tox_count("normalized_expr", (double) n_replicates * (double) n_genes);
+    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, _n_normalized_expr)); _nprot++;
     { SEXP _dim_normalized_expr = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_normalized_expr)[0] = n_replicates; INTEGER(_dim_normalized_expr)[1] = n_genes; Rf_setAttrib(normalized_expr, R_DimSymbol, _dim_normalized_expr); UNPROTECT(1); }
-    SEXP rank_means = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_rank_means = tox_count("rank_means", (double) n_genes);
+    SEXP rank_means = PROTECT(Rf_allocVector(REALSXP, _n_rank_means)); _nprot++;
     int ierr = 0;
 
     quantile_normalization_c(
@@ -194,7 +199,8 @@ SEXP log2_transformation_call(SEXP expr) {
     int n_tissues = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
 
     // outputs and work space
-    SEXP transformed_expr = PROTECT(Rf_allocVector(REALSXP, n_tissues * n_genes)); _nprot++;
+    R_xlen_t _n_transformed_expr = tox_count("transformed_expr", (double) n_tissues * (double) n_genes);
+    SEXP transformed_expr = PROTECT(Rf_allocVector(REALSXP, _n_transformed_expr)); _nprot++;
     { SEXP _dim_transformed_expr = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_transformed_expr)[0] = n_tissues; INTEGER(_dim_transformed_expr)[1] = n_genes; Rf_setAttrib(transformed_expr, R_DimSymbol, _dim_transformed_expr); UNPROTECT(1); }
     int ierr = 0;
 
@@ -228,7 +234,8 @@ SEXP calc_tiss_avg_call(SEXP reps_per_tissue, SEXP expr) {
     const int* _c_reps_per_tissue = tox_int_in(reps_per_tissue, "reps_per_tissue");
 
     // outputs and work space
-    SEXP tissue_averages = PROTECT(Rf_allocVector(REALSXP, n_tissues * n_genes)); _nprot++;
+    R_xlen_t _n_tissue_averages = tox_count("tissue_averages", (double) n_tissues * (double) n_genes);
+    SEXP tissue_averages = PROTECT(Rf_allocVector(REALSXP, _n_tissue_averages)); _nprot++;
     { SEXP _dim_tissue_averages = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_tissue_averages)[0] = n_tissues; INTEGER(_dim_tissue_averages)[1] = n_genes; Rf_setAttrib(tissue_averages, R_DimSymbol, _dim_tissue_averages); UNPROTECT(1); }
     int ierr = 0;
 
@@ -265,7 +272,8 @@ SEXP calc_fchange_call(SEXP control_tissues, SEXP condition_tissues, SEXP expr) 
     const int* _c_condition_tissues = tox_int_in(condition_tissues, "condition_tissues");
 
     // outputs and work space
-    SEXP fold_changes = PROTECT(Rf_allocVector(REALSXP, n_pairs * n_genes)); _nprot++;
+    R_xlen_t _n_fold_changes = tox_count("fold_changes", (double) n_pairs * (double) n_genes);
+    SEXP fold_changes = PROTECT(Rf_allocVector(REALSXP, _n_fold_changes)); _nprot++;
     { SEXP _dim_fold_changes = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_fold_changes)[0] = n_pairs; INTEGER(_dim_fold_changes)[1] = n_genes; Rf_setAttrib(fold_changes, R_DimSymbol, _dim_fold_changes); UNPROTECT(1); }
     int ierr = 0;
 

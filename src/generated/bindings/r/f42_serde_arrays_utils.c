@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void get_array_metadata_c(const char*, const int*, int*, const int*, int*, int*, int*);
@@ -20,7 +20,8 @@ SEXP get_array_metadata_call(SEXP filename, SEXP dims_out_capacity) {
     char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
-    SEXP dims_out = PROTECT(Rf_allocVector(INTSXP, _v_dims_out_capacity)); _nprot++;
+    R_xlen_t _n_dims_out = tox_count("dims_out", (double) _v_dims_out_capacity);
+    SEXP dims_out = PROTECT(Rf_allocVector(INTSXP, _n_dims_out)); _nprot++;
     int ndims = 0;
     int type_code = 0;
     int ierr = 0;

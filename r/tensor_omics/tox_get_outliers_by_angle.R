@@ -53,6 +53,7 @@ compute_family_direction <- function(n_families, expression_vectors, gene_to_fam
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
@@ -155,6 +156,7 @@ compute_family_direction_rap <- function(n_families, signed_angles, gene_to_fam,
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_fam) != length(signed_angles))
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'signed_angles' implies n_genes == ", length(signed_angles), "n_genes")
 
@@ -389,6 +391,7 @@ detect_angle_outliers <- function(n_families, expression_vectors, gene_to_fam, q
     quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
@@ -475,6 +478,7 @@ detect_angle_outliers_rap <- function(n_families, signed_angles, gene_to_fam, qu
     quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
     min_angular_dispersion <- .tox_as_double_scalar(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion <- .tox_as_double_scalar(max_angular_dispersion, "max_angular_dispersion")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_fam) != length(signed_angles))
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'signed_angles' implies n_genes == ", length(signed_angles), "n_genes")
 

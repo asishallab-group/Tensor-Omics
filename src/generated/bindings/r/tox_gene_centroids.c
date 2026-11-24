@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void mean_vector_c(const double*, const int*, const int*, const unsigned char*, const int*, double*, int*);
@@ -21,7 +21,8 @@ SEXP mean_vector_call(SEXP expression_vectors, SEXP genes_selection_mask) {
     unsigned char* _c_genes_selection_mask = tox_bool_in(genes_selection_mask, "genes_selection_mask");
 
     // outputs and work space
-    SEXP centroid = PROTECT(Rf_allocVector(REALSXP, n_axes)); _nprot++;
+    R_xlen_t _n_centroid = tox_count("centroid", (double) n_axes);
+    SEXP centroid = PROTECT(Rf_allocVector(REALSXP, _n_centroid)); _nprot++;
     int ierr = 0;
 
     mean_vector_c(
@@ -59,7 +60,8 @@ SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family,
     unsigned char* _c_ortholog_set = tox_bool_in(ortholog_set, "ortholog_set");
 
     // outputs and work space
-    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, n_axes * _v_n_families)); _nprot++;
+    R_xlen_t _n_centroid_matrix = tox_count("centroid_matrix", (double) n_axes * (double) _v_n_families);
+    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, _n_centroid_matrix)); _nprot++;
     { SEXP _dim_centroid_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_centroid_matrix)[0] = n_axes; INTEGER(_dim_centroid_matrix)[1] = _v_n_families; Rf_setAttrib(centroid_matrix, R_DimSymbol, _dim_centroid_matrix); UNPROTECT(1); }
     int ierr = 0;
 
@@ -98,7 +100,8 @@ SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP 
     const int* _c_gene_to_family = tox_int_in(gene_to_family, "gene_to_family");
 
     // outputs and work space
-    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, n_axes * _v_n_families)); _nprot++;
+    R_xlen_t _n_centroid_matrix = tox_count("centroid_matrix", (double) n_axes * (double) _v_n_families);
+    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, _n_centroid_matrix)); _nprot++;
     { SEXP _dim_centroid_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_centroid_matrix)[0] = n_axes; INTEGER(_dim_centroid_matrix)[1] = _v_n_families; Rf_setAttrib(centroid_matrix, R_DimSymbol, _dim_centroid_matrix); UNPROTECT(1); }
     int ierr = 0;
 

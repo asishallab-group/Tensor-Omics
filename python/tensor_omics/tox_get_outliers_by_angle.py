@@ -314,6 +314,9 @@ def compute_family_direction(
     min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
+
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
@@ -528,6 +531,9 @@ def compute_family_direction_rap(
     gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
     min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
 
     # what the inputs already say, rather than asking for it again
     n_genes = signed_angles.shape[0]
@@ -997,6 +1003,9 @@ def detect_angle_outliers(
     min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
+
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
@@ -1170,6 +1179,9 @@ def detect_angle_outliers_rap(
     quantile_level = _contract.real(quantile_level, "quantile_level")
     min_angular_dispersion = _contract.real(min_angular_dispersion, "min_angular_dispersion")
     max_angular_dispersion = _contract.real(max_angular_dispersion, "max_angular_dispersion")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_families, "n_families")
 
     # what the inputs already say, rather than asking for it again
     n_genes = signed_angles.shape[0]

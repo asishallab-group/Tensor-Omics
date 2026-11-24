@@ -779,7 +779,7 @@
     "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
     "body": [
       "from tensor_omics.tox_paralog_analysis import (",
-      "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_work_arr_paralog_subsets_size|},",
+      "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_paralog_subsets_bitmasks_size|},",
       ")"
     ]
   },
@@ -802,7 +802,7 @@
       "${1:result} = detect_dosage_effect(",
       "    ancestor=${2:ancestor},",
       "    genes=${3:genes},",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask},",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask},",
       "    max_subset_size=${5:max_subset_size},",
       "    max_angle=${6:3.141592653589793},",
       "    gain_gamma=${7:0.1},",
@@ -816,7 +816,7 @@
       "${1:result} = detect_subfunctionalization(",
       "    ancestor=${2:ancestor},",
       "    genes=${3:genes},",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask},",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask},",
       "    max_subset_size=${5:max_subset_size},",
       "    rdi_threshold=${6:rdi_threshold},",
       "    paralog_norms=${7:paralog_norms},",
@@ -850,14 +850,14 @@
       ")"
     ]
   },
-  "calc_work_arr_paralog_subsets_size (call)": {
-    "prefix": "tox:calc_work_arr_paralog_subsets_size",
+  "calc_paralog_subsets_bitmasks_size (call)": {
+    "prefix": "tox:calc_paralog_subsets_bitmasks_size",
     "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
     "body": [
-      "${1:result} = calc_work_arr_paralog_subsets_size(",
+      "${1:result} = calc_paralog_subsets_bitmasks_size(",
       "    max_subset_size=${2:max_subset_size},",
       "    n_genes=${3:n_genes},",
-      "    filtered_paralogs_mask=${4:filtered_paralogs_mask},",
+      "    filtered_paralogs_bitmask=${4:filtered_paralogs_bitmask},",
       ")"
     ]
   },

@@ -286,7 +286,7 @@ def _links(binding: CBinding, synthesis: SynthesisResult | None) -> LinkResolver
 
 def _r_files(binding: CBinding, catalogue, paths: Paths,
              synthesis: SynthesisResult | None = None) -> list[GeneratedFile]:
-    emitter = CCallEmitter()
+    emitter = CCallEmitter(catalogue=catalogue)
     wrapper = RWrapperEmitter(
         links=_links(binding, synthesis),
         tiers=build_tiers(binding, synthesis.specs if synthesis else ()),

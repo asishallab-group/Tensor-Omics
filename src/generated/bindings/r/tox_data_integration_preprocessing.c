@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_gene_means_c(const int*, const int*, const double*, double*, int*);
@@ -20,7 +20,8 @@ SEXP compute_gene_means_call(SEXP expr) {
     int n_reps = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
 
     // outputs and work space
-    SEXP means = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_means = tox_count("means", (double) n_genes);
+    SEXP means = PROTECT(Rf_allocVector(REALSXP, _n_means)); _nprot++;
     int ierr = 0;
 
     compute_gene_means_c(
@@ -49,7 +50,8 @@ SEXP compute_residuals_call(SEXP expr, SEXP means) {
     int n_reps = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
 
     // outputs and work space
-    SEXP resid = PROTECT(Rf_allocVector(REALSXP, n_reps * n_genes)); _nprot++;
+    R_xlen_t _n_resid = tox_count("resid", (double) n_reps * (double) n_genes);
+    SEXP resid = PROTECT(Rf_allocVector(REALSXP, _n_resid)); _nprot++;
     { SEXP _dim_resid = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_resid)[0] = n_reps; INTEGER(_dim_resid)[1] = n_genes; Rf_setAttrib(resid, R_DimSymbol, _dim_resid); UNPROTECT(1); }
     int ierr = 0;
 
@@ -83,7 +85,8 @@ SEXP pool_means_call(SEXP pooled_means, SEXP n_points) {
 
     // outputs and work space
     int n_pool = 0;
-    SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _v_n_points)); _nprot++;
+    R_xlen_t _n_x_star = tox_count("x_star", (double) _v_n_points);
+    SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _n_x_star)); _nprot++;
     int ierr = 0;
 
     pool_means_c(
@@ -121,7 +124,8 @@ SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_po
 
     // outputs and work space
     int n_pool = 0;
-    SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _v_n_points)); _nprot++;
+    R_xlen_t _n_x_star = tox_count("x_star", (double) _v_n_points);
+    SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _n_x_star)); _nprot++;
     int ierr = 0;
 
     pool_means_expert_c(
@@ -158,7 +162,8 @@ SEXP pool_study_means_call(SEXP mean_S1, SEXP mean_S2, SEXP n_points) {
 
     // outputs and work space
     int n_pool = 0;
-    SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _v_n_points)); _nprot++;
+    R_xlen_t _n_x_star = tox_count("x_star", (double) _v_n_points);
+    SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _n_x_star)); _nprot++;
     int ierr = 0;
 
     pool_study_means_c(
@@ -196,9 +201,11 @@ SEXP construct_neighborhoods_call(SEXP x_star, SEXP mean_S, SEXP resid_S, SEXP n
     int _v_n_neighbors = Rf_asInteger(n_neighbors);
 
     // outputs and work space
-    SEXP neighborhood_residuals = PROTECT(Rf_allocVector(REALSXP, n_reps_S * _v_n_neighbors * n_points)); _nprot++;
+    R_xlen_t _n_neighborhood_residuals = tox_count("neighborhood_residuals", (double) n_reps_S * (double) _v_n_neighbors * (double) n_points);
+    SEXP neighborhood_residuals = PROTECT(Rf_allocVector(REALSXP, _n_neighborhood_residuals)); _nprot++;
     { SEXP _dim_neighborhood_residuals = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_neighborhood_residuals)[0] = n_reps_S; INTEGER(_dim_neighborhood_residuals)[1] = _v_n_neighbors; INTEGER(_dim_neighborhood_residuals)[2] = n_points; Rf_setAttrib(neighborhood_residuals, R_DimSymbol, _dim_neighborhood_residuals); UNPROTECT(1); }
-    SEXP neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, _v_n_neighbors * n_points)); _nprot++;
+    R_xlen_t _n_neighborhood_indices = tox_count("neighborhood_indices", (double) _v_n_neighbors * (double) n_points);
+    SEXP neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, _n_neighborhood_indices)); _nprot++;
     { SEXP _dim_neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_neighborhood_indices)[0] = _v_n_neighbors; INTEGER(_dim_neighborhood_indices)[1] = n_points; Rf_setAttrib(neighborhood_indices, R_DimSymbol, _dim_neighborhood_indices); UNPROTECT(1); }
     int ierr = 0;
 

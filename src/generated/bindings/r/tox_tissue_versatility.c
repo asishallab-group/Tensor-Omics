@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_tissue_versatility_c(const int*, const int*, const double*, const unsigned char*, const int*, const unsigned char*, const int*, double*, double*, int*);
@@ -21,8 +21,10 @@ SEXP compute_tissue_versatility_call(SEXP expression_vectors, SEXP vectors_selec
     unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask, "axes_selection_mask");
 
     // outputs and work space
-    SEXP tissue_versatilities = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors)); _nprot++;
-    SEXP tissue_angles_deg = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors)); _nprot++;
+    R_xlen_t _n_tissue_versatilities = tox_count("tissue_versatilities", (double) n_selected_vectors);
+    SEXP tissue_versatilities = PROTECT(Rf_allocVector(REALSXP, _n_tissue_versatilities)); _nprot++;
+    R_xlen_t _n_tissue_angles_deg = tox_count("tissue_angles_deg", (double) n_selected_vectors);
+    SEXP tissue_angles_deg = PROTECT(Rf_allocVector(REALSXP, _n_tissue_angles_deg)); _nprot++;
     int ierr = 0;
 
     compute_tissue_versatility_c(

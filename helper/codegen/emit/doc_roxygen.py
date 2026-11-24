@@ -98,8 +98,8 @@ def _param_lines(argument: CArgument, resolver=None) -> list[str]:
     """The `@param` text, as the line the tag opens with plus any continuation lines.
 
     An argument's description is often several source lines; taking only the first silently
-    dropped the rest, which is how "use `mask_chunk_count` for calculation" stopped reaching
-    an R reader.
+    dropped the rest, which is how a pointer to the routine that computes a value ("use
+    `<producer>` for calculation") stopped reaching an R reader.
     """
     type_ = r_type_of(argument)
     lines = _prose_lines(argument.doc, resolver, argument.mode_default)

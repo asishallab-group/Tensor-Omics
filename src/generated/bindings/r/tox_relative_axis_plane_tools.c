@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void omics_vector_RAP_projection_c(const double*, const int*, const int*, const unsigned char*, const int*, const unsigned char*, const int*, double*, int*);
@@ -27,7 +27,8 @@ SEXP omics_vector_RAP_projection_call(SEXP vecs, SEXP vecs_selection_mask, SEXP 
     unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask, "axes_selection_mask");
 
     // outputs and work space
-    SEXP projections = PROTECT(Rf_allocVector(REALSXP, n_selected_axes * n_selected_vecs)); _nprot++;
+    R_xlen_t _n_projections = tox_count("projections", (double) n_selected_axes * (double) n_selected_vecs);
+    SEXP projections = PROTECT(Rf_allocVector(REALSXP, _n_projections)); _nprot++;
     { SEXP _dim_projections = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_projections)[0] = n_selected_axes; INTEGER(_dim_projections)[1] = n_selected_vecs; Rf_setAttrib(projections, R_DimSymbol, _dim_projections); UNPROTECT(1); }
     int ierr = 0;
 
@@ -67,7 +68,8 @@ SEXP omics_field_RAP_projection_call(SEXP fields, SEXP fields_selection_mask, SE
     unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask, "axes_selection_mask");
 
     // outputs and work space
-    SEXP projections = PROTECT(Rf_allocVector(REALSXP, n_selected_axes * n_selected_fields)); _nprot++;
+    R_xlen_t _n_projections = tox_count("projections", (double) n_selected_axes * (double) n_selected_fields);
+    SEXP projections = PROTECT(Rf_allocVector(REALSXP, _n_projections)); _nprot++;
     { SEXP _dim_projections = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_projections)[0] = n_selected_axes; INTEGER(_dim_projections)[1] = n_selected_fields; Rf_setAttrib(projections, R_DimSymbol, _dim_projections); UNPROTECT(1); }
     int ierr = 0;
 
@@ -134,7 +136,8 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP fields, SEXP fields_selection
     unsigned char* _c_fields_selection_mask = tox_bool_in(fields_selection_mask, "fields_selection_mask");
 
     // outputs and work space
-    SEXP signed_angles = PROTECT(Rf_allocVector(REALSXP, n_selected_fields)); _nprot++;
+    R_xlen_t _n_signed_angles = tox_count("signed_angles", (double) n_selected_fields);
+    SEXP signed_angles = PROTECT(Rf_allocVector(REALSXP, _n_signed_angles)); _nprot++;
     int ierr = 0;
 
     clock_hand_angles_for_shift_vectors_c(
@@ -165,7 +168,8 @@ SEXP compute_relative_axis_contributions_call(SEXP vec) {
     int n_axes = (int) Rf_length(vec);
 
     // outputs and work space
-    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, n_axes)); _nprot++;
+    R_xlen_t _n_contributions = tox_count("contributions", (double) n_axes);
+    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, _n_contributions)); _nprot++;
     int ierr = 0;
 
     compute_relative_axis_contributions_c(
@@ -192,7 +196,8 @@ SEXP relative_axes_changes_from_shift_vector_call(SEXP vec) {
     int n_axes = (int) Rf_length(vec);
 
     // outputs and work space
-    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, n_axes)); _nprot++;
+    R_xlen_t _n_contributions = tox_count("contributions", (double) n_axes);
+    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, _n_contributions)); _nprot++;
     int ierr = 0;
 
     relative_axes_changes_from_shift_vector_c(
@@ -219,7 +224,8 @@ SEXP relative_axes_expression_from_expression_vector_call(SEXP vec) {
     int n_axes = (int) Rf_length(vec);
 
     // outputs and work space
-    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, n_axes)); _nprot++;
+    R_xlen_t _n_contributions = tox_count("contributions", (double) n_axes);
+    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, _n_contributions)); _nprot++;
     int ierr = 0;
 
     relative_axes_expression_from_expression_vector_c(

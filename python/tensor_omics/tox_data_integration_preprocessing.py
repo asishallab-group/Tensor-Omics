@@ -291,6 +291,9 @@ def pool_means(
     pooled_means = _contract.reals(pooled_means, "pooled_means", ndim=1)
     n_points = _contract.integer(n_points, "n_points")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_points, "n_points")
+
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
 
@@ -369,6 +372,9 @@ def pool_means_expert(
     pooled_means = _contract.reals(pooled_means, "pooled_means", ndim=1)
     pooled_means_perm = _contract.integers(pooled_means_perm, "pooled_means_perm", ndim=1)
     n_points = _contract.integer(n_points, "n_points")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
@@ -451,6 +457,9 @@ def pool_study_means(
     mean_S1 = _contract.reals(mean_S1, "mean_S1", ndim=1)
     mean_S2 = _contract.reals(mean_S2, "mean_S2", ndim=1)
     n_points = _contract.integer(n_points, "n_points")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S1 = mean_S1.shape[0]
@@ -539,6 +548,9 @@ def construct_neighborhoods(
     mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
     resid_S = _contract.reals(resid_S, "resid_S", ndim=2, order="F")
     n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_neighbors, "n_neighbors")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h f7ca108707d9ae14 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void euclidean_distance_c(const double*, const double*, const int*, double*, int*);
@@ -48,7 +48,8 @@ SEXP distance_to_centroid_call(SEXP genes, SEXP centroids, SEXP gene_to_fam) {
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
-    SEXP distances = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
+    R_xlen_t _n_distances = tox_count("distances", (double) n_genes);
+    SEXP distances = PROTECT(Rf_allocVector(REALSXP, _n_distances)); _nprot++;
     int ierr = 0;
 
     distance_to_centroid_c(
