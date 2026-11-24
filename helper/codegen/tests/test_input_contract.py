@@ -130,7 +130,8 @@ class TestTheShimChecksTheElements:
                     if base is BaseType.LOGICAL and argument.is_array:
                         helper = "tox_bool_in"
                     elif base is BaseType.INTEGER and argument.is_array:
-                        helper = "tox_int_in"
+                        # bit-mask words are checked too, all but the NA that is a word
+                        helper = "tox_words_in" if roles and roles.is_bitmask else "tox_int_in"
                     elif base is BaseType.CHARACTER:
                         helper = "tox_char_in"
                     else:
@@ -591,3 +592,66 @@ class TestTheEngine:
         assert c.mode("ward  ", "x", ("ward", "single")) == b"ward"
         refuses(lambda: c.mode(" ward", "x", ("ward", "single")), "not ' ward'")
         refuses(lambda: c.mode("wardx", "x", ("ward", "single")), "one of 'ward', 'single', not 'wardx'")
+
+
+# -- a size the caller passes (#215) -------------------------------------------------------------
+
+def sized_by_the_caller():
+    """`centroid_matrix(n_axes, n_families)`: n_axes is read off the input, n_families is not."""
+    return wrapper_of(b.procedure(
+        "p",
+        b.real("expression", Intent.IN, "(n_axes, n_genes)", doc="the data"),
+        b.integer("n_axes", Intent.IN, doc="rows"),
+        b.integer("n_genes", Intent.IN, doc="columns"),
+        b.integer("labels", Intent.IN, "(n_genes)", doc="a label per gene"),
+        b.integer("n_families", Intent.IN, doc="how many families"),
+        b.real("centroid_matrix", Intent.OUT, "(n_axes, n_families)", doc="the result"),
+        b.ierr(),
+    ))
+
+
+class TestANegativeCallerSizeIsRefusedFirst:
+    def test_python_checks_it_after_the_contract_and_before_shapes_and_allocation(self):
+        text = PythonEmitter().function(sized_by_the_caller())
+        check = f'{names.PYTHON_CONTRACT}.extent(n_families, "n_families")'
+        assert text.count(check) == 1
+        assert "extent(n_axes" not in text and "extent(n_genes" not in text
+        assert (text.index('integer(n_families, "n_families")') < text.index(check)
+                < text.index("if labels.shape[0] != n_genes") < text.index("np.empty"))
+
+    def test_r_checks_it_after_the_contract_and_before_shapes_and_the_call(self):
+        text = RWrapperEmitter().function(sized_by_the_caller())
+        check = '.tox_check_extent(n_families, "n_families")'
+        assert text.count(check) == 1
+        assert "tox_check_extent(n_axes" not in text
+        assert (text.index('.tox_as_integer_scalar(n_families, "n_families")') < text.index(check)
+                < text.index("if (length(labels)") < text.index(".Call("))
+
+    def test_both_refuse_with_the_one_message(self, contract):
+        c, np = contract
+        with pytest.raises(ValueError) as raised:
+            c.extent(-1, "n_families")
+        assert str(raised.value) == "'n_families' is a size and must not be negative, but it is -1"
+        assert raised.value.code is None and raised.value.argument == "n_families"
+        assert c.extent(0, "n_families") is None, "zero is the library's to check"
+        validators = RWrapperEmitter().validators()
+        assert ('sprintf("\'%s\' is a size and must not be negative, but it is %d", name, x), '
+                '"tox_type_error", name)') in validators
+
+    def test_every_size_both_check_is_one_the_caller_passes(self, real_binding):
+        # the predicate is the bindings' own: never an argument they derive or compute
+        from codegen.abi.extents import caller_passed_extents
+
+        python, r = PythonEmitter(), RWrapperEmitter()
+        found = {}
+        for module in real_binding:
+            for wrapper in module:
+                checked = caller_passed_extents(wrapper)
+                for argument in checked:
+                    assert argument in python._inputs(wrapper), (wrapper.name, argument.name)
+                    assert argument in r._inputs(wrapper), (wrapper.name, argument.name)
+                found[wrapper.stripped_name] = [argument.name for argument in checked]
+        assert found["group_centroid_all"] == ["n_families"]
+        assert found["read_gene_ids_from_tsv_file"] == ["gene_ids_strlen", "n_gene_ids_elements"]
+        # sized by what a producer computes, and by what the inputs say
+        assert found["detect_dosage_effect"] == [] and found["linkage_clustering"] == []

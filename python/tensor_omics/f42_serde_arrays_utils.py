@@ -90,6 +90,9 @@ def get_array_metadata(
     filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
     dims_out_capacity = _contract.integer(dims_out_capacity, "dims_out_capacity")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(dims_out_capacity, "dims_out_capacity")
+
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
 

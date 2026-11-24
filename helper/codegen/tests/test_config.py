@@ -83,3 +83,29 @@ def test_src_dir_is_injectable_so_tests_can_parse_fixtures():
     paths = Paths(root=Path("/repo"), src_dir=Path("fixtures"))
 
     assert paths.resolve(paths.src_dir) == Path("/repo/fixtures")
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("bitmask", True),
+        ("bitmasks", True),
+        ("family_bitmasks", True),
+        ("filtered_paralogs_bitmask", True),
+        ("Source_BitMask", True),
+        # the word must stand alone or follow an underscore
+        ("tmp_bitmasker", False),
+        ("nobitmask", False),
+        # the selection-mask suffixes are another role
+        ("genes_mask", False),
+        ("bit_mask", False),
+    ],
+)
+def test_is_bitmask_name(name, expected):
+    assert CONVENTIONS.is_bitmask_name(name) is expected
+
+
+@pytest.mark.parametrize("name", ["bitmask", "family_bitmasks", "filtered_paralogs_bitmask"])
+def test_a_bitmask_is_never_a_selection_mask(name):
+    # `_bitmask` does not end in `_mask`, so `n_selected_<x>` can never count one
+    assert CONVENTIONS.mask_arg_name_of(name) is None

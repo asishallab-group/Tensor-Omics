@@ -306,9 +306,11 @@ def test_contributions_keep_the_axis_order():
 
 
 def test_contributions_reject_a_zero_vector():
+    # the implementation's own runtime error, at its own position 1, which the wrapper
+    # translates into its own list: `vec`, not "not argument related"
     for procedure in CONTRIBUTION_PROCEDURES:
         assert_error(lambda: procedure(np.zeros(3)), f"{procedure.__name__}: nothing to apportion",
-                     ERR_DIVISION_BY_ZERO)
+                     ERR_DIVISION_BY_ZERO, argument="vec")
 
 
 def test_contributions_reject_non_finite_values():

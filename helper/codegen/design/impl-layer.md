@@ -162,7 +162,7 @@ asked in a visited set: a chain that comes back to one of them is not proven pur
 instead of recursing until Python gives up. Without that, every consumer of a generated
 producer was silently impure.
 Nothing else needs checking — every validator in `tox_errors`, `set_ok`, `is_err`,
-`clear_err_arg_pos`, `set_err`, `set_err_once`, `init_perm` and all four
+`get_err_arg_pos`, `set_err_arg_pos`, `clear_err_arg_pos`, `set_err`, `set_err_once`, `init_perm` and all four
 `sort_array_heapsort` specifics are `pure` or `elemental` already, and `allocate(..., stat=)`
 is permitted in a pure procedure, so the allocating tier is as eligible as the expert one.
 
@@ -418,7 +418,7 @@ whose LOESS wrappers call a producer generated into their own module. What a cal
 only as FES approved: the C symbol and its argument list, and the top-level Python and R name and
 parameters, are as they were; the Fortran entry point moved to `tox_loess` and gained the
 trailing `ierr`; and `tensor_omics.tox_loess_impl`, which held only this routine, is gone (the
-function is in `tensor_omics.tox_loess`). `calc_work_arr_paralog_subsets_size` converts in its
+function is in `tensor_omics.tox_loess`). `calc_work_arr_paralog_subsets_size` (now `calc_paralog_subsets_bitmasks_size`) converts in its
 own branch (#207), not here.
 
 ### f42_kd_tree: the hand-written triple the layer was designed for
@@ -557,52 +557,87 @@ and `DM_OUTPUT_FROM(size_arg, recommend_proc, tox_X_impl, AUTO)`.
 ### The argument position an `ierr` carries
 
 An `ierr` packs the position of the argument it blames (`arg_pos * 10000 + code`). An
-implementation may report a genuine runtime error, and when it does the generated wrapper
-**clears that position** before returning — `call clear_err_arg_pos(ierr)` after every
-implementation call that takes an `ierr`, and after every prologue call. The code survives; the
-position does not.
+implementation may report a genuine runtime error, and a prologue or a `DM_OUTPUT_FROM` producer
+may fail too. **A position any of them returns numbers its own dummy list, and the generated
+wrapper translates it into the dummy list of the wrapper being emitted** -- one block, from one
+emitter helper (`_error_return`), after every implementation, prologue and producer call that
+takes `ierr`:
 
-The position is the *implementation's* numbering, and the wrapper's dummy list is a different
-list: it drops work arrays, permutations and recommend-sized values, appends `ierr` last, and
-a mode-split wrapper drops the mode argument too. Worse, a position propagates unchanged
-through every call that does not rewrite it, so what arrives is often not even the
-implementation's own numbering but that of some private helper three frames down —
-`compute_family_scaling_impl` returns `calc_quantile`'s positions 1–3, which in *its*
-signature are `n_genes`, `n_families` and `distances`. Reporting any of that to a caller is
-worse than saying nothing, and "not argument related" is what position 0 means.
+```fortran
+if (is_err(ierr)) then
+    select case (get_err_arg_pos(ierr))
+    case (1_int32:2_int32)                ! positions that are the same here; only if any
+        ! the same position here
+    case (7_int32)                        ! one per moved position
+        call set_err_arg_pos(ierr, 3_int32)
+    case default                          ! everything that names nothing the caller wrote
+        call clear_err_arg_pos(ierr)
+    end select
+    return
+end if
+```
 
-This is safe because `ierr` is provably OK at the moment of the call: validation ends with
-`if (is_err(ierr)) return`, and so do the prologue and recommend calls. Nothing the clear
-discards can be a position the wrapper itself set. **A change that lets validation fall through
-without returning would break that, and silently.**
+- **Implementation and prologue:** callee position k maps to m exactly when the *actual* passed
+  to the callee's dummy k, as the call is built, is dummy m of the wrapper being emitted. For
+  `foo` that is `foo`'s own list, not `foo_expert`'s, whose work arrays and recommend-sized
+  values are `foo`'s locals; numbered by the expert list, a position past a dropped work array
+  would name another of `foo`'s arguments, silently. Keyed on the actual, not on the name: a fixed mode is passed its
+  parameter, a prepared work array a local, and neither maps.
+- **Producer:** k maps to m exactly when the producer's input table supplies dummy k from the
+  wrapper's dummy m (#237's `_producer_positions`, unchanged; only the emission is shared). Keyed
+  on the table, so an optional input resolved into a local still maps to the optional.
+- **`ierr` and `handled` never map.** Everything else lands in `case default`, 0, "not argument
+  related": a work array or permutation the wrapper prepared, a recommend-sized or
+  prologue-produced local, a mode fixed to its parameter, an argument another mode takes, a
+  position outside the callee's list.
+- A run of unchanged positions is one range (`case (1_int32:32_int32)`), so an expert tier's
+  identity mapping is one line. Where nothing maps or stays, the block is just
+  `call clear_err_arg_pos(ierr)` and `return`.
+- `set_err_arg_pos` (keeps the code, sets the position) is imported only where a position moves,
+  `get_err_arg_pos` only where one maps at all (`_position_imports`, from the same
+  `_error_returns` the emission walks).
+- The `is_err` guard is the same one a producer and a prologue need anyway, so all three call
+  sites share one shape. It costs one `mod`, the `select` only runs on an error, and an OK
+  `ierr` is left exactly as the callee returned it.
 
-The cost is real but small: six positions that are correct in the implementations today become
-0. Three are already unreachable from Python and R, because the C wrapper converts the mode
-*string* and rejects an unknown one before Fortran is entered; only a direct Fortran caller
-ever saw them.
+**Only inputs the caller provides carry a position (FES 2026-11-17).** An output, a `tmp_` work array
+or a recommend-sized value is not something a Python or R caller passed: an implementation that
+blamed one would reach them as a Fortran name they never typed (the expert tier's `tmp_head`, an
+output `y`). An error about one of those is internal and carries no position. Nothing on main
+blames one.
 
-**Rejected — remapping the implementation's position onto the wrapper's by name.** This is what
-the hand-written per-mode wrappers did, in runs of a dozen `map_err_arg_pos` calls apiece. It
-assumes the packed position refers to the callee's own dummy, which is false wherever the
-position propagated in from a helper — the majority of sites.
+**The author's half (FES's rule).** "Whether it comes from the impl or an underlying helper is the
+developer's concern, so the wrapper should map the argument positions that changed positions." A
+position propagates unchanged through every call that does not rewrite it, so one a helper set
+numbers *the helper's* list. Making the returned position the implementation's own is the
+implementation author's job, **at each call site, before positions from different helpers
+merge**: `map_err_arg_pos` / `set_err_arg_pos` where the helper's argument is one of the
+implementation's own, `clear_err_arg_pos` where it is not. Translating once at the end cannot
+work as soon as two helpers share a raw number. `detect_patterns_impl` is the case on record:
+its subset helpers' 3 meant `n_subsets` from three of them and `sorted_src_arr_perm` from a
+fourth, and their range checks on counts the algorithm maintains carried positions into a list
+where 2, 3 and 4 are `genes`, `n_genes` and `n_dims`. Those checks now carry no position, and
+`detect_patterns_impl` clears what both helper calls return. On main no other wrapped
+implementation returns a position that is not its own: the three relative-axis
+implementations return `compute_relative_axis_contributions_impl`'s 1, `vec`, which is the same
+argument in all three, so `compute_relative_axis_contributions(np.zeros(3))` now names `vec` in
+Python and R.
 
-**Rejected — keeping the position when the leading arguments coincide.** `detect_dosage_effect`'s
-first four arguments *are* the implementation's first four, so a helper-borrowed 3 or 4 would
-survive looking perfectly plausible as `n_genes` or `n_dims`. There is no prefix a generator
-can trust.
+This relies on `ierr` being OK at the moment of each call: validation ends with
+`if (is_err(ierr)) return`, and so do the producer and prologue calls. Nothing the block rewrites
+can be a position the wrapper itself set. **A change that lets validation fall through without
+returning would break that, and silently.**
 
-**Rejected — just deleting `arg_pos=` from the implementations.** It cannot reach a position
-that propagates in from f42, which is exactly the `compute_family_scaling_impl` case above.
-The implementations keep their annotations: they are correct for anyone calling one directly,
-and the test suite does.
+**Rejected — clearing every position the implementation returns.** What the wrapper did until
+this rule: `call clear_err_arg_pos(ierr)` after every implementation and prologue call, on the
+grounds that a position may come from a helper and name anything. Safe, but it threw away correct
+positions -- the relative-axis wrappers' `vec` -- and remapping by name was rejected for the same
+reason. The rule above makes a helper's position the author's job instead, so the wrapper can
+trust what it is handed.
 
-Two of the six are recovered rather than lost: a mode argument the wrapper still takes is now
-checked against the values its own table names (see below), which puts the position back — the
-wrapper's own this time, not the implementation's.
-
-`map_err_arg_pos` stays for hand-written code where the two dummy lists really are known to
-correspond. The recommend-routine call site would need the same clear, but no recommend routine
-reachable from generated code takes an `ierr` today, so nothing is emitted there.
+**Rejected — `map_err_arg_pos` per moved position.** It compares the position again inside a
+`select case` that has already matched it; `set_err_arg_pos` only sets. `map_err_arg_pos` stays
+for hand-written code, the author's tool for a helper's position.
 
 ### Mode membership
 
@@ -628,10 +663,10 @@ contiguous, and a hand-written range duplicates knowledge the generator already 
 stale the moment a mode is added, silently admitting the new value everywhere it was not updated.
 
 **Rejected — leaving it to the implementation.** Its own `case default` is what used to report
-this, and its `arg_pos` is in the implementation's numbering — which the wrapper now clears.
-The check has to be the wrapper's for the position to mean anything. A direct Fortran caller is
-the one this protects: the C layer already rejects an unknown mode *string* before Fortran is
-entered.
+this. But the implementation validates nothing, by the layer's first rule, and the wrapper is
+the one holding the table, so the check is the wrapper's, at the wrapper's own position. A direct
+Fortran caller is the one this protects: the C layer already rejects an unknown mode *string*
+before Fortran is entered.
 
 ### Validation ranges
 
@@ -676,8 +711,8 @@ the tolerance actually lives.
 **Rejected — `DM_VALIDATE`, a hook for an implementation's own validation helper.** The
 proposal was an argument-level directive letting the generated wrapper call a hand-written
 validation routine inside the implementation module, passing *the wrapper's* position for that
-argument — the one number the implementation cannot know, and the reason `clear_err_arg_pos`
-has to zero what it returns. It had exactly two customers, both the same check:
+argument — the one number the implementation cannot know, and the reason the wrapper has to
+translate what it returns. It had exactly two customers, both the same check:
 `clock_hand_angle_between_vectors` needed its three axis indices to be mutually distinct, a
 relation between an argument and itself that no per-argument bound can state.
 
@@ -798,9 +833,9 @@ What the consumer does with that:
   check after all of them reported the last producer's outcome and swallowed every earlier error.
 - **The position is translated, else cleared.** A producer input that one of `foo`'s dummies
   supplied, passed straight through, is mapped to that dummy's position
-  (`select case (get_err_arg_pos(ierr))` + `map_err_arg_pos`); anything else -- a constant, a
-  value `foo` computed -- is cleared (`clear_err_arg_pos`), as an implementation's own position
-  is. Passed through unchanged, `fx_work_total(x, 0)` (`tests/fixtures/impl/fx_sized_impl.F90`)
+  (`select case (get_err_arg_pos(ierr))` + `set_err_arg_pos`); anything else -- a constant, a
+  value `foo` computed -- is cleared (`clear_err_arg_pos`). The block is the one written after an
+  implementation's or a prologue's call too (see "The argument position an `ierr` carries"). Passed through unchanged, `fx_work_total(x, 0)` (`tests/fixtures/impl/fx_sized_impl.F90`)
   blamed `x` for a bad `scale`.
 - **Python and R do the same on their own call.** Where the value sizes a result, the binding
   calls the producer's binding itself, and re-raises its error through `_consumer_error` /
@@ -830,8 +865,8 @@ And what calling one directly takes:
   allocations and the implementation call, which come after every producer call, see it
   refined. `_check_refined_values` refuses the rest, naming the value, the refining producer
   and the other reader.
-- **Producers do not feed each other** (FES 2026-11-12, "Rejected -- chaining producers"
-  above stands). A producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
+- **Producers do not feed each other** ("Rejected -- chaining producers" above stands). A
+  producer input supplied by another AUTO `DM_OUTPUT_FROM` value of the
   consumer -- or by the value it computes itself -- is refused on either route
   (`roles._refuses_chaining`), with the recorded alternative as its note: size for an upper
   bound, or take the value as an argument of the caller's. So no producer call reads another's
@@ -991,8 +1026,10 @@ rule covers the module's helpers as well as its implementations — one that all
 itself but calls a helper that does gives its expert caller nothing.
 
 It is enforced on the **declaration**: a local declared `allocatable` is refused. The generator
-never reads a body, and an `M_ALLOCATE` needs an allocatable to allocate into, so the declaration
-is a complete proxy for this tree. (A `pointer` local that is `allocate`d would slip through. No
+checks this only on what Ford shows it: it never sees a `private` procedure, and in a module that
+defaults to `private` it sees no locals either. Keep the rule by hand where it cannot look. The
+generator never reads a body, and an `M_ALLOCATE` needs an allocatable to allocate into, so the
+declaration is a complete proxy for this tree. (A `pointer` local that is `allocate`d would slip through. No
 implementation does that, and the gap is cheaper than teaching the frontend to read statements.)
 Ford hides a procedure's own variables by default, so the frontend sets `proc_internals`.
 

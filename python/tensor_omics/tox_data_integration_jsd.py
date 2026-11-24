@@ -395,6 +395,9 @@ def build_residual_histograms(
     if neighbor_mask is not None:
         neighbor_mask = _contract.logicals(neighbor_mask, "neighbor_mask", ndim=2, order="F")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(n_bins, "n_bins")
+
     # what the inputs already say, rather than asking for it again
     n_reps = neighborhood_residuals.shape[0]
     n_neighbors = neighborhood_residuals.shape[1]
