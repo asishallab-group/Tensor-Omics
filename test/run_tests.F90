@@ -19,7 +19,7 @@ program main
     use mod_test_tox_gene_centroids, only: get_all_tests_tox_gene_centroids
     use mod_test_conversions, only: get_all_tests_conversions
     use mod_test_arrays, only: get_all_tests_arrays
-    use mod_test_paralog_analysis, only: get_all_tests_paralog_analysis
+    use mod_test_tox_paralog_analysis, only: get_all_tests_tox_paralog_analysis
     use mod_test_trajectory_contribution_analysis, only: get_all_tests_trajectory_contribution_analysis
     use mod_test_tox_trajectory_normalization, only: get_all_tests_tox_trajectory_normalization
     use mod_test_clustering, only: get_all_tests_clustering
@@ -51,7 +51,7 @@ program main
     call add_suite("shift_vectors", get_all_tests_shift_vectors)
     call add_suite("arrays", get_all_tests_arrays)
     call add_suite("tox_gene_centroids", get_all_tests_tox_gene_centroids)
-    call add_suite("paralog_analysis", get_all_tests_paralog_analysis)
+    call add_suite("tox_paralog_analysis", get_all_tests_tox_paralog_analysis)
     call add_suite("trajectory_contribution_analysis", get_all_tests_trajectory_contribution_analysis)
     call add_suite("tox_trajectory_normalization", get_all_tests_tox_trajectory_normalization)
     call add_suite("conversions", get_all_tests_conversions)
