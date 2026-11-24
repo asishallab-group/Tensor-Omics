@@ -348,8 +348,9 @@ contains
     !|   each exact (huge/2 is exact, and their sum rounds back to huge).
     !| And one difference past `huge`: expression huge, centroid -huge. The true shift 2*huge is
     !| not representable, so the intended result is +Inf, with `ierr` OK: the shift is neither
-    !| refused nor clamped. (The procedures that read the shift vectors refuse it with
-    !| ERR_NAN_INF.)
+    !| refused nor clamped. (The analysis procedures that take the field,
+    !| omics_field_RAP_projection and clock_hand_angles_for_shift_vectors, refuse it with
+    !| ERR_NAN_INF; validate_shift_vectors with ERR_INVALID_INPUT.)
     subroutine test_compute_shift_vector_field_extreme_magnitudes()
         integer(int32), parameter :: n_tissues = 4, n_genes = 1, n_families = 1
         real(real64), parameter :: HUGE_VALUE = huge(1.0_real64)
