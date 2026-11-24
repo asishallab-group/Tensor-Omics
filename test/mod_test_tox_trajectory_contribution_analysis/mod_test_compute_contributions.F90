@@ -8,6 +8,7 @@
 module mod_test_compute_contributions
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use tox_trajectory_contribution_analysis, only: compute_contributions
     use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_RAW, MODE_BASELINE_MIN, MODE_BASELINE_MEAN
     use tox_errors
@@ -24,7 +25,7 @@ contains
     function get_all_tests_compute_contributions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(8))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_compute_contributions_raw", test_compute_contributions_raw)
         all_tests(2) = test_case("test_compute_contributions_min", test_compute_contributions_min)
         all_tests(3) = test_case("test_compute_contributions_mean", test_compute_contributions_mean)
@@ -36,6 +37,8 @@ contains
         all_tests(7) = test_case("test_compute_contributions_dimensions", test_compute_contributions_dimensions)
         all_tests(8) = test_case("test_compute_contributions_rejects_nan_and_inf", &
                                  test_compute_contributions_rejects_nan_and_inf)
+        all_tests(9) = test_case("test_compute_contributions_no_nan_from_finite_input", &
+                                 test_compute_contributions_no_nan_from_finite_input)
     end function get_all_tests_compute_contributions
 
     !> Calls the procedure and checks `ierr` OK and both outputs exactly. The outputs start at
@@ -188,5 +191,31 @@ contains
                             //trim(NON_FINITE_NAMES(i_value)), 2)
         end do
     end subroutine test_compute_contributions_rejects_nan_and_inf
+
+    !> BUG: finite input gives NaN with `ierr` OK. With MODE_BASELINE_MIN, factor [-huge, huge] has
+    !| the minimum -huge and dependent [1, 0] the minimum 0. At point 1 the contribution is
+    !| 0 * 1 = 0; at point 2 it is (huge + huge) * 0, whose true value is 0 as well, but the
+    !| deviation huge + huge overflows to Inf and Inf * 0 is NaN, in the point and in the total.
+    !| TOX produces no NaN; the true values, [0, 0] and 0, are representable.
+    subroutine test_compute_contributions_no_nan_from_finite_input()
+        real(real64) :: factor(2), dependent(2), local_contributions(2), total_contribution, expected_local(2)
+        integer(int32) :: ierr
+
+        factor = [-huge(1.0_real64), huge(1.0_real64)]
+        dependent = [1.0_real64, 0.0_real64]
+        expected_local = 0.0_real64
+        local_contributions = UNWRITTEN
+        total_contribution = UNWRITTEN
+        call compute_contributions(factor, dependent, 2, MODE_BASELINE_MIN, local_contributions, total_contribution, ierr)
+        call assert_err(ierr, ERR_OK, "test_compute_contributions_no_nan_from_finite_input: ierr")
+        call assert_no_nan_real(local_contributions, 2, &
+                                "test_compute_contributions_no_nan_from_finite_input: local_contributions")
+        call assert_false(ieee_is_nan(total_contribution), &
+                          "test_compute_contributions_no_nan_from_finite_input: total_contribution is NaN")
+        call assert_equal_array_real(local_contributions, expected_local, 2, 0.0_real64, &
+                                     "test_compute_contributions_no_nan_from_finite_input: local_contributions")
+        call assert_equal_real(total_contribution, 0.0_real64, 0.0_real64, &
+                               "test_compute_contributions_no_nan_from_finite_input: total_contribution")
+    end subroutine test_compute_contributions_no_nan_from_finite_input
 
 end module mod_test_compute_contributions

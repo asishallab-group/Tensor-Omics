@@ -29,7 +29,7 @@ contains
     function get_all_tests_compute_velocity_acceleration_contributions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(9))
+        allocate (all_tests(10))
         all_tests(1) = test_case("test_compute_velocity_acceleration_contributions_raw", &
                                  test_compute_velocity_acceleration_contributions_raw)
         all_tests(2) = test_case("test_compute_velocity_acceleration_contributions_expert", &
@@ -48,6 +48,8 @@ contains
                                  test_compute_velocity_acceleration_contributions_bad_mode)
         all_tests(9) = test_case("test_compute_velocity_acceleration_contributions_nan_inf", &
                                  test_compute_velocity_acceleration_contributions_nan_inf)
+        all_tests(10) = test_case("test_compute_velocity_acceleration_contributions_no_nan", &
+                                  test_compute_velocity_acceleration_contributions_no_nan)
     end function get_all_tests_compute_velocity_acceleration_contributions
 
     !> Checks `ierr` OK and the four outputs exactly.
@@ -334,5 +336,32 @@ contains
                             //trim(NON_FINITE_NAMES(i_value)), 1)
         end do
     end subroutine test_compute_velocity_acceleration_contributions_nan_inf
+
+    !> BUG: finite input gives NaN with `ierr` OK. x1 [-huge, huge] has the velocity 2 huge, which
+    !| overflows to Inf (its true value exceeds huge, so Inf is right), x2 [0, 0] the velocity 0.
+    !| Raw, (x1, x1) is Inf, but (x1, x2) and (x2, x1), 2 huge * 0, are truly 0 and come out as
+    !| Inf * 0 = NaN, in the totals and at time point 2 of the series. TOX produces no NaN.
+    !| Fixing `compute_contributions` for finite input does not reach this: the Inf comes in as
+    !| the velocity.
+    subroutine test_compute_velocity_acceleration_contributions_no_nan()
+        real(real64) :: trajectories(2, 1, 2), contrib_velocity(2, 2, 1), velocity_series(2, 2, 2, 1)
+        real(real64) :: contrib_acceleration(2, 2, 1), acceleration_series(2, 2, 2, 1)
+        integer(int32) :: ierr
+
+        trajectories(1, 1, :) = [-huge(1.0_real64), huge(1.0_real64)]
+        trajectories(2, 1, :) = [0.0_real64, 0.0_real64]
+        call compute_velocity_acceleration_contributions(trajectories, 2, 1, 2, MODE_BASELINE_RAW, contrib_velocity, &
+                                                         velocity_series, contrib_acceleration, acceleration_series, &
+                                                         ierr)
+        call assert_err(ierr, ERR_OK, "test_compute_velocity_acceleration_contributions_no_nan: ierr")
+        call assert_no_nan_real(contrib_velocity, 4, &
+                                "test_compute_velocity_acceleration_contributions_no_nan: contrib_velocity")
+        call assert_no_nan_real(velocity_series, 8, &
+                                "test_compute_velocity_acceleration_contributions_no_nan: velocity_contribution_series")
+        call assert_equal_real(contrib_velocity(1, 2, 1), 0.0_real64, 0.0_real64, &
+                               "test_compute_velocity_acceleration_contributions_no_nan: (x1, x2)")
+        call assert_equal_real(contrib_velocity(2, 1, 1), 0.0_real64, 0.0_real64, &
+                               "test_compute_velocity_acceleration_contributions_no_nan: (x2, x1)")
+    end subroutine test_compute_velocity_acceleration_contributions_no_nan
 
 end module mod_test_compute_velocity_acceleration_contributions
