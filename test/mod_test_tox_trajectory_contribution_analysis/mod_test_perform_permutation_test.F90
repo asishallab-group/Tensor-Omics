@@ -101,8 +101,9 @@ contains
     !| (factor 2) is [8, 2, 4, 10] in every sample but sample 2. With MODE_BASELINE_MEAN the
     !| deviations are [-2, -1, 0, 3] (mean 3) and [2, -4, -2, 4] (mean 6), so every permutation,
     !| whichever other sample it draws, is [-4, 4, 0, 12] with total 12. Sample 2's own dependent
-    !| [0, 0, 0, 100] would give [-50, -25, 0, 75], total 0, and the factor of any other sample,
-    !| [5, 5, 5, 5], would give zeros: drawing the own sample or the wrong factor shows.
+    !| [0, 0, 0, 100] (mean 25, deviations [-25, -25, -25, 75]) would give [50, 25, 0, 225], total
+    !| 300, and the factor of any other sample, [5, 5, 5, 5], would give zeros: drawing the own
+    !| sample or the wrong factor shows.
     subroutine fill_values(trajectories, expected_local)
         real(real64), intent(out) :: trajectories(2, 4, 4), expected_local(4)
         integer(int32) :: i_sample

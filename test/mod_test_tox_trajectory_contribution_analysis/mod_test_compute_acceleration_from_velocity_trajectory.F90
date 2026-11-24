@@ -108,9 +108,10 @@ contains
                                "test_compute_acceleration_from_velocity_trajectory_one: nothing written")
     end subroutine test_compute_acceleration_from_velocity_trajectory_one
 
-    !> `n_timepoints` (argument 3) has the minimum 1, as for the velocity procedures (FES): 0 and
-    !| -1 are ERR_INVALID_INPUT, although both size an empty velocity and acceleration; 1 is in
-    !| `test_compute_acceleration_from_velocity_trajectory_one`.
+    !> `n_timepoints` (argument 3) has the minimum 1 (FES), the same as for the velocity
+    !| procedures, but not the same code: 0 and -1 are both ERR_INVALID_INPUT here (a DM_MIN
+    !| bound), while there n_timepoints is a real dimension and 0 is ERR_EMPTY_INPUT. Both size an
+    !| empty velocity and acceleration; 1 is in `test_compute_acceleration_from_velocity_trajectory_one`.
     subroutine test_compute_acceleration_from_velocity_trajectory_dimensions()
         real(real64) :: velocity(1), acceleration(1)
         integer(int32) :: ierr

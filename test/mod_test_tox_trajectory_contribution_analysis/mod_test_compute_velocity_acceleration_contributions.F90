@@ -29,7 +29,7 @@ contains
     function get_all_tests_compute_velocity_acceleration_contributions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(10))
+        allocate (all_tests(11))
         all_tests(1) = test_case("test_compute_velocity_acceleration_contributions_raw", &
                                  test_compute_velocity_acceleration_contributions_raw)
         all_tests(2) = test_case("test_compute_velocity_acceleration_contributions_expert", &
@@ -50,6 +50,8 @@ contains
                                  test_compute_velocity_acceleration_contributions_nan_inf)
         all_tests(10) = test_case("test_compute_velocity_acceleration_contributions_no_nan", &
                                   test_compute_velocity_acceleration_contributions_no_nan)
+        all_tests(11) = test_case("test_compute_velocity_acceleration_contributions_overflow", &
+                                  test_compute_velocity_acceleration_contributions_overflow)
     end function get_all_tests_compute_velocity_acceleration_contributions
 
     !> Checks `ierr` OK and the four outputs exactly.
@@ -337,12 +339,12 @@ contains
         end do
     end subroutine test_compute_velocity_acceleration_contributions_nan_inf
 
-    !> BUG: finite input gives NaN with `ierr` OK. x1 [-huge, huge] has the velocity 2 huge, which
-    !| overflows to Inf (its true value exceeds huge, so Inf is right), x2 [0, 0] the velocity 0.
-    !| Raw, (x1, x1) is Inf, but (x1, x2) and (x2, x1), 2 huge * 0, are truly 0 and come out as
-    !| Inf * 0 = NaN, in the totals and at time point 2 of the series. TOX produces no NaN.
-    !| Fixing `compute_contributions` for finite input does not reach this: the Inf comes in as
-    !| the velocity.
+    !> A velocity that overflows, times a zero velocity: x1 [-huge, huge] has the velocity
+    !| 2 huge, which overflows to Inf (its true value exceeds huge, so Inf is right), x2 [0, 0]
+    !| the velocity 0. Raw, (x1, x1) is Inf, and (x1, x2) and (x2, x1), 2 huge * 0, are truly 0.
+    !| Regression: they used to come out as Inf * 0 = NaN, in the totals and at time point 2 of
+    !| the series, with `ierr` OK. The velocity contributions go through the same product as
+    !| `compute_contributions`, where a zero deviation now gives an exact 0.
     subroutine test_compute_velocity_acceleration_contributions_no_nan()
         real(real64) :: trajectories(2, 1, 2), contrib_velocity(2, 2, 1), velocity_series(2, 2, 2, 1)
         real(real64) :: contrib_acceleration(2, 2, 1), acceleration_series(2, 2, 2, 1)
@@ -363,5 +365,43 @@ contains
         call assert_equal_real(contrib_velocity(2, 1, 1), 0.0_real64, 0.0_real64, &
                                "test_compute_velocity_acceleration_contributions_no_nan: (x2, x1)")
     end subroutine test_compute_velocity_acceleration_contributions_no_nan
+
+    !> Velocities or accelerations that overflow to +-Inf from finite positions, whose baseline is
+    !| then not finite. Today's behaviour, pinned until FES decides on overflowing totals:
+    !| ERR_NAN_INF, blaming no argument (position 0), from the baselines' finiteness check, with
+    !| MODE_BASELINE_MIN. Each step has its own series, since either failing alone sets `ierr`:
+    !| - x1 [-huge, huge], two points: the velocity +Inf (truly 2 huge) is its own minimum, and
+    !|   there is no acceleration: only the velocity step fails;
+    !| - x1 [0, huge, 0]: the velocities [huge, -huge] are finite, the acceleration -2 huge is -Inf:
+    !|   only the acceleration step fails;
+    !| - x1 [-huge, huge, -huge]: the velocities [+Inf, -Inf] and the acceleration -Inf: both fail.
+    !| The outputs after the error are not asserted.
+    subroutine test_compute_velocity_acceleration_contributions_overflow()
+        real(real64) :: trajectories(1, 1, 3), contrib_velocity(1, 1, 1), velocity_series(3, 1, 1, 1)
+        real(real64) :: contrib_acceleration(1, 1, 1), acceleration_series(3, 1, 1, 1)
+        real(real64) :: two_points(1, 1, 2), velocity_series_2(2, 1, 1, 1), acceleration_series_2(2, 1, 1, 1)
+        integer(int32) :: ierr
+
+        two_points(1, 1, :) = [-huge(1.0_real64), huge(1.0_real64)]
+        call compute_velocity_acceleration_contributions(two_points, 1, 1, 2, MODE_BASELINE_MIN, contrib_velocity, &
+                                                         velocity_series_2, contrib_acceleration, &
+                                                         acceleration_series_2, ierr)
+        call assert_err(ierr, ERR_NAN_INF, &
+                        "test_compute_velocity_acceleration_contributions_overflow: velocity overflows", 0)
+
+        trajectories(1, 1, :) = [0.0_real64, huge(1.0_real64), 0.0_real64]
+        call compute_velocity_acceleration_contributions(trajectories, 1, 1, 3, MODE_BASELINE_MIN, contrib_velocity, &
+                                                         velocity_series, contrib_acceleration, acceleration_series, &
+                                                         ierr)
+        call assert_err(ierr, ERR_NAN_INF, &
+                        "test_compute_velocity_acceleration_contributions_overflow: acceleration overflows", 0)
+
+        trajectories(1, 1, :) = [-huge(1.0_real64), huge(1.0_real64), -huge(1.0_real64)]
+        call compute_velocity_acceleration_contributions(trajectories, 1, 1, 3, MODE_BASELINE_MIN, contrib_velocity, &
+                                                         velocity_series, contrib_acceleration, acceleration_series, &
+                                                         ierr)
+        call assert_err(ierr, ERR_NAN_INF, &
+                        "test_compute_velocity_acceleration_contributions_overflow: both overflow", 0)
+    end subroutine test_compute_velocity_acceleration_contributions_overflow
 
 end module mod_test_compute_velocity_acceleration_contributions

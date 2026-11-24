@@ -192,11 +192,12 @@ contains
         end do
     end subroutine test_compute_contributions_rejects_nan_and_inf
 
-    !> BUG: finite input gives NaN with `ierr` OK. With MODE_BASELINE_MIN, factor [-huge, huge] has
-    !| the minimum -huge and dependent [1, 0] the minimum 0. At point 1 the contribution is
-    !| 0 * 1 = 0; at point 2 it is (huge + huge) * 0, whose true value is 0 as well, but the
-    !| deviation huge + huge overflows to Inf and Inf * 0 is NaN, in the point and in the total.
-    !| TOX produces no NaN; the true values, [0, 0] and 0, are representable.
+    !> A deviation that overflows, times a zero deviation: with MODE_BASELINE_MIN, factor
+    !| [-huge, huge] has the minimum -huge and dependent [1, 0] the minimum 0. At point 1 the
+    !| contribution is 0 * 1 = 0; at point 2 it is (huge + huge) * 0, whose true value is 0 as
+    !| well, although the deviation huge + huge overflows to Inf. So [0, 0], total 0, and no NaN.
+    !| Regression: the product used to be formed anyway, and Inf * 0 gave NaN, in the point and
+    !| in the total, with `ierr` OK. A zero deviation now gives an exact 0.
     subroutine test_compute_contributions_no_nan_from_finite_input()
         real(real64) :: factor(2), dependent(2), local_contributions(2), total_contribution, expected_local(2)
         integer(int32) :: ierr

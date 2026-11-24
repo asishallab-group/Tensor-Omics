@@ -174,11 +174,12 @@ contains
         end do
     end subroutine test_compute_baselines_factor_dependent_rejects_nan_and_inf
 
-    !> BUG: the mean of finite values is refused when their sum overflows. factor [huge, huge] has
-    !| the mean huge and dependent [-huge, -huge] the mean -huge, both finite, but the sum is
-    !| +-Inf and the procedure returns ERR_NAN_INF, blaming no argument, with the baseline Inf.
-    !| Every procedure taking MODE_BASELINE_MEAN inherits it. f42_math_impl's `mean` scales its
-    !| sum for exactly this (#202), so this expects what it gives.
+    !> The mean of finite values whose sum overflows: factor [huge, huge] has the mean huge and
+    !| dependent [-huge, -huge] the mean -huge, both finite.
+    !| Regression: the mean baseline used to be the plain sum over n, which overflows to +-Inf
+    !| here, so the procedure returned ERR_NAN_INF, blaming no argument, with the baseline Inf,
+    !| and every procedure taking MODE_BASELINE_MEAN with it. It uses f42_math_impl's `mean`
+    !| now, which scales its sum (#202).
     subroutine test_compute_baselines_factor_dependent_mean_of_huge()
         real(real64) :: factor(2), dependent(2)
 

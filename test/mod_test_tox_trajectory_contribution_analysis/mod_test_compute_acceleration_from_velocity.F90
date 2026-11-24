@@ -111,9 +111,11 @@ contains
     end subroutine test_compute_acceleration_from_velocity_one_timepoint
 
     !> `n_factors` (argument 3) and `n_samples` (4) are ERR_EMPTY_INPUT at 0 and
-    !| ERR_INVALID_INPUT at -1, each with the others valid. `n_timepoints` (5) has the minimum 1,
-    !| as for the velocity procedures (FES): 0 and -1 are ERR_INVALID_INPUT, although both size an
-    !| empty velocity and acceleration; 1 is in `test_compute_acceleration_from_velocity_one_timepoint`.
+    !| ERR_INVALID_INPUT at -1, each with the others valid. `n_timepoints` (5) has the minimum 1
+    !| (FES), the same as for the velocity procedures, but not the same code: 0 and -1 are both
+    !| ERR_INVALID_INPUT here (a DM_MIN bound), while there n_timepoints is a real dimension and 0
+    !| is ERR_EMPTY_INPUT. Both size an empty velocity and acceleration; 1 is in
+    !| `test_compute_acceleration_from_velocity_one_timepoint`.
     subroutine test_compute_acceleration_from_velocity_dimensions()
         real(real64) :: velocity(2, 2, 2), acceleration(1, 2, 2)
         integer(int32) :: ierr
