@@ -47,7 +47,7 @@ contains
     function get_all_tests_detect_dosage_effect() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(12))
+        allocate (all_tests(13))
         all_tests(1) = test_case("test_detect_dosage_effect_binary_weights", test_detect_dosage_effect_binary_weights)
         all_tests(2) = test_case("test_detect_dosage_effect_angle_bound", test_detect_dosage_effect_angle_bound)
         all_tests(3) = test_case("test_detect_dosage_effect_defaults", test_detect_dosage_effect_defaults)
@@ -60,6 +60,7 @@ contains
         all_tests(10) = test_case("test_detect_dosage_effect_value_ranges", test_detect_dosage_effect_value_ranges)
         all_tests(11) = test_case("test_detect_dosage_effect_rejects_nan_and_inf", test_detect_dosage_effect_rejects_nan_and_inf)
         all_tests(12) = test_case("test_detect_dosage_effect_expert", test_detect_dosage_effect_expert)
+        all_tests(13) = test_case("test_detect_dosage_effect_any_scale", test_detect_dosage_effect_any_scale)
     end function get_all_tests_detect_dosage_effect
 
     !> The binary-weights family (see BINARY_GENES), all five genes kept, `max_angle` 0 -- every
@@ -427,5 +428,35 @@ contains
                                          BINARY_N_SLOTS, tmp_active_bitmask, tmp_paralog_vector, 0.0_real64, 0.0_real64, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_dosage_effect_expert: gain_gamma 0", 14)
     end subroutine test_detect_dosage_effect_expert
+
+    !> BUG (fails today): the binary-weights family scaled by a power of two finds the same 15
+    !| subsets. Scaling every vector by 2**k changes no angle and no ratio of lengths, and is exact,
+    !| so the result may not change; issue #64's T12 asks for this scale invariance. The angle of a
+    !| subset's sum to the ancestor is taken from unscaled sums of squares, and a product of the two
+    !| lengths of at most 1e-12 counts as zero (f42's `angle_between`, issue #223):
+    !| - by 2**-30 (lengths about 1e-8) that product is about 1e-16 times the word: ERR_DIVISION_BY_ZERO,
+    !|   at no argument, for the whole family;
+    !| - by 2**520 (lengths about 1e157) the squares pass `huge` and the cosine is Inf/Inf, NaN:
+    !|   gfortran at -O0 (--diagnostics) then drops every subset and finds nothing, while gfortran
+    !|   at -O3 and ifx happen to find all 15. The outcome is the build's, not the method's.
+    subroutine test_detect_dosage_effect_any_scale()
+        integer(int32), parameter :: n_scales = 2
+        real(real64), parameter :: scales(n_scales) = [2.0_real64**(-30), 2.0_real64**520]
+        character(*), parameter :: scale_names(n_scales) = ["2**-30", "2**520"]
+        real(real64) :: ancestor(2), genes(2, BINARY_N_GENES)
+        integer(int32) :: mask(1), subsets(1, BINARY_N_SLOTS), n_results, ierr, i_scale
+
+        mask = 31
+        do i_scale = 1, n_scales
+            ancestor = BINARY_ANCESTOR*scales(i_scale)
+            genes = BINARY_GENES*scales(i_scale)
+            n_results = UNWRITTEN_COUNT
+            call detect_dosage_effect(ancestor, genes, BINARY_N_GENES, 2, mask, 1, n_results, 5, subsets, BINARY_N_SLOTS, &
+                                      max_angle=0.0_real64, gain_gamma=1.0_real64, ierr=ierr)
+            call assert_err(ierr, ERR_OK, "test_detect_dosage_effect_any_scale: by "//scale_names(i_scale)//", ierr")
+            call check_subsets(1, BINARY_N_SLOTS, subsets, n_results, BINARY_N_RESULTS, BINARY_RESULTS, &
+                               "test_detect_dosage_effect_any_scale: by "//scale_names(i_scale))
+        end do
+    end subroutine test_detect_dosage_effect_any_scale
 
 end module mod_test_detect_dosage_effect
