@@ -215,7 +215,7 @@ contains
             !! Error code
 
         integer(int32) :: i_dim
-        real(real64) :: factor_baseline, dependent_baseline
+        real(real64) :: factor_baseline, dependent_baseline, factor_deviation, dependent_deviation
 
         call compute_baselines_factor_dependent_impl(n_dims, factor, dependent, baseline_mode, factor_baseline, dependent_baseline, ierr)
         if (is_err(ierr)) return
@@ -224,9 +224,19 @@ contains
         ! (an uncentered/instantaneous covariance term): it is positive when factor and dependent move
         ! together (both above or both below baseline) and negative when they move oppositely.
         ! Summing over all timepoints gives the total co-variation between factor and dependent.
+        ! A deviation of exactly zero makes the product exactly zero, even where the other one
+        ! overflowed to +-Inf (a deviation, or a velocity, whose true value exceeds huge): the
+        ! true product is 0, and Inf * 0 would be NaN.
         total_contribution = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) reduce(+:total_contribution)
-            local_contributions(i_dim) = (factor(i_dim) - factor_baseline) * (dependent(i_dim) - dependent_baseline)
+        do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) &
+                local(factor_deviation, dependent_deviation) reduce(+:total_contribution)
+            factor_deviation = factor(i_dim) - factor_baseline
+            dependent_deviation = dependent(i_dim) - dependent_baseline
+            if (factor_deviation == 0.0_real64 .or. dependent_deviation == 0.0_real64) then
+                local_contributions(i_dim) = 0.0_real64
+            else
+                local_contributions(i_dim) = factor_deviation*dependent_deviation
+            end if
             total_contribution = total_contribution + local_contributions(i_dim)
         end do
     end subroutine compute_contributions_impl
