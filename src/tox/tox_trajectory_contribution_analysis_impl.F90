@@ -9,7 +9,7 @@
 !| other sample.
 module tox_trajectory_contribution_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, set_err, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: set_ok, is_err, set_err, validate_in_range_real
     use f42_random_impl, only: init_random, rand_range
     use f42_math_impl, only: mean
     M_IMPLICIT_NONE
@@ -27,29 +27,8 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_random_impl(module):init_random(subroutine)]] beforehand.
-    subroutine select_random_sample(n_samples, current_sample, random_sample, ierr)
-        integer(int32), intent(in) :: n_samples
-            !! number of samples
-        integer(int32), intent(in) :: current_sample
-            !! sample that won't be selected
-        integer(int32), intent(out) :: random_sample
-            !! selected random sample
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        call set_ok(ierr)
-
-        call validate_in_range_int(n_samples, ierr, min=2_int32)
-        call validate_in_range_int(current_sample, ierr, min=1_int32, max=n_samples)
-
-        if (is_err(ierr)) return
-
-        call select_random_sample_helper(n_samples, current_sample, random_sample)
-    end subroutine select_random_sample
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_random_impl(module):init_random(subroutine)]] beforehand.
-    subroutine select_random_sample_helper(n_samples, current_sample, random_sample)
+    !| Validates nothing: `n_samples` must be at least 2 and `current_sample` in `[1, n_samples]`.
+    subroutine select_random_sample(n_samples, current_sample, random_sample)
         integer(int32), intent(in) :: n_samples
             !! number of samples
         integer(int32), intent(in) :: current_sample
@@ -64,7 +43,7 @@ contains
         if (random_sample >= current_sample) then
             random_sample = random_sample + 1
         end if
-    end subroutine select_random_sample_helper
+    end subroutine select_random_sample
 
 
 
@@ -129,7 +108,7 @@ contains
         end do
 
         do i_perm = 1, n_permutations
-            call select_random_sample_helper(n_samples, sample_idx, random_sample)
+            call select_random_sample(n_samples, sample_idx, random_sample)
 
             do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_dependent, trajectories, dependent_idx, random_sample)
                 tmp_dependent(i_timepoint) = trajectories(dependent_idx, random_sample, i_timepoint)

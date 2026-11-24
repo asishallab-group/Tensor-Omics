@@ -356,12 +356,9 @@ contains
         end do
     end subroutine test_perform_permutation_test_rejects_nan_and_inf
 
-    !> BUG: n_samples = 1 is accepted, but there is no other sample to draw. The draw then picks
-    !| sample 2 and reads `trajectories` past its end: a runtime error under bounds checking
-    !| (--diagnostics), whatever lies behind the array otherwise. Issue #99 asks for a sample
-    !| "!= sample", and the unused `select_random_sample` refuses n_samples < 2 with
-    !| ERR_INVALID_INPUT; this expects the same, blaming `n_samples` (argument 3), which FES
-    !| decided: n_samples has the minimum 2, checked before any draw.
+    !> n_samples = 1 leaves no other sample to draw (issue #99 asks for a sample "!= sample"), so
+    !| it is ERR_INVALID_INPUT at `n_samples` (argument 3), checked before any draw: n_samples has
+    !| the minimum 2 (FES). Before, the draw picked sample 2 and read `trajectories` past its end.
     subroutine test_perform_permutation_test_single_sample()
         real(real64) :: trajectories(MARK_N_FACTORS, 1, MARK_N_TIMEPOINTS)
         real(real64) :: local_contributions(MARK_N_TIMEPOINTS, 2), total_contributions(2)
