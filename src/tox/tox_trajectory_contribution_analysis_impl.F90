@@ -11,6 +11,7 @@ module tox_trajectory_contribution_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, set_err, validate_in_range_int, validate_in_range_real
     use f42_random_impl, only: init_random, rand_range
+    use f42_math_impl, only: mean
     M_IMPLICIT_NONE
 
     ! Public aliases the interface generator maps the `baseline_mode` strings onto: an arg
@@ -345,12 +346,16 @@ contains
             dependent_baseline = minval(dependent)
 
         case (MODE_BASELINE_MEAN)
-            ! Mean-centered contributions
-            factor_baseline = sum(factor)/real(n_timepoints, kind=real64)
-            dependent_baseline = sum(dependent)/real(n_timepoints, kind=real64)
+            ! Mean-centered contributions; `mean` scales its sum, so the mean of finite values is
+            ! finite even where their plain sum would overflow
+            factor_baseline = mean(factor)
+            dependent_baseline = mean(dependent)
         end select
 
-        ! Validate that baselines are finite (non-NaN, non-Inf)
+        ! Validate that baselines are finite (non-NaN, non-Inf). Finite input always gives a
+        ! finite baseline; non-finite input reaches here only from
+        ! compute_velocity_acceleration_contributions, whose velocities and accelerations are
+        ! differences that overflow to +-Inf when their true value exceeds huge.
         call validate_in_range_real(factor_baseline, ierr)
         call validate_in_range_real(dependent_baseline, ierr)
 
