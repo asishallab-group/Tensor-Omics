@@ -2,7 +2,9 @@
 
 #' Compute the shift vector field for all genes.
 #'
-#' Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
+#' Writes, for each gene, the centroid of its family and the shift from that centroid to the
+#' gene, the expression vector minus the centroid. A gene with no family assigned
+#' (`0` in `gene_to_fam`) gets zero for both.
 #'
 #' Generated from the Fortran procedure \code{tox_shift_vectors::compute_shift_vector_field}, whose argument names
 #' are the ones an error message reports.
@@ -13,7 +15,7 @@
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
-#' @return a numeric array of rank 3. Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first, then the shift vector from that centroid to the gene. A gene with no family assigned has no centroid to shift from, so both of its vectors are zero
+#' @return a numeric array of rank 3. Output, shaped (n_tissues, 2, n_genes): two vectors over the tissues for each gene. The first is the centroid of the gene's family, the second the shift from that centroid to the gene, its expression vector minus the centroid. A gene with no family assigned (`0`) has no centroid to shift from, so both of its vectors are zero
 #' @export
 compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_fam) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

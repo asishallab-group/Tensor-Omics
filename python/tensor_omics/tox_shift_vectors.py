@@ -2,9 +2,10 @@ r"""tox_shift_vectors
 
 The shift vector field: where each gene sits relative to its family's centroid.
 
-One vector per gene, from the centroid of the family it belongs to to the gene itself. It is
-the input the relative-axis plane tools project and measure angles in, and what the
-paralog-pattern detection reads a gene's direction and magnitude off.
+Two vectors per gene: the centroid of the family it belongs to, and the shift from that
+centroid to the gene itself. Together they are the field the relative-axis plane tools
+project and measure angles in, and the shift is what the paralog-pattern detection reads a
+gene's direction and magnitude off.
 
 Python binding, generated from tox_shift_vectors. Do not edit.
 """
@@ -44,7 +45,9 @@ def compute_shift_vector_field(
 ):
     r"""Compute the shift vector field for all genes.
 
-    Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
+    Writes, for each gene, the centroid of its family and the shift from that centroid to the
+    gene, the expression vector minus the centroid. A gene with no family assigned
+    (`0` in `gene_to_fam`) gets zero for both.
 
     Parameters
     ----------
@@ -61,7 +64,7 @@ def compute_shift_vector_field(
     Returns
     -------
     shift_vectors : np.ndarray[np.float64] of shape (n_tissues, 2, n_genes,), column-major (order='F'), read-only
-        Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first, then the shift vector from that centroid to the gene. A gene with no family assigned has no centroid to shift from, so both of its vectors are zero
+        Output, shaped (n_tissues, 2, n_genes): two vectors over the tissues for each gene. The first is the centroid of the gene's family, the second the shift from that centroid to the gene, its expression vector minus the centroid. A gene with no family assigned (`0`) has no centroid to shift from, so both of its vectors are zero
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
