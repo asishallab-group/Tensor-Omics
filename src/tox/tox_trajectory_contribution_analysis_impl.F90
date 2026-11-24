@@ -91,7 +91,11 @@ contains
         real(real64), dimension(n_timepoints), intent(out) :: tmp_dependent
             !! Working array to hold the random dependent in contiguous memory
         integer(int32), intent(in), optional :: random_seed
-            !! Seed to use for random number generation.
+            !! Seed to use for random number generation. Given, it reseeds the process-wide
+            !! generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+            !! procedure that draws), so the draws are reproducible and that generator goes on
+            !! from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+            !! the draws continue that generator where it stands.
         integer(int32), intent(out) :: ierr
             !! Error code
 
