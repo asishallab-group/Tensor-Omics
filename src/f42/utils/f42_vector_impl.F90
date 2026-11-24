@@ -121,7 +121,8 @@ contains
         real(real64), dimension(:), contiguous, intent(in) :: vec1
             !! First vector, of any finite magnitude
         real(real64), dimension(size(vec1)), intent(in) :: vec2
-            !! Second vector, of the same size as `vec1` and of any finite magnitude
+            !! Second vector, of any finite magnitude. It must have `vec1`'s size: it is declared
+            !! with that size, so a shorter one is not detected.
 
         integer(int32) :: i_dim, n_dims, exponent
         real(real64) :: largest_difference, scaled_squares_sum

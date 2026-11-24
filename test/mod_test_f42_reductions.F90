@@ -22,7 +22,7 @@ contains
     function get_all_tests_f42_reductions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(15))
+        allocate (all_tests(16))
         all_tests(1) = test_case("test_scaling_exponent_range_edges", test_scaling_exponent_range_edges)
         all_tests(2) = test_case("test_mean_values", test_mean_values)
         all_tests(3) = test_case("test_mean_extreme_magnitudes", test_mean_extreme_magnitudes)
@@ -38,6 +38,7 @@ contains
         all_tests(13) = test_case("test_distance_scaled_down", test_distance_scaled_down)
         all_tests(14) = test_case("test_distance_scaled_up", test_distance_scaled_up)
         all_tests(15) = test_case("test_distance_past_huge", test_distance_past_huge)
+        all_tests(16) = test_case("test_distance_exponent_from_differences", test_distance_exponent_from_differences)
     end function get_all_tests_f42_reductions
 
     !> Values whose largest magnitude lies in [2**-470, 2**496] are not scaled (exponent 0); one ulp
@@ -297,8 +298,10 @@ contains
     !> Differences whose largest magnitude lies in [2**-470, 2**496] are not scaled (exponent 0):
     !| - ordinary values, not exact in binary, give the plain formula's result bit for bit,
     !|   `sqrt((a1 - b1)**2 + (a2 - b2)**2)`; two elements, so the order of the sum cannot matter;
-    !| - at both ends of the range, [3, 4]*2**490 and [3, 4]*2**-468 to the origin are exactly
-    !|   5*2**490 and 5*2**-468, as their squares are normal numbers.
+    !| - near both ends of the range (largest differences 2**492 and 2**-466, not the edges
+    !|   themselves, which `test_scaling_exponent_range_edges` pins on the exponent),
+    !|   [3, 4]*2**490 and [3, 4]*2**-468 to the origin are exactly 5*2**490 and 5*2**-468, as
+    !|   their squares are normal numbers.
     subroutine test_distance_unscaled_range()
         integer(int32), parameter :: N_PAIRS = 3
         real(real64) :: firsts(2, N_PAIRS), seconds(2, N_PAIRS), vec1(2), vec2(2), origin(2), plain
@@ -383,5 +386,18 @@ contains
         vec2 = 0.0_real64
         call check_distance(2, vec1, vec2, positive_inf, "test_distance_past_huge: [huge, huge] to the origin")
     end subroutine test_distance_past_huge
+
+    !> The exponent comes from the differences, not from the values: [2**500, 2**-500] to
+    !| [2**500, 0] differs by [0, 2**-500], whose largest magnitude lies below the range, so it is
+    !| scaled up and the distance is exactly 2**-500. An exponent taken from the values (2**500,
+    !| above the range) would scale the difference down to 2**-1100, whose square is 0.
+    subroutine test_distance_exponent_from_differences()
+        real(real64) :: vec1(2), vec2(2)
+
+        vec1 = [2.0_real64**500, 2.0_real64**(-500)]
+        vec2 = [2.0_real64**500, 0.0_real64]
+        call check_distance(2, vec1, vec2, 2.0_real64**(-500), &
+                            "test_distance_exponent_from_differences: [2**500, 2**-500] to [2**500, 0]")
+    end subroutine test_distance_exponent_from_differences
 
 end module mod_test_f42_reductions
