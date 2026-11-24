@@ -347,10 +347,9 @@ contains
     !| - shift [huge - huge, -huge - 0, 0 + huge, huge/2 + huge/2] = [0, -huge, huge, huge],
     !|   each exact (huge/2 is exact, and their sum rounds back to huge).
     !| And one difference past `huge`: expression huge, centroid -huge. The true shift 2*huge is
-    !| not representable and rounds to +Inf, with `ierr` OK.
-    !| QUESTION: pinned as today's behaviour. Finite input gives Inf only where the true value
-    !| exceeds `huge`, which the overflow rule of #223 allows; the procedures that read the shift
-    !| vectors refuse it with ERR_NAN_INF.
+    !| not representable, so the intended result is +Inf, with `ierr` OK: the shift is neither
+    !| refused nor clamped. (The procedures that read the shift vectors refuse it with
+    !| ERR_NAN_INF.)
     subroutine test_compute_shift_vector_field_extreme_magnitudes()
         integer(int32), parameter :: n_tissues = 4, n_genes = 1, n_families = 1
         real(real64), parameter :: HUGE_VALUE = huge(1.0_real64)
