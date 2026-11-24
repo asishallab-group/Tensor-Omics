@@ -183,6 +183,17 @@ test_a_gene_alone_in_bit_31_survives_the_chain <- function() {
               "gene_to_fam = NA is refused as NA")
 }
 
+test_detect_dosage_effect_with_fewer_than_two_kept_genes <- function() {
+  # BUG (fails today): a family whose filter kept no gene, or one, holds no pair, and the
+  # detection has nothing to find. The binding sizes the work array at 0 subsets and passes that
+  # on, which the library refuses as ERR_EMPTY_INPUT naming n_paralog_subsets -- an argument the
+  # caller cannot pass. Expected: no result, n_results 0.
+  for (kept in c(0L, 2L)) {
+    result <- detect_dosage_effect(.ancestor(), .dosage_genes(), kept, 3L)
+    assert_true(identical(result$n_results, 0L), paste("the word", kept, ": got", result$n_results))
+  }
+}
+
 test_detect_dosage_effect_rejects_a_negative_max_subset_size <- function() {
   .assert_error_naming(detect_dosage_effect(.ancestor(), .dosage_genes(), ALL_THREE, -1L),
                        "max_subset_size -1", ERR_INVALID_INPUT, "max_subset_size")
@@ -248,6 +259,15 @@ test_detect_subfunctionalization_numbers_genes_from_bit_0 <- function() {
   found <- .found_words(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(),
                                                     .ascending()))
   assert_true(identical(found, c(3L, 5L, 6L)), paste("got", toString(found)))
+}
+
+test_detect_subfunctionalization_with_fewer_than_two_kept_genes <- function() {
+  # BUG (fails today): as test_detect_dosage_effect_with_fewer_than_two_kept_genes, refused as
+  # ERR_EMPTY_INPUT naming n_paralog_subsets. Expected: no result, n_results 0.
+  for (kept in c(0L, 2L)) {
+    result <- detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), kept, 3L, 0, .norms(), .ascending())
+    assert_true(identical(result$n_results, 0L), paste("the word", kept, ": got", result$n_results))
+  }
 }
 
 test_detect_subfunctionalization_rejects_a_negative_threshold <- function() {

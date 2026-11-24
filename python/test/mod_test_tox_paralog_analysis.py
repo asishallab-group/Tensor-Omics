@@ -182,6 +182,17 @@ def test_detect_dosage_effect_returns_bit_31_as_a_negative_word():
         f"got {result['paralog_subsets_bitmasks'][:, 0].tolist()}"
 
 
+def test_detect_dosage_effect_with_fewer_than_two_kept_genes():
+    # BUG (fails today): a family whose filter kept no gene, or one, holds no pair, and the
+    # detection has nothing to find. The binding sizes the work array at 0 subsets and passes
+    # that on, which the library refuses as ERR_EMPTY_INPUT naming n_paralog_subsets -- an
+    # argument the caller cannot pass. Expected: no result, n_results 0.
+    ancestor, genes, _ = _pattern_inputs()
+    for kept in (0, 2):
+        result = detect_dosage_effect(ancestor, genes, np.array([kept], dtype=np.int32), 3)
+        assert result["n_results"] == 0, f"the word {kept}: got {result['n_results']}"
+
+
 def test_detect_dosage_effect_rejects_a_negative_max_subset_size():
     ancestor, genes, mask = _pattern_inputs()
     assert_error(lambda: detect_dosage_effect(ancestor, genes, mask, -1),
@@ -257,6 +268,15 @@ def test_detect_subfunctionalization_numbers_genes_from_bit_0():
     result = detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending)
     found = sorted(result["paralog_subsets_bitmasks"][0, :result["n_results"]].tolist())
     assert found == [3, 5, 6], f"got {found}"
+
+
+def test_detect_subfunctionalization_with_fewer_than_two_kept_genes():
+    # BUG (fails today): as test_detect_dosage_effect_with_fewer_than_two_kept_genes, refused as
+    # ERR_EMPTY_INPUT naming n_paralog_subsets. Expected: no result, n_results 0.
+    ancestor, genes, _, norms, ascending = _subfunc_inputs()
+    for kept in (0, 2):
+        result = detect_subfunctionalization(ancestor, genes, np.array([kept], dtype=np.int32), 3, 0.0, norms, ascending)
+        assert result["n_results"] == 0, f"the word {kept}: got {result['n_results']}"
 
 
 def test_detect_subfunctionalization_rejects_a_negative_threshold():
