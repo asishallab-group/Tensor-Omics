@@ -237,12 +237,11 @@ contains
         end do
     end subroutine test_euclidean_distance_rejects_nan_and_inf
 
-    !> BUG: a distance whose squares overflow is +Inf, with `ierr` OK, although it is finite.
-    !| The sum of squares is taken unscaled, so it overflows once a difference passes about 1e154:
-    !| - [3*2**600, 4*2**600] to the origin is 5*2**600 (about 2e181); today +Inf;
-    !| - [huge] to [0] is huge; today +Inf.
-    !| #223's rule for sums of squares (scale by a constant power of two chosen from the largest
-    !| magnitude, as f42's `norm` does) gives both exactly, so this expects them.
+    !> Regression: a finite distance whose squares overflow used to give +Inf, with `ierr` OK,
+    !| because the sum of squares was taken unscaled and overflowed once a difference passed
+    !| about 1e154. The differences are now scaled by #223's rule (f42's `distance`):
+    !| - [3*2**600, 4*2**600] to the origin is 5*2**600 (about 2e181); it used to give +Inf;
+    !| - [huge] to [0] is huge; it used to give +Inf.
     subroutine test_euclidean_distance_squares_past_huge()
         real(real64), parameter :: LARGE_SCALE = 2.0_real64**600
         real(real64) :: vec1(2), vec2(2), single1(1), single2(1)
@@ -257,16 +256,16 @@ contains
         call check_distance(1, single1, single2, huge(1.0_real64), "test_euclidean_distance_squares_past_huge: [huge] to [0]")
     end subroutine test_euclidean_distance_squares_past_huge
 
-    !> BUG: a distance whose squares underflow is 0, or wrong, with `ierr` OK. The sum of squares
-    !| is taken unscaled: the square of a difference turns subnormal once the difference is below
-    !| about 1.5e-154 (2**-511), losing precision, and becomes 0 below about 1.6e-162
-    !| (2**-537.5):
-    !| - [3*2**-540, 4*2**-540] to the origin is 5*2**-540 (about 1.4e-162); today 0, because
-    !|   both squares (9 and 16 times 2**-1080) are below the smallest subnormal 2**-1074;
-    !| - [3*2**-538] to [0] is 3*2**-538; today sqrt(2)*2**-537, about 6% short, because the
-    !|   square 2.25*2**-1074 rounds to the subnormal 2*2**-1074 -- where subnormals are kept;
-    !|   a build or host that flushes them to zero gives 0 instead.
-    !| #223's rule for sums of squares gives both exactly, so this expects them.
+    !> Regression: a distance whose squares underflow used to give 0, or a wrong value, with
+    !| `ierr` OK. The sum of squares was taken unscaled: the square of a difference turns
+    !| subnormal once the difference is below about 1.5e-154 (2**-511), losing precision, and
+    !| becomes 0 below about 1.6e-162 (2**-537.5). The differences are now scaled by #223's rule
+    !| (f42's `distance`):
+    !| - [3*2**-540, 4*2**-540] to the origin is 5*2**-540 (about 1.4e-162); it used to give 0,
+    !|   as both squares (9 and 16 times 2**-1080) are below the smallest subnormal 2**-1074;
+    !| - [3*2**-538] to [0] is 3*2**-538; it used to give sqrt(2)*2**-537, about 6% short, as the
+    !|   square 2.25*2**-1074 rounds to the subnormal 2*2**-1074 -- where subnormals are kept; a
+    !|   build or host that flushes them to zero gave 0 instead.
     subroutine test_euclidean_distance_squares_below_tiny()
         real(real64), parameter :: SMALL_SCALE = 2.0_real64**(-540)
         real(real64) :: vec1(2), vec2(2), single1(1), single2(1)

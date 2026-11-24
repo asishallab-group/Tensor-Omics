@@ -346,12 +346,12 @@ contains
         end do
     end subroutine test_distance_to_centroid_rejects_nan_and_inf
 
-    !> BUG: distances whose squares overflow are +Inf, with `ierr` OK, although they are finite
-    !| (see `test_euclidean_distance_squares_past_huge`: the procedure takes the same unscaled
-    !| sum of squares). Two tissues, two genes, two families:
+    !> Regression: finite distances whose squares overflow used to give +Inf, with `ierr` OK
+    !| (see `test_euclidean_distance_squares_past_huge`: the procedure takes the same sum of
+    !| squares, now scaled). Two tissues, two genes, two families:
     !| - gene 1 [4*2**600, 3*2**600] in family [2**600, -2**600], offset [3, 4]*2**600: distance
-    !|   5*2**600; today +Inf;
-    !| - gene 2 [huge, 0] in family [0, 0]: distance huge; today +Inf.
+    !|   5*2**600; it used to give +Inf;
+    !| - gene 2 [huge, 0] in family [0, 0]: distance huge; it used to give +Inf.
     subroutine test_distance_to_centroid_squares_past_huge()
         integer(int32), parameter :: n_tissues = 2, n_genes = 2, n_families = 2
         real(real64), parameter :: LARGE_SCALE = 2.0_real64**600
@@ -370,11 +370,12 @@ contains
                              "test_distance_to_centroid_squares_past_huge")
     end subroutine test_distance_to_centroid_squares_past_huge
 
-    !> BUG: distances whose squares underflow are 0, or wrong, with `ierr` OK (see
-    !| `test_euclidean_distance_squares_below_tiny`). Two tissues, two genes, one family
-    !| [2**-540, 0]:
-    !| - gene 1 [4*2**-540, 4*2**-540], offset [3, 4]*2**-540: distance 5*2**-540; today 0;
-    !| - gene 2 [2**-540, 0], at its centroid: distance 0, today too.
+    !> Regression: distances whose squares underflow used to give 0, or a wrong value, with
+    !| `ierr` OK (see `test_euclidean_distance_squares_below_tiny`). Two tissues, two genes, one
+    !| family [2**-540, 0]:
+    !| - gene 1 [4*2**-540, 4*2**-540], offset [3, 4]*2**-540: distance 5*2**-540; it used to
+    !|   give 0;
+    !| - gene 2 [2**-540, 0], at its centroid: distance 0, as it always was.
     subroutine test_distance_to_centroid_squares_below_tiny()
         integer(int32), parameter :: n_tissues = 2, n_genes = 2, n_families = 1
         real(real64), parameter :: SMALL_SCALE = 2.0_real64**(-540)

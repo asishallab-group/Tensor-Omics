@@ -57,7 +57,10 @@ def euclidean_distance(
 ):
     r"""Compute the Euclidean distance between two vectors.
 
-    Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
+    Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`, for vectors of any
+    finite magnitude: the differences are scaled by a power of two before they are squared, so
+    no square overflows or underflows, and the result is Inf only where the true distance
+    exceeds `huge`.
 
     Parameters
     ----------
@@ -119,6 +122,8 @@ def distance_to_centroid(
     r"""Compute distance from each gene to its corresponding family centroid.
 
     For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
+    Any finite expression and centroids are measured, as in `euclidean_distance`: a distance is Inf only where the true
+    distance exceeds `huge`.
 
     Parameters
     ----------

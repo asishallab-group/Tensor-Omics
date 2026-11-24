@@ -7,6 +7,7 @@
 !| relative-distance index are built on.
 module tox_euclidean_distance_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use f42_vector_impl, only: distance
     M_IMPLICIT_NONE
 
 #define CM_DISTANCE_SENTINEL -1.0_real64
@@ -15,7 +16,10 @@ contains
 
     !> summary: Compute the Euclidean distance between two vectors.
     !| AUTHOR_VIVIAN_BASS
-    !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
+    !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`, for vectors of any
+    !| finite magnitude: the differences are scaled by a power of two before they are squared, so
+    !| no square overflows or underflows, and the result is Inf only where the true distance
+    !| exceeds `huge`.
     pure subroutine euclidean_distance_impl(vec1, vec2, n_elements, result)
         integer(int32), intent(in) :: n_elements
             !! Dimension of both vectors
@@ -26,20 +30,14 @@ contains
         real(real64), intent(out) :: result
             !! Output scalar distance
 
-        integer(int32) :: i_element
-        real(real64) :: sum_squared_diff
-
-        sum_squared_diff = 0.0_real64
-        ! GFORTRAN BUG: do concurrent (i_element = 1:n_elements) shared(vec1, vec2) reduce(+:sum_squared_diff)
-        do i_element = 1, n_elements
-            sum_squared_diff = sum_squared_diff + (vec1(i_element) - vec2(i_element))**2
-        end do
-        result = sqrt(sum_squared_diff)
+        result = distance(vec1, vec2)
     end subroutine euclidean_distance_impl
 
     !> summary: Compute distance from each gene to its corresponding family centroid.
     !| AUTHOR_VIVIAN_BASS
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
+    !| Any finite expression and centroids are measured, as in `euclidean_distance`: a distance is Inf only where the true
+    !| distance exceeds `huge`.
     pure subroutine distance_to_centroid_impl(n_genes, n_families, genes, centroids, &
                                          gene_to_fam, distances, n_tissues)
         integer(int32), intent(in) :: n_genes
