@@ -234,7 +234,7 @@ from tensor_omics import euclidean_distance
 Verify that the library loaded correctly:
 
 ```bash
-python3 python/test/mod_test_euclidean_distance.py
+python3 python/test/mod_test_tox_euclidean_distance.py
 ```
 
 ### R integration
@@ -250,7 +250,7 @@ euclidean_distance(c(1.0, 2.0, 3.0), c(4.0, 5.0, 6.0))
 Verify that the library loaded correctly:
 
 ```bash
-Rscript r/test/mod_test_euclidean_distance.R
+Rscript r/test/mod_test_tox_euclidean_distance.R
 ```
 
 ---

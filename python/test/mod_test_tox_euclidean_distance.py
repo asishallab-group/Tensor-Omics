@@ -14,7 +14,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import euclidean_distance, distance_to_centroid
-from test_helpers import run_all_tests, assert_error
+from test_helpers import run_all_tests, assert_error, assert_refused_by_name
 from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT, ERR_NAN_INF
 
 N_TISSUES, N_GENES, N_FAMILIES = 2, 4, 2
@@ -56,8 +56,8 @@ def test_euclidean_distance_takes_the_whole_vectors():
 
 def test_euclidean_distance_rejects_vectors_of_different_lengths():
     # the binding's own shape check, before the library is called
-    assert_error(lambda: euclidean_distance(np.array([1.0, 2.0]), np.array([1.0, 2.0, 3.0])),
-                 "vectors of different lengths", argument="vec2")
+    assert_refused_by_name(lambda: euclidean_distance(np.array([1.0, 2.0]), np.array([1.0, 2.0, 3.0])),
+                           "vectors of different lengths", "vec2")
 
 
 def test_euclidean_distance_rejects_empty_vectors():
@@ -67,8 +67,8 @@ def test_euclidean_distance_rejects_empty_vectors():
 
 
 def test_euclidean_distance_rejects_non_numeric_input():
-    assert_error(lambda: euclidean_distance(np.array(["a", "b"]), np.array([1.0, 2.0])),
-                 "strings", argument="vec1")
+    assert_refused_by_name(lambda: euclidean_distance(np.array(["a", "b"]), np.array([1.0, 2.0])),
+                           "strings", "vec1")
 
 
 def test_euclidean_distance_rejects_nan():
@@ -149,15 +149,15 @@ def test_distance_to_centroid_rejects_infinite_centroid():
 
 def test_distance_to_centroid_rejects_centroids_of_other_tissues():
     # the binding's own shape check, before the library is called
-    assert_error(lambda: distance_to_centroid(_genes(), np.ones((N_TISSUES + 1, N_FAMILIES), order='F'),
-                                              _gene_to_fam()),
-                 "centroids over another number of tissues", argument="centroids")
+    assert_refused_by_name(lambda: distance_to_centroid(_genes(), np.ones((N_TISSUES + 1, N_FAMILIES), order='F'),
+                                                        _gene_to_fam()),
+                           "centroids over another number of tissues", "centroids")
 
 
 def test_distance_to_centroid_rejects_a_mapping_of_other_genes():
     # the binding's own shape check, before the library is called
-    assert_error(lambda: distance_to_centroid(_genes(), _centroids(), np.ones(N_GENES + 1, dtype=np.int32)),
-                 "a mapping of another number of genes", argument="gene_to_fam")
+    assert_refused_by_name(lambda: distance_to_centroid(_genes(), _centroids(), np.ones(N_GENES + 1, dtype=np.int32)),
+                           "a mapping of another number of genes", "gene_to_fam")
 
 
 if __name__ == "__main__":

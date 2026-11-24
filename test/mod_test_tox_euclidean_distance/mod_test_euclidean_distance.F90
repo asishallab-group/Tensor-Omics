@@ -4,8 +4,8 @@
 !| and the NaN/Inf checks.
 !|
 !| Every expected value is written out by hand. The differences are integers, or integers times a
-!| power of two, chosen as Pythagorean triples and quadruples, so each sum of squares is a perfect
-!| square, the root is exact and every comparison has tolerance 0. Every call is made in both
+!| power of two, chosen as Pythagorean triples, quadruples and a quintuple, so each sum of squares
+!| is a perfect square, the root is exact and every comparison has tolerance 0. Every call is made in both
 !| orders, so each case checks that the distance is symmetric as well.
 module mod_test_euclidean_distance
     use asserts
@@ -62,13 +62,15 @@ contains
         call assert_equal_real(result, expected, 0.0_real64, msg//": result, vectors swapped")
     end subroutine check_distance
 
-    !> Differences that are Pythagorean triples and quadruples, so the distance is an integer:
+    !> Differences that are Pythagorean triples, a quadruple and a quintuple, so the distance is an
+    !| integer:
     !| - kept from the old suite (`test_euclidean_distance_2d_origin`): [3, 4] to the origin is 5;
     !| - kept from the old suite (`test_euclidean_distance_mixed_signs`): [-3, 4] to [3, -4]
     !|   differs by [-6, 8], distance 10;
     !| - in place of the old `test_euclidean_distance_3d` ([1, 2, 3] to [4, 5, 6], whose expected
     !|   value sqrt(27) is not exact): [1, 2, 3] to [3, 5, 9] differs by [2, 3, 6], distance 7;
-    !| - four dimensions: [1, 2, 3, 4] to [3, 6, 8, 10] differs by [2, 4, 5, 6], distance 9.
+    !| - four dimensions, a Pythagorean quintuple: [1, 2, 3, 4] to [3, 6, 8, 10] differs by
+    !|   [2, 4, 5, 6], distance 9.
     subroutine test_euclidean_distance_pythagorean()
         real(real64) :: plane_a(2), plane_b(2), space_a(3), space_b(3), four_a(4), four_b(4)
 
@@ -256,11 +258,14 @@ contains
     end subroutine test_euclidean_distance_squares_past_huge
 
     !> BUG: a distance whose squares underflow is 0, or wrong, with `ierr` OK. The sum of squares
-    !| is taken unscaled, so the squares of differences below about 1e-162 are subnormal or 0:
+    !| is taken unscaled: the square of a difference turns subnormal once the difference is below
+    !| about 1.5e-154 (2**-511), losing precision, and becomes 0 below about 1.6e-162
+    !| (2**-537.5):
     !| - [3*2**-540, 4*2**-540] to the origin is 5*2**-540 (about 1.4e-162); today 0, because
     !|   both squares (9 and 16 times 2**-1080) are below the smallest subnormal 2**-1074;
     !| - [3*2**-538] to [0] is 3*2**-538; today sqrt(2)*2**-537, about 6% short, because the
-    !|   square 2.25*2**-1074 rounds to the subnormal 2*2**-1074.
+    !|   square 2.25*2**-1074 rounds to the subnormal 2*2**-1074 -- where subnormals are kept;
+    !|   a build or host that flushes them to zero gives 0 instead.
     !| #223's rule for sums of squares gives both exactly, so this expects them.
     subroutine test_euclidean_distance_squares_below_tiny()
         real(real64), parameter :: SMALL_SCALE = 2.0_real64**(-540)
