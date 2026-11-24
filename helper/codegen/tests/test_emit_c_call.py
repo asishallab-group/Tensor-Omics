@@ -236,8 +236,111 @@ class TestConstantSizes:
     def test_an_output_is_allocated_with_the_value(self, bag):
         text = self.module_text(bag)
 
-        assert "Rf_allocVector(REALSXP, 2)" in text
+        assert 'tox_count("sums", 2.0)' in text
         assert "N_AXES" not in text
 
     def test_a_length_is_the_value(self, bag):
         assert "MAX_LEN" not in self.module_text(bag)
+
+
+class TestBitmaskWords:
+    """Every int32 bit pattern is a bit-mask word, `NA_integer_` included (#206)."""
+
+    def wrapper(self, bag, intent=Intent.IN):
+        return emitted(
+            b.procedure(
+                "p",
+                b.integer("n_words", Intent.IN, doc="words"),
+                b.integer("family_bitmasks", intent, "(n_words)", doc="the words"),
+                b.integer("gene_to_fam", Intent.IN, "(n_words)", doc="an ordinary integer array"),
+                b.integer("total", Intent.OUT, doc="the answer"),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+    def test_an_input_passes_through_the_words_helper(self, bag):
+        text = self.wrapper(bag)
+        assert 'const int* _c_family_bitmasks = tox_words_in(family_bitmasks, "family_bitmasks");' in text
+
+    def test_any_other_integer_array_keeps_its_na_check(self, bag):
+        assert 'tox_int_in(gene_to_fam, "gene_to_fam")' in self.wrapper(bag)
+
+    def test_one_modified_in_place_is_copied_by_the_words_helper(self, bag):
+        text = self.wrapper(bag, Intent.INOUT)
+        assert 'PROTECT(tox_words_copy(family_bitmasks, "family_bitmasks"))' in text
+        assert "tox_int_copy(family_bitmasks" not in text
+
+    def test_the_helpers_pass_an_integer_vector_as_it_stands(self):
+        header = CCallEmitter().marshal_header_content()
+        words_in = header[header.index("static inline const int* tox_words_in"):]
+        words_in = words_in[: words_in.index("\n}\n")]
+        assert "if (TYPEOF(x) == INTSXP) return INTEGER(x);" in words_in
+        # a double NA is no word, and its refusal says how to pass one
+        assert "words as an integer vector" in words_in
+
+
+class TestAllocationCounts:
+    """Every element count is exact, refused past R_XLEN_T_MAX, never negative (#215)."""
+
+    def wrapper(self, bag):
+        return emitted(
+            b.procedure(
+                "p",
+                b.real("values", Intent.IN, "(n_points, n_points)", doc="the data"),
+                b.integer("n_points", Intent.IN, doc="points"),
+                b.integer("n_bits", Intent.IN, doc="flags per column"),
+                b.logical("flags", Intent.OUT, "(n_bits, n_points)", kind="c_bool", doc="flags"),
+                b.real("merges", Intent.OUT, "(n_points - 1)", doc="one fewer than the points"),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+    def test_a_count_is_a_double_product_checked_by_name(self, bag):
+        text = self.wrapper(bag)
+        assert ('R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits * (double) '
+                'INTEGER(Rf_getAttrib(values, R_DimSymbol))[0]);') not in text  # n_points is a local
+        assert 'R_xlen_t _n_flags = tox_count("flags", (double) _v_n_bits * (double) n_points);' in text
+        assert "unsigned char* _c_flags = tox_bool_alloc(_n_flags);" in text
+
+    def test_a_computed_axis_is_clamped_at_zero_in_double(self, bag):
+        # no int arithmetic before the count is checked: n_points - 2147483647 cannot wrap
+        text = self.wrapper(bag)
+        assert 'tox_count("merges", tox_dmax(0.0, (double) n_points - 1.0))' in text
+        assert "Rf_allocVector(REALSXP, _n_merges)" in text
+
+    def test_a_computed_axis_of_a_matrix_is_an_int_dim_only_once_checked(self, bag):
+        text = emitted(
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="rows"),
+                b.real("x", Intent.OUT, "(n - 2, 3)", doc="the result"),
+                b.ierr(),
+            ),
+            bag,
+        )
+        assert 'tox_count("x", tox_dmax(0.0, (double) _v_n - 2.0) * 3.0)' in text
+        assert 'INTEGER(_dim_x)[0] = tox_int_extent("x", tox_dmax(0.0, (double) _v_n - 2.0));' in text
+        assert "INTEGER(_dim_x)[1] = 3;" in text
+
+    def test_the_outputs_are_converted_back_only_when_the_call_succeeded(self, bag):
+        text = self.wrapper(bag)
+        block = text[text.index("SEXP flags = R_NilValue;"):]
+        assert block.startswith("SEXP flags = R_NilValue;\n    if (!tox_failed(ierr)) {\n"
+                                "        flags = PROTECT(tox_bool_out(_c_flags, _n_flags)); _nprot++;")
+
+    def test_a_string_buffer_is_refused_in_bytes(self):
+        header = CCallEmitter().marshal_header_content()
+        char_alloc = header[header.index("static inline char* tox_char_alloc"):]
+        assert "would take %.0f bytes, which R cannot allocate" in char_alloc[: char_alloc.index("\n}\n")]
+
+    def test_an_error_is_told_from_a_status_as_check_err_code_tells_it(self):
+        from codegen.ir.errors import ErrorCatalogue, ErrorCode
+        from codegen.ir.doc import Doc
+
+        codes = [ErrorCode(name="ERR_OK", value=0, doc=Doc(), is_status=False),
+                 ErrorCode(name="STAT_CONVERGED_EARLY", value=7, doc=Doc(), is_status=True)]
+        header = CCallEmitter(catalogue=ErrorCatalogue(codes, arg_pos_factor=1000)).marshal_header_content()
+        assert "int code = ierr % 1000;\n    return code != 0 && code != 7;" in header
+        assert "return code != 0;" in CCallEmitter().marshal_header_content()

@@ -46,6 +46,7 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
     gene_to_family <- .tox_as_integer_vector(gene_to_family, "gene_to_family")
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     ortholog_set <- .tox_as_logical_vector(ortholog_set, "ortholog_set")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_family) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_family", 1L, length(gene_to_family), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
     if (length(ortholog_set) != dim(expression_vectors)[2])
@@ -78,6 +79,7 @@ group_centroid_all <- function(expression_vectors, gene_to_family, n_families) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     gene_to_family <- .tox_as_integer_vector(gene_to_family, "gene_to_family")
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_family) != dim(expression_vectors)[2])
         .tox_shape_error("gene_to_family", 1L, length(gene_to_family), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 

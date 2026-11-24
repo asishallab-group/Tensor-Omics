@@ -21,8 +21,9 @@ module tox_get_outliers
     use tox_loess, only: tox_loess_required_workspace
     use tox_loess_impl, only: EPS_LOESS
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
-    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_once
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_arg_pos
+    use tox_errors, only: set_err_once, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
+    use tox_errors, only: validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -200,7 +201,27 @@ contains
             tmp_means_aux = tmp_means_aux,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:8_int32)
+                ! the same position here
+            case (24_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (25_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case (26_int32)
+                call set_err_arg_pos(ierr, 11_int32)
+            case (27_int32)
+                call set_err_arg_pos(ierr, 12_int32)
+            case (28_int32)
+                call set_err_arg_pos(ierr, 13_int32)
+            case (29_int32)
+                call set_err_arg_pos(ierr, 14_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_family_scaling
 
     !> summary: Validates its inputs, then calls [[tox_get_outliers_impl(module):compute_family_scaling_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_get_outliers(module):compute_family_scaling]] does both.
@@ -385,7 +406,15 @@ contains
             tmp_means_aux = tmp_means_aux,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:30_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine compute_family_scaling_expert
 
     !> summary: Validates its inputs, prepares what [[tox_get_outliers_impl(module):compute_rdi_impl]] needs, then calls it. The entry point to reach for first; see [[tox_get_outliers(module):compute_rdi_expert]] to prepare it yourself.
@@ -712,7 +741,27 @@ contains
             quantile_level = quantile_level,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:4_int32)
+                ! the same position here
+            case (27_int32)
+                call set_err_arg_pos(ierr, 5_int32)
+            case (28_int32)
+                call set_err_arg_pos(ierr, 6_int32)
+            case (29_int32)
+                call set_err_arg_pos(ierr, 7_int32)
+            case (30_int32)
+                call set_err_arg_pos(ierr, 8_int32)
+            case (31_int32)
+                call set_err_arg_pos(ierr, 9_int32)
+            case (32_int32)
+                call set_err_arg_pos(ierr, 10_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_outliers
 
     !> summary: Validates its inputs, then calls [[tox_get_outliers_impl(module):detect_outliers_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_get_outliers(module):detect_outliers]] does both.
@@ -892,7 +941,15 @@ contains
             quantile_level = quantile_level,&
             ierr = ierr&
         )
-        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:32_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine detect_outliers_expert
 
 end module tox_get_outliers

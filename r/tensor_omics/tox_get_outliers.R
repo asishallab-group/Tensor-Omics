@@ -48,6 +48,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
     degree <- .tox_as_integer_scalar(degree, "degree")
     mode <- .tox_as_mode(mode, "mode", c("plain", "robust"))
     n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'distances' implies n_genes == ", length(distances), "n_genes")
 
@@ -181,6 +182,7 @@ detect_outliers <- function(n_families, distances, gene_to_fam, quantile_level =
     distances <- .tox_as_double_vector(distances, "distances")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
+    .tox_check_extent(n_families, "n_families")
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'distances' implies n_genes == ", length(distances), "n_genes")
 

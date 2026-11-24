@@ -4,7 +4,7 @@
 hand-built projects (`generate(parsed=...)`) with the real macro header, and check both
 directions: the name is refused where the wrapper calls, imports, uses as a kind or declares
 it, and accepted where it does not -- `count` stays a good argument of a procedure that counts
-nothing, as main's `mask_chunk_count` has it.
+nothing.
 """
 
 import pytest
@@ -48,7 +48,7 @@ class TestAnIntrinsicTheWrapperCalls:
         ]
 
     def test_count_where_nothing_is_counted_is_accepted(self):
-        # main publishes `mask_chunk_count(n_genes, count)`
+        # an output called `count` beside no mask: the wrapper calls no `count(...)`
         assert errors(impl(integer("n"), real("values", Intent.IN, "(n)"),
                            integer("count", Intent.OUT))) == []
 

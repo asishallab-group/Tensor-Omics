@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 217910824620d3a1 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void normalize_variable_timeseries_c(const double*, double*, const int*, int*, int*);
@@ -16,7 +16,8 @@ SEXP normalize_variable_timeseries_call(SEXP v) {
     int n_points = (int) Rf_length(v);
 
     // outputs and work space
-    SEXP v_norm = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    R_xlen_t _n_v_norm = tox_count("v_norm", (double) n_points);
+    SEXP v_norm = PROTECT(Rf_allocVector(REALSXP, _n_v_norm)); _nprot++;
     int status = 0;
     int ierr = 0;
 
@@ -48,9 +49,11 @@ SEXP normalize_single_trajectory_call(SEXP trajectory) {
     int n_timepoints = INTEGER(Rf_getAttrib(trajectory, R_DimSymbol))[0];
 
     // outputs and work space
-    SEXP trajectory_norm = PROTECT(Rf_allocVector(REALSXP, n_timepoints * n_factors)); _nprot++;
+    R_xlen_t _n_trajectory_norm = tox_count("trajectory_norm", (double) n_timepoints * (double) n_factors);
+    SEXP trajectory_norm = PROTECT(Rf_allocVector(REALSXP, _n_trajectory_norm)); _nprot++;
     { SEXP _dim_trajectory_norm = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_trajectory_norm)[0] = n_timepoints; INTEGER(_dim_trajectory_norm)[1] = n_factors; Rf_setAttrib(trajectory_norm, R_DimSymbol, _dim_trajectory_norm); UNPROTECT(1); }
-    SEXP status = PROTECT(Rf_allocVector(INTSXP, n_factors)); _nprot++;
+    R_xlen_t _n_status = tox_count("status", (double) n_factors);
+    SEXP status = PROTECT(Rf_allocVector(INTSXP, _n_status)); _nprot++;
     int ierr = 0;
 
     normalize_single_trajectory_c(
@@ -83,9 +86,11 @@ SEXP normalize_all_trajectories_call(SEXP trajectories) {
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
 
     // outputs and work space
-    SEXP trajectories_norm = PROTECT(Rf_allocVector(REALSXP, n_factors * n_samples * n_timepoints)); _nprot++;
+    R_xlen_t _n_trajectories_norm = tox_count("trajectories_norm", (double) n_factors * (double) n_samples * (double) n_timepoints);
+    SEXP trajectories_norm = PROTECT(Rf_allocVector(REALSXP, _n_trajectories_norm)); _nprot++;
     { SEXP _dim_trajectories_norm = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(_dim_trajectories_norm)[0] = n_factors; INTEGER(_dim_trajectories_norm)[1] = n_samples; INTEGER(_dim_trajectories_norm)[2] = n_timepoints; Rf_setAttrib(trajectories_norm, R_DimSymbol, _dim_trajectories_norm); UNPROTECT(1); }
-    SEXP status = PROTECT(Rf_allocVector(INTSXP, n_factors * n_samples)); _nprot++;
+    R_xlen_t _n_status = tox_count("status", (double) n_factors * (double) n_samples);
+    SEXP status = PROTECT(Rf_allocVector(INTSXP, _n_status)); _nprot++;
     { SEXP _dim_status = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_status)[0] = n_factors; INTEGER(_dim_status)[1] = n_samples; Rf_setAttrib(status, R_DimSymbol, _dim_status); UNPROTECT(1); }
     int ierr = 0;
 

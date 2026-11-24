@@ -135,8 +135,10 @@ contains
 
     !> Extracts the argument position from the error code
     !|
-    !| Zero means the error is not argument related -- either it never was, or it crossed out of
-    !| the procedure that raised it into one whose dummy list cannot express it. See
+    !| The position numbers the dummy list of the procedure that returned the code. Zero means the
+    !| error is not argument related -- either it never was, or it crossed out of a callee through
+    !| an argument the caller did not pass from one of its own (a work array it prepared, a
+    !| constant). See [[tox_errors(module):set_err_arg_pos(subroutine)]] and
     !| [[tox_errors(module):clear_err_arg_pos(subroutine)]].
     pure integer(int32) function get_err_arg_pos(ierr) result(arg_pos)
         integer(int32), intent(in) :: ierr
@@ -146,6 +148,12 @@ contains
     end function get_err_arg_pos
 
     !> Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.
+    !|
+    !| A position numbers the dummy list of the procedure that returns it, so one that comes back
+    !| from a helper is translated at the call, before positions from different helpers merge:
+    !| `call map_err_arg_pos(ierr, 3_int32, 18_int32)` where the helper's third dummy is passed
+    !| the caller's eighteenth. Leaves any other position as it is; see
+    !| [[tox_errors(module):set_err_arg_pos(subroutine)]] to set one unconditionally.
     pure subroutine map_err_arg_pos(ierr, old, new)
         integer(int32), intent(inout) :: ierr
             !! Error code
@@ -159,14 +167,28 @@ contains
         end if
     end subroutine map_err_arg_pos
 
+    !> Sets the argument position of an error code, keeping the error itself.
+    !|
+    !| Translates a position into another dummy list once the caller knows which of its own
+    !| arguments it means -- inside a `select case (get_err_arg_pos(ierr))`, as the generated
+    !| wrappers do after every call that takes `ierr`. Zero means "not argument related", which
+    !| [[tox_errors(module):clear_err_arg_pos(subroutine)]] says by name.
+    pure subroutine set_err_arg_pos(ierr, arg_pos)
+        integer(int32), intent(inout) :: ierr
+            !! Error code
+        integer(int32), intent(in) :: arg_pos
+            !! The new argument position, 0 for not argument related
+
+        ierr = create_err_code(get_err_code(ierr), arg_pos)
+    end subroutine set_err_arg_pos
+
     !> Drops the argument position from an error code, keeping the error itself.
     !|
-    !| An `ierr` that crosses out of a procedure into a caller with a different dummy list
-    !| carries a position naming an argument the caller does not have -- and it may not even
-    !| be the callee's own position, since it propagates unchanged from whatever private
-    !| helper set it. Nothing can translate that, so the honest report is "not argument
-    !| related". Use [[tox_errors(module):map_err_arg_pos(subroutine)]] instead where the two
-    !| dummy lists really are known to correspond.
+    !| A position numbers the dummy list of the procedure that returned it. Where a caller did
+    !| not pass the argument it names from one of its own -- a work array it prepared, a
+    !| constant, a local -- it names nothing the caller's own caller wrote, so the honest report
+    !| is "not argument related". Use [[tox_errors(module):set_err_arg_pos(subroutine)]] or
+    !| [[tox_errors(module):map_err_arg_pos(subroutine)]] where the argument is the caller's own.
     pure subroutine clear_err_arg_pos(ierr)
         integer(int32), intent(inout) :: ierr
             !! Error code

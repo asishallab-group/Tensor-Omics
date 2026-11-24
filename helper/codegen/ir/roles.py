@@ -101,8 +101,9 @@ class ProducerInput:
 class OutputFromPlan:
     """How an argument is obtained by calling another procedure.
 
-    For `DM_OUTPUT_FROM(count, mask_chunk_count, ..., AUTO)`: call `mask_chunk_count`,
-    supply its inputs from the consumer's own arguments, and take its `count` output. The
+    For `DM_OUTPUT_FROM(work_array_size, calc_paralog_subsets_bitmasks_size, ..., AUTO)`: call
+    `calc_paralog_subsets_bitmasks_size`, supply its inputs from the consumer's own arguments,
+    and take its `work_array_size` output. The
     binding languages call the producer's *generated wrapper*, so its own error
     checking and result handling come for free.
     """
@@ -140,7 +141,7 @@ class OutputFromPlan:
         """The producer inputs it refines in place, that a consumer argument supplied.
 
         An `intent(inout)` producer input is returned alongside the annotated output with a
-        possibly different value -- `calc_work_arr_paralog_subsets_size` caps the
+        possibly different value -- `calc_paralog_subsets_bitmasks_size` caps the
         `max_subset_size` it is handed to what actually fits. After the AUTO call the
         consumer must adopt that returned value, not the raw one it passed in, or it works
         with a stale figure. Constants are never fed back (nothing supplied them).
@@ -162,6 +163,11 @@ class ArgumentRoles:
 
     #: `tmp_` prefixed: a work array, allocated silently and never returned
     is_temporary: bool = False
+
+    #: Named `bitmask(s)` or `*_bitmask(s)`: it holds bit-mask words, every int32 bit pattern
+    #: of which is a word (`Conventions.is_bitmask_name`; `validate` refuses it on anything but
+    #: an `integer(int32)` array)
+    is_bitmask: bool = False
 
     #: How this argument is computed from another procedure, if it is
     computed_from: OutputFromPlan | None = None
@@ -906,6 +912,7 @@ class _Analyser:
         for argument in self.arguments:
             argument.roles = ArgumentRoles(
                 is_temporary=self._is_temporary(argument),
+                is_bitmask=self.conventions.is_bitmask_name(argument.name),
                 mode=self._mode_table(argument),
             )
 

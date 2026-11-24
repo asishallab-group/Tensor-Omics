@@ -244,6 +244,10 @@ def read_gene_ids_from_tsv_file(
     n_header_rows = _contract.integer(n_header_rows, "n_header_rows")
     gene_col = _contract.integer(gene_col, "gene_col")
 
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(gene_ids_strlen, "gene_ids_strlen")
+    _contract.extent(n_gene_ids_elements, "n_gene_ids_elements")
+
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
 
@@ -322,6 +326,11 @@ def read_orthofinder_file(
     family_ids_strlen = _contract.integer(family_ids_strlen, "family_ids_strlen")
     n_family_ids_elements = _contract.integer(n_family_ids_elements, "n_family_ids_elements")
     n_gene_to_fam_elements = _contract.integer(n_gene_to_fam_elements, "n_gene_to_fam_elements")
+
+    # the outputs are allocated by a size the caller passes, which must not be negative
+    _contract.extent(family_ids_strlen, "family_ids_strlen")
+    _contract.extent(n_family_ids_elements, "n_family_ids_elements")
+    _contract.extent(n_gene_to_fam_elements, "n_gene_to_fam_elements")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
