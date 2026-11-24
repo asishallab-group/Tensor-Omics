@@ -28,7 +28,7 @@ contains
     function get_all_tests_compute_baselines_factor_dependent() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(8))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_compute_baselines_factor_dependent_raw", &
                                  test_compute_baselines_factor_dependent_raw)
         all_tests(2) = test_case("test_compute_baselines_factor_dependent_min", &
@@ -45,6 +45,8 @@ contains
                                  test_compute_baselines_factor_dependent_dimensions)
         all_tests(8) = test_case("test_compute_baselines_factor_dependent_rejects_nan_and_inf", &
                                  test_compute_baselines_factor_dependent_rejects_nan_and_inf)
+        all_tests(9) = test_case("test_compute_baselines_factor_dependent_mean_of_huge", &
+                                 test_compute_baselines_factor_dependent_mean_of_huge)
     end function get_all_tests_compute_baselines_factor_dependent
 
     !> Calls the procedure on `factor` and `dependent` in `baseline_mode` and checks both
@@ -171,5 +173,19 @@ contains
                             //trim(NON_FINITE_NAMES(i_value)), 3)
         end do
     end subroutine test_compute_baselines_factor_dependent_rejects_nan_and_inf
+
+    !> BUG: the mean of finite values is refused when their sum overflows. factor [huge, huge] has
+    !| the mean huge and dependent [-huge, -huge] the mean -huge, both finite, but the sum is
+    !| +-Inf and the procedure returns ERR_NAN_INF, blaming no argument, with the baseline Inf.
+    !| Every procedure taking MODE_BASELINE_MEAN inherits it. f42_math_impl's `mean` scales its
+    !| sum for exactly this (#202), so this expects what it gives.
+    subroutine test_compute_baselines_factor_dependent_mean_of_huge()
+        real(real64) :: factor(2), dependent(2)
+
+        factor = huge(1.0_real64)
+        dependent = -huge(1.0_real64)
+        call check_baselines(2, factor, dependent, MODE_BASELINE_MEAN, huge(1.0_real64), -huge(1.0_real64), &
+                             "test_compute_baselines_factor_dependent_mean_of_huge")
+    end subroutine test_compute_baselines_factor_dependent_mean_of_huge
 
 end module mod_test_compute_baselines_factor_dependent
