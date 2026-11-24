@@ -226,7 +226,13 @@ contains
     !| `n_samples` rows hold its family's centroid and the next `n_samples` rows the expression
     !| vector minus that centroid. A gene in no family (`M_GENE_TO_FAM_SENTINEL` in
     !| `gene_to_fam`) has no centroid to shift from, so all `2*n_samples` of its rows must be
-    !| zero. Anything else is `ERR_INVALID_INPUT`.
+    !| exactly zero; the other genes are compared within a tolerance of 1e-10.
+    !|
+    !| `ERR_SIZE_MISMATCH` if `expression_vectors` or `family_centroids` does not have `n_samples`
+    !| rows, `shift_vectors` is not `2*n_samples` by the number of genes (the columns of
+    !| `expression_vectors`), or `gene_to_fam` is shorter than that. `ERR_INVALID_INPUT` if a
+    !| family index is negative or past the columns of `family_centroids`, `shift_vectors` holds
+    !| a NaN or an infinity, or the field is not the one computed from the inputs.
     subroutine validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, &
                                       gene_to_fam, n_samples, ierr)
         real(real64), intent(in) :: shift_vectors(:, :)
@@ -293,17 +299,15 @@ contains
         do i = 1, n_genes
             fam_idx = gene_to_fam(i)
 
-            ! A gene in no family: compute_shift_vector_field writes zero for its centroid and
-            ! for its shift, so both halves of its column must be zero.
+            ! A gene in no family: compute_shift_vector_field writes literal zeros for its
+            ! centroid and for its shift, so its whole column must be exactly zero (-0.0 compares
+            ! equal). No tolerance: a value near 0 is not what it writes.
             if (fam_idx == M_GENE_TO_FAM_SENTINEL) then
-                do j = 1, 2*n_samples
-                    if (abs(shift_vectors(j, i)) > FLOAT_TOLERANCE) then
-                        call set_err_once(ierr, ERR_INVALID_INPUT)
-                        if (DEBUG) write (*, *) 'Error: gene ', i, ' is in no family, but row ', j, &
-                            ' of its shift vectors is ', shift_vectors(j, i), ' instead of 0'
-                        return
-                    end if
-                end do
+                if (any(shift_vectors(:, i) /= 0.0_real64)) then
+                    call set_err_once(ierr, ERR_INVALID_INPUT)
+                    if (DEBUG) write (*, *) 'Error: gene ', i, ' is in no family, but its shift vectors are not zero'
+                    return
+                end if
                 cycle
             end if
 
