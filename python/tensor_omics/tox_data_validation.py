@@ -419,6 +419,14 @@ def validate_shift_vectors(
 ):
     r"""Validates shift vectors
 
+    Checks that `shift_vectors` is the field
+    :func:`tensor_omics.compute_shift_vector_field` computes
+    from `expression_vectors`, `family_centroids` and `gene_to_fam`: for each gene, the first
+    `n_samples` rows hold its family's centroid and the next `n_samples` rows the expression
+    vector minus that centroid. A gene in no family (`0` in
+    `gene_to_fam`) has no centroid to shift from, so all `2*n_samples` of its rows must be
+    zero. Anything else is `ERR_INVALID_INPUT`.
+
     Parameters
     ----------
     shift_vectors : np.ndarray[np.float64] of shape (n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2,), column-major (order='F')

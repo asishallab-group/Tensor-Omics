@@ -246,6 +246,13 @@ contains
     end subroutine validate_family_centroids_c
 
     !> summary: C-wrapper for [[tox_data_validation(module):validate_shift_vectors(subroutine)]]
+    !| Checks that `shift_vectors` is the field
+    !| [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] computes
+    !| from `expression_vectors`, `family_centroids` and `gene_to_fam`: for each gene, the first
+    !| `n_samples` rows hold its family's centroid and the next `n_samples` rows the expression
+    !| vector minus that centroid. A gene in no family (`0_int32` in
+    !| `gene_to_fam`) has no centroid to shift from, so all `2*n_samples` of its rows must be
+    !| zero. Anything else is `ERR_INVALID_INPUT`.
     subroutine validate_shift_vectors_c(&
             shift_vectors,&
             n_shift_vectors_elements_dim_1,&

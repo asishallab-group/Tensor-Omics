@@ -220,6 +220,13 @@ contains
     !> M_EXPORT_C
     !| summary: Validates shift vectors
     !| AUTHOR_AARON_SCHROEDER
+    !| Checks that `shift_vectors` is the field
+    !| [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] computes
+    !| from `expression_vectors`, `family_centroids` and `gene_to_fam`: for each gene, the first
+    !| `n_samples` rows hold its family's centroid and the next `n_samples` rows the expression
+    !| vector minus that centroid. A gene in no family (`M_GENE_TO_FAM_SENTINEL` in
+    !| `gene_to_fam`) has no centroid to shift from, so all `2*n_samples` of its rows must be
+    !| zero. Anything else is `ERR_INVALID_INPUT`.
     subroutine validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, &
                                       gene_to_fam, n_samples, ierr)
         real(real64), intent(in) :: shift_vectors(:, :)
@@ -286,9 +293,18 @@ contains
         do i = 1, n_genes
             fam_idx = gene_to_fam(i)
 
-            if (fam_idx == 0) then
-                call set_err_once(ierr, ERR_INVALID_INPUT)
-                RETURN
+            ! A gene in no family: compute_shift_vector_field writes zero for its centroid and
+            ! for its shift, so both halves of its column must be zero.
+            if (fam_idx == M_GENE_TO_FAM_SENTINEL) then
+                do j = 1, 2*n_samples
+                    if (abs(shift_vectors(j, i)) > FLOAT_TOLERANCE) then
+                        call set_err_once(ierr, ERR_INVALID_INPUT)
+                        if (DEBUG) write (*, *) 'Error: gene ', i, ' is in no family, but row ', j, &
+                            ' of its shift vectors is ', shift_vectors(j, i), ' instead of 0'
+                        return
+                    end if
+                end do
+                cycle
             end if
 
             ! Check that centroid part (first d rows) matches the family centroid
