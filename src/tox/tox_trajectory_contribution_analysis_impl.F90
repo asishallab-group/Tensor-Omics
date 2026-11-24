@@ -441,6 +441,7 @@ contains
                                                                   n_timepoints)
         integer(int32), intent(in)  :: n_timepoints
             !! number of timepoints
+            !! DM_MIN(1_int32)
         real(real64), dimension(max(0_int32, n_timepoints - 1)), intent(in)  :: velocity
             !! velocity trajectory
         real(real64), dimension(max(0_int32, n_timepoints - 2)), intent(out) :: acceleration
@@ -491,6 +492,7 @@ contains
             !! number of samples
         integer(int32), intent(in)  :: n_timepoints
             !! number of timepoints
+            !! DM_MIN(1_int32)
         real(real64), dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples), intent(in)  ::  velocity
             !! input velocity trajectories
         real(real64), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out) :: acceleration

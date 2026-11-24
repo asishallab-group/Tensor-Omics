@@ -198,6 +198,7 @@ compute_velocity_trajectory <- function(trajectory) {
 #'
 #' @param velocity a numeric vector. velocity trajectory
 #' @param n_timepoints a integer scalar. number of timepoints
+#'   The minimum valid value is `1`.
 #' @return a numeric vector. acceleration trajectory
 #' @export
 compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints) {
@@ -236,6 +237,7 @@ compute_velocity_trajectories <- function(trajectories) {
 #'
 #' @param velocity a numeric array of rank 3. input velocity trajectories
 #' @param n_timepoints a integer scalar. number of timepoints
+#'   The minimum valid value is `1`.
 #' @return a numeric array of rank 3. output acceleration trajectories
 #' @export
 compute_acceleration_from_velocity <- function(velocity, n_timepoints) {

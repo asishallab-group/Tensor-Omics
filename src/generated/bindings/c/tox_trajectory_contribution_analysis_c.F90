@@ -710,6 +710,7 @@ contains
             !! number of elements in `velocity`, which must be `max(0_int32, n_timepoints - 1)`
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_velocity_elements), intent(in), target :: velocity
             !! velocity trajectory
         real(c_double), dimension(max(0_int32, n_timepoints - 2)), intent(out), target :: acceleration
@@ -798,6 +799,7 @@ contains
             !! number of samples
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_velocity_elements_dim_1, n_factors, n_samples), intent(in), target :: velocity
             !! input velocity trajectories
         real(c_double), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out), target :: acceleration

@@ -699,6 +699,7 @@ def compute_acceleration_from_velocity_trajectory(
         velocity trajectory
     n_timepoints : int
         number of timepoints
+        The minimum valid value is `1`.
 
     Returns
     -------
@@ -814,6 +815,7 @@ def compute_acceleration_from_velocity(
         input velocity trajectories
     n_timepoints : int
         number of timepoints
+        The minimum valid value is `1`.
 
     Returns
     -------

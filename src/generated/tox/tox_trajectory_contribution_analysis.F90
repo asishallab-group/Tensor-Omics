@@ -645,6 +645,7 @@ contains
         )
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(max(0_int32, n_timepoints - 1)), intent(in) :: velocity
             !! velocity trajectory
         real(real64), dimension(max(0_int32, n_timepoints - 2)), intent(out) :: acceleration
@@ -654,6 +655,7 @@ contains
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_timepoints, ierr, arg_pos=3_int32, min=1_int32)
         call validate_all_in_range_real(velocity, (max(0_int32, n_timepoints - 1)), ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
@@ -720,6 +722,7 @@ contains
             !! number of samples
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples), intent(in) :: velocity
             !! input velocity trajectories
         real(real64), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out) :: acceleration
@@ -731,6 +734,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
+        call validate_in_range_int(n_timepoints, ierr, arg_pos=5_int32, min=1_int32)
         call validate_all_in_range_real(velocity, (max(0_int32, n_timepoints - 1)) * n_factors * n_samples, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
