@@ -130,13 +130,13 @@ contains
         n_dims = size(vec1, kind=int32)
 
         largest_difference = 0.0_real64
-        do concurrent(i_dim=1:n_dims) shared(vec1, vec2) reduce(max:largest_difference)
+        do i_dim = 1, n_dims
             largest_difference = max(largest_difference, abs(vec1(i_dim) - vec2(i_dim)))
         end do
         exponent = scaling_exponent_for_largest(largest_difference)
 
         scaled_squares_sum = 0.0_real64
-        do concurrent(i_dim=1:n_dims) shared(vec1, vec2, exponent) reduce(+:scaled_squares_sum)
+        do i_dim = 1, n_dims
             scaled_squares_sum = scaled_squares_sum + scale(vec1(i_dim) - vec2(i_dim), exponent)**2
         end do
         distance = scale(sqrt(scaled_squares_sum), -exponent)
