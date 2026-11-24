@@ -46,7 +46,7 @@ contains
     function get_all_tests_detect_subfunctionalization() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(11))
+        allocate (all_tests(12))
         all_tests(1) = test_case("test_detect_subfunc_binary_weights", test_detect_subfunc_binary_weights)
         all_tests(2) = test_case("test_detect_subfunc_threshold_inclusive", test_detect_subfunc_threshold_inclusive)
         all_tests(3) = test_case("test_detect_subfunc_pruning_bound", test_detect_subfunc_pruning_bound)
@@ -58,6 +58,7 @@ contains
         all_tests(9) = test_case("test_detect_subfunc_value_ranges", test_detect_subfunc_value_ranges)
         all_tests(10) = test_case("test_detect_subfunc_rejects_nan_and_inf", test_detect_subfunc_rejects_nan_and_inf)
         all_tests(11) = test_case("test_detect_subfunc_expert", test_detect_subfunc_expert)
+        all_tests(12) = test_case("test_detect_subfunc_checks_the_order", test_detect_subfunc_checks_the_order)
     end function get_all_tests_detect_subfunctionalization
 
     !> The binary-weights family (see BINARY_GENES), all five genes kept, `rdi_threshold` 1, each
@@ -461,5 +462,26 @@ contains
                                                     rdi_threshold, norms, perm, tmp_work_array, ierr)
         end subroutine expert
     end subroutine test_detect_subfunc_expert
+
+    !> BUG (fails today): `sorted_paralog_norms_perm` is documented as the ascending permutation of
+    !| the norms, but only its entries' range is checked. The pruning reads the smallest norm after
+    !| each gene from a work array filled along it, and an order that is no permutation leaves part
+    !| of that array unwritten: [1, 1, 1] writes its first element only, and the pruning then reads
+    !| the other two uninitialized. A permutation that is not ascending ([3, 2, 1] for the norms
+    !| [1, 2, 4]) fills it with wrong minima. Both are to be ERR_INVALID_INPUT, naming
+    !| `sorted_paralog_norms_perm` (argument 13); today both are accepted.
+    subroutine test_detect_subfunc_checks_the_order()
+        integer(int32), parameter :: repeated(3) = [1, 1, 1], descending(3) = [3, 2, 1]
+        integer(int32) :: mask(1), subsets(1, 3), n_results, ierr
+
+        mask = 7
+        call detect_subfunctionalization(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 3, 1.0_real64, &
+                                         BINARY_NORMS, repeated, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_subfunc_checks_the_order: a repeated entry", 13)
+
+        call detect_subfunctionalization(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 3, 1.0_real64, &
+                                         BINARY_NORMS, descending, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_subfunc_checks_the_order: a descending order", 13)
+    end subroutine test_detect_subfunc_checks_the_order
 
 end module mod_test_detect_subfunctionalization
