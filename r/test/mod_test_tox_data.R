@@ -240,4 +240,18 @@ test_an_array_of_no_strings <- function() {
               "a family file of no family reads as none")
 }
 
+
+test_a_computed_field_with_an_unassigned_gene_validates <- function() {
+  # gene 2 is in no family (0): compute_shift_vector_field writes zeros for it, and the
+  # validators accept that field
+  expression <- matrix(c(1, 2, 5, 6, 3, 4), nrow = 2)
+  centroids <- matrix(c(1.5, 1.5, 3, 3), nrow = 2)
+  small_gene_to_fam <- c(1L, 0L, 2L)
+  field <- compute_shift_vector_field(expression, centroids, small_gene_to_fam)
+  shift_vectors <- rbind(field[, 1, ], field[, 2, ])
+  validate_shift_vectors(shift_vectors, expression, centroids, small_gene_to_fam, 2L)
+  validate_all_data(3L, 2L, 2L, c("g1", "g2", "g3"), c("f1", "f2"), small_gene_to_fam, expression, centroids,
+                    shift_vectors)
+}
+
 run_all_tests()

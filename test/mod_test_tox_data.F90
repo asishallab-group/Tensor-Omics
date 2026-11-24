@@ -31,7 +31,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
-        allocate (all_tests(23))
+        allocate (all_tests(25))
 
         call setup_global_data()
 
@@ -58,6 +58,10 @@ contains
         all_tests(21) = test_case("test_validate_empty_strings", test_validate_empty_strings)
         all_tests(22) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
         all_tests(23) = test_case("test_manual_archive", test_manual_archive)
+        all_tests(24) = test_case("test_validate_shift_vectors_with_unassigned_gene", &
+                                  test_validate_shift_vectors_with_unassigned_gene)
+        all_tests(25) = test_case("test_validate_shift_vectors_refuses_nonzero_unassigned", &
+                                  test_validate_shift_vectors_refuses_nonzero_unassigned)
     end function get_all_tests_tox_data
 
     !> Setup global test data
@@ -1110,4 +1114,57 @@ contains
 
         deallocate (gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
     end subroutine test_validate_dimension_mismatch
+
+    !> A small data set with an unassigned gene: 2 samples, genes 1..3 in families [1, 0, 2]
+    !| (0 is M_GENE_TO_FAM_SENTINEL), and the shift vectors compute_shift_vector_field computes
+    !| for it, in the validators' (2*n_samples, n_genes) layout. The unassigned gene's centroid
+    !| rows and shift rows are zero.
+    subroutine unassigned_gene_data(expression_vectors, family_centroids, small_gene_to_fam, field)
+        real(real64), intent(out) :: expression_vectors(2, 3), family_centroids(2, 2), field(4, 3)
+        integer(int32), intent(out) :: small_gene_to_fam(3)
+        integer(int32) :: ierr
+
+        expression_vectors = reshape([1.0_real64, 2.0_real64, 5.0_real64, 6.0_real64, 3.0_real64, 4.0_real64], [2, 3])
+        family_centroids = reshape([1.5_real64, 1.5_real64, 3.0_real64, 3.0_real64], [2, 2])
+        small_gene_to_fam = [1, 0, 2]
+        call compute_shift_vector_field(2, 3, 2, expression_vectors, family_centroids, small_gene_to_fam, field, ierr)
+        call assert_err(ierr, ERR_OK, "unassigned_gene_data: compute_shift_vector_field")
+    end subroutine unassigned_gene_data
+
+    !> The field compute_shift_vector_field writes for a data set with an unassigned gene is
+    !| valid: validate_shift_vectors and validate_all_data, which runs it, accept it.
+    subroutine test_validate_shift_vectors_with_unassigned_gene()
+        real(real64) :: expression_vectors(2, 3), family_centroids(2, 2), field(4, 3)
+        integer(int32) :: small_gene_to_fam(3), ierr
+        character(len=8) :: small_gene_ids(3), small_family_ids(2)
+
+        call unassigned_gene_data(expression_vectors, family_centroids, small_gene_to_fam, field)
+        small_gene_ids = ["g1", "g2", "g3"]
+        small_family_ids = ["f1", "f2"]
+
+        call validate_shift_vectors(field, expression_vectors, family_centroids, small_gene_to_fam, 2, ierr)
+        call assert_err(ierr, ERR_OK, "test_validate_shift_vectors_with_unassigned_gene: validate_shift_vectors")
+
+        call validate_all_data(3, 2, 2, small_gene_ids, small_family_ids, small_gene_to_fam, expression_vectors, &
+                               family_centroids, field, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_validate_shift_vectors_with_unassigned_gene: validate_all_data")
+    end subroutine test_validate_shift_vectors_with_unassigned_gene
+
+    !> An unassigned gene has no centroid to shift from, so a field that gives it a non-zero
+    !| centroid, or a non-zero shift, is not what compute_shift_vector_field writes: refused
+    !| with ERR_INVALID_INPUT.
+    subroutine test_validate_shift_vectors_refuses_nonzero_unassigned()
+        real(real64) :: expression_vectors(2, 3), family_centroids(2, 2), field(4, 3)
+        integer(int32) :: small_gene_to_fam(3), ierr
+
+        call unassigned_gene_data(expression_vectors, family_centroids, small_gene_to_fam, field)
+        field(2, 2) = 1.0_real64
+        call validate_shift_vectors(field, expression_vectors, family_centroids, small_gene_to_fam, 2, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_validate_shift_vectors_refuses_nonzero_unassigned: centroid")
+
+        call unassigned_gene_data(expression_vectors, family_centroids, small_gene_to_fam, field)
+        field(4, 2) = 1.0_real64
+        call validate_shift_vectors(field, expression_vectors, family_centroids, small_gene_to_fam, 2, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_validate_shift_vectors_refuses_nonzero_unassigned: shift")
+    end subroutine test_validate_shift_vectors_refuses_nonzero_unassigned
 end module mod_test_tox_data
