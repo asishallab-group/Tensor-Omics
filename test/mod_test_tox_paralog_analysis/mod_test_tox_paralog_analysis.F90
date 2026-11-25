@@ -10,6 +10,7 @@ module mod_test_tox_paralog_analysis
     use mod_test_detect_dosage_effect, only: get_all_tests_detect_dosage_effect
     use mod_test_detect_subfunctionalization, only: get_all_tests_detect_subfunctionalization
     use mod_test_filter_paralogs_by_pattern, only: get_all_tests_filter_paralogs_by_pattern
+    use mod_test_calc_paralog_norms, only: get_all_tests_calc_paralog_norms
     use mod_test_calc_paralog_subsets_bitmasks_size, only: get_all_tests_calc_paralog_subsets_bitmasks_size
     implicit none
     private
@@ -25,6 +26,7 @@ contains
                      get_all_tests_detect_dosage_effect(), &
                      get_all_tests_detect_subfunctionalization(), &
                      get_all_tests_filter_paralogs_by_pattern(), &
+                     get_all_tests_calc_paralog_norms(), &
                      get_all_tests_calc_paralog_subsets_bitmasks_size()]
     end function get_all_tests_tox_paralog_analysis
 end module mod_test_tox_paralog_analysis

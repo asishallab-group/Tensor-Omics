@@ -128,6 +128,20 @@ _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS = ("gene_angles", "th
 #: For a derived argument, the one the caller passed it in
 _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", None, None, None, None, None,)
 
+_lib.calc_paralog_norms_c.restype = None
+_lib.calc_paralog_norms_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CALC_PARALOG_NORMS_ARGUMENTS = ("genes", "n_dims", "n_genes", "paralog_norms", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CALC_PARALOG_NORMS_ARGUMENT_SOURCES = (None, "genes", "genes", None, None,)
+
 _lib.calc_paralog_subsets_bitmasks_size_c.restype = None
 _lib.calc_paralog_subsets_bitmasks_size_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
@@ -693,6 +707,64 @@ def filter_paralogs_by_pattern_subfunctionalization(
     family_bitmasks.flags.writeable = False
 
     return family_bitmasks
+
+def calc_paralog_norms(
+        genes,
+):
+    r"""The euclidean norm of each gene's vector, which the subfunctionalization prunes by
+
+    Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows
+    on the way: the result is +Inf only where the true norm exceeds `huge`.
+
+    Parameters
+    ----------
+    genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
+        expression vectors of genes
+
+    Returns
+    -------
+    paralog_norms : np.ndarray[np.float64] of shape (n_genes,), read-only
+        euclidean norm of each gene's vector
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_paralog_analysis::calc_paralog_norms`, whose argument names are
+    the ones an error message reports.
+    """
+    # check every input by the input contract, converting only when C needs it
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+
+    # what the inputs already say, rather than asking for it again
+    n_dims = genes.shape[0]
+    n_genes = genes.shape[1]
+
+    # outputs and work arrays, which the caller never sees
+    paralog_norms = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
+
+    _lib.calc_paralog_norms_c(
+        genes,
+        _ctypes.byref(_ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        paralog_norms,
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _CALC_PARALOG_NORMS_ARGUMENTS, _CALC_PARALOG_NORMS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    paralog_norms.flags.writeable = False
+
+    return paralog_norms
 
 def calc_paralog_subsets_bitmasks_size(
         max_subset_size,

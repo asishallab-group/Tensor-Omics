@@ -20,8 +20,8 @@
 !| Generated from [[tox_paralog_analysis_impl(module)]]; do not edit -- regenerate instead.
 module tox_paralog_analysis
     use f42_safeguard
-    use tox_paralog_analysis_impl, only: MODE_DOSAGE_PATTERN, MODE_SUBFUNC_PATTERN, calc_paralog_subsets_bitmasks_size_impl, detect_neofunctionalization_impl
-    use tox_paralog_analysis_impl, only: detect_patterns_impl, filter_paralogs_by_pattern_impl
+    use tox_paralog_analysis_impl, only: MODE_DOSAGE_PATTERN, MODE_SUBFUNC_PATTERN, calc_paralog_norms_impl, calc_paralog_subsets_bitmasks_size_impl
+    use tox_paralog_analysis_impl, only: detect_neofunctionalization_impl, detect_patterns_impl, filter_paralogs_by_pattern_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: PI, above
@@ -38,6 +38,7 @@ module tox_paralog_analysis
     public :: detect_subfunctionalization_expert
     public :: filter_paralogs_by_pattern_dosage_effect
     public :: filter_paralogs_by_pattern_subfunctionalization
+    public :: calc_paralog_norms
     public :: calc_paralog_subsets_bitmasks_size
 
 contains
@@ -838,6 +839,43 @@ contains
             n_mask_chunks = n_mask_chunks&
         )
     end subroutine filter_paralogs_by_pattern_subfunctionalization
+
+    !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):calc_paralog_norms_impl]].
+    !| Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows
+    !| on the way: the result is +Inf only where the true norm exceeds `huge`.
+    pure subroutine calc_paralog_norms(&
+            genes,&
+            n_dims,&
+            n_genes,&
+            paralog_norms,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_dims
+            !! size of the vectors in `genes`
+        integer(int32), intent(in) :: n_genes
+            !! number of vectors in `genes`
+        real(real64), dimension(n_dims, n_genes), intent(in) :: genes
+            !! expression vectors of genes
+        real(real64), dimension(n_genes), intent(out) :: paralog_norms
+            !! euclidean norm of each gene's vector
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_dims, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=1_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call calc_paralog_norms_impl(&
+            genes = genes,&
+            n_dims = n_dims,&
+            n_genes = n_genes,&
+            paralog_norms = paralog_norms&
+        )
+    end subroutine calc_paralog_norms
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl]].
     !| The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,

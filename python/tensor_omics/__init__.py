@@ -199,6 +199,7 @@ from .tox_paralog_analysis import (
     detect_subfunctionalization,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
+    calc_paralog_norms,
     calc_paralog_subsets_bitmasks_size,
 )
 from .tox_relative_axis_plane_tools import (
@@ -291,6 +292,7 @@ __all__ = [
     "build_spherical_kd",
     "calc_fchange",
     "calc_neighborhood_size",
+    "calc_paralog_norms",
     "calc_paralog_subsets_bitmasks_size",
     "calc_quantile",
     "calc_quantile_expert",

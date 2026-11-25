@@ -1,7 +1,7 @@
 """
 The `tox_paralog_analysis` suite: `detect_neofunctionalization`, `detect_dosage_effect`,
-`detect_subfunctionalization`, the two `filter_paralogs_by_pattern_*` filters and
-`calc_paralog_subsets_bitmasks_size` can be called from Python, return the documented types and
+`detect_subfunctionalization`, the two `filter_paralogs_by_pattern_*` filters,
+`calc_paralog_norms` and `calc_paralog_subsets_bitmasks_size` can be called from Python, return the documented types and
 shapes, and raise the documented errors, naming the argument. Whether the subsets and flags are
 right is the Fortran suite's job (test/mod_test_tox_paralog_analysis/), as the coding guide's
 "Where to Test What" asks. The few values checked here are the binding's own: genes are bits in
@@ -17,7 +17,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (detect_neofunctionalization, detect_dosage_effect, detect_subfunctionalization,
                           filter_paralogs_by_pattern_dosage_effect, filter_paralogs_by_pattern_subfunctionalization,
-                          calc_paralog_subsets_bitmasks_size)
+                          calc_paralog_norms, calc_paralog_subsets_bitmasks_size)
 from test_helpers import run_all_tests, assert_error, assert_refused_by_name
 from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT, ERR_NAN_INF
 
@@ -322,6 +322,35 @@ def test_detect_subfunctionalization_rejects_mismatched_shapes():
                            "a permutation of another number of genes", "sorted_paralog_norms_perm")
     assert_refused_by_name(lambda: detect_subfunctionalization(np.ones(3), genes, mask, 3, 0.0, norms, ascending),
                            "genes over another number of dimensions", "genes")
+
+
+# =====================
+# calc_paralog_norms
+# =====================
+
+def test_calc_paralog_norms():
+    result = calc_paralog_norms(np.array([[3.0, 4.0], [0.0, 0.5]]).T.copy(order='F'))
+    assert isinstance(result, np.ndarray), f"expected a numpy array, got {type(result).__name__}"
+    assert result.dtype == np.float64, f"expected float64, got {result.dtype}"
+    assert result.shape == (2,), f"expected (n_genes,) = (2,), got {result.shape}"
+    assert not result.flags.writeable, "a result is a value, it should be read-only"
+
+
+def test_calc_paralog_norms_takes_genes_as_columns():
+    # the one value: the columns [3, 4] and [0, 0.5] are 5 and 0.5 long
+    result = calc_paralog_norms(np.array([[3.0, 4.0], [0.0, 0.5]]).T.copy(order='F'))
+    assert result.tolist() == [5.0, 0.5], f"got {result.tolist()}"
+
+
+def test_calc_paralog_norms_rejects_nan_genes():
+    genes = np.ones((2, 2), order='F')
+    genes[-1, -1] = np.nan
+    assert_error(lambda: calc_paralog_norms(genes), "a NaN gene", ERR_NAN_INF, argument="genes")
+
+
+def test_calc_paralog_norms_rejects_no_genes():
+    # n_genes is read off genes
+    assert_error(lambda: calc_paralog_norms(np.empty((2, 0), order='F')), "no genes", ERR_EMPTY_INPUT, argument="genes")
 
 
 # =====================

@@ -32,6 +32,7 @@ module tox_paralog_analysis_c
     public :: detect_subfunctionalization_expert_c
     public :: filter_paralogs_by_pattern_dosage_effect_c
     public :: filter_paralogs_by_pattern_subfunctionalization_c
+    public :: calc_paralog_norms_c
     public :: calc_paralog_subsets_bitmasks_size_c
 
 contains
@@ -718,6 +719,45 @@ contains
             ierr = ierr&
         )
     end subroutine filter_paralogs_by_pattern_subfunctionalization_c
+
+    !> summary: C-wrapper for [[tox_paralog_analysis(module):calc_paralog_norms(subroutine)]]
+    !| Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows
+    !| on the way: the result is +Inf only where the true norm exceeds `huge`.
+    subroutine calc_paralog_norms_c(&
+            genes,&
+            n_dims,&
+            n_genes,&
+            paralog_norms,&
+            ierr&
+        ) bind(C, name="calc_paralog_norms_c")
+        use tox_paralog_analysis, only: calc_paralog_norms
+
+        integer(c_int), intent(in), target :: n_dims
+            !! size of the vectors in `genes`
+        integer(c_int), intent(in), target :: n_genes
+            !! number of vectors in `genes`
+        real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
+            !! expression vectors of genes
+        real(c_double), dimension(n_genes), intent(out), target :: paralog_norms
+            !! euclidean norm of each gene's vector
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dims)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_ARRAY_NON_NULL(genes, n_dims * n_genes)
+        M_CHECK_ARRAY_NON_NULL(paralog_norms, n_genes)
+
+        call calc_paralog_norms(&
+            genes = genes,&
+            n_dims = n_dims,&
+            n_genes = n_genes,&
+            paralog_norms = paralog_norms,&
+            ierr = ierr&
+        )
+    end subroutine calc_paralog_norms_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size(subroutine)]]
     !| The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,

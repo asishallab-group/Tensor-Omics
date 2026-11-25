@@ -1,6 +1,6 @@
 # The `tox_paralog_analysis` suite: `detect_neofunctionalization`, `detect_dosage_effect`,
-# `detect_subfunctionalization`, the two `filter_paralogs_by_pattern_*` filters and
-# `calc_paralog_subsets_bitmasks_size` can be called from R, return the documented types and
+# `detect_subfunctionalization`, the two `filter_paralogs_by_pattern_*` filters,
+# `calc_paralog_norms` and `calc_paralog_subsets_bitmasks_size` can be called from R, return the documented types and
 # shapes, and raise the documented errors, naming the argument. Whether the subsets and flags are
 # right is the Fortran suite's job (test/mod_test_tox_paralog_analysis/), as the coding guide's
 # "Where to Test What" asks. The few values checked here are the binding's own: genes are bits in
@@ -309,6 +309,32 @@ test_detect_subfunctionalization_rejects_mismatched_shapes <- function() {
                        "a permutation of another number of genes", NULL, "sorted_paralog_norms_perm")
   .assert_error_naming(detect_subfunctionalization(c(2, 0, 0), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(), .ascending()),
                        "genes over another number of dimensions", NULL, "genes")
+}
+
+# =====================
+# calc_paralog_norms
+# =====================
+
+test_calc_paralog_norms <- function() {
+  result <- calc_paralog_norms(matrix(c(3, 4, 0, 0.5), nrow = 2L))
+  assert_true(is.double(result), "expected doubles")
+  assert_true(is.null(dim(result)) && length(result) == 2L,
+              paste("expected a vector of 2, got dim", toString(dim(result)), "length", length(result)))
+}
+
+test_calc_paralog_norms_takes_genes_as_columns <- function() {
+  # the one value: the columns [3, 4] and [0, 0.5] are 5 and 0.5 long
+  result <- calc_paralog_norms(matrix(c(3, 4, 0, 0.5), nrow = 2L))
+  assert_true(identical(result, c(5, 0.5)), paste("got", toString(result)))
+}
+
+test_calc_paralog_norms_rejects_nan_genes <- function() {
+  .assert_error_naming(calc_paralog_norms(matrix(c(1, 1, 1, NaN), nrow = 2L)), "a NaN gene", ERR_NAN_INF, "genes")
+}
+
+test_calc_paralog_norms_rejects_no_genes <- function() {
+  # n_genes is read off genes
+  .assert_error_naming(calc_paralog_norms(matrix(numeric(0), nrow = 2L, ncol = 0L)), "no genes", ERR_EMPTY_INPUT, "genes")
 }
 
 # =====================

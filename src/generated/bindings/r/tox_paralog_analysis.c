@@ -11,6 +11,7 @@ void detect_dosage_effect_c(const double*, const double*, const int*, const int*
 void detect_subfunctionalization_c(const double*, const double*, const int*, const int*, const int*, const int*, int*, const int*, int*, const int*, const double*, const double*, const int*, int*);
 void filter_paralogs_by_pattern_dosage_effect_c(const double*, const double*, const int*, const int*, const int*, int*, const int*, int*);
 void filter_paralogs_by_pattern_subfunctionalization_c(const double*, const double*, const int*, const int*, const int*, int*, const int*, int*);
+void calc_paralog_norms_c(const double*, const int*, const int*, double*, int*);
 void calc_paralog_subsets_bitmasks_size_c(int*, const int*, int*, const int*, const int*, int*);
 
 SEXP detect_neofunctionalization_call(SEXP ancestors, SEXP genes, SEXP gene_to_fam, SEXP thresholds) {
@@ -239,6 +240,36 @@ SEXP filter_paralogs_by_pattern_subfunctionalization_call(SEXP gene_angles, SEXP
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("family_bitmasks"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(_nprot);
+    return _out;
+}
+
+SEXP calc_paralog_norms_call(SEXP genes) {
+    int _nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_dims = INTEGER(Rf_getAttrib(genes, R_DimSymbol))[0];
+    int n_genes = INTEGER(Rf_getAttrib(genes, R_DimSymbol))[1];
+
+    // outputs and work space
+    R_xlen_t _n_paralog_norms = tox_count("paralog_norms", (double) n_genes);
+    SEXP paralog_norms = PROTECT(Rf_allocVector(REALSXP, _n_paralog_norms)); _nprot++;
+    int ierr = 0;
+
+    calc_paralog_norms_c(
+        REAL(genes),
+        &n_dims,
+        &n_genes,
+        REAL(paralog_norms),
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, paralog_norms);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("paralog_norms"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);

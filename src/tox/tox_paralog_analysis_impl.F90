@@ -652,6 +652,27 @@ contains
         end select
     end subroutine filter_paralogs_by_pattern_impl
 
+    !> summary: The euclidean norm of each gene's vector, which the subfunctionalization prunes by
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows
+    !| on the way: the result is +Inf only where the true norm exceeds `huge`.
+    pure subroutine calc_paralog_norms_impl(genes, n_dims, n_genes, paralog_norms)
+        integer(int32), intent(in) :: n_dims
+            !! size of the vectors in `genes`
+        integer(int32), intent(in) :: n_genes
+            !! number of vectors in `genes`
+        real(real64), dimension(n_dims, n_genes), intent(in) :: genes
+            !! expression vectors of genes
+        real(real64), dimension(n_genes), intent(out) :: paralog_norms
+            !! euclidean norm of each gene's vector
+
+        integer(int32) :: i_gene
+
+        do i_gene = 1, n_genes
+            paralog_norms(i_gene) = norm(genes(:, i_gene))
+        end do
+    end subroutine calc_paralog_norms_impl
+
     !> summary: Calculates the needed size for the paralog-subsets work array
     !| AUTHOR_FRANZ_ERIC_SILL
     !| The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,

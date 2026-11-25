@@ -269,6 +269,27 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
     .result$family_bitmasks
 }
 
+#' The euclidean norm of each gene's vector, which the subfunctionalization prunes by
+#'
+#' Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows
+#' on the way: the result is +Inf only where the true norm exceeds `huge`.
+#'
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::calc_paralog_norms}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param genes a numeric matrix. expression vectors of genes
+#' @return a numeric vector. euclidean norm of each gene's vector
+#' @export
+calc_paralog_norms <- function(genes) {
+    genes <- .tox_as_double_matrix(genes, "genes")
+    .result <- .Call("calc_paralog_norms_call", genes)
+    .arguments <- c("genes", "n_dims", "n_genes", "paralog_norms", "ierr")
+    .sources <- c(NA_character_, "genes", "genes", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$paralog_norms
+}
+
 #' Calculates the needed size for the paralog-subsets work array
 #'
 #' The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,
