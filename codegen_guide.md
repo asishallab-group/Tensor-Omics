@@ -46,7 +46,7 @@ Related reading, once this is not enough:
   - [5.6 An output filled only partially](#56-an-output-filled-only-partially)
   - [5.7 Work arrays, and how the expert tier appears](#57-work-arrays-and-how-the-expert-tier-appears)
   - [5.8 A permutation](#58-a-permutation)
-  - [5.9 A workspace sized by a recommend routine](#59-a-workspace-sized-by-a-recommend-routine)
+  - [5.9 A value computed by another procedure: a workspace size, or an array](#59-a-value-computed-by-another-procedure-a-workspace-size-or-an-array)
   - [5.10 A mode argument](#510-a-mode-argument)
   - [5.11 One procedure per mode](#511-one-procedure-per-mode)
   - [5.12 An argument only one mode needs](#512-an-argument-only-one-mode-needs)
@@ -174,7 +174,7 @@ each is addressed at a different caller.
 | Name | Who it is for | What it does |
 |---|---|---|
 | `foo_impl` | **nobody** — it is never exported | the implementation. No validation, no `ierr`. Reached only through a wrapper |
-| `foo` | almost everyone | validates, calls the recommend routines, allocates the work arrays, seeds and heapsorts the permutations, runs the prologue, then calls `foo_impl` |
+| `foo` | almost everyone | validates, calls the `DM_OUTPUT_FROM` producers (allocating an array one fills right above its call), allocates the work arrays, seeds and heapsorts the permutations, runs the prologue, then calls `foo_impl` |
 | `foo_expert` | a caller who wants control over what reaches the implementation | validates and calls `foo_impl` with what you supply. Allocates nothing, prepares nothing |
 
 A wrapper is **`pure` exactly when everything it calls is** — the implementation, the
@@ -197,18 +197,21 @@ write — as though every implementation produced a pair.
 
 The pair, where there is one, is a **sugar/control** split, not a fast/slow one. `foo` derives
 what the expert tier lets you pass: the heapsorted permutation of Section 5.8, the threshold or
-short-circuit a prologue computes (Section 5.13), the workspace sizes of Section 5.9. Want a
-different sort order, your own reused buffers, or the computation without a degenerate-input policy?
-That is what the expert tier is.
+short-circuit a prologue computes (Section 5.13), the workspace sizes and the arrays a producer
+fills of Section 5.9. Want a different sort order, your own reused buffers, data you already have,
+or the computation without a degenerate-input policy? That is what the expert tier is.
 
 **The expert tier is not published to Python and R unless it offers something.** Where `foo` only
-validates and allocates, those languages allocate the work arrays for *both* tiers anyway, so
-`foo_expert` would be the same call under a name claiming otherwise — the generator emits only `foo`
-there. Fortran and C always get both: there the expert tier really does hand the buffers over. Where
-Python and R do get one, it is for a reason like `pool_means`'s: its plain tier seeds and sorts a
-permutation you may want to supply yourself. Where both are published, **each docstring says what
-the other does** -- which permutation the plain one seeds and sorts, which prologue it runs -- so a
-reader does not have to work out why there are two.
+validates and allocates, those languages allocate the work arrays — and compute the sizes they
+allocate by — for *both* tiers anyway, so `foo_expert` would be the same call under a name claiming
+otherwise; the generator emits only `foo` there. Fortran and C always get both: there the expert
+tier really does hand the buffers over. Python and R get one where it offers control: their plain
+tier seeds and sorts a permutation you may want to supply yourself (`pool_means`), runs a prologue,
+or **computes a value their expert takes from you** -- an array a producer fills, which the expert
+takes as data (Section 5.9). Where both are published, **each docstring says what the other does**
+-- which value the plain one computes and with what, which permutation it seeds and sorts, which
+prologue it runs -- naming the parameters that language's expert takes, so a reader does not have
+to work out why there are two.
 
 ### Which path is yours
 
@@ -502,6 +505,18 @@ that only outputs or work arrays carry is asked of the caller instead, since not
 over has it yet (`n` of `fill(n, value, filled(n))`). One that only optional input arrays carry is
 refused — the bindings drop it from the signature and would then have nothing to read it off.
 
+Where an array a producer fills (Section 5.9) carries the extent too, which array it is read off
+follows one order:
+
+1. **a required array the caller passes**, whenever one carries it — read before any producer is
+   called, so a producer may be passed the extent; an optional one is compared with it when given;
+2. otherwise **the array the binding fills**, read after the producers — but only where no producer
+   is passed the extent, which would need it first;
+3. otherwise **the caller is asked for it**, as for an extent only outputs carry, and no error blames
+   an array the caller never passed.
+
+So declaring the produced array before the one the caller passes changes nothing.
+
 Python and R allocate the outputs and work arrays before the call, so an extent they ask of the
 caller is refused there when it is negative, naming it, before anything is allocated by it
 (`'n_families' is a size and must not be negative, but it is -1`). Zero and a `DM_MIN`, `DM_MAX` or
@@ -705,14 +720,18 @@ and stops. The argument keeps its `<base>_perm` name, so the expert tier still a
 the caller; only what `foo` builds by default changes. Declare it `intent(inout)` instead and the
 wrapper still seeds and sorts first, handing the prologue an order to refine.
 
+The base may be an array a producer fills (Section 5.9): `foo` allocates and fills it first, and
+seeds and sorts the permutation after every producer call, so the order is by the produced values.
+
 `foo` calls the **implementation directly**, not `foo_expert` — it just built that permutation
 itself, so re-running an O(n) validation over `[1..n]` would be wasted work. A bare `perm` with no
 base name is not a permutation by this convention; it stays an ordinary argument.
 
-### 5.9 A workspace sized by a recommend routine
+### 5.9 A value computed by another procedure: a workspace size, or an array
 
-**When** a buffer's size can only be computed by calling something — netlib's LOESS workspaces
-are the standing example.
+**When** a value the implementation needs can only be computed by calling something: a buffer's
+size — netlib's LOESS workspaces are the standing example — or data, an array another published
+procedure fills (column norms the implementation sorts by).
 
 **Write** `DM_OUTPUT_FROM(<producer's output>, <producer>, <its module>, AUTO)` on the size
 argument. The first parameter names the producer's own output argument whose value this one takes,
@@ -763,8 +782,13 @@ The producer's own error keeps its position where an argument of yours supplied 
 (`max_neighborhood_size`, its second, is your `n_families`, also second) and loses it otherwise
 (Section 5.14).
 
-— and, in the `foo_expert` binding, the size argument still exposed with its documentation
-pointing at the routine that computes it. One annotation, two consumers.
+`foo_expert` takes every such value from its caller in Fortran and C. Python and R compute a
+size in their expert too, since they allocate by it, and take data from the caller there (below).
+In every tier the argument's documentation names the routine that computes it -- the sentence
+`DM_OUTPUT_FROM` expands to. **Do not repeat in your own prose what the directive already says**
+(that the value comes from that producer, or how to get it): the directive's sentence is rendered
+in every language with the producer's published name, and a hand-written copy of it is a second
+statement of one fact, which drifts.
 
 The size argument is an input to the implementation, `intent(in)`: an `intent(out)` one would be
 the implementation's result, which `foo` computes with the producer itself and then throws away,
@@ -831,6 +855,74 @@ in another module `use`s that module, so two modules sizing each other's argumen
 cycle, which fpm stops on. **Nor may a producer come back to its consumer** through its own
 producers — one procedure sizing an argument by itself, or two sizing each other: each call would
 make the next until the stack ran out, so the generator refuses it, naming the chain.
+
+**An array a producer fills.** The value may be an array (`intent(in)`, explicit shape), filled
+by an array output of the producer:
+
+```fortran
+real(real64), dimension(n_items), intent(in) :: norms
+    !! the norm of each column
+    !! DM_OUTPUT_FROM(norms, fx_column_norms, fx_producers, AUTO)
+integer(int32), dimension(n_items), intent(in) :: norms_perm
+    !! the order that sorts `norms` ascending
+```
+
+`foo` allocates it **right above the producer call that fills it** -- after the earlier calls'
+error checks, so a failed call returns first -- and every other array after all the calls, then
+seeds and sorts the permutations (`helper/codegen/tests/fixtures/impl/fx_sized_impl.F90`):
+
+```fortran
+M_ALLOCATE(norms(n_items))
+call fx_column_norms(n_dims = n_dims, n_items = n_items, x = x, norms = norms, ierr = ierr)
+if (is_err(ierr)) then ... end if
+call fx_scaled_size(n_items = n_items, factor = scale, scaled_size = work_size, ierr = ierr)
+if (is_err(ierr)) then ... end if
+M_ALLOCATE(norms_perm(n_items))
+M_ALLOCATE(tmp_buf(work_size))
+call init_perm(norms_perm)
+call sort_array_heapsort(norms, norms_perm)
+```
+
+Declare it as the producer declares its output, in your names: the same type and kind, the same
+rank, and each extent the producer's with every producer input replaced by what supplies it here
+(all at once, so a table swapping two inputs swaps them; constants compare by value, names in any
+case). `foo` trusts what a producer made and does not validate it -- the producer is a published
+entry point that validated its own inputs; `foo_expert` validates it like any input. A character
+array is not supported.
+
+**What a binding computes, and what it takes (E2).** In Fortran and C, `foo_expert` takes every
+such value from its caller. In Python and R, the expert of a generated pair computes through the
+producer only **a value that sizes a buffer it allocates** -- named in an extent or a length of a
+work array or an output, other than as the array of `size()` -- and every value the **same
+producer call** fills: a size can depend on the values that call computes (a count of the large
+ones, a pack), so the two must come from one call, or the size need not fit the data. A value
+that sizes only input arrays is read off them, as any extent is; it is not checked against the
+producer, so any length is accepted, as in Fortran and C. **Everything else is a parameter**: an
+array a producer fills, a value only a bound names. The plain tier and a hand-written consumer
+compute every value, as before. That is what publishes the expert of `fx_rounded_total` in
+Python and R, which nothing else would: it takes `rounded`, the integer array `fx_rounded_total`
+computes with `fx_rounded`; so too `fx_bounded_total`'s, which takes `limit`. (`fx_norm_rank`'s
+expert was published already, for its permutation; it now takes `norms` as well.)
+
+**Where a producer's inputs come from (P1).** A producer input that a call passes is a scalar
+constant from the table, or an input of the implementation that the caller passes, in every tier
+that calls the producer:
+
+- in Fortran an `intent(in)` or `intent(inout)` argument `foo` keeps -- required; optional with a
+  `DM_DEFAULT`, which `foo` resolves before the call (by its own name, whatever the table calls
+  it); or optional where the producer's input is optional too, passed through, so an absent value
+  stays absent;
+- in a binding a parameter, or what the binding reads off one before the producers run: an
+  extent, a shape, a mask's count, a string's length.
+
+So these are refused, each with its own message and the note "supply it by an argument the caller
+passes, or a constant in the table": a `tmp_` work array (it holds nothing before the
+implementation fills it); a `<base>_perm` `foo` builds (it is seeded and sorted only after the
+producers); an `intent(out)` argument (it has no value before the implementation sets it); an
+optional without a `DM_DEFAULT` feeding a required producer input (an omitted one would reach it
+absent); and an argument only the prologue has (it is the prologue's, not the implementation's).
+A value another producer computes is chaining (above), and one the prologue writes is the
+prologue's rule (Section 5.13); each keeps its own message.
 
 Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
 then the docs say where to get the value, and nothing is called for them. It names the producer the same
@@ -1385,7 +1477,7 @@ Everything that is a *binding* rule rather than a wrapper rule, which is most of
 | `tmp_<name>` | a work array: allocated by the binding language, never returned |
 | `<arg>_shape` | a serialized array (Section 6.6) |
 | `DM_DEFAULT` | the binding passes the evaluated default — `tox_data_tools` uses `DM_DEFAULT(char(9))` for a tab separator |
-| `DM_OUTPUT_FROM(..., AUTO)` | the *language layer* calls the producer for the caller — `tox_data_archive` sizes eleven arguments this way from `get_tox_data_dims` |
+| `DM_OUTPUT_FROM(..., AUTO)` | the *language layer* calls the producer for the caller — `tox_data_archive` sizes eleven arguments this way from `get_tox_data_dims`. An array a producer fills works too, under the rules of Section 5.9 that are not about `foo`: its type, rank and explicit extents agree with the producer output's, and every producer input is a parameter, what the binding reads off one, or a constant |
 | `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
 | `DM_RESULT_SIZE_IS` | as in Part I (Section 5.6): Python and R trim the result, Fortran callers still get the full buffer |
 | a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
@@ -1614,6 +1706,7 @@ it are an example's.
 | a `DM_EQUALS` on anything but a required `intent(in)` scalar integer | the wrapper compares the value the caller passed, before the call (Section 5.17) |
 | an argument named `bitmask`, `bitmasks`, `*_bitmask` or `*_bitmasks` that is not an integer array (`argument 'bitmask' is named as bit-mask words, but is not an integer(int32) array`), or that has a `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or `DM_EQUALS` (`bit-mask argument 'bitmasks' has DM_MIN`) | the name says it holds bit-mask words, which R passes without its NA check and which no value range applies to (Section 5.18) |
 | an `intent(out)` `<base>_perm` whose base is an argument, or an `intent(out)` `DM_OUTPUT_FROM(..., AUTO)` value | `foo` builds or computes it itself and would discard the result (Sections 5.8, 5.9) |
+| an `intent(inout)` `DM_OUTPUT_FROM(..., AUTO)` value (`'work_size' is intent(inout), but it is computed with 'scaled_size', so what the implementation writes back is discarded`) | a value a producer computes is `intent(in)`; scratch the implementation reuses is a `tmp_` work array (Section 5.9) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | a `<x>_shape` argument that is not `intent(in)`, or not a rank-1 integer array, or one whose `x` is not rank 1 (`shape argument 'values_shape' is not intent(in)`, `shape argument 'values_shape' is not a rank-1 integer array`, `'values' has a shape argument but is rank 2`) | a shape is the list of the flat array's extents, one integer per dimension, and is only read (Section 6.6) |
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
@@ -1638,6 +1731,13 @@ it are an example's.
 | a `DM_OUTPUT_FROM` producer that is a generated `foo_expert` | it leaves its work arrays to the caller, and Python and R do not even publish it everywhere; name `foo` (Section 5.9) |
 | an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls, supplied by anything but a required `intent(inout)` argument (an `intent(in)` argument, a constant, an optional) | the producer writes it back through what supplies it: an `intent(in)` argument or a constant does not compile, and the local an optional goes through would swallow the refined value (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer input supplied by another `DM_OUTPUT_FROM` value of the consumer, or by the value it computes itself | chaining producers is rejected: size for an upper bound, or take the value as an argument of the caller's (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer input supplied by a `tmp_` work array, a `<base>_perm` `foo` builds, an `intent(out)` argument, an optional without a `DM_DEFAULT` feeding a required input, or an argument only the prologue has (`'work_size' is computed from 'scaled_size', whose input 'factor' would be 'tmp_scale', a work array, which holds nothing before the implementation fills it`) | nothing has supplied it by the time the producer is called, in some tier that calls it: a producer input is a constant or an input the caller passes (Section 5.9) |
+| an array `foo` fills from a producer that is assumed-shape or assumed-size (`'norms' is computed from 'column_norms', and the generated wrapper allocates it before the call, but it is assumed-shape, so there is no extent to allocate it with`) | `foo` allocates it with its declared extents (Section 5.9) |
+| a producer output a consumer takes that is assumed-shape or assumed-size, or that it fills only partly (`DM_RESULT_SIZE_IS`) where `foo` or a binding allocates the consumer's array with its declared extents (`'norms' is computed from 'partial', which fills only the first 'n_used' elements of 'picked'`) | the array would carry elements the producer never wrote, or take a shape nothing declares (Section 5.9) |
+| an axis of an array a producer fills that differs from the producer output's, its inputs replaced by what supplies them (`'norms' is computed from 'column_norms', but its axis 1 is 'n_items + 1', where 'norms' is declared with 'n_items', which is 'n_items' here`), where `foo` or a binding allocates it | the producer writes the shape it declares into an array allocated with yours (Section 5.9) |
+| a character array computed by a producer | its length would be one more thing to agree; not supported (Section 5.9) |
+| a `DM_OUTPUT_FROM` value whose type or rank differs from the producer output's, `JUST_INFO` included (`'norms' is integer(int32), but 'column_norms' gives 'norms' as real(real64)`, `'norms' is rank 2, but 'column_norms' gives 'norms' as rank 1`) | numeric kinds compare by value; logical kinds by name where `foo` calls the producer, which passes the value by keyword, and as the one C type both cross as where a binding does (Section 5.9) |
+| a `DM_OUTPUT_FROM(..., AUTO)` producer output that is not `intent(out)` | the producer would read what nothing set (Section 5.9) |
 | a value a `DM_OUTPUT_FROM` producer refines in place (its `intent(inout)` input) that another producer call reads or refines too | what the other call saw would depend on the call order; a refined value feeds that one call (Section 5.9) |
 | two arguments taking the same output of one `DM_OUTPUT_FROM` producer, given the same inputs | one call fills both with one value; use one argument (Section 5.9) |
 | an array output, or a string output whose length is not a literal, of a `DM_OUTPUT_FROM` producer that `foo` calls and nothing takes (`'work_size' is computed from 'pr_size_label', whose output 'label' nothing here takes, and it is not a scalar the generated wrapper can drop`) | the call must pass it, and a local for it would need the producer's own sizes (Section 5.9) |
@@ -1660,6 +1760,10 @@ it are an example's.
 | a prologue producing something the setup above it reads: a work array's extent, the base of a permutation sorted there, a producer's input (`'tmp_work' is sized by 'm', which the prologue only fills afterwards`, `'values_perm' is sorted against 'values' before the prologue rewrites it`, `'pr_size_of' is passed 'k', which the prologue only fills afterwards`) | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
 | a procedure or module named, ignoring case, like an export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), a submodule of the Python package (`library`, `error_handling`), or another module | `tensor_omics` binds all of them at its top level, so one would hide the other; a module called `error_handling` would overwrite the error module's file (Section 7) |
 | a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
+
+Every refusal about what a `DM_OUTPUT_FROM` may take or be given points at the directive's line
+and is reported once for a generated pair; where `foo` calls the producer and the caller could
+supply the value instead, its note offers `JUST_INFO`.
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:

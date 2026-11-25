@@ -585,8 +585,9 @@ name-matched nor in the table is an **error** naming it.
 
 Python computes it inline, since the whole wrapper is one function. R computes it in the R
 wrapper and passes it to the C `.Call` shim, because the shim cannot call an R wrapper. So
-an AUTO argument is a *parameter* of the `.Call` shim (R fills it) but never a parameter of
-the user-facing R or Python function. The producer must be exported, else there is no wrapper
+an AUTO argument the binding computes is a *parameter* of the `.Call` shim (R fills it) but not
+of the user-facing R or Python function -- which, in a generated pair's expert tier, is not
+every AUTO argument (below, "What a binding computes"). The producer must be exported, else there is no wrapper
 to call; it may live in **any** module, and Python imports it inside the calling function
 rather than at the top of the file, because two modules may size each other's outputs and a
 module-level import would then be circular. (Two *generated* modules may not, where their
@@ -602,6 +603,85 @@ consumer's own errors. An input a constant supplied names no
 argument. An input the producer's binding derives (an extent read off one of its arrays) is not
 passed (`OutputFromPlan.binding_inputs`); only a generated Fortran wrapper calling the producer
 directly passes it.
+
+## Decision: what a binding computes (E2, FES 2026-11-25)
+
+The rule above -- the binding computes every AUTO argument, so none is a parameter -- was written
+when every AUTO argument was a buffer size. With arrays a producer fills (`codegen_guide.md` 5.9)
+it is not true of the expert tier, whose name promises control over what reaches the
+implementation. **In the expert tier of a generated pair, Python and R compute through the
+producer only a value that sizes a buffer they allocate** -- its name is in an extent or a length
+of a `tmp_` argument or an `intent(out)` one, other than as the array of `size()`, which reads
+the shape of an array the caller passed -- **and every value the same producer call fills**
+(`OutputFromPlan.call`: the same producer, given the same inputs). A value that sizes only input
+arrays is read off them, like any extent (`readable_owners`). Every other AUTO value -- data, a
+value only a bound names -- is a parameter, as it is in Fortran's and C's expert. Every other
+tier and consumer computes every AUTO value, as before: the plain tier, a lone wrapper, a
+hand-written consumer. `roles.is_computed` stays the Fortran fact: `foo` computes every value it
+took over.
+
+**Why one call is computed whole.** A size can depend on the values that call computes -- a count
+of the large norms, the length of a pack -- so a size computed from the producer beside data the
+caller passed need not fit that data, and calling the producer only for its size would throw the
+data it computed away. So where one call gives data and a size, the binding computes both.
+
+**What it changes.** An expert is published to Python and R where their plain tier computes a
+value their expert takes as a parameter (`synthesize.alloc_does_more`) -- newly, where that is
+its only difference: an array a producer fills, a value only a bound names. A value sizing only
+inputs (`n_cap` of `y(n_cap)`) used to be computed in the expert and a `y` of another length
+refused; now it is read off `y` and any length is accepted, as Fortran and C always have. A value
+that sizes a `tmp_` and is also read as data is computed in the Python and R expert and a
+parameter in Fortran's and C's: the rule reads declarations, not bodies.
+
+**Rejected -- E1, keeping the rule.** The Python and R expert would recompute the array through
+the producer, so a caller who has it -- or wants other data there -- could not hand it in, while
+the Fortran and C expert of the same procedure takes it. The expert tier exists for control over
+what reaches the implementation, and data is the most direct case of it.
+
+**Rejected -- keying it on the directive and the table** instead of the resolved plans, so it
+could be decided at synthesis. The plan is the truth: a table row `| a | a |` against a name match
+is one call by the plans and two by the text.
+
+**Enforced, not listed.** The attack that prototyped E2 found the sites a list of them missed
+misbehaving: R took the caller's `norms` and then overwrote it with the producer's, the shim
+skipped its integer check for a data array (NA reached Fortran as INT_MIN), and a shape check
+read an extent R never assigned. So the rule is: **no code in `emit/` or `abi/` reads
+`roles.is_computed`, `roles.is_derived` or `computed_from` to make a binding decision.** It asks
+`synthesize.binding_computes(argument, wrapper)`, or the tier-aware `synthesize.is_derived` --
+derived in this tier: computed by the binding, read off a carrier, a shape, a mask's count -- and
+reads a plan's content through `synthesize.automatic_plan`. `producer_calls.auto_plans` filters by
+`binding_computes`, and Python's producer calls, stashes and imports and R's producer calls and
+error tables all come from it. `test_emitter_parity.TestEveryPublishedBindingAgrees` checks it on
+the emitters' decisions over every published binding of the fixtures: R's `.Call` arity against
+the shim's registration, no parameter computed or derived over, Python and R asking alike.
+`test_parameters_reach_the_call` checks it by running: every published Python and R function of
+every fixture library -- the R of `fixtures/carrier` aside, whose shim does not compile -- is
+called with a sentinel for each parameter, its own C call intercepted, and each parameter
+compared with what arrived. The Fortran wrapper emitter reads the IR
+facts, which are its own.
+
+## Decision: where a binding reads an extent (R4)
+
+An extent carried by an array the caller passes and by one a producer fills was read off the
+first carrier in declaration order, after the producers. Where that was the produced array and a
+producer was passed the extent, Python raised `UnboundLocalError`, and the error tables named an
+array the caller never passed. `synthesize.readable_owners` orders the carriers, and the signature,
+the derivation, the shape checks, `error_arguments.source_of` and `doc_contract` all read it:
+
+1. off a **required array the caller passes**, whenever one carries it -- settled before the
+   producers; an optional one never provides, and is compared with it when given;
+2. otherwise off an **array the binding computes** (or an output whose shape argument it computes:
+   serde's `arr`), after the producers, where no producer's `binding_inputs` read it -- serde's
+   `n_elements`, the synthesised EXTENT and STRLEN of a computed array;
+3. otherwise it is **asked of the caller**, and the computed carriers are left out, so no error
+   blames them.
+
+**The R global-lookup trap.** R spells an extent at its use (`length(norms)`), and the generated
+modules are sourced with `local = FALSE`, so an extent read off an array before it was assigned
+did not fail: R looked the name up in the global environment and **silently used a user's global
+of the same name**. Python at least raised. Any R expression a binding writes must name only
+what that function has assigned by then; `TestDataAndASizeFromOneCall` sets globals named like the
+array and the extent to show none is read.
 
 ## Decision: a default is rendered in the vocabulary of the layer that reads it
 
