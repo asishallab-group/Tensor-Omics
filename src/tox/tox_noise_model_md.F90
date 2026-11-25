@@ -67,24 +67,32 @@
 !|     branch for what it is — at `d = 1` it reproduces `noise_model_exact`'s
 !|     `pvalues_own` exactly.
 !|   - SYSTEMATIC (`method_used = 1`, the default). Instead of drawing random
-!|     indices, walk each axis's pool with a fixed stride chosen coprime to that
-!|     pool's size, so the marginals stay balanced. Deterministic and reproducible,
-!|     no RNG overhead, no seed dependence, parallelises without stream splitting,
-!|     and lower variance than random draws at the same `M`. Caveat for the method
-!|     text: `(1+B)/(M+1)` is justified as a *valid* Monte-Carlo p-value under
-!|     RANDOM draws; under systematic sampling it is instead an approximation of the
-!|     exact enumerated tail, and the error becomes a coverage error rather than a
-!|     sampling error. Both variants are implemented so they can be compared on the
-!|     mock null before systematic becomes the default in anger.
+!|     indices, walk the JOINT atom index `t` in `[0, prod_a S_a)` with one fixed
+!|     stride coprime to `prod_a S_a`, and decode `t` per axis exactly as the
+!|     enumerated path does. Coprimality makes the first `min(M, prod_a S_a)` draws
+!|     distinct joint atoms. `t` and the stride are held as mixed-radix digits (one
+!|     digit per axis, base `S_a`), so `prod_a S_a` never has to fit in an integer.
+!|     The stride's digits are `S_a` times the generalised golden-ratio constants of
+!|     the R_d sequence (Roberts), so the walk spreads over the product space like a
+!|     low-discrepancy sequence rather than a line. Deterministic and reproducible,
+!|     no seed dependence, parallelises without stream splitting. (It replaced
+!|     independent per-pool strides, whose joint walk repeated after the least common
+!|     multiple of the 2d pool sizes: with equal pool sizes only `n_pool` distinct
+!|     draws, however large `M`.) Caveat for the method text: `(1+B)/(M+1)` is
+!|     justified as a *valid* Monte-Carlo p-value under RANDOM draws; under
+!|     systematic sampling it is instead an approximation of the exact enumerated
+!|     tail, and the error becomes a coverage error rather than a sampling error.
 !|   - RNG (`method_used = 2`). The classical Monte-Carlo path, `sampling_mode = 1`.
 !|
 !| `method_used = 3` is reserved for the convolution null (exact tail without
 !| enumeration, staged as a later phase); it is never produced here.
 !|
 !| **Resolution.** `M` (`n_draws_max`) is set by BH over `G` genes, not by `d`: we
-!| estimate a one-dimensional tail probability, `SE(p) = sqrt(p(1-p)/M)`, with no
-!| dimensional surcharge. It is a user parameter, not a compile-time constant;
-!| `DEFAULT_N_DRAWS_MAX` documents the recommended 2e4.
+!| estimate a one-dimensional tail probability, `SE(p) = sqrt(p(1-p)/M)` under
+!| random draws, with no dimensional surcharge. The systematic walk needs `M`
+!| distinct, well-spread joint atoms for the same to hold, which is why it walks the
+!| joint index rather than each pool on its own. It is a user parameter, not a
+!| compile-time constant; `DEFAULT_N_DRAWS_MAX` documents the recommended 2e4.
 !|
 !| **Reuse, not copy.** `sorted_data_t`, `prepare_sorted_data` and
 !| `gather_residuals_helper` come from `noise_model` directly; the validated scalar
@@ -106,7 +114,7 @@ module noise_model_md
     implicit none
 
     integer(int32), parameter :: SAMPLING_SYSTEMATIC = 0_int32
-        !! `sampling_mode`: walk each pool with a fixed coprime stride (default).
+        !! `sampling_mode`: walk the joint atom index with a fixed coprime stride (default).
 
     integer(int32), parameter :: SAMPLING_RNG = 1_int32
         !! `sampling_mode`: draw indices from the global RNG stream.
@@ -141,6 +149,13 @@ module noise_model_md
         !! genes must be tied at the floor before any is rejected. `M = 4e5` is where
         !! the floor stops binding altogether; with sequential stopping that is close
         !! to free (see `n_exceed_target`).
+
+    integer(int32), parameter :: MAX_STRIDE_TRIES = 1000_int32
+        !! Upper bound on the search for a joint stride coprime to `prod_a S_a`.
+        !! Coprime values are dense (a fraction `prod_p (1 - 1/p)` over the primes of
+        !! the pool sizes), so the search ends within a few steps; the bound only
+        !! guarantees termination. Should it ever be hit, the walk is still valid,
+        !! only its period may be shorter than `prod_a S_a`.
 
     integer(int64), parameter :: DEFAULT_ENUM_MAX_PRODUCT = 100000_int64
         !! Recommended `enum_max_product`. Chosen so realistic `d = 1` pools always
@@ -261,40 +276,99 @@ contains
         g = x
     end function gcd_helper
 
-    !> A stride for the systematic walk of a pool of `n` entries, coprime to `n`.
+    !> The first `n` generalised golden-ratio constants of the R_d sequence.
     !|
-    !| Coprimality is what makes the walk visit every entry before repeating, so the
-    !| marginal over that pool stays exactly balanced — the property that gives
-    !| systematic sampling lower variance than random draws at the same `M`. The
-    !| starting point is near `n/phi` (the golden-ratio fraction) so that successive
-    !| draws are spread across the pool rather than adjacent, then walks up until the
-    !| gcd is 1. Always terminates: 1 is coprime to everything and the search wraps
-    !| within `[1, n]`.
-    !|
-    !| `salt` separates the strides of different axes and sides so the `d` walks do
-    !| not move in lock step, which would collapse the product walk onto a diagonal.
-    pure function coprime_stride_helper(n, salt) result(stride)
+    !| `alpha(j) = 1 / phi_n^j`, where `phi_n` is the unique positive root of
+    !| `x^(n+1) = x + 1` (Roberts' R_d sequence). The `n` constants are rationally
+    !| independent, so `frac(m * alpha)` fills the `n`-dimensional unit cube with low
+    !| discrepancy. Used for the digits of the systematic walk's stride and offset.
+    pure subroutine r_sequence_helper(n, alpha)
         integer(int32), intent(in) :: n
-        !! Pool size
-        integer(int32), intent(in) :: salt
-        !! Per-axis/per-side offset, to decorrelate the walks
-        integer(int32) :: stride
-        !! A value in `[1, n]` coprime to `n`
+        !! Number of constants
+        real(real64), dimension(n), intent(out) :: alpha
+        !! The constants, each in `(0, 1)`
 
         integer(int32) :: i
+        real(real64) :: phi
 
-        if (n <= 1) then
-            stride = 1
-            return
-        end if
-
-        stride = modulo(int(real(n, real64) * 0.6180339887498949_real64, int32) + salt, n) + 1
-        do i = 1, n
-            if (gcd_helper(stride, n) == 1) return
-            stride = modulo(stride, n) + 1
+        phi = 2.0_real64
+        do i = 1, 64
+            phi = (1.0_real64 + phi) ** (1.0_real64 / real(n + 1, real64))
         end do
-        stride = 1
-    end function coprime_stride_helper
+        do i = 1, n
+            alpha(i) = phi ** (-i)
+        end do
+    end subroutine r_sequence_helper
+
+    !> Add the mixed-radix number `b` to `t` in place, modulo `prod_a base(a)`.
+    !|
+    !| Digit `a` has base `base(a)`, axis 1 least significant. A carry out of the
+    !| top digit is dropped, which is the reduction modulo `prod_a base(a)`.
+    pure subroutine mixed_radix_add_helper(t, b, base, n)
+        integer(int32), intent(in) :: n
+        !! Number of digits
+        integer(int64), dimension(n), intent(inout) :: t
+        !! Augend, digits in `[0, base(a))`
+        integer(int64), dimension(n), intent(in) :: b
+        !! Addend, digits in `[0, base(a))`
+        integer(int64), dimension(n), intent(in) :: base
+        !! Base of each digit
+
+        integer(int32) :: a
+        integer(int64) :: carry
+
+        carry = 0_int64
+        do a = 1, n
+            t(a) = t(a) + b(a) + carry
+            if (t(a) >= base(a)) then
+                t(a) = t(a) - base(a)
+                carry = 1_int64
+            else
+                carry = 0_int64
+            end if
+        end do
+    end subroutine mixed_radix_add_helper
+
+    !> Is the mixed-radix stride `s` coprime to `prod_a S_a`?
+    !|
+    !| Every prime factor of `prod_a S_a = prod_a n_case(a) * n_control(a)` divides
+    !| some pool size, so `s` is coprime to the product exactly when it is coprime to
+    !| every pool size. `s mod q` follows from the digits by Horner's rule, most
+    !| significant first; every factor is reduced modulo `q < 2^31` first, so no
+    !| intermediate exceeds `2^62`.
+    pure function joint_stride_coprime_helper(s, s_axis, n_pool_case, n_pool_control, n_axes) result(ok)
+        integer(int32), intent(in) :: n_axes
+        !! Number of axes
+        integer(int64), dimension(n_axes), intent(in) :: s
+        !! Stride digits
+        integer(int64), dimension(n_axes), intent(in) :: s_axis
+        !! Digit bases, `S_a = n_pool_case(a) * n_pool_control(a)`
+        integer(int32), dimension(n_axes), intent(in) :: n_pool_case
+        !! Case pool sizes
+        integer(int32), dimension(n_axes), intent(in) :: n_pool_control
+        !! Control pool sizes
+        logical :: ok
+        !! True if `gcd(s, prod_a S_a) = 1`
+
+        integer(int32) :: b, a, side
+        integer(int64) :: q, r
+
+        ok = .true.
+        do b = 1, n_axes
+            do side = 1, 2
+                q = int(merge(n_pool_case(b), n_pool_control(b), side == 1), int64)
+                if (q <= 1_int64) cycle
+                r = 0_int64
+                do a = n_axes, 1, -1
+                    r = modulo(r * modulo(s_axis(a), q) + modulo(s(a), q), q)
+                end do
+                if (gcd_helper(int(r, int32), int(q, int32)) /= 1) then
+                    ok = .false.
+                    return
+                end if
+            end do
+        end do
+    end function joint_stride_coprime_helper
 
     ! =========================================================================
     ! per-gene multidimensional null
@@ -329,17 +403,21 @@ contains
     !| fixed-`M` arm stays the reference.
     subroutine compute_pvalue_md_helper(pools_case, n_pool_case, &
                                         pools_control, n_pool_control, &
-                                        n_axes, axis_w, acc_obs_std, &
+                                        ld_pool, n_axes, axis_w, acc_obs_std, &
                                         sampling_mode, n_draws_max, n_exceed_target, &
-                                        enum_max_product, rbuf, gene_index, &
+                                        enum_max_product, rbuf, n_rbuf, gene_index, &
                                         p_value, d_sq_null_mean, n_draws_used, method_used)
+        integer(int32), intent(in) :: ld_pool
+        !! Leading dimension of the pool arrays (rows per column)
         integer(int32), intent(in) :: n_axes
         !! Number of axes
-        real(real64), dimension(:, :), intent(in) :: pools_case
+        integer(int32), intent(in) :: n_rbuf
+        !! Length of `rbuf`
+        real(real64), dimension(ld_pool, n_axes), intent(in) :: pools_case
         !! Case pools, column `a` holding this gene's axis-`a` pool, already scaled
         integer(int32), dimension(n_axes), intent(in) :: n_pool_case
         !! Valid length of each case pool column
-        real(real64), dimension(:, :), intent(in) :: pools_control
+        real(real64), dimension(ld_pool, n_axes), intent(in) :: pools_control
         !! Control pools, same layout, already scaled
         integer(int32), dimension(n_axes), intent(in) :: n_pool_control
         !! Valid length of each control pool column
@@ -355,10 +433,10 @@ contains
         !! Besag-Clifford exceedance target `c`; 0 disables
         integer(int64), intent(in) :: enum_max_product
         !! Enumerate while `prod_a S_a <= this`; 0 forces sampling
-        real(real64), dimension(:), intent(inout) :: rbuf
+        real(real64), dimension(n_rbuf), intent(inout) :: rbuf
         !! Pre-allocated random-number buffer, reused across genes (RNG path only)
         integer(int32), intent(in) :: gene_index
-        !! Gene index, used to offset the systematic walk so genes do not share a lattice
+        !! Gene index, used to offset the systematic walk so genes do not share draws
         real(real64), intent(out) :: p_value
         !! p-value
         real(real64), intent(out) :: d_sq_null_mean
@@ -369,9 +447,9 @@ contains
         !! `METHOD_ENUMERATED` / `METHOD_SYSTEMATIC` / `METHOD_RNG`
 
         integer(int32) :: i_axis, i_c, i_t, a, per_iter, chunk, j, buf_pos, buf_filled
-        integer(int32) :: ic(n_axes), it(n_axes), stride_c(n_axes), stride_t(n_axes)
         integer(int64) :: n_total, s_axis(n_axes), idx(n_axes), count_ge, m
-        real(real64) :: bsq(n_axes)
+        integer(int64) :: stride(n_axes), unit(n_axes)
+        real(real64) :: bsq(n_axes), alpha(2 * n_axes)
         real(real64) :: acc_std, acc_plain, v, sum_plain
         logical :: stop_early, use_rng
 
@@ -401,9 +479,9 @@ contains
             ! amortised per atom plus the O(d) accumulation.
             idx = 0_int64
             do i_axis = 1, n_axes
-                bsq(i_axis) = atom_bsq_helper(pools_case(:, i_axis), n_pool_case(i_axis), &
-                                              pools_control(:, i_axis), n_pool_control(i_axis), &
-                                              0_int64)
+                bsq(i_axis) = atom_bsq_helper(pools_case(1:n_pool_case(i_axis), i_axis), n_pool_case(i_axis), &
+                                              pools_control(1:n_pool_control(i_axis), i_axis), &
+                                              n_pool_control(i_axis), 0_int64)
             end do
 
             outer: do
@@ -421,13 +499,13 @@ contains
                 do
                     idx(a) = idx(a) + 1_int64
                     if (idx(a) < s_axis(a)) then
-                        bsq(a) = atom_bsq_helper(pools_case(:, a), n_pool_case(a), &
-                                                 pools_control(:, a), n_pool_control(a), idx(a))
+                        bsq(a) = atom_bsq_helper(pools_case(1:n_pool_case(a), a), n_pool_case(a), &
+                                                 pools_control(1:n_pool_control(a), a), n_pool_control(a), idx(a))
                         exit
                     end if
                     idx(a) = 0_int64
-                    bsq(a) = atom_bsq_helper(pools_case(:, a), n_pool_case(a), &
-                                             pools_control(:, a), n_pool_control(a), 0_int64)
+                    bsq(a) = atom_bsq_helper(pools_case(1:n_pool_case(a), a), n_pool_case(a), &
+                                             pools_control(1:n_pool_control(a), a), n_pool_control(a), 0_int64)
                     a = a + 1
                     if (a > n_axes) exit outer
                 end do
@@ -439,18 +517,30 @@ contains
             ! ---------------- SAMPLED: systematic stride, or RNG -----------------
             use_rng = (sampling_mode == SAMPLING_RNG)
             per_iter = max(1, 2 * n_axes)
-            chunk = max(1, min(n_draws_max, int(size(rbuf), int32) / per_iter))
+            chunk = max(1, min(n_draws_max, n_rbuf / per_iter))
             buf_pos = 0
             buf_filled = 0
 
             if (.not. use_rng) then
+                ! One walk over the JOINT atom index, held as mixed-radix digits
+                ! (`idx(a)` in `[0, S_a)`, axis 1 least significant). Stride digits
+                ! from the first d R_{2d} constants, the gene's start from the other
+                ! d, so genes neither share a start nor a lattice line.
+                call r_sequence_helper(2 * n_axes, alpha)
                 do i_axis = 1, n_axes
-                    stride_c(i_axis) = coprime_stride_helper(n_pool_case(i_axis), 2 * i_axis)
-                    stride_t(i_axis) = coprime_stride_helper(n_pool_control(i_axis), 2 * i_axis + 1)
-                    ! Offset each gene's walk so genes do not all traverse the same
-                    ! lattice positions in the same order.
-                    ic(i_axis) = modulo(gene_index * (i_axis + 1), n_pool_case(i_axis))
-                    it(i_axis) = modulo(gene_index * (i_axis + 2), n_pool_control(i_axis))
+                    stride(i_axis) = min(int(alpha(i_axis) * real(s_axis(i_axis), real64), int64), &
+                                         s_axis(i_axis) - 1_int64)
+                    idx(i_axis) = min(int(modulo(real(gene_index, real64) * alpha(n_axes + i_axis), &
+                                                 1.0_real64) * real(s_axis(i_axis), real64), int64), &
+                                      s_axis(i_axis) - 1_int64)
+                end do
+                ! Step the stride up by one until it is coprime to prod_a S_a, so the
+                ! walk visits min(M, prod_a S_a) distinct joint atoms.
+                unit = 0_int64
+                unit(1) = 1_int64
+                do j = 1, MAX_STRIDE_TRIES
+                    if (joint_stride_coprime_helper(stride, s_axis, n_pool_case, n_pool_control, n_axes)) exit
+                    call mixed_radix_add_helper(stride, unit, s_axis, n_axes)
                 end do
             end if
 
@@ -473,15 +563,16 @@ contains
                                   n_pool_control(i_axis))
                         buf_pos = buf_pos + 2
                     else
-                        i_c = ic(i_axis) + 1
-                        i_t = it(i_axis) + 1
-                        ic(i_axis) = modulo(ic(i_axis) + stride_c(i_axis), n_pool_case(i_axis))
-                        it(i_axis) = modulo(it(i_axis) + stride_t(i_axis), n_pool_control(i_axis))
+                        ! Decode the axis digit as the enumerated path does.
+                        i_c = int(idx(i_axis) / int(n_pool_control(i_axis), int64), int32) + 1
+                        i_t = int(modulo(idx(i_axis), int(n_pool_control(i_axis), int64)), int32) + 1
                     end if
                     v = pools_case(i_c, i_axis) - pools_control(i_t, i_axis)
                     acc_std = acc_std + axis_w(i_axis) * v * v
                     acc_plain = acc_plain + v * v
                 end do
+
+                if (.not. use_rng) call mixed_radix_add_helper(idx, stride, s_axis, n_axes)
 
                 m = m + 1_int64
                 sum_plain = sum_plain + acc_plain
@@ -515,11 +606,11 @@ contains
     pure function atom_bsq_helper(pool_case, n_pool_case, pool_control, n_pool_control, t) result(bsq)
         integer(int32), intent(in) :: n_pool_case
         !! Case pool size
-        real(real64), dimension(:), intent(in) :: pool_case
-        !! Case pool column (only the first `n_pool_case` entries are valid)
+        real(real64), dimension(n_pool_case), intent(in) :: pool_case
+        !! Case pool
         integer(int32), intent(in) :: n_pool_control
         !! Control pool size
-        real(real64), dimension(:), intent(in) :: pool_control
+        real(real64), dimension(n_pool_control), intent(in) :: pool_control
         !! Control pool column
         integer(int64), intent(in) :: t
         !! Atom index in `[0, n_pool_case * n_pool_control)`
@@ -573,7 +664,7 @@ contains
         neighborhood_size_case, neighborhood_size_control, var_null, &
         scale_case, scale_control, &
         tmp_pools_case, tmp_pools_control, tmp_n_pool_case, tmp_n_pool_control, &
-        tmp_axis_w, rbuf, n_genes_with_pvalue, ierr)
+        tmp_axis_w, rbuf, n_rbuf, n_genes_with_pvalue, ierr)
 
         integer(int32), intent(in) :: n_genes
         !! Number of genes
@@ -631,9 +722,9 @@ contains
         !! `1/sqrt(n_rep_case(a))`, precomputed
         real(real64), dimension(n_axes), intent(in) :: scale_control
         !! `1/sqrt(n_rep_control(a))`, precomputed
-        real(real64), dimension(:, :), intent(inout) :: tmp_pools_case
-        !! Work array: case pools, `(max_pool_size * 2, n_axes)`
-        real(real64), dimension(:, :), intent(inout) :: tmp_pools_control
+        real(real64), dimension(max_pool_size * 2, n_axes), intent(inout) :: tmp_pools_case
+        !! Work array: case pools
+        real(real64), dimension(max_pool_size * 2, n_axes), intent(inout) :: tmp_pools_control
         !! Work array: control pools, same shape
         integer(int32), dimension(n_axes), intent(inout) :: tmp_n_pool_case
         !! Work array: case pool sizes for the current gene
@@ -641,7 +732,9 @@ contains
         !! Work array: control pool sizes for the current gene
         real(real64), dimension(n_axes), intent(inout) :: tmp_axis_w
         !! Work array: the current gene's per-axis weights
-        real(real64), dimension(:), intent(inout) :: rbuf
+        integer(int32), intent(in) :: n_rbuf
+        !! Length of `rbuf`
+        real(real64), dimension(n_rbuf), intent(inout) :: rbuf
         !! Work array: pre-drawn random numbers (RNG path only)
         integer(int32), intent(out) :: n_genes_with_pvalue
         !! Number of genes that received a p-value
@@ -725,9 +818,9 @@ contains
 
             call compute_pvalue_md_helper(tmp_pools_case, tmp_n_pool_case, &
                                           tmp_pools_control, tmp_n_pool_control, &
-                                          n_axes, tmp_axis_w, acc_obs_std, &
+                                          max_pool_size * 2, n_axes, tmp_axis_w, acc_obs_std, &
                                           sampling_mode, n_draws_max, n_exceed_target, &
-                                          enum_max_product, rbuf, i_gene, &
+                                          enum_max_product, rbuf, n_rbuf, i_gene, &
                                           p_val, d_sq_null_val, n_used, meth)
 
             pvalues_own(i_gene) = p_val
@@ -1005,7 +1098,7 @@ contains
             neighborhood_size_case, neighborhood_size_control, var_null, &
             scale_case, scale_control, &
             tmp_pools_case, tmp_pools_control, tmp_n_pool_case, tmp_n_pool_control, &
-            tmp_axis_w, rbuf, n_genes_with_pvalue, ierr)
+            tmp_axis_w, rbuf, rbuf_size, n_genes_with_pvalue, ierr)
 
     end subroutine compute_noise_pvalue_pipeline_md
 

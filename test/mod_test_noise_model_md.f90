@@ -26,6 +26,10 @@
 !|      statistic unchanged.
 !|   9. Degenerate input: a permanently thin axis, a zero-variance axis, `D = 0`,
 !|      a non-finite replicate, and the argument-validation error codes.
+!|  10. The systematic walk matches the exact enumerated p-value within
+!|      Monte-Carlo error when all pools have the SAME size. Equal sizes are the
+!|      case where independent per-pool walks repeat after one pool length; the
+!|      joint walk must keep covering the product space.
 !|
 !| (The former check 10, `beta_mode = 1` with an off-scale supplied `beta`, went
 !| with `beta_mode` itself: the statistic is now always computed internally.)
@@ -63,7 +67,7 @@ contains
     function get_all_tests_noise_model_md() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(9))
+        allocate(all_tests(10))
         all_tests(1)  = test_case("test_md_reduces_to_exact_d1",     test_md_reduces_to_exact_d1)
         all_tests(2)  = test_case("test_beta_obs_d1",                test_beta_obs_d1)
         all_tests(3)  = test_case("test_both_norms_fixture",         test_both_norms_fixture)
@@ -73,6 +77,7 @@ contains
         all_tests(7)  = test_case("test_systematic_vs_rng",          test_systematic_vs_rng)
         all_tests(8)  = test_case("test_beta_centre_median",         test_beta_centre_median)
         all_tests(9)  = test_case("test_degenerate_input",           test_degenerate_input)
+        all_tests(10) = test_case("test_systematic_vs_enumerated",   test_systematic_vs_enumerated)
     end function get_all_tests_noise_model_md
 
     ! =========================================================================
@@ -810,6 +815,71 @@ contains
 
         deallocate(pc, pt)
     end subroutine test_systematic_vs_rng
+
+    ! =========================================================================
+    ! 10. systematic walk vs exact enumeration, equal pool sizes
+    ! =========================================================================
+    subroutine test_systematic_vs_enumerated()
+        integer(int32), parameter :: n_genes = 24, n_axes = 2
+        integer(int32), parameter :: M = 20000
+        integer(int32) :: nrc(n_axes), nrt(n_axes)
+        real(real64) :: mc(n_genes, n_axes), mt(n_genes, n_axes)
+        real(real64), allocatable :: pc(:), pt(:)
+        real(real64) :: b(n_axes, n_genes)
+        real(real64) :: p1(n_genes), p2(n_genes), d_obs(n_genes), d_std(n_genes), s(n_genes)
+        integer(int32) :: m1(n_genes), nd1(n_genes), m2(n_genes), nd2(n_genes)
+        integer(int32) :: nbc(n_axes, n_genes), nbt(n_axes, n_genes)
+        real(real64) :: vn(n_axes, n_genes), dh(n_axes)
+        integer(int32) :: nwp, ierr, g, n_cmp, n_equal, n_mid
+        real(real64) :: sum_abs, max_abs
+
+        ! Same replicate count on every side, so pools of the same gene count have
+        ! the same size on all 2d sides.
+        nrc = [3, 3]
+        nrt = [3, 3]
+        allocate(pc(packed_len(n_genes, n_axes, nrc)))
+        allocate(pt(packed_len(n_genes, n_axes, nrt)))
+        ! No shift: a null fixture, so the p-values spread over (0, 1) instead of
+        ! all sitting at the floor, where any sampler agrees with enumeration.
+        call make_group(n_genes, n_axes, nrc, 0.1_real64, 0.0_real64, 0.30_real64, mc, pc)
+        call make_group(n_genes, n_axes, nrt, 1.2_real64, 0.0_real64, 0.30_real64, mt, pt)
+
+        call run_md(n_genes, n_axes, nrc, nrt, pc, pt, &
+                    0, BETA_CENTRE_NONE, SAMPLING_SYSTEMATIC, M, 0, ENUM_BIG, &
+                    b, p1, d_obs, d_std, s, m1, nd1, nbc, nbt, vn, dh, nwp, ierr)
+        call assert_equal_int(ierr, ERR_OK, "sys-vs-enum: enumerated ierr")
+
+        call run_md(n_genes, n_axes, nrc, nrt, pc, pt, &
+                    0, BETA_CENTRE_NONE, SAMPLING_SYSTEMATIC, M, 0, ENUM_OFF, &
+                    b, p2, d_obs, d_std, s, m2, nd2, nbc, nbt, vn, dh, nwp, ierr)
+        call assert_equal_int(ierr, ERR_OK, "sys-vs-enum: systematic ierr")
+
+        sum_abs = 0.0_real64
+        max_abs = 0.0_real64
+        n_cmp = 0
+        n_equal = 0
+        n_mid = 0
+        do g = 1, n_genes
+            if (p1(g) < 0.0_real64 .or. p2(g) < 0.0_real64) cycle
+            call assert_equal_int(m1(g), METHOD_ENUMERATED, "sys-vs-enum: gene "//str(g)//" did not enumerate")
+            call assert_equal_int(m2(g), METHOD_SYSTEMATIC, "sys-vs-enum: gene "//str(g)//" did not sample")
+            n_cmp = n_cmp + 1
+            if (all(nbc(:, g) == nbc(1, g)) .and. all(nbt(:, g) == nbc(1, g))) n_equal = n_equal + 1
+            if (p1(g) > 0.05_real64 .and. p1(g) < 0.95_real64) n_mid = n_mid + 1
+            sum_abs = sum_abs + abs(p1(g) - p2(g))
+            max_abs = max(max_abs, abs(p1(g) - p2(g)))
+        end do
+        call assert_true(n_cmp > 0, "sys-vs-enum: nothing compared")
+        call assert_true(n_equal > 0, "sys-vs-enum: fixture has no gene with equal pool sizes")
+        call assert_true(n_mid >= n_cmp / 2, "sys-vs-enum: fixture p-values not spread, test is vacuous")
+        ! Monte-Carlo SE at M = 20,000 is <= 0.0035: 0.005 mean / 0.015 max (~4 SE).
+        call assert_true(sum_abs / real(n_cmp, real64) < 0.005_real64, &
+                         "sys-vs-enum: mean |p_sys - p_enum| exceeds Monte-Carlo tolerance")
+        call assert_true(max_abs < 0.015_real64, &
+                         "sys-vs-enum: max |p_sys - p_enum| exceeds Monte-Carlo tolerance")
+
+        deallocate(pc, pt)
+    end subroutine test_systematic_vs_enumerated
 
     ! =========================================================================
     ! 8. beta_centre = 1 subtracts the per-axis median
