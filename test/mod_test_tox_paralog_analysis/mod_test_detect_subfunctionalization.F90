@@ -475,22 +475,35 @@ contains
     end subroutine test_detect_subfunc_expert
 
     !> The expert tier checks only the range of `paralog_norms_perm`, so no index is out of bounds;
-    !| the order is the caller's job (FES, 2026-11-25: "if not it's wanted"). It accepts a
-    !| permutation that is not ascending ([3, 2, 1] for the norms [1, 2, 4]), whose minima are
-    !| wrong, and an order with a repeated entry ([1, 1, 1]), which leaves minima unwritten and
-    !| read uninitialised: both pass with `ierr` OK, and what they find is not checked.
+    !| the order is the caller's job (FES, 2026-11-25: "if not it's wanted"). On the first three
+    !| binary-weights genes (norms [1, 2, 4], ancestor [10, 0], `rdi_threshold` 1):
+    !| - a permutation that is not ascending, [3, 2, 1], is accepted with `ierr` OK: the minima are
+    !|   wrong (4 for every gene), which prunes nothing here, and no subset of 1, 2 and 4 sums to
+    !|   within 1 of 10, so none is found;
+    !| - an order with a repeated entry, [1, 1, 1], is accepted too, which is pinned with
+    !|   `max_subset_size` 1: the validation runs, and the search stops before any pair is formed,
+    !|   so the minima the order would leave unwritten are never read. With entries out of range,
+    !|   [1, 1, 4], the same call is refused, naming the order (the expert's argument 15).
     subroutine test_detect_subfunc_order_is_the_callers()
-        integer(int32), parameter :: repeated(3) = [1, 1, 1], descending(3) = [3, 2, 1]
+        integer(int32), parameter :: repeated(3) = [1, 1, 1], descending(3) = [3, 2, 1], past_n_genes(3) = [1, 1, 4]
         integer(int32) :: mask(1), subsets(1, 3), n_results, ierr
 
         mask = 7
-        call subfunc_expert(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 3, 1.0_real64, BINARY_NORMS, &
-                            repeated, ierr)
-        call assert_err(ierr, ERR_OK, "test_detect_subfunc_order_is_the_callers: a repeated entry")
-
+        n_results = UNWRITTEN_COUNT
         call subfunc_expert(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 3, 1.0_real64, BINARY_NORMS, &
                             descending, ierr)
-        call assert_err(ierr, ERR_OK, "test_detect_subfunc_order_is_the_callers: a descending order")
+        call assert_err(ierr, ERR_OK, "test_detect_subfunc_order_is_the_callers: a descending order, ierr")
+        call assert_equal_int(n_results, 0_int32, "test_detect_subfunc_order_is_the_callers: a descending order")
+
+        n_results = UNWRITTEN_COUNT
+        call subfunc_expert(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 1, subsets, 3, 1.0_real64, BINARY_NORMS, &
+                            repeated, ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_subfunc_order_is_the_callers: a repeated entry, ierr")
+        call assert_equal_int(n_results, 0_int32, "test_detect_subfunc_order_is_the_callers: a repeated entry")
+
+        call subfunc_expert(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 1, subsets, 3, 1.0_real64, BINARY_NORMS, &
+                            past_n_genes, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_subfunc_order_is_the_callers: an entry past n_genes", 15)
     end subroutine test_detect_subfunc_order_is_the_callers
 
     !> The plain tier computes the norms (`calc_paralog_norms`) and sorts their order ascending,

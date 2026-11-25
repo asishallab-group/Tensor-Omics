@@ -222,7 +222,9 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_bitma
 #'   is the caller's job: only the entries' range is checked, so no index is out of
 #'   bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
 #'   is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
-#'   never written, read uninitialised.
+#'   never written, read uninitialised. The plain tier builds it itself; for the expert
+#'   tier, `np.argsort(paralog_norms) + 1` in Python and `order(paralog_norms)` in R give
+#'   it, counting genes from 1 as it does.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
 #' @return a named list with elements:
