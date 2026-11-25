@@ -785,8 +785,9 @@ their shared helper directly for exactly this reason; the generator follows them
 A work-array size documented with `DM_OUTPUT_FROM(size_arg, recommend_proc, tox_X_impl, AUTO)`
 already tells the binding languages to call `recommend_proc` themselves. The same annotation
 now tells `foo` to call it in Fortran: size the buffer, `M_ALLOCATE` it, call the
-implementation. One annotation, two consumers — the `foo_expert` binding still exposes the
-size argument and calls the routine; `foo` internalises it.
+implementation. One annotation, two consumers — Fortran's and C's `foo_expert` take the size
+from the caller, Python's and R's compute it, since they allocate by it (`language-layers.md`,
+"What a binding computes"); `foo` internalises it.
 
 **Rejected — a new `RECOMMENDED` mode alongside `AUTO`.** `AUTO` already carries everything
 needed (the producer and how to supply its inputs, resolved by the existing output-from pass).
@@ -900,6 +901,47 @@ generates byte-identical bindings, but it is a rule that rewrites what the autho
 has no answer for a mode split, which has no `foo` to translate into; picking one per-mode
 wrapper from a table row would be a rule that silently selects a procedure. Naming the wrapper
 leaves nothing to translate: the author names what is called.
+
+### An array a producer fills (2026-11-25)
+
+A `DM_OUTPUT_FROM(…, AUTO)` value may be an array that an array output of the producer fills, not
+only a size. `foo` called the producer before allocating what it writes into, which traps under
+`-fcheck=all`; broken shapes and intents were accepted silently. What holds now:
+
+- **`foo` allocates the array right above the producer call that fills it** (R1), after the
+  earlier calls' error checks; every other allocation follows all the calls, then the
+  permutation sorts, the prologue and the implementation. Its extents name only arguments `foo`
+  keeps and constants -- which follows from the rows below and P1, so no check of its own.
+- **`foo` trusts what a producer made** (FES): the producer validated its inputs; `foo_expert`
+  validates the array like any input. Python and R take it as data in their expert (E2).
+- **Refused, once per generated pair, at the directive's line, one error per cause, each with a
+  note** (`roles._refuses_the_output`, `_refuses_an_axis`): an array `foo` allocates that is
+  assumed-shape or -size (a); a producer output that is assumed-shape or -size, or partly filled
+  where something allocates the array with its extents (b); an axis other than the producer's
+  with its inputs replaced by their suppliers, simultaneously, constants by value in their own
+  scope (c); a character array (e, FES); a type (f) or rank (g) that differs, `JUST_INFO`
+  included, by kind value where Fortran calls the producer and by C type where a binding does; an
+  `intent(inout)` value (h, in `validate`); a producer output not `intent(out)` (i). "An extent
+  the producer refines" (d) cannot be written: the refined supplier must be a required
+  `intent(inout)` dummy and an extent is `intent(in)`, which `validate` says.
+- **P1, where a producer input comes from** (`roles._refuses_a_supplier`): a scalar constant, or
+  an input of the implementation the caller passes in every tier that calls the producer -- in
+  Fortran an `intent(in)` or `intent(inout)` dummy `foo` keeps, required, optional with a
+  `DM_DEFAULT` (resolved before the call, by the supplier's own name), or optional into an optional
+  producer input (passed through); in a binding a parameter, or what it reads off one first. A
+  work array, a permutation `foo` builds, an output, an optional without a default into a required
+  input (a crash before), and a prologue-only argument are refused, each with its own message.
+  Chaining, and `validate`'s rule that the prologue writes nothing the setup read, stay their own
+  rules; P1 leaves a supplier the prologue writes to the latter, which then still has the plan.
+
+**Rejected -- allocating every array before the producers.** It reorders every existing consumer's
+output (`tox_get_outliers`' `tmp_perm` before its LOESS sizing call) for nothing; with R1 a module
+without such an array is byte-identical. **Rejected -- the producer allocating** the array: an
+`allocatable` dummy is not interoperable, and a published producer has explicit-shape outputs.
+**Rejected -- refusing array producers**: FES asked for them. **Rejected -- accepting an
+assumed-shape producer output**, which takes its shape from what `foo` allocates: it let an array
+be sized by a value another producer computes later, making R1 order-dependent, and on the binding
+route the producer's binding wants a size the consumer never passes.
 
 ### The prologue is the allocating tier's sugar, and has no scope
 

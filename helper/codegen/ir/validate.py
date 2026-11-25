@@ -372,7 +372,12 @@ def _required_default_note(argument: Argument) -> str:
     # an implementation is analysed without the project, so its producer is not resolved
     # onto its roles: the directive says the same
     computed = output_from is not None and output_from.is_automatic
-    if computed or (roles is not None and roles.is_derived):
+    if computed:
+        # not "never taken": the Python and R expert of a pair takes data a producer fills,
+        # as Fortran's and C's take every such value -- as a required argument either way
+        return (f"'{argument.name}' is computed by its producer, or passed as a required "
+                "argument where the caller supplies it, so the default is never used; drop it")
+    if roles is not None and roles.is_derived:
         return (f"Python and R derive '{argument.name}' and never take it, so the default is "
                 "never used; drop it")
     if roles is not None and roles.is_extent:
@@ -748,6 +753,27 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
     project = impl.module.project if impl.module is not None else None
     prologue = _prologue_of(impl, project) if project is not None else None
     arguments = published_arguments(impl, conventions)
+    for argument in arguments:
+        # an intent(inout) value a producer computes, on either route: what the implementation
+        # writes back is dropped where `foo` computed it, and asked of nobody where a binding did
+        directive = argument.directives.output_from
+        if not is_computed(argument) or argument.intent is not Intent.INOUT:
+            continue
+        location = argument.location
+        if location is not None and directive.line_number is not None:
+            location = SourceLocation(location.file, directive.line_number)
+        diagnostics.error(
+            f"'{argument.name}' is intent(inout), but it is computed with "
+            f"'{directive.procedure}', so what the implementation writes back is discarded",
+            entity=argument,
+            location=location,
+            note=(
+                "a value a producer computes is intent(in); scratch the implementation reuses "
+                f"is a '{conventions.temporary_prefix}' work array. Where the caller can supply "
+                "the value, name the producer with JUST_INFO instead of AUTO, so the caller "
+                "passes it"
+            ),
+        )
     for argument in taken_over_arguments(arguments, conventions, prologue):
         if argument.intent is not Intent.OUT or is_temporary(argument, conventions):
             continue
@@ -1709,12 +1735,16 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     taken = taken_over_arguments(published_arguments(impl, conventions), conventions,
                                  prologue)
 
-    # `M_ALLOCATE(tmp_x(<extent>))`
+    # `M_ALLOCATE(tmp_x(<extent>))` -- an array a producer fills included, which is allocated
+    # with its extents right above the producer call that is also passed them: one cause, so
+    # one error, which the producer half below then leaves out
+    sized_by: set[tuple[str, str]] = set()
     for argument in taken:
         for extent in argument.dimension.extents:
             for identifier in _IDENTIFIER_RE.findall(extent):
                 if identifier.lower() not in written:
                     continue
+                sized_by.add((argument.name.lower(), identifier.lower()))
                 diagnostics.error(
                     f"'{argument.name}' is sized by '{identifier}', which the prologue "
                     f"only fills afterwards",
@@ -1740,16 +1770,22 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     # The plan is resolved on the generated wrapper rather than here: `analyse` runs on a
     # impl without a project, so it can never look a producer up, and an implementation argument's
     # `computed_from` is always None. Reading it here would have made this half dead code.
+    # Its note is the producer-input rule's: a work array is no way out for a producer input,
+    # which nothing has filled before the producer runs either.
+    from .roles import PRODUCER_INPUT_NOTE  # local: roles imports this module
+
     for argument in _wrapper_arguments_with_plans(impl, conventions):
         plan = argument.roles.computed_from
         for supply in plan.inputs:
             if supply.argument is None or supply.argument.lower() not in written:
                 continue
+            if (argument.name.lower(), supply.argument.lower()) in sized_by:
+                continue
             diagnostics.error(
                 f"'{plan.producer.name}' is passed '{supply.argument}', which the prologue "
                 f"only fills afterwards",
                 argument,
-                note=_READ_FIRST_NOTE,
+                note=PRODUCER_INPUT_NOTE,
             )
 
 

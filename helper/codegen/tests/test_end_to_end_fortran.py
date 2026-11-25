@@ -493,3 +493,112 @@ class TestAnImplementationPositionIsTranslated:
         assert self.run(built, tmp_path, call, 5) == ["ok", "1", "2", "0", "0", "0"]
         call = "call fx_pos_share_expert(N, values, scratch, total, ierr)"
         assert self.run(built, tmp_path, call, 5) == ["ok", "1", "2", "3", "0", "0"]
+
+
+#: The probe for the arrays a producer fills (`fx_sized_impl`): a 2 x 3 matrix whose column
+#: norms are 5, 1 and 2.5, so one call gives them unsorted and one of them is not above one
+_SIZED_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use tox_errors, only: get_err_code, get_err_arg_pos
+    use fx_sized, only: fx_norm_rank, fx_norm_rank_expert, fx_large_total, fx_default_scale, &
+        fx_padded_total
+    implicit none
+    real(real64) :: x(2, 3) = reshape([3.0_real64, 4.0_real64, 0.6_real64, 0.8_real64, &
+                                       1.5_real64, 2.0_real64], [2, 3])
+    real(real64) :: ranked(3), total
+    real(real64) :: values(3) = [1.0_real64, 2.0_real64, 4.0_real64]
+    integer(int32) :: ierr
+
+{body}
+end program probe
+"""
+
+
+class TestAnArrayAProducerFills:
+    """`foo` allocates an array right above the producer call that fills it (R1).
+
+    It used to allocate it after every producer call, so the producer wrote into an unallocated
+    array: under -fcheck=all, which these probes are compiled with, that is a runtime error.
+    """
+
+    def test_foo_fills_sorts_and_passes_it(self, built, tmp_path):
+        # norms 5, 1, 2.5 sorted ascending through norms_perm; the scratch is 3 columns x 2
+        out = run_fortran(built, tmp_path, """
+            call fx_norm_rank(2, 3, x, 2, ranked, total, ierr)
+            print '(i0, 3(1x, f6.2), 1x, f6.2)', ierr, ranked, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "1.00", "2.50", "5.00", "6.00"]
+
+    def test_the_expert_takes_it_from_the_caller(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            block
+                real(real64) :: scratch(6)
+                call fx_norm_rank_expert(2, 3, x, 2, [9.0_real64, 7.0_real64, 8.0_real64], &
+                    [2, 3, 1], 6, scratch, ranked, total, ierr)
+            end block
+            print '(i0, 3(1x, f6.2))', ierr, ranked
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "7.00", "8.00", "9.00"]
+
+    def test_a_producer_error_names_the_caller_s_argument(self, built, tmp_path):
+        # fx_column_norms takes at most three rows, a bound fx_norm_rank leaves out: its
+        # ERR_INVALID_INPUT at its own n_dims (1) is fx_norm_rank's n_dims, also its first
+        out = run_fortran(built, tmp_path, """
+            block
+                real(real64) :: tall(4, 3) = 1.0_real64
+                call fx_norm_rank(4, 3, tall, 2, ranked, total, ierr)
+            end block
+            print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["201", "1"]
+
+    def test_one_call_gives_the_array_and_a_size_its_values_decide(self, built, tmp_path):
+        # 5 + 1 + 2.5, plus a thousand for each of the two norms above one
+        out = run_fortran(built, tmp_path, """
+            call fx_large_total(2, 3, x, total, ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "2008.50"]
+
+    def test_a_zero_extent(self, built, tmp_path):
+        # no columns at all: the array, the size and the scratch are all empty
+        out = run_fortran(built, tmp_path, """
+            call fx_large_total(2, 0, x(:, 1:0), total, ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "0.00"]
+
+
+class TestAnOptionalSupplier:
+    """P1: an optional producer input's supplier, resolved or passed through as it stands."""
+
+    def test_its_default_is_resolved_under_the_name_the_table_gives_it(self):
+        # `factor | scale`: left out, `scale` is its default 2, so the scratch is 3 x 2
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_default_scale(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+            call fx_default_scale(3, values, 3, total, ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "13.00", "0", "16.00"]
+
+    def test_an_absent_one_stays_absent_through_to_the_producer(self):
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_padded_total(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+            call fx_padded_total(3, values, 2, total, ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "10.00", "0", "12.00"]
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, built, tmp_path):
+        self.built, self.tmp_path = built, tmp_path

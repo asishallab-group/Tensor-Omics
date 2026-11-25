@@ -14,6 +14,7 @@ those are managed entirely by the generated layers and should never be blamed at
 from __future__ import annotations
 
 from ..ir.entities import Argument, Procedure
+from ..synthesize import readable_owners
 
 
 def source_of(argument: Argument) -> str | None:
@@ -27,7 +28,10 @@ def source_of(argument: Argument) -> str | None:
         # Only an array the caller passed, though: blaming an output names something they
         # never wrote. An extent sizing outputs alone is the caller's own argument -- unless
         # it is also a mask's count, which the mask below names.
-        readable = roles.readable_owners
+        # the binding's carriers, in its order (R4): an array it computes itself is no argument
+        # of the caller's, so an extent it is read off after the producers names that array
+        # only where the caller passed none, and an extent asked of the caller names none
+        readable = readable_owners(argument, argument.parent) if argument.parent else ()
         if readable:
             return readable[0].name
     if roles.shape_of is not None:
