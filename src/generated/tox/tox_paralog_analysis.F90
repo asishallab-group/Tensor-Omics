@@ -127,8 +127,12 @@ contains
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
+            !! gene but the last starts a subset, so fewer slots than that are refused with
+            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
+            !! The minimum valid value is `0_int32`.
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -142,10 +146,10 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
-            !! Zero is in range and means there is no subset to check -- the sizing routine reports
-            !! it whenever the filtered families hold a single gene each. It reports a work array
-            !! of zero slots along with it, which this routine does not accept, so a caller that
-            !! gets zero back has nothing to detect and should not call here at all.
+            !! Zero is in range and means there is no subset to check; the sizing routine reports it
+            !! when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+            !! the sizing then reports a work array of no subsets (and a size of 1 for one kept
+            !! gene), which this routine takes, finding nothing (`n_results` 0).
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
@@ -172,7 +176,7 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32))))
         call validate_in_range_int(max_subset_size, ierr, arg_pos=8_int32, min=0_int32)
-        call validate_dimension_size(n_paralog_subsets, ierr, arg_pos=10_int32)
+        call validate_in_range_int(n_paralog_subsets, ierr, arg_pos=10_int32, min=0_int32)
         call validate_in_range_real(max_angle, ierr, arg_pos=11_int32, min=0.0_real64, max=PI)
         call validate_in_range_real(gain_gamma, ierr, arg_pos=12_int32, min=above(0.0_real64))
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
@@ -254,8 +258,12 @@ contains
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
+            !! gene but the last starts a subset, so fewer slots than that are refused with
+            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
+            !! The minimum valid value is `0_int32`.
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -269,10 +277,10 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
-            !! Zero is in range and means there is no subset to check -- the sizing routine reports
-            !! it whenever the filtered families hold a single gene each. It reports a work array
-            !! of zero slots along with it, which this routine does not accept, so a caller that
-            !! gets zero back has nothing to detect and should not call here at all.
+            !! Zero is in range and means there is no subset to check; the sizing routine reports it
+            !! when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+            !! the sizing then reports a work array of no subsets (and a size of 1 for one kept
+            !! gene), which this routine takes, finding nothing (`n_results` 0).
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
@@ -301,7 +309,7 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32))))
         call validate_in_range_int(max_subset_size, ierr, arg_pos=8_int32, min=0_int32)
-        call validate_dimension_size(n_paralog_subsets, ierr, arg_pos=10_int32)
+        call validate_in_range_int(n_paralog_subsets, ierr, arg_pos=10_int32, min=0_int32)
         call validate_in_range_real(max_angle, ierr, arg_pos=13_int32, min=0.0_real64, max=PI)
         call validate_in_range_real(gain_gamma, ierr, arg_pos=14_int32, min=above(0.0_real64))
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
@@ -383,8 +391,12 @@ contains
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
+            !! gene but the last starts a subset, so fewer slots than that are refused with
+            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
+            !! The minimum valid value is `0_int32`.
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -398,10 +410,10 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
-            !! Zero is in range and means there is no subset to check -- the sizing routine reports
-            !! it whenever the filtered families hold a single gene each. It reports a work array
-            !! of zero slots along with it, which this routine does not accept, so a caller that
-            !! gets zero back has nothing to detect and should not call here at all.
+            !! Zero is in range and means there is no subset to check; the sizing routine reports it
+            !! when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+            !! the sizing then reports a work array of no subsets (and a size of 1 for one kept
+            !! gene), which this routine takes, finding nothing (`n_results` 0).
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
@@ -430,7 +442,7 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32))))
         call validate_in_range_int(max_subset_size, ierr, arg_pos=8_int32, min=0_int32)
-        call validate_dimension_size(n_paralog_subsets, ierr, arg_pos=10_int32)
+        call validate_in_range_int(n_paralog_subsets, ierr, arg_pos=10_int32, min=0_int32)
         call validate_in_range_real(rdi_threshold, ierr, arg_pos=11_int32, min=0.0_real64)
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=2_int32)
@@ -520,8 +532,12 @@ contains
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
+            !! gene but the last starts a subset, so fewer slots than that are refused with
+            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
+            !! The minimum valid value is `0_int32`.
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -535,10 +551,10 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
-            !! Zero is in range and means there is no subset to check -- the sizing routine reports
-            !! it whenever the filtered families hold a single gene each. It reports a work array
-            !! of zero slots along with it, which this routine does not accept, so a caller that
-            !! gets zero back has nothing to detect and should not call here at all.
+            !! Zero is in range and means there is no subset to check; the sizing routine reports it
+            !! when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+            !! the sizing then reports a work array of no subsets (and a size of 1 for one kept
+            !! gene), which this routine takes, finding nothing (`n_results` 0).
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
@@ -570,7 +586,7 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32))))
         call validate_in_range_int(max_subset_size, ierr, arg_pos=8_int32, min=0_int32)
-        call validate_dimension_size(n_paralog_subsets, ierr, arg_pos=10_int32)
+        call validate_in_range_int(n_paralog_subsets, ierr, arg_pos=10_int32, min=0_int32)
         call validate_in_range_real(rdi_threshold, ierr, arg_pos=13_int32, min=0.0_real64)
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=2_int32)

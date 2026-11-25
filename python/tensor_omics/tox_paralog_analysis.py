@@ -252,10 +252,10 @@ def detect_dosage_effect(
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         :func:`tensor_omics.calc_paralog_subsets_bitmasks_size` first.
-        Zero is in range and means there is no subset to check -- the sizing routine reports
-        it whenever the filtered families hold a single gene each. It reports a work array
-        of zero slots along with it, which this routine does not accept, so a caller that
-        gets zero back has nothing to detect and should not call here at all.
+        Zero is in range and means there is no subset to check; the sizing routine reports it
+        when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+        the sizing then reports a work array of no subsets (and a size of 1 for one kept
+        gene), which this routine takes, finding nothing (`n_results` 0).
         The minimum valid value is `0`.
     max_angle : float, optional, default 3.141592653589793
         maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
@@ -372,10 +372,10 @@ def detect_subfunctionalization(
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         :func:`tensor_omics.calc_paralog_subsets_bitmasks_size` first.
-        Zero is in range and means there is no subset to check -- the sizing routine reports
-        it whenever the filtered families hold a single gene each. It reports a work array
-        of zero slots along with it, which this routine does not accept, so a caller that
-        gets zero back has nothing to detect and should not call here at all.
+        Zero is in range and means there is no subset to check; the sizing routine reports it
+        when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+        the sizing then reports a work array of no subsets (and a size of 1 for one kept
+        gene), which this routine takes, finding nothing (`n_results` 0).
         The minimum valid value is `0`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`
