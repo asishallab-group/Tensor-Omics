@@ -1840,7 +1840,7 @@
   },
   "detect_dosage_effect (call)": {
     "prefix": "tox:detect_dosage_effect",
-    "description": "detect_dosage_effect",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
     "body": [
       "call detect_dosage_effect( &",
       "    ancestor=${1:ancestor}, &",
@@ -1860,7 +1860,7 @@
   },
   "detect_dosage_effect (call, checked)": {
     "prefix": "tox:detect_dosage_effect.checked",
-    "description": "detect_dosage_effect (with error check)",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended (with error check)",
     "body": [
       "call detect_dosage_effect( &",
       "    ancestor=${1:ancestor}, &",
@@ -1881,7 +1881,7 @@
   },
   "detect_subfunctionalization (call)": {
     "prefix": "tox:detect_subfunctionalization",
-    "description": "detect_subfunctionalization",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
     "body": [
       "call detect_subfunctionalization( &",
       "    ancestor=${1:ancestor}, &",
@@ -1902,7 +1902,7 @@
   },
   "detect_subfunctionalization (call, checked)": {
     "prefix": "tox:detect_subfunctionalization.checked",
-    "description": "detect_subfunctionalization (with error check)",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended (with error check)",
     "body": [
       "call detect_subfunctionalization( &",
       "    ancestor=${1:ancestor}, &",
@@ -1986,7 +1986,7 @@
   },
   "calc_paralog_subsets_bitmasks_size (call)": {
     "prefix": "tox:calc_paralog_subsets_bitmasks_size",
-    "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
+    "description": "The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,",
     "body": [
       "call calc_paralog_subsets_bitmasks_size( &",
       "    max_subset_size=${1:max_subset_size}, &",
@@ -1999,7 +1999,7 @@
   },
   "calc_paralog_subsets_bitmasks_size (call, checked)": {
     "prefix": "tox:calc_paralog_subsets_bitmasks_size.checked",
-    "description": "The `detect_*` subroutines need a work array for the to be tested subsets. (with error check)",
+    "description": "The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side, (with error check)",
     "body": [
       "call calc_paralog_subsets_bitmasks_size( &",
       "    max_subset_size=${1:max_subset_size}, &",
