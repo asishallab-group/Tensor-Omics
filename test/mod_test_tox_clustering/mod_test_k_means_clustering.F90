@@ -26,7 +26,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(15))
+        allocate (all_tests(16))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_one_cluster", test_k_means_clustering_one_cluster)
@@ -46,6 +46,7 @@ contains
                                   test_k_means_clustering_empty_cluster_moves_with_the_data)
         all_tests(14) = test_case("test_k_means_clustering_squares_past_huge", test_k_means_clustering_squares_past_huge)
         all_tests(15) = test_case("test_k_means_clustering_squares_below_tiny", test_k_means_clustering_squares_below_tiny)
+        all_tests(16) = test_case("test_k_means_clustering_means_past_huge", test_k_means_clustering_means_past_huge)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -427,4 +428,23 @@ contains
         call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
                            expected_centroids, "test_k_means_clustering_squares_below_tiny")
     end subroutine test_k_means_clustering_squares_below_tiny
+
+    !> BUG (the #223 class, not listed there): a centroid is the plain sum of its points divided by
+    !| their count, so the mean of two points at 2**1023 is +Inf. Points (x, 0), (x, 0), (x, 4),
+    !| (x, 6) with x = 2**1023, from (x, 0) and (x, 6): every difference is in the second
+    !| coordinate and its square small, so the first assignment is right ([1, 1, 2, 2]), and the
+    !| centroids should end at (x, 0) and (x, 5). Today they become (+Inf, 0) and (+Inf, 5), every
+    !| point is then at +Inf from both, the tie puts them all into cluster 2, and the run returns a
+    !| centroid +Inf with `ierr` OK.
+    subroutine test_k_means_clustering_means_past_huge()
+        real(real64), parameter :: x = 2.0_real64**1023
+        real(real64) :: data_points(2, 4), initial_centroids(2, 2), expected_centroids(2, 2)
+
+        data_points = reshape([x, 0.0_real64, x, 0.0_real64, x, 4.0_real64, x, 6.0_real64], shape(data_points))
+        initial_centroids = reshape([x, 0.0_real64, x, 6.0_real64], shape(initial_centroids))
+        expected_centroids = reshape([x, 0.0_real64, x, 5.0_real64], shape(expected_centroids))
+
+        call check_k_means(2_int32, data_points, 4_int32, 2_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+                           expected_centroids, "test_k_means_clustering_means_past_huge")
+    end subroutine test_k_means_clustering_means_past_huge
 end module mod_test_k_means_clustering
