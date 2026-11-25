@@ -683,9 +683,22 @@
       "  genes = ${3:genes},",
       "  filtered_paralogs_bitmask = ${4:filtered_paralogs_bitmask},",
       "  max_subset_size = ${5:max_subset_size},",
+      "  rdi_threshold = ${6:rdi_threshold}",
+      ")"
+    ]
+  },
+  "detect_subfunctionalization_expert (call)": {
+    "prefix": "tox:detect_subfunctionalization_expert",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
+    "body": [
+      "${1:result} <- detect_subfunctionalization_expert(",
+      "  ancestor = ${2:ancestor},",
+      "  genes = ${3:genes},",
+      "  filtered_paralogs_bitmask = ${4:filtered_paralogs_bitmask},",
+      "  max_subset_size = ${5:max_subset_size},",
       "  rdi_threshold = ${6:rdi_threshold},",
       "  paralog_norms = ${7:paralog_norms},",
-      "  sorted_paralog_norms_perm = ${8:sorted_paralog_norms_perm}",
+      "  paralog_norms_perm = ${8:paralog_norms_perm}",
       ")"
     ]
   },
@@ -712,6 +725,15 @@
       "  n_families = ${4:n_families},",
       "  gene_to_fam = ${5:gene_to_fam},",
       "  n_mask_chunks = ${6:n_mask_chunks}",
+      ")"
+    ]
+  },
+  "calc_paralog_norms (call)": {
+    "prefix": "tox:calc_paralog_norms",
+    "description": "Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows",
+    "body": [
+      "${1:result} <- calc_paralog_norms(",
+      "  genes = ${2:genes}",
       ")"
     ]
   },

@@ -111,11 +111,9 @@ def main(argv=None):
     print("subfunctionalization, kept by the filter:",
           [names[i - 1] for i in members(mask, n_genes)])
     sizing = calc_paralog_subsets_bitmasks_size(n_genes, n_genes, mask)
-    norms = np.linalg.norm(genes, axis=0)
     result = detect_subfunctionalization(
         ancestor, genes, mask, sizing["max_subset_size"],
         1.0,                                        # residual tolerated, the RDI threshold
-        norms, (np.argsort(norms) + 1).astype(np.int32),
     )
     subsets = np.asarray(result["paralog_subsets_bitmasks"])
     for k in range(result["n_results"]):

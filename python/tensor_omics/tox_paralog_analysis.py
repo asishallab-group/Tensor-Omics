@@ -84,15 +84,39 @@ _lib.detect_subfunctionalization_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_double),
-    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETECT_SUBFUNCTIONALIZATION_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr",)
+_DETECT_SUBFUNCTIONALIZATION_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "rdi_threshold", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_bitmask", None, None, None, None, None, None, None, None,)
+_DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_bitmask", None, None, None, None, None, None,)
+
+_lib.detect_subfunctionalization_expert_c.restype = None
+_lib.detect_subfunctionalization_expert_c.argtypes = (
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENTS = ("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "tmp_active_bitmask", "tmp_paralog_vector", "rdi_threshold", "paralog_norms", "paralog_norms_perm", "tmp_work_array", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None, "filtered_paralogs_bitmask", None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.filter_paralogs_by_pattern_dosage_effect_c.restype = None
 _lib.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
@@ -386,8 +410,136 @@ def detect_subfunctionalization(
         filtered_paralogs_bitmask,
         max_subset_size,
         rdi_threshold,
+):
+    r"""Identifies subsets of paralogs matching this pattern
+
+    A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    only by kept genes after its last one. A single gene is never a result; a result has two genes
+    at least, and is not extended further. So which subsets are found depends on the genes' order,
+    and a result's superset is found too when the superset's own prefix did not meet the criterion
+    (issue #244).
+
+    Parameters
+    ----------
+    ancestor : np.ndarray[np.float64] of shape (n_dims,)
+        expression vector of ancestral ortholog. Dosage effect only: it must not be all
+        zeros, which have no direction to measure a subset's angle against, and such an
+        ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
+    genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
+        expression vectors of genes. Dosage effect only: a subset whose summed vector has
+        every component exactly 0.0, bit for bit, has no direction either, and is dropped
+        from the search like one past `max_angle`. A sum that only rounds to near zero is
+        not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+        computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+        #223).
+    filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+        A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+        ignores such bits.
+    max_subset_size : int
+        maximum subset size of checked gene subsets. Too large a value is capped to the
+        maximum valid size. The bindings cap it automatically while sizing the work
+        array; a Fortran caller caps it by calling
+        :func:`tensor_omics.calc_paralog_subsets_bitmasks_size` first.
+        Zero is in range and means there is no subset to check; the sizing routine reports it
+        when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+        the sizing then reports a work array of no subsets (and a size of 1 for one kept
+        gene), which this routine takes, finding nothing (`n_results` 0).
+        The minimum valid value is `0`.
+    rdi_threshold : float
+        max allowed residual distance from `ancestor`
+        The minimum valid value is `0.0`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        n_results : int
+            number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
+        paralog_subsets_bitmasks : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
+            working array to hold bitmask encoded subsets for detection.
+            Each column is a bit mask of the `n_genes` genes, laid out as ``f42_bit_masks_impl`` describes.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization`, whose argument names are
+    the ones an error message reports.
+
+    This entry point computes `paralog_norms` with `calc_paralog_norms` and seeds `paralog_norms_perm` and sorts it by `paralog_norms`.
+    Call `detect_subfunctionalization_expert` to do that yourself.
+    """
+    # check every input by the input contract, converting only when C needs it
+    ancestor = _contract.reals(ancestor, "ancestor", ndim=1)
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+    filtered_paralogs_bitmask = _contract.integers(filtered_paralogs_bitmask, "filtered_paralogs_bitmask", ndim=1)
+    max_subset_size = _contract.integer(max_subset_size, "max_subset_size")
+    rdi_threshold = _contract.real(rdi_threshold, "rdi_threshold")
+
+    # what the inputs already say, rather than asking for it again
+    n_genes = genes.shape[1]
+    n_dims = ancestor.shape[0]
+    n_mask_chunks = filtered_paralogs_bitmask.shape[0]
+
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    try:
+        _calc_paralog_subsets_bitmasks_size_result = calc_paralog_subsets_bitmasks_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_bitmask=filtered_paralogs_bitmask)
+    except _ToxError as _error:
+        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_bitmask": 5}, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES) from None
+    max_subset_size = _calc_paralog_subsets_bitmasks_size_result["max_subset_size"]
+    n_paralog_subsets = _calc_paralog_subsets_bitmasks_size_result["work_array_size"]
+
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if genes.shape[0] != n_dims:
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}; 'genes' is declared with shape (n_dims, n_genes)", argument="genes")
+
+    # outputs and work arrays, which the caller never sees
+    n_results = _ctypes.c_int(0)
+    paralog_subsets_bitmasks = _np.empty((n_mask_chunks, n_paralog_subsets,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
+
+    _lib.detect_subfunctionalization_c(
+        ancestor,
+        genes,
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
+        filtered_paralogs_bitmask,
+        _ctypes.byref(_ctypes.c_int(n_mask_chunks)),
+        _ctypes.byref(n_results),
+        _ctypes.byref(_ctypes.c_int(max_subset_size)),
+        paralog_subsets_bitmasks,
+        _ctypes.byref(_ctypes.c_int(n_paralog_subsets)),
+        _ctypes.byref(_ctypes.c_double(rdi_threshold)),
+        _ctypes.byref(ierr),
+    )
+
+    _check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    paralog_subsets_bitmasks.flags.writeable = False
+
+    return {
+        "n_results": n_results.value,
+        "paralog_subsets_bitmasks": paralog_subsets_bitmasks,
+    }
+
+def detect_subfunctionalization_expert(
+        ancestor,
+        genes,
+        filtered_paralogs_bitmask,
+        max_subset_size,
+        rdi_threshold,
         paralog_norms,
-        sorted_paralog_norms_perm,
+        paralog_norms_perm,
 ):
     r"""Identifies subsets of paralogs matching this pattern
 
@@ -428,16 +580,18 @@ def detect_subfunctionalization(
         max allowed residual distance from `ancestor`
         The minimum valid value is `0.0`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
-        euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-        The routine trusts them to be the genes' own.
+        euclidean norm of each gene's vector, used for subset pruning. Where the caller
+        passes them, they are trusted to be the genes' own.
         The minimum valid value is `0.0`.
-    sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
+        It is *VERY IMPORTANT* to compute this argument from the `paralog_norms` output produced by :func:`tensor_omics.calc_paralog_norms`.
+    paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
         ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
         while the smallest norm among all genes after its last one -- kept by the filter or
-        not -- is at most the length of its residual. Only the entries' range is checked: a
-        permutation that is not ascending gives wrong minima, and an order with a repeated
-        entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-        pruning reads uninitialised values.
+        not -- is at most the length of its residual. Where the caller passes it, the order
+        is the caller's job: only the entries' range is checked, so no index is out of
+        bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
+        is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
+        never written, read uninitialised.
         The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
 
@@ -463,8 +617,11 @@ def detect_subfunctionalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization`, whose argument names are
+    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization_expert`, whose argument names are
     the ones an error message reports.
+
+    The expert entry point: you supply `paralog_norms` and `paralog_norms_perm` yourself.
+    `detect_subfunctionalization` computes `paralog_norms` with `calc_paralog_norms` and seeds `paralog_norms_perm` and sorts it by `paralog_norms`.
     """
     # check every input by the input contract, converting only when C needs it
     ancestor = _contract.reals(ancestor, "ancestor", ndim=1)
@@ -473,7 +630,7 @@ def detect_subfunctionalization(
     max_subset_size = _contract.integer(max_subset_size, "max_subset_size")
     rdi_threshold = _contract.real(rdi_threshold, "rdi_threshold")
     paralog_norms = _contract.reals(paralog_norms, "paralog_norms", ndim=1)
-    sorted_paralog_norms_perm = _contract.integers(sorted_paralog_norms_perm, "sorted_paralog_norms_perm", ndim=1)
+    paralog_norms_perm = _contract.integers(paralog_norms_perm, "paralog_norms_perm", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
@@ -484,7 +641,7 @@ def detect_subfunctionalization(
     try:
         _calc_paralog_subsets_bitmasks_size_result = calc_paralog_subsets_bitmasks_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_bitmask=filtered_paralogs_bitmask)
     except _ToxError as _error:
-        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_bitmask": 5}, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES) from None
+        raise _consumer_error(_error, {"max_subset_size": 8, "n_genes": 3, "filtered_paralogs_bitmask": 5}, _DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENT_SOURCES) from None
     max_subset_size = _calc_paralog_subsets_bitmasks_size_result["max_subset_size"]
     n_paralog_subsets = _calc_paralog_subsets_bitmasks_size_result["work_array_size"]
 
@@ -493,15 +650,18 @@ def detect_subfunctionalization(
         raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}; 'genes' is declared with shape (n_dims, n_genes)", argument="genes")
     if paralog_norms.shape[0] != n_genes:
         raise _ToxArgumentError(f"'paralog_norms' has {paralog_norms.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'paralog_norms' is declared with shape (n_genes)", argument="paralog_norms")
-    if sorted_paralog_norms_perm.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' has {sorted_paralog_norms_perm.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'sorted_paralog_norms_perm' is declared with shape (n_genes)", argument="sorted_paralog_norms_perm")
+    if paralog_norms_perm.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'paralog_norms_perm' has {paralog_norms_perm.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'paralog_norms_perm' is declared with shape (n_genes)", argument="paralog_norms_perm")
 
     # outputs and work arrays, which the caller never sees
     n_results = _ctypes.c_int(0)
     paralog_subsets_bitmasks = _np.empty((n_mask_chunks, n_paralog_subsets,), dtype=_np.int32, order='F')
+    tmp_active_bitmask = _np.empty((n_mask_chunks,), dtype=_np.int32, order='C')
+    tmp_paralog_vector = _np.empty((n_dims,), dtype=_np.float64, order='C')
+    tmp_work_array = _np.empty((n_genes,), dtype=_np.float64, order='C')
     ierr = _ctypes.c_int(0)
 
-    _lib.detect_subfunctionalization_c(
+    _lib.detect_subfunctionalization_expert_c(
         ancestor,
         genes,
         _ctypes.byref(_ctypes.c_int(n_genes)),
@@ -512,13 +672,16 @@ def detect_subfunctionalization(
         _ctypes.byref(_ctypes.c_int(max_subset_size)),
         paralog_subsets_bitmasks,
         _ctypes.byref(_ctypes.c_int(n_paralog_subsets)),
+        tmp_active_bitmask,
+        tmp_paralog_vector,
         _ctypes.byref(_ctypes.c_double(rdi_threshold)),
         paralog_norms,
-        sorted_paralog_norms_perm,
+        paralog_norms_perm,
+        tmp_work_array,
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     paralog_subsets_bitmasks.flags.writeable = False

@@ -1,6 +1,6 @@
 # The `tox_paralog_analysis` suite: `detect_neofunctionalization`, `detect_dosage_effect`,
-# `detect_subfunctionalization`, the two `filter_paralogs_by_pattern_*` filters,
-# `calc_paralog_norms` and `calc_paralog_subsets_bitmasks_size` can be called from R, return the documented types and
+# `detect_subfunctionalization` and its expert tier, the two `filter_paralogs_by_pattern_*`
+# filters, `calc_paralog_norms` and `calc_paralog_subsets_bitmasks_size` can be called from R, return the documented types and
 # shapes, and raise the documented errors, naming the argument. Whether the subsets and flags are
 # right is the Fortran suite's job (test/mod_test_tox_paralog_analysis/), as the coding guide's
 # "Where to Test What" asks. The few values checked here are the binding's own: genes are bits in
@@ -249,7 +249,7 @@ test_detect_dosage_effect_rejects_genes_of_other_dimensions <- function() {
 # =====================
 
 test_detect_subfunctionalization <- function() {
-  result <- detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(), .ascending())
+  result <- detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0)
   assert_true(is.list(result) && identical(sort(names(result)), c("n_results", "paralog_subsets_bitmasks")),
               paste("expected a list of n_results and paralog_subsets_bitmasks, got", toString(names(result))))
   assert_true(is.integer(result$n_results) && length(result$n_results) == 1L, "expected a single integer n_results")
@@ -261,8 +261,7 @@ test_detect_subfunctionalization <- function() {
 
 test_detect_subfunctionalization_numbers_genes_from_bit_0 <- function() {
   # the one value: any pair of the three [1, 0] genes rebuilds [2, 0], the words 3, 5 and 6
-  found <- .found_words(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(),
-                                                    .ascending()))
+  found <- .found_words(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0))
   assert_true(identical(found, c(3L, 5L, 6L)), paste("got", toString(found)))
 }
 
@@ -270,45 +269,61 @@ test_detect_subfunctionalization_with_fewer_than_two_kept_genes <- function() {
   # Regression: as test_detect_dosage_effect_with_fewer_than_two_kept_genes, which used to be
   # refused as ERR_EMPTY_INPUT naming n_paralog_subsets. No result, n_results 0.
   for (kept in c(0L, 2L)) {
-    result <- detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), kept, 3L, 0, .norms(), .ascending())
+    result <- detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), kept, 3L, 0)
     assert_true(identical(result$n_results, 0L), paste("the word", kept, ": got", result$n_results))
   }
 }
 
 test_detect_subfunctionalization_rejects_a_negative_threshold <- function() {
-  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, -1, .norms(),
-                                                   .ascending()),
+  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, -1),
                        "rdi_threshold -1", ERR_INVALID_INPUT, "rdi_threshold")
 }
 
-test_detect_subfunctionalization_rejects_a_negative_norm <- function() {
-  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, c(1, 1, -1),
-                                                   .ascending()),
+test_detect_subfunctionalization_rejects_genes_of_other_dimensions <- function() {
+  # the binding's own shape check, before the library is called
+  .assert_error_naming(detect_subfunctionalization(c(2, 0, 0), .subfunc_genes(), ALL_THREE, 3L, 0),
+                       "genes over another number of dimensions", NULL, "genes")
+}
+
+test_detect_subfunctionalization_expert <- function() {
+  # the expert tier takes the norms and their order; given the true ones, it finds what the plain
+  # tier finds
+  result <- detect_subfunctionalization_expert(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(),
+                                               .ascending())
+  assert_true(is.list(result) && identical(sort(names(result)), c("n_results", "paralog_subsets_bitmasks")),
+              paste("got", toString(names(result))))
+  assert_true(is.integer(result$paralog_subsets_bitmasks), "expected integer words")
+  found <- .found_words(result)
+  assert_true(identical(found, c(3L, 5L, 6L)), paste("got", toString(found)))
+}
+
+test_detect_subfunctionalization_expert_rejects_a_negative_norm <- function() {
+  .assert_error_naming(detect_subfunctionalization_expert(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0,
+                                                          c(1, 1, -1), .ascending()),
                        "a norm of -1", ERR_INVALID_INPUT, "paralog_norms")
 }
 
-test_detect_subfunctionalization_rejects_a_permutation_entry_of_0 <- function() {
-  # the entries are 1-based gene indices
-  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(),
-                                                   c(0L, 2L, 3L)),
-                       "a permutation entry 0", ERR_INVALID_INPUT, "sorted_paralog_norms_perm")
+test_detect_subfunctionalization_expert_rejects_a_permutation_entry_of_0 <- function() {
+  # the entries are 1-based gene indices; only their range is checked, the order is the caller's
+  .assert_error_naming(detect_subfunctionalization_expert(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0,
+                                                          .norms(), c(0L, 2L, 3L)),
+                       "a permutation entry 0", ERR_INVALID_INPUT, "paralog_norms_perm")
 }
 
-test_detect_subfunctionalization_rejects_a_nan_norm <- function() {
-  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, c(1, 1, NaN),
-                                                   .ascending()),
+test_detect_subfunctionalization_expert_rejects_a_nan_norm <- function() {
+  .assert_error_naming(detect_subfunctionalization_expert(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0,
+                                                          c(1, 1, NaN), .ascending()),
                        "a NaN norm", ERR_NAN_INF, "paralog_norms")
 }
 
-test_detect_subfunctionalization_rejects_mismatched_shapes <- function() {
+test_detect_subfunctionalization_expert_rejects_mismatched_shapes <- function() {
   # the binding's own shape checks, before the library is called
-  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, c(1, 1),
-                                                   .ascending()),
+  .assert_error_naming(detect_subfunctionalization_expert(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0,
+                                                          c(1, 1), .ascending()),
                        "norms of another number of genes", NULL, "paralog_norms")
-  .assert_error_naming(detect_subfunctionalization(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(), 1:2),
-                       "a permutation of another number of genes", NULL, "sorted_paralog_norms_perm")
-  .assert_error_naming(detect_subfunctionalization(c(2, 0, 0), .subfunc_genes(), ALL_THREE, 3L, 0, .norms(), .ascending()),
-                       "genes over another number of dimensions", NULL, "genes")
+  .assert_error_naming(detect_subfunctionalization_expert(.subfunc_ancestor(), .subfunc_genes(), ALL_THREE, 3L, 0,
+                                                          .norms(), 1:2),
+                       "a permutation of another number of genes", NULL, "paralog_norms_perm")
 }
 
 # =====================

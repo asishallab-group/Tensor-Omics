@@ -1802,7 +1802,7 @@
     "prefix": "tox:paralog_analysis.use",
     "description": "use tox_paralog_analysis, only: ...",
     "body": [
-      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_paralog_subsets_bitmasks_size|}"
+      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,detect_subfunctionalization_expert,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization,calc_paralog_norms,calc_paralog_subsets_bitmasks_size|}"
     ]
   },
   "detect_neofunctionalization (call)": {
@@ -1895,9 +1895,7 @@
       "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
       "    n_paralog_subsets=${10:n_paralog_subsets}, &",
       "    rdi_threshold=${11:rdi_threshold}, &",
-      "    paralog_norms=${12:paralog_norms}, &",
-      "    sorted_paralog_norms_perm=${13:sorted_paralog_norms_perm}, &",
-      "    ierr=${14:ierr})"
+      "    ierr=${12:ierr})"
     ]
   },
   "detect_subfunctionalization (call, checked)": {
@@ -1916,9 +1914,56 @@
       "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
       "    n_paralog_subsets=${10:n_paralog_subsets}, &",
       "    rdi_threshold=${11:rdi_threshold}, &",
-      "    paralog_norms=${12:paralog_norms}, &",
-      "    sorted_paralog_norms_perm=${13:sorted_paralog_norms_perm}, &",
-      "    ierr=${14:ierr})",
+      "    ierr=${12:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "detect_subfunctionalization_expert (call)": {
+    "prefix": "tox:detect_subfunctionalization_expert",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
+    "body": [
+      "call detect_subfunctionalization_expert( &",
+      "    ancestor=${1:ancestor}, &",
+      "    genes=${2:genes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    filtered_paralogs_bitmask=${5:filtered_paralogs_bitmask}, &",
+      "    n_mask_chunks=${6:n_mask_chunks}, &",
+      "    n_results=${7:n_results}, &",
+      "    max_subset_size=${8:max_subset_size}, &",
+      "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
+      "    n_paralog_subsets=${10:n_paralog_subsets}, &",
+      "    tmp_active_bitmask=${11:tmp_active_bitmask}, &",
+      "    tmp_paralog_vector=${12:tmp_paralog_vector}, &",
+      "    rdi_threshold=${13:rdi_threshold}, &",
+      "    paralog_norms=${14:paralog_norms}, &",
+      "    paralog_norms_perm=${15:paralog_norms_perm}, &",
+      "    tmp_work_array=${16:tmp_work_array}, &",
+      "    ierr=${17:ierr})"
+    ]
+  },
+  "detect_subfunctionalization_expert (call, checked)": {
+    "prefix": "tox:detect_subfunctionalization_expert.checked",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended (with error check)",
+    "body": [
+      "call detect_subfunctionalization_expert( &",
+      "    ancestor=${1:ancestor}, &",
+      "    genes=${2:genes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    filtered_paralogs_bitmask=${5:filtered_paralogs_bitmask}, &",
+      "    n_mask_chunks=${6:n_mask_chunks}, &",
+      "    n_results=${7:n_results}, &",
+      "    max_subset_size=${8:max_subset_size}, &",
+      "    paralog_subsets_bitmasks=${9:paralog_subsets_bitmasks}, &",
+      "    n_paralog_subsets=${10:n_paralog_subsets}, &",
+      "    tmp_active_bitmask=${11:tmp_active_bitmask}, &",
+      "    tmp_paralog_vector=${12:tmp_paralog_vector}, &",
+      "    rdi_threshold=${13:rdi_threshold}, &",
+      "    paralog_norms=${14:paralog_norms}, &",
+      "    paralog_norms_perm=${15:paralog_norms_perm}, &",
+      "    tmp_work_array=${16:tmp_work_array}, &",
+      "    ierr=${17:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1981,6 +2026,31 @@
       "    family_bitmasks=${6:family_bitmasks}, &",
       "    n_mask_chunks=${7:n_mask_chunks}, &",
       "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "calc_paralog_norms (call)": {
+    "prefix": "tox:calc_paralog_norms",
+    "description": "Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows",
+    "body": [
+      "call calc_paralog_norms( &",
+      "    genes=${1:genes}, &",
+      "    n_dims=${2:n_dims}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    paralog_norms=${4:paralog_norms}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "calc_paralog_norms (call, checked)": {
+    "prefix": "tox:calc_paralog_norms.checked",
+    "description": "Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows (with error check)",
+    "body": [
+      "call calc_paralog_norms( &",
+      "    genes=${1:genes}, &",
+      "    n_dims=${2:n_dims}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    paralog_norms=${4:paralog_norms}, &",
+      "    ierr=${5:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

@@ -150,7 +150,8 @@ SEXP calc_tiss_avg_call(SEXP, SEXP);
 SEXP calc_fchange_call(SEXP, SEXP, SEXP);
 SEXP detect_neofunctionalization_call(SEXP, SEXP, SEXP, SEXP);
 SEXP detect_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP detect_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP detect_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP detect_subfunctionalization_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_paralog_norms_call(SEXP);
@@ -269,7 +270,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"calc_fchange_call", (DL_FUNC) &calc_fchange_call, 3},
     {"detect_neofunctionalization_call", (DL_FUNC) &detect_neofunctionalization_call, 4},
     {"detect_dosage_effect_call", (DL_FUNC) &detect_dosage_effect_call, 7},
-    {"detect_subfunctionalization_call", (DL_FUNC) &detect_subfunctionalization_call, 8},
+    {"detect_subfunctionalization_call", (DL_FUNC) &detect_subfunctionalization_call, 6},
+    {"detect_subfunctionalization_expert_call", (DL_FUNC) &detect_subfunctionalization_expert_call, 8},
     {"filter_paralogs_by_pattern_dosage_effect_call", (DL_FUNC) &filter_paralogs_by_pattern_dosage_effect_call, 5},
     {"filter_paralogs_by_pattern_subfunctionalization_call", (DL_FUNC) &filter_paralogs_by_pattern_subfunctionalization_call, 5},
     {"calc_paralog_norms_call", (DL_FUNC) &calc_paralog_norms_call, 1},

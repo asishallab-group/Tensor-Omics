@@ -120,6 +120,9 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}, whose argument names
 #' are the ones an error message reports.
 #'
+#' This entry point computes \code{paralog_norms} with \code{calc_paralog_norms} and seeds \code{paralog_norms_perm} and sorts it by \code{paralog_norms}.
+#' Call \code{detect_subfunctionalization_expert} to do that yourself.
+#'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog. Dosage effect only: it must not be all
 #'   zeros, which have no direction to measure a subset's angle against, and such an
 #'   ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
@@ -143,15 +146,83 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #'   The minimum valid value is `0`.
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
 #'   The minimum valid value is `0.0`.
-#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-#'   The routine trusts them to be the genes' own.
+#' @return a named list with elements:
+#'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`}
+#'   \item{paralog_subsets_bitmasks}{a integer matrix. working array to hold bitmask encoded subsets for detection.
+#'     Each column is a bit mask of the `n_genes` genes, laid out as \code{f42_bit_masks_impl} describes.}
+#' @export
+detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_bitmask, max_subset_size, rdi_threshold) {
+    ancestor <- .tox_as_double_vector(ancestor, "ancestor")
+    genes <- .tox_as_double_matrix(genes, "genes")
+    filtered_paralogs_bitmask <- .tox_as_integer_vector(filtered_paralogs_bitmask, "filtered_paralogs_bitmask")
+    max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")
+    rdi_threshold <- .tox_as_double_scalar(rdi_threshold, "rdi_threshold")
+    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "rdi_threshold", "ierr")
+    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_bitmask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .calc_paralog_subsets_bitmasks_size_result <- tryCatch(calc_paralog_subsets_bitmasks_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_bitmask = filtered_paralogs_bitmask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_bitmask = 5L), .arguments, .sources))
+    max_subset_size <- .calc_paralog_subsets_bitmasks_size_result$max_subset_size
+    n_paralog_subsets <- .calc_paralog_subsets_bitmasks_size_result$work_array_size
+
+    if (dim(genes)[1] != length(ancestor))
+        .tox_shape_error("genes", 1L, dim(genes)[1], "'ancestor' implies n_dims == ", length(ancestor), "n_dims, n_genes")
+
+    .result <- .Call("detect_subfunctionalization_call", ancestor, genes, filtered_paralogs_bitmask, max_subset_size, n_paralog_subsets, rdi_threshold)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        n_results = .result$n_results,
+        paralog_subsets_bitmasks = .result$paralog_subsets_bitmasks
+    )
+}
+
+#' Identifies subsets of paralogs matching this pattern
+#'
+#' A subset is grown from its genes in index order: it starts from one kept gene and is extended
+#' only by kept genes after its last one. A single gene is never a result; a result has two genes
+#' at least, and is not extended further. So which subsets are found depends on the genes' order,
+#' and a result's superset is found too when the superset's own prefix did not meet the criterion
+#' (issue #244).
+#'
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization_expert}, whose argument names
+#' are the ones an error message reports.
+#'
+#' The expert entry point: you supply \code{paralog_norms} and \code{paralog_norms_perm} yourself.
+#' \code{detect_subfunctionalization} computes \code{paralog_norms} with \code{calc_paralog_norms} and seeds \code{paralog_norms_perm} and sorts it by \code{paralog_norms}.
+#'
+#' @param ancestor a numeric vector. expression vector of ancestral ortholog. Dosage effect only: it must not be all
+#'   zeros, which have no direction to measure a subset's angle against, and such an
+#'   ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
+#' @param genes a numeric matrix. expression vectors of genes. Dosage effect only: a subset whose summed vector has
+#'   every component exactly 0.0, bit for bit, has no direction either, and is dropped
+#'   from the search like one past `max_angle`. A sum that only rounds to near zero is
+#'   not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+#'   computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+#'   #223).
+#' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+#'   A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+#'   ignores such bits.
+#' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
+#'   maximum valid size. The bindings cap it automatically while sizing the work
+#'   array; a Fortran caller caps it by calling
+#'   \code{\link{calc_paralog_subsets_bitmasks_size}} first.
+#'   Zero is in range and means there is no subset to check; the sizing routine reports it
+#'   when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+#'   the sizing then reports a work array of no subsets (and a size of 1 for one kept
+#'   gene), which this routine takes, finding nothing (`n_results` 0).
+#'   The minimum valid value is `0`.
+#' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
 #'   The minimum valid value is `0.0`.
-#' @param sorted_paralog_norms_perm a integer vector. ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+#' @param paralog_norms a numeric vector. euclidean norm of each gene's vector, used for subset pruning. Where the caller
+#'   passes them, they are trusted to be the genes' own.
+#'   The minimum valid value is `0.0`.
+#'   It is *VERY IMPORTANT* to compute this argument from the `paralog_norms` output produced by \code{\link{calc_paralog_norms}}.
+#' @param paralog_norms_perm a integer vector. ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
 #'   while the smallest norm among all genes after its last one -- kept by the filter or
-#'   not -- is at most the length of its residual. Only the entries' range is checked: a
-#'   permutation that is not ascending gives wrong minima, and an order with a repeated
-#'   entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-#'   pruning reads uninitialised values.
+#'   not -- is at most the length of its residual. Where the caller passes it, the order
+#'   is the caller's job: only the entries' range is checked, so no index is out of
+#'   bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
+#'   is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
+#'   never written, read uninitialised.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
 #' @return a named list with elements:
@@ -159,16 +230,16 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #'   \item{paralog_subsets_bitmasks}{a integer matrix. working array to hold bitmask encoded subsets for detection.
 #'     Each column is a bit mask of the `n_genes` genes, laid out as \code{f42_bit_masks_impl} describes.}
 #' @export
-detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_bitmask, max_subset_size, rdi_threshold, paralog_norms, sorted_paralog_norms_perm) {
+detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralogs_bitmask, max_subset_size, rdi_threshold, paralog_norms, paralog_norms_perm) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
     genes <- .tox_as_double_matrix(genes, "genes")
     filtered_paralogs_bitmask <- .tox_as_integer_vector(filtered_paralogs_bitmask, "filtered_paralogs_bitmask")
     max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")
     rdi_threshold <- .tox_as_double_scalar(rdi_threshold, "rdi_threshold")
     paralog_norms <- .tox_as_double_vector(paralog_norms, "paralog_norms")
-    sorted_paralog_norms_perm <- .tox_as_integer_vector(sorted_paralog_norms_perm, "sorted_paralog_norms_perm")
-    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "rdi_threshold", "paralog_norms", "sorted_paralog_norms_perm", "ierr")
-    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_bitmask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    paralog_norms_perm <- .tox_as_integer_vector(paralog_norms_perm, "paralog_norms_perm")
+    .arguments <- c("ancestor", "genes", "n_genes", "n_dims", "filtered_paralogs_bitmask", "n_mask_chunks", "n_results", "max_subset_size", "paralog_subsets_bitmasks", "n_paralog_subsets", "tmp_active_bitmask", "tmp_paralog_vector", "rdi_threshold", "paralog_norms", "paralog_norms_perm", "tmp_work_array", "ierr")
+    .sources <- c(NA_character_, NA_character_, "genes", "ancestor", NA_character_, "filtered_paralogs_bitmask", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .calc_paralog_subsets_bitmasks_size_result <- tryCatch(calc_paralog_subsets_bitmasks_size(max_subset_size = max_subset_size, n_genes = dim(genes)[2], filtered_paralogs_bitmask = filtered_paralogs_bitmask), tox_error = function(e) .tox_consumer_error(e, c(max_subset_size = 8L, n_genes = 3L, filtered_paralogs_bitmask = 5L), .arguments, .sources))
     max_subset_size <- .calc_paralog_subsets_bitmasks_size_result$max_subset_size
     n_paralog_subsets <- .calc_paralog_subsets_bitmasks_size_result$work_array_size
@@ -177,10 +248,10 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_bitma
         .tox_shape_error("genes", 1L, dim(genes)[1], "'ancestor' implies n_dims == ", length(ancestor), "n_dims, n_genes")
     if (length(paralog_norms) != dim(genes)[2])
         .tox_shape_error("paralog_norms", 1L, length(paralog_norms), "'genes' implies n_genes == ", dim(genes)[2], "n_genes")
-    if (length(sorted_paralog_norms_perm) != dim(genes)[2])
-        .tox_shape_error("sorted_paralog_norms_perm", 1L, length(sorted_paralog_norms_perm), "'genes' implies n_genes == ", dim(genes)[2], "n_genes")
+    if (length(paralog_norms_perm) != dim(genes)[2])
+        .tox_shape_error("paralog_norms_perm", 1L, length(paralog_norms_perm), "'genes' implies n_genes == ", dim(genes)[2], "n_genes")
 
-    .result <- .Call("detect_subfunctionalization_call", ancestor, genes, filtered_paralogs_bitmask, max_subset_size, n_paralog_subsets, rdi_threshold, paralog_norms, sorted_paralog_norms_perm)
+    .result <- .Call("detect_subfunctionalization_expert_call", ancestor, genes, filtered_paralogs_bitmask, max_subset_size, n_paralog_subsets, rdi_threshold, paralog_norms, paralog_norms_perm)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

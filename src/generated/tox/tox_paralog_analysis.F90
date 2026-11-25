@@ -25,6 +25,7 @@ module tox_paralog_analysis
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: PI, above
+    use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
     use tox_errors, only: get_err_arg_pos, set_err, set_err_arg_pos, validate_all_in_range_int
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
@@ -416,8 +417,6 @@ contains
             paralog_subsets_bitmasks,&
             n_paralog_subsets,&
             rdi_threshold,&
-            paralog_norms,&
-            sorted_paralog_norms_perm,&
             ierr&
         )
         integer(int32), intent(in) :: n_genes
@@ -469,23 +468,12 @@ contains
         real(real64), intent(in) :: rdi_threshold
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
-        real(real64), dimension(n_genes), intent(in) :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-            !! The routine trusts them to be the genes' own.
-            !! The minimum valid value is `0.0_real64`.
-        integer(int32), dimension(n_genes), intent(in) :: sorted_paralog_norms_perm
-            !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
-            !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked: a
-            !! permutation that is not ascending gives wrong minima, and an order with a repeated
-            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-            !! pruning reads uninitialised values.
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_genes`.
         integer(int32), intent(out) :: ierr
             !! Error code
         integer(int32), dimension(:), allocatable :: tmp_active_bitmask
         real(real64), dimension(:), allocatable :: tmp_paralog_vector
+        real(real64), dimension(:), allocatable :: paralog_norms
+        integer(int32), dimension(:), allocatable :: paralog_norms_perm
         real(real64), dimension(:), allocatable :: tmp_work_array
 
         call set_ok(ierr)
@@ -498,14 +486,36 @@ contains
         call validate_in_range_real(rdi_threshold, ierr, arg_pos=11_int32, min=0.0_real64)
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=2_int32)
-        call validate_all_in_range_real(paralog_norms, n_genes, ierr, arg_pos=12_int32, min=0.0_real64)
-        call validate_all_in_range_int(sorted_paralog_norms_perm, n_genes, ierr, arg_pos=13_int32, min=1_int32, max=n_genes)
         if (is_err(ierr)) return
 #endif
 
+        M_ALLOCATE(paralog_norms(n_genes))
+        call calc_paralog_norms(&
+            genes = genes,&
+            n_dims = n_dims,&
+            n_genes = n_genes,&
+            paralog_norms = paralog_norms,&
+            ierr = ierr&
+        )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (3_int32)
+                ! the same position here
+            case (1_int32)
+                call set_err_arg_pos(ierr, 2_int32)
+            case (2_int32)
+                call set_err_arg_pos(ierr, 4_int32)
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
         M_ALLOCATE(tmp_active_bitmask(n_mask_chunks))
         M_ALLOCATE(tmp_paralog_vector(n_dims))
+        M_ALLOCATE(paralog_norms_perm(n_genes))
         M_ALLOCATE(tmp_work_array(n_genes))
+        call init_perm(paralog_norms_perm)
+        call sort_array_heapsort(paralog_norms, paralog_norms_perm)
 
         call detect_patterns_impl(&
             ancestor = ancestor,&
@@ -523,7 +533,7 @@ contains
             tmp_paralog_vector = tmp_paralog_vector,&
             rdi_threshold = rdi_threshold,&
             paralog_norms = paralog_norms,&
-            sorted_paralog_norms_perm = sorted_paralog_norms_perm,&
+            paralog_norms_perm = paralog_norms_perm,&
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )
@@ -545,10 +555,6 @@ contains
                 call set_err_arg_pos(ierr, 10_int32)
             case (16_int32)
                 call set_err_arg_pos(ierr, 11_int32)
-            case (17_int32)
-                call set_err_arg_pos(ierr, 12_int32)
-            case (18_int32)
-                call set_err_arg_pos(ierr, 13_int32)
             case default
                 call clear_err_arg_pos(ierr)
             end select
@@ -577,7 +583,7 @@ contains
             tmp_paralog_vector,&
             rdi_threshold,&
             paralog_norms,&
-            sorted_paralog_norms_perm,&
+            paralog_norms_perm,&
             tmp_work_array,&
             ierr&
         )
@@ -635,16 +641,18 @@ contains
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(n_genes), intent(in) :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-            !! The routine trusts them to be the genes' own.
+            !! euclidean norm of each gene's vector, used for subset pruning. Where the caller
+            !! passes them, they are trusted to be the genes' own.
             !! The minimum valid value is `0.0_real64`.
-        integer(int32), dimension(n_genes), intent(in) :: sorted_paralog_norms_perm
+            !! It is *VERY IMPORTANT* to compute this argument from the `paralog_norms` output produced by [[tox_paralog_analysis(module):calc_paralog_norms]].
+        integer(int32), dimension(n_genes), intent(in) :: paralog_norms_perm
             !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
             !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked: a
-            !! permutation that is not ascending gives wrong minima, and an order with a repeated
-            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-            !! pruning reads uninitialised values.
+            !! not -- is at most the length of its residual. Where the caller passes it, the order
+            !! is the caller's job: only the entries' range is checked, so no index is out of
+            !! bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
+            !! is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
+            !! never written, read uninitialised.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         real(real64), dimension(n_genes), intent(out) :: tmp_work_array
@@ -663,7 +671,7 @@ contains
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(paralog_norms, n_genes, ierr, arg_pos=14_int32, min=0.0_real64)
-        call validate_all_in_range_int(sorted_paralog_norms_perm, n_genes, ierr, arg_pos=15_int32, min=1_int32, max=n_genes)
+        call validate_all_in_range_int(paralog_norms_perm, n_genes, ierr, arg_pos=15_int32, min=1_int32, max=n_genes)
         if (is_err(ierr)) return
 #endif
 
@@ -683,7 +691,7 @@ contains
             tmp_paralog_vector = tmp_paralog_vector,&
             rdi_threshold = rdi_threshold,&
             paralog_norms = paralog_norms,&
-            sorted_paralog_norms_perm = sorted_paralog_norms_perm,&
+            paralog_norms_perm = paralog_norms_perm,&
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )

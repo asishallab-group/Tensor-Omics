@@ -1,6 +1,6 @@
 """
 The `tox_paralog_analysis` suite: `detect_neofunctionalization`, `detect_dosage_effect`,
-`detect_subfunctionalization`, the two `filter_paralogs_by_pattern_*` filters,
+`detect_subfunctionalization` and its expert tier, the two `filter_paralogs_by_pattern_*` filters,
 `calc_paralog_norms` and `calc_paralog_subsets_bitmasks_size` can be called from Python, return the documented types and
 shapes, and raise the documented errors, naming the argument. Whether the subsets and flags are
 right is the Fortran suite's job (test/mod_test_tox_paralog_analysis/), as the coding guide's
@@ -16,8 +16,9 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (detect_neofunctionalization, detect_dosage_effect, detect_subfunctionalization,
-                          filter_paralogs_by_pattern_dosage_effect, filter_paralogs_by_pattern_subfunctionalization,
-                          calc_paralog_norms, calc_paralog_subsets_bitmasks_size)
+                          detect_subfunctionalization_expert, filter_paralogs_by_pattern_dosage_effect,
+                          filter_paralogs_by_pattern_subfunctionalization, calc_paralog_norms,
+                          calc_paralog_subsets_bitmasks_size)
 from test_helpers import run_all_tests, assert_error, assert_refused_by_name
 from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT, ERR_NAN_INF
 
@@ -256,8 +257,8 @@ def test_detect_dosage_effect_rejects_genes_of_other_dimensions():
 # =====================
 
 def test_detect_subfunctionalization():
-    ancestor, genes, mask, norms, ascending = _subfunc_inputs()
-    result = detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending)
+    ancestor, genes, mask, _, _ = _subfunc_inputs()
+    result = detect_subfunctionalization(ancestor, genes, mask, 3, 0.0)
     assert isinstance(result, dict), f"expected a dict, got {type(result).__name__}"
     assert set(result) == {"n_results", "paralog_subsets_bitmasks"}, f"got the keys {sorted(result)}"
     assert isinstance(result["n_results"], int), f"expected an int, got {type(result['n_results']).__name__}"
@@ -270,8 +271,8 @@ def test_detect_subfunctionalization():
 
 def test_detect_subfunctionalization_numbers_genes_from_bit_0():
     # the one value: any pair of the three [1, 0] genes rebuilds [2, 0], the words 3, 5 and 6
-    ancestor, genes, mask, norms, ascending = _subfunc_inputs()
-    result = detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending)
+    ancestor, genes, mask, _, _ = _subfunc_inputs()
+    result = detect_subfunctionalization(ancestor, genes, mask, 3, 0.0)
     found = sorted(result["paralog_subsets_bitmasks"][0, :result["n_results"]].tolist())
     assert found == [3, 5, 6], f"got {found}"
 
@@ -279,49 +280,66 @@ def test_detect_subfunctionalization_numbers_genes_from_bit_0():
 def test_detect_subfunctionalization_with_fewer_than_two_kept_genes():
     # Regression: as test_detect_dosage_effect_with_fewer_than_two_kept_genes, which used to be
     # refused as ERR_EMPTY_INPUT naming n_paralog_subsets. No result, n_results 0.
-    ancestor, genes, _, norms, ascending = _subfunc_inputs()
+    ancestor, genes, _, _, _ = _subfunc_inputs()
     for kept in (0, 2):
-        result = detect_subfunctionalization(ancestor, genes, np.array([kept], dtype=np.int32), 3, 0.0, norms, ascending)
+        result = detect_subfunctionalization(ancestor, genes, np.array([kept], dtype=np.int32), 3, 0.0)
         assert result["n_results"] == 0, f"the word {kept}: got {result['n_results']}"
 
 
 def test_detect_subfunctionalization_rejects_a_negative_threshold():
-    ancestor, genes, mask, norms, ascending = _subfunc_inputs()
-    assert_error(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, -1.0, norms, ascending),
+    ancestor, genes, mask, _, _ = _subfunc_inputs()
+    assert_error(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, -1.0),
                  "rdi_threshold -1", ERR_INVALID_INPUT, argument="rdi_threshold")
 
 
-def test_detect_subfunctionalization_rejects_a_negative_norm():
+def test_detect_subfunctionalization_rejects_genes_of_other_dimensions():
+    # the binding's own shape check, before the library is called
+    _, genes, mask, _, _ = _subfunc_inputs()
+    assert_refused_by_name(lambda: detect_subfunctionalization(np.ones(3), genes, mask, 3, 0.0),
+                           "genes over another number of dimensions", "genes")
+
+
+def test_detect_subfunctionalization_expert():
+    # the expert tier takes the norms and their order; given the true ones, it finds what the
+    # plain tier finds
+    ancestor, genes, mask, norms, ascending = _subfunc_inputs()
+    result = detect_subfunctionalization_expert(ancestor, genes, mask, 3, 0.0, norms, ascending)
+    assert set(result) == {"n_results", "paralog_subsets_bitmasks"}, f"got the keys {sorted(result)}"
+    subsets = result["paralog_subsets_bitmasks"]
+    assert subsets.dtype == np.int32 and not subsets.flags.writeable, f"got {subsets.dtype}, writeable {subsets.flags.writeable}"
+    found = sorted(subsets[0, :result["n_results"]].tolist())
+    assert found == [3, 5, 6], f"got {found}"
+
+
+def test_detect_subfunctionalization_expert_rejects_a_negative_norm():
     ancestor, genes, mask, norms, ascending = _subfunc_inputs()
     norms[-1] = -1.0
-    assert_error(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending),
+    assert_error(lambda: detect_subfunctionalization_expert(ancestor, genes, mask, 3, 0.0, norms, ascending),
                  "a norm of -1", ERR_INVALID_INPUT, argument="paralog_norms")
 
 
-def test_detect_subfunctionalization_rejects_a_permutation_entry_of_0():
-    # the entries are 1-based gene indices
+def test_detect_subfunctionalization_expert_rejects_a_permutation_entry_of_0():
+    # the entries are 1-based gene indices; only their range is checked, the order is the caller's
     ancestor, genes, mask, norms, ascending = _subfunc_inputs()
     ascending[0] = 0
-    assert_error(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending),
-                 "a permutation entry 0", ERR_INVALID_INPUT, argument="sorted_paralog_norms_perm")
+    assert_error(lambda: detect_subfunctionalization_expert(ancestor, genes, mask, 3, 0.0, norms, ascending),
+                 "a permutation entry 0", ERR_INVALID_INPUT, argument="paralog_norms_perm")
 
 
-def test_detect_subfunctionalization_rejects_a_nan_norm():
+def test_detect_subfunctionalization_expert_rejects_a_nan_norm():
     ancestor, genes, mask, norms, ascending = _subfunc_inputs()
     norms[-1] = np.nan
-    assert_error(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending),
+    assert_error(lambda: detect_subfunctionalization_expert(ancestor, genes, mask, 3, 0.0, norms, ascending),
                  "a NaN norm", ERR_NAN_INF, argument="paralog_norms")
 
 
-def test_detect_subfunctionalization_rejects_mismatched_shapes():
+def test_detect_subfunctionalization_expert_rejects_mismatched_shapes():
     # the binding's own shape checks, before the library is called
     ancestor, genes, mask, norms, ascending = _subfunc_inputs()
-    assert_refused_by_name(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms[:2], ascending),
+    assert_refused_by_name(lambda: detect_subfunctionalization_expert(ancestor, genes, mask, 3, 0.0, norms[:2], ascending),
                            "norms of another number of genes", "paralog_norms")
-    assert_refused_by_name(lambda: detect_subfunctionalization(ancestor, genes, mask, 3, 0.0, norms, ascending[:2]),
-                           "a permutation of another number of genes", "sorted_paralog_norms_perm")
-    assert_refused_by_name(lambda: detect_subfunctionalization(np.ones(3), genes, mask, 3, 0.0, norms, ascending),
-                           "genes over another number of dimensions", "genes")
+    assert_refused_by_name(lambda: detect_subfunctionalization_expert(ancestor, genes, mask, 3, 0.0, norms, ascending[:2]),
+                           "a permutation of another number of genes", "paralog_norms_perm")
 
 
 # =====================

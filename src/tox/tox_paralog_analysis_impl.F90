@@ -84,7 +84,7 @@ contains
     !| at least, and is not extended further. So which subsets are found depends on the genes' order,
     !| and a result's superset is found too when the superset's own prefix did not meet the criterion
     !| (issue #244).
-    pure subroutine detect_patterns_impl(ancestor, genes, n_genes, n_dims, pattern_mode, filtered_paralogs_bitmask, n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, n_paralog_subsets, tmp_active_bitmask, tmp_paralog_vector, max_angle, gain_gamma, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+    pure subroutine detect_patterns_impl(ancestor, genes, n_genes, n_dims, pattern_mode, filtered_paralogs_bitmask, n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, n_paralog_subsets, tmp_active_bitmask, tmp_paralog_vector, max_angle, gain_gamma, rdi_threshold, paralog_norms, paralog_norms_perm, tmp_work_array, ierr)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(int32), intent(in) :: n_genes
@@ -157,17 +157,19 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(PI)
         real(real64), dimension(n_genes), intent(in), optional :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-            !! The routine trusts them to be the genes' own.
+            !! euclidean norm of each gene's vector, used for subset pruning. Where the caller
+            !! passes them, they are trusted to be the genes' own.
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(0.0_real64)
-        integer(int32), dimension(n_genes), intent(in), optional :: sorted_paralog_norms_perm
+            !! DM_OUTPUT_FROM(paralog_norms, calc_paralog_norms, tox_paralog_analysis, AUTO)
+        integer(int32), dimension(n_genes), intent(in), optional :: paralog_norms_perm
             !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
             !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked: a
-            !! permutation that is not ascending gives wrong minima, and an order with a repeated
-            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-            !! pruning reads uninitialised values.
+            !! not -- is at most the length of its residual. Where the caller passes it, the order
+            !! is the caller's job: only the entries' range is checked, so no index is out of
+            !! bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
+            !! is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
+            !! never written, read uninitialised.
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(1_int32)
             !! DM_MAX(n_genes)
@@ -232,7 +234,7 @@ contains
                     return
                 end if
 
-                call generate_subsets_helper(tmp_active_bitmask, filtered_paralogs_bitmask, n_mask_chunks, pattern_mode, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, max_angle, gain_gamma, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+                call generate_subsets_helper(tmp_active_bitmask, filtered_paralogs_bitmask, n_mask_chunks, pattern_mode, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, max_angle, gain_gamma, rdi_threshold, paralog_norms, paralog_norms_perm, tmp_work_array, ierr)
                 if (is_err(ierr)) then
                     call clear_err_arg_pos(ierr)
                     return
@@ -249,7 +251,7 @@ contains
     !| others will be added to the work array, either as new active subset that will be extended in coming iterations or as result.
     !|
     !| Doesn't do any input validation.
-    pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_bitmask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+    pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_bitmask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_paralog_norms_perm, tmp_subfunc_work_array, ierr)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(int32), intent(in) :: n_genes
@@ -296,7 +298,7 @@ contains
         real(real64), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms
             !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
             !! The routine trusts them to be the genes' own.
-        integer(int32), dimension(n_genes), intent(in), optional :: subfunc_sorted_paralog_norms_perm
+        integer(int32), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms_perm
             !! ascending permutation of `subfunc_paralog_norms`, for subset pruning: a subset is extended only
             !! while the smallest norm among all genes after its last one -- kept by the filter or
             !! not -- is at most the length of its residual. Only the entries' range is checked: a
@@ -366,13 +368,13 @@ contains
             block
                 real(real64) :: residual_norm
 
-                if (.not. (present(subfunc_paralog_norms) .and. present(subfunc_sorted_paralog_norms_perm) .and. present(tmp_subfunc_work_array) .and. present(subfunc_rdi_threshold))) then
+                if (.not. (present(subfunc_paralog_norms) .and. present(subfunc_paralog_norms_perm) .and. present(tmp_subfunc_work_array) .and. present(subfunc_rdi_threshold))) then
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
                 end if
 
                 !! initialize work array with min values, so each index i holds the min value in subarray subfunc_paralog_norms(i:n_genes)
-                call fill_array_with_minvals_for_each_idx(tmp_subfunc_work_array, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, n_genes, ierr)
+                call fill_array_with_minvals_for_each_idx(tmp_subfunc_work_array, subfunc_paralog_norms, subfunc_paralog_norms_perm, n_genes, ierr)
                 if (is_err(ierr)) return
 
                 !! also, prepare residual, so the extending gene just needs to be included in one operation and excluded after calculation

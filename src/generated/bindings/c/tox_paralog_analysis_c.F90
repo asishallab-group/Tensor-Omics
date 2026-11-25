@@ -357,8 +357,6 @@ contains
             paralog_subsets_bitmasks,&
             n_paralog_subsets,&
             rdi_threshold,&
-            paralog_norms,&
-            sorted_paralog_norms_perm,&
             ierr&
         ) bind(C, name="detect_subfunctionalization_c")
         use tox_paralog_analysis, only: detect_subfunctionalization
@@ -412,19 +410,6 @@ contains
         real(c_double), intent(in), target :: rdi_threshold
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
-        real(c_double), dimension(n_genes), intent(in), target :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-            !! The routine trusts them to be the genes' own.
-            !! The minimum valid value is `0.0_real64`.
-        integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
-            !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
-            !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked: a
-            !! permutation that is not ascending gives wrong minima, and an order with a repeated
-            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-            !! pruning reads uninitialised values.
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_genes`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -441,8 +426,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(genes, n_dims * n_genes)
         M_CHECK_ARRAY_NON_NULL(filtered_paralogs_bitmask, n_mask_chunks)
         M_CHECK_ARRAY_NON_NULL(paralog_subsets_bitmasks, n_mask_chunks * n_paralog_subsets)
-        M_CHECK_ARRAY_NON_NULL(paralog_norms, n_genes)
-        M_CHECK_ARRAY_NON_NULL(sorted_paralog_norms_perm, n_genes)
 
         call detect_subfunctionalization(&
             ancestor = ancestor,&
@@ -456,8 +439,6 @@ contains
             paralog_subsets_bitmasks = paralog_subsets_bitmasks,&
             n_paralog_subsets = n_paralog_subsets,&
             rdi_threshold = rdi_threshold,&
-            paralog_norms = paralog_norms,&
-            sorted_paralog_norms_perm = sorted_paralog_norms_perm,&
             ierr = ierr&
         )
     end subroutine detect_subfunctionalization_c
@@ -483,7 +464,7 @@ contains
             tmp_paralog_vector,&
             rdi_threshold,&
             paralog_norms,&
-            sorted_paralog_norms_perm,&
+            paralog_norms_perm,&
             tmp_work_array,&
             ierr&
         ) bind(C, name="detect_subfunctionalization_expert_c")
@@ -543,16 +524,18 @@ contains
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
         real(c_double), dimension(n_genes), intent(in), target :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
-            !! The routine trusts them to be the genes' own.
+            !! euclidean norm of each gene's vector, used for subset pruning. Where the caller
+            !! passes them, they are trusted to be the genes' own.
             !! The minimum valid value is `0.0_real64`.
-        integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
+            !! It is *VERY IMPORTANT* to compute this argument from the `paralog_norms` output produced by [[tox_paralog_analysis(module):calc_paralog_norms]].
+        integer(c_int), dimension(n_genes), intent(in), target :: paralog_norms_perm
             !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
             !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked: a
-            !! permutation that is not ascending gives wrong minima, and an order with a repeated
-            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
-            !! pruning reads uninitialised values.
+            !! not -- is at most the length of its residual. Where the caller passes it, the order
+            !! is the caller's job: only the entries' range is checked, so no index is out of
+            !! bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
+            !! is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
+            !! never written, read uninitialised.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         real(c_double), dimension(n_genes), intent(out), target :: tmp_work_array
@@ -576,7 +559,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_active_bitmask, n_mask_chunks)
         M_CHECK_ARRAY_NON_NULL(tmp_paralog_vector, n_dims)
         M_CHECK_ARRAY_NON_NULL(paralog_norms, n_genes)
-        M_CHECK_ARRAY_NON_NULL(sorted_paralog_norms_perm, n_genes)
+        M_CHECK_ARRAY_NON_NULL(paralog_norms_perm, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_work_array, n_genes)
 
         call detect_subfunctionalization_expert(&
@@ -594,7 +577,7 @@ contains
             tmp_paralog_vector = tmp_paralog_vector,&
             rdi_threshold = rdi_threshold,&
             paralog_norms = paralog_norms,&
-            sorted_paralog_norms_perm = sorted_paralog_norms_perm,&
+            paralog_norms_perm = paralog_norms_perm,&
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )
