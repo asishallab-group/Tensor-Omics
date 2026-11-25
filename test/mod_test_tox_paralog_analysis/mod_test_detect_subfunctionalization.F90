@@ -71,7 +71,8 @@ contains
     !| - triples: {1, 2, 4} (11, residual 1) is a result; {1, 2, 3} (residual 3) is pruned by
     !|   gene 4's norm 8.
     !| `max_subset_size` 2 finds the words 9 and 10, and 3 to 5 also 11. As in the dosage effect,
-    !| {2, 4} and its superset {1, 2, 4} are both results.
+    !| {2, 4} and its superset {1, 2, 4} are both results, and another gene order finds others
+    !| (issue #244).
     subroutine test_detect_subfunc_binary_weights()
         integer(int32), parameter :: n_expected(5) = [0, 2, 3, 3, 3]
         integer(int32) :: mask(1), subsets(1, BINARY_N_SLOTS), n_results, ierr, max_subset_size

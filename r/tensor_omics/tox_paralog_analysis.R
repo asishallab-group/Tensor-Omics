@@ -42,6 +42,12 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 
 #' Identifies subsets of paralogs matching this pattern
 #'
+#' A subset is grown from its genes in index order: it starts from one kept gene and is extended
+#' only by kept genes after its last one. A single gene is never a result; a result has two genes
+#' at least, and is not extended further. So which subsets are found depends on the genes' order,
+#' and a result's superset is found too when the superset's own prefix did not meet the criterion
+#' (issue #244).
+#'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -51,7 +57,9 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' @param genes a numeric matrix. expression vectors of genes. A subset whose vectors sum to exactly zero has no
 #'   direction either, and is dropped from the dosage effect's search like one past
 #'   `max_angle`.
-#' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+#' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+#'   A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+#'   ignores such bits.
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
@@ -100,6 +108,12 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 
 #' Identifies subsets of paralogs matching this pattern
 #'
+#' A subset is grown from its genes in index order: it starts from one kept gene and is extended
+#' only by kept genes after its last one. A single gene is never a result; a result has two genes
+#' at least, and is not extended further. So which subsets are found depends on the genes' order,
+#' and a result's superset is found too when the superset's own prefix did not meet the criterion
+#' (issue #244).
+#'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -109,7 +123,9 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #' @param genes a numeric matrix. expression vectors of genes. A subset whose vectors sum to exactly zero has no
 #'   direction either, and is dropped from the dosage effect's search like one past
 #'   `max_angle`.
-#' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+#' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+#'   A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+#'   ignores such bits.
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
@@ -121,9 +137,13 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #'   The minimum valid value is `0`.
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
 #'   The minimum valid value is `0.0`.
-#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+#'   The routine trusts them to be the genes' own.
 #'   The minimum valid value is `0.0`.
-#' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+#' @param sorted_paralog_norms_perm a integer vector. ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+#'   while the smallest norm among all genes after its last one -- kept by the filter or
+#'   not -- is at most the length of its residual. Only the entries' range is checked; an
+#'   order that is no ascending permutation gives wrong minima.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
 #' @return a named list with elements:

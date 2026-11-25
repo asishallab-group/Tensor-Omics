@@ -78,7 +78,8 @@ contains
     !| - quadruples: {1, 2, 3, 4} 15, {1, 2, 3, 5} 23. Nothing is left to grow to five.
     !| `max_subset_size` 2 finds the 6 pairs, 3 the 13 up to triples, and 4 and 5 all 15. The work
     !| array holds 15 subsets, the worst case for five genes. Note {2, 4} and {1, 2, 4} are both
-    !| results: a result's superset is found when its own prefix stayed below the gain.
+    !| results: a result's superset is found when its own prefix stayed below the gain, and with
+    !| the genes in another order the results differ (issue #244).
     !|
     !| In place of the old Python and R dosage checks (three kept genes, results [6, 3, 5]) and of
     !| the old suite's `test_detect_patterns_dosage_effect` (two genes along the ancestor, gain

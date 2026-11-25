@@ -3,10 +3,13 @@
 !> Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
 !|
 !| Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
-!| starting from single genes. At every extension step the candidate is scored against the pattern-specific
-!| criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
-!| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
-!| extended further, which keeps the combinatorial subset search tractable.
+!| in index order, starting from single genes. At every extension step the candidate is scored against
+!| the pattern-specific criterion (small angle plus magnitude gain for dosage effect, or bounded
+!| residual distance for subfunctionalization). A candidate is pruned instead of being extended further
+!| by a heuristic rule, issue #64's: for the dosage effect when its summed vector is past the angle
+!| bound, for subfunctionalization when every gene that could still join it is longer than its
+!| residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
+!| extension would have met the criterion.
 !|
 !| There is a routine per pattern rather than one taking a pattern flag:
 !| `detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
@@ -104,6 +107,11 @@ contains
     end subroutine detect_neofunctionalization
 
     !> summary: Validates its inputs, prepares what [[tox_paralog_analysis_impl(module):detect_patterns_impl]] needs, then calls it. The entry point to reach for first; see [[tox_paralog_analysis(module):detect_dosage_effect_expert]] to prepare it yourself.
+    !| A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    !| only by kept genes after its last one. A single gene is never a result; a result has two genes
+    !| at least, and is not extended further. So which subsets are found depends on the genes' order,
+    !| and a result's superset is found too when the superset's own prefix did not meet the criterion
+    !| (issue #244).
     pure subroutine detect_dosage_effect(&
             ancestor,&
             genes,&
@@ -142,7 +150,9 @@ contains
             !! direction either, and is dropped from the dosage effect's search like one past
             !! `max_angle`.
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+            !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+            !! ignores such bits.
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(int32), intent(in) :: max_subset_size
@@ -237,6 +247,11 @@ contains
     end subroutine detect_dosage_effect
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_patterns_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_paralog_analysis(module):detect_dosage_effect]] does both.
+    !| A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    !| only by kept genes after its last one. A single gene is never a result; a result has two genes
+    !| at least, and is not extended further. So which subsets are found depends on the genes' order,
+    !| and a result's superset is found too when the superset's own prefix did not meet the criterion
+    !| (issue #244).
     pure subroutine detect_dosage_effect_expert(&
             ancestor,&
             genes,&
@@ -277,7 +292,9 @@ contains
             !! direction either, and is dropped from the dosage effect's search like one past
             !! `max_angle`.
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+            !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+            !! ignores such bits.
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(int32), intent(in) :: max_subset_size
@@ -375,6 +392,11 @@ contains
     end subroutine detect_dosage_effect_expert
 
     !> summary: Validates its inputs, prepares what [[tox_paralog_analysis_impl(module):detect_patterns_impl]] needs, then calls it. The entry point to reach for first; see [[tox_paralog_analysis(module):detect_subfunctionalization_expert]] to prepare it yourself.
+    !| A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    !| only by kept genes after its last one. A single gene is never a result; a result has two genes
+    !| at least, and is not extended further. So which subsets are found depends on the genes' order,
+    !| and a result's superset is found too when the superset's own prefix did not meet the criterion
+    !| (issue #244).
     pure subroutine detect_subfunctionalization(&
             ancestor,&
             genes,&
@@ -414,7 +436,9 @@ contains
             !! direction either, and is dropped from the dosage effect's search like one past
             !! `max_angle`.
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+            !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+            !! ignores such bits.
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(int32), intent(in) :: max_subset_size
@@ -436,10 +460,14 @@ contains
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(n_genes), intent(in) :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+            !! The routine trusts them to be the genes' own.
             !! The minimum valid value is `0.0_real64`.
         integer(int32), dimension(n_genes), intent(in) :: sorted_paralog_norms_perm
-            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+            !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+            !! while the smallest norm among all genes after its last one -- kept by the filter or
+            !! not -- is at most the length of its residual. Only the entries' range is checked; an
+            !! order that is no ascending permutation gives wrong minima.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         integer(int32), intent(out) :: ierr
@@ -517,6 +545,11 @@ contains
     end subroutine detect_subfunctionalization
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_patterns_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_paralog_analysis(module):detect_subfunctionalization]] does both.
+    !| A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    !| only by kept genes after its last one. A single gene is never a result; a result has two genes
+    !| at least, and is not extended further. So which subsets are found depends on the genes' order,
+    !| and a result's superset is found too when the superset's own prefix did not meet the criterion
+    !| (issue #244).
     pure subroutine detect_subfunctionalization_expert(&
             ancestor,&
             genes,&
@@ -559,7 +592,9 @@ contains
             !! direction either, and is dropped from the dosage effect's search like one past
             !! `max_angle`.
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+            !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+            !! ignores such bits.
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `paralog_subsets_bitmasks`
         integer(int32), intent(in) :: max_subset_size
@@ -585,10 +620,14 @@ contains
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(n_genes), intent(in) :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+            !! The routine trusts them to be the genes' own.
             !! The minimum valid value is `0.0_real64`.
         integer(int32), dimension(n_genes), intent(in) :: sorted_paralog_norms_perm
-            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+            !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+            !! while the smallest norm among all genes after its last one -- kept by the filter or
+            !! not -- is at most the length of its residual. Only the entries' range is checked; an
+            !! order that is no ascending permutation gives wrong minima.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         real(real64), dimension(n_genes), intent(out) :: tmp_work_array

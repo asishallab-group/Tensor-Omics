@@ -3,10 +3,13 @@ r"""tox_paralog_analysis
 Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
 
 Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
-starting from single genes. At every extension step the candidate is scored against the pattern-specific
-criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
-subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
-extended further, which keeps the combinatorial subset search tractable.
+in index order, starting from single genes. At every extension step the candidate is scored against
+the pattern-specific criterion (small angle plus magnitude gain for dosage effect, or bounded
+residual distance for subfunctionalization). A candidate is pruned instead of being extended further
+by a heuristic rule, issue #64's: for the dosage effect when its summed vector is past the angle
+bound, for subfunctionalization when every gene that could still join it is longer than its
+residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
+extension would have met the criterion.
 
 There is a routine per pattern rather than one taking a pattern flag:
 `detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
@@ -239,6 +242,12 @@ def detect_dosage_effect(
 ):
     r"""Identifies subsets of paralogs matching this pattern
 
+    A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    only by kept genes after its last one. A single gene is never a result; a result has two genes
+    at least, and is not extended further. So which subsets are found depends on the genes' order,
+    and a result's superset is found too when the superset's own prefix did not meet the criterion
+    (issue #244).
+
     Parameters
     ----------
     ancestor : np.ndarray[np.float64] of shape (n_dims,)
@@ -250,7 +259,9 @@ def detect_dosage_effect(
         direction either, and is dropped from the dosage effect's search like one past
         `max_angle`.
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+        A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+        ignores such bits.
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
@@ -363,6 +374,12 @@ def detect_subfunctionalization(
 ):
     r"""Identifies subsets of paralogs matching this pattern
 
+    A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    only by kept genes after its last one. A single gene is never a result; a result has two genes
+    at least, and is not extended further. So which subsets are found depends on the genes' order,
+    and a result's superset is found too when the superset's own prefix did not meet the criterion
+    (issue #244).
+
     Parameters
     ----------
     ancestor : np.ndarray[np.float64] of shape (n_dims,)
@@ -374,7 +391,9 @@ def detect_subfunctionalization(
         direction either, and is dropped from the dosage effect's search like one past
         `max_angle`.
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+        A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+        ignores such bits.
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
@@ -389,10 +408,14 @@ def detect_subfunctionalization(
         max allowed residual distance from `ancestor`
         The minimum valid value is `0.0`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
-        euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+        euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+        The routine trusts them to be the genes' own.
         The minimum valid value is `0.0`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
-        ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+        ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+        while the smallest norm among all genes after its last one -- kept by the filter or
+        not -- is at most the length of its residual. Only the entries' range is checked; an
+        order that is no ascending permutation gives wrong minima.
         The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
 

@@ -3,10 +3,13 @@
 !> Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
 !|
 !| Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
-!| starting from single genes. At every extension step the candidate is scored against the pattern-specific
-!| criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
-!| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
-!| extended further, which keeps the combinatorial subset search tractable.
+!| in index order, starting from single genes. At every extension step the candidate is scored against
+!| the pattern-specific criterion (small angle plus magnitude gain for dosage effect, or bounded
+!| residual distance for subfunctionalization). A candidate is pruned instead of being extended further
+!| by a heuristic rule, issue #64's: for the dosage effect when its summed vector is past the angle
+!| bound, for subfunctionalization when every gene that could still join it is longer than its
+!| residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
+!| extension would have met the criterion.
 !|
 !| There is a routine per pattern rather than one taking a pattern flag:
 !| `detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
@@ -76,6 +79,11 @@ contains
 
     !> summary: Identifies subsets of paralogs matching this pattern
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    !| only by kept genes after its last one. A single gene is never a result; a result has two genes
+    !| at least, and is not extended further. So which subsets are found depends on the genes' order,
+    !| and a result's superset is found too when the superset's own prefix did not meet the criterion
+    !| (issue #244).
     pure subroutine detect_patterns_impl(ancestor, genes, n_genes, n_dims, pattern_mode, filtered_paralogs_bitmask, n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, n_paralog_subsets, tmp_active_bitmask, tmp_paralog_vector, max_angle, gain_gamma, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
@@ -125,7 +133,9 @@ contains
             !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+            !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+            !! ignores such bits.
         integer(int32), dimension(n_mask_chunks), intent(out) :: tmp_active_bitmask
             !! working array to hold the extended subsets
         real(real64), dimension(n_dims), intent(out) :: tmp_paralog_vector
@@ -144,11 +154,15 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(PI)
         real(real64), dimension(n_genes), intent(in), optional :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+            !! The routine trusts them to be the genes' own.
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(0.0_real64)
         integer(int32), dimension(n_genes), intent(in), optional :: sorted_paralog_norms_perm
-            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+            !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+            !! while the smallest norm among all genes after its last one -- kept by the filter or
+            !! not -- is at most the length of its residual. Only the entries' range is checked; an
+            !! order that is no ascending permutation gives wrong minima.
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(1_int32)
             !! DM_MAX(n_genes)
@@ -275,9 +289,13 @@ contains
         real(real64), intent(in), optional :: dosage_max_angle
             !! maximum angle in radians that a subset candidate must not exceed, otherwise pruned, default is Pi
         real(real64), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+            !! The routine trusts them to be the genes' own.
         integer(int32), dimension(n_genes), intent(in), optional :: subfunc_sorted_paralog_norms_perm
-            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+            !! ascending permutation of `subfunc_paralog_norms`, for subset pruning: a subset is extended only
+            !! while the smallest norm among all genes after its last one -- kept by the filter or
+            !! not -- is at most the length of its residual. Only the entries' range is checked; an
+            !! order that is no ascending permutation gives wrong minima.
         real(real64), dimension(n_genes), intent(out), optional :: tmp_subfunc_work_array
             !! work array for checking the minimum value after a given index efficiently
 
