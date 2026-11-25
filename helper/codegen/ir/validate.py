@@ -372,7 +372,12 @@ def _required_default_note(argument: Argument) -> str:
     # an implementation is analysed without the project, so its producer is not resolved
     # onto its roles: the directive says the same
     computed = output_from is not None and output_from.is_automatic
-    if computed or (roles is not None and roles.is_derived):
+    if computed:
+        # not "never taken": the Python and R expert of a pair takes data a producer fills,
+        # as Fortran's and C's take every such value -- as a required argument either way
+        return (f"'{argument.name}' is computed by its producer, or passed as a required "
+                "argument where the caller supplies it, so the default is never used; drop it")
+    if roles is not None and roles.is_derived:
         return (f"Python and R derive '{argument.name}' and never take it, so the default is "
                 "never used; drop it")
     if roles is not None and roles.is_extent:

@@ -232,10 +232,12 @@ def _published_to_the_languages(
 
     `foo_expert` promises control over what is handed to the implementation. Where `foo` only
     validates and allocates, there is no such control to give -- the binding allocates the work
-    arrays for both tiers and computes the
-    `DM_OUTPUT_FROM` sizes for both -- so the two are the same call and one of them lies about
-    it. Dropped here rather than in each emitter, so Python, R, the R `.Call` shims and the
-    snippets cannot disagree about what exists.
+    arrays for both tiers and computes the `DM_OUTPUT_FROM` sizes for both, and data only where
+    `foo` computes it (`synthesize.binding_computes`) -- so the two are the same call and one of
+    them lies about it. An expert that takes data `foo` computes, an array a producer fills, is
+    kept (`synthesize.alloc_does_more`). Decided here, after the semantic pass that resolves the
+    producers, rather than in each emitter, so Python, R, the R `.Call` shims and the snippets
+    cannot disagree about what exists.
 
     The C layer is built from the unfiltered binding and keeps every tier.
     """
