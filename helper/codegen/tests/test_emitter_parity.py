@@ -477,7 +477,8 @@ class TestEveryPublishedBindingAgrees:
 
     The E2 attack's prototype broke every one of these with the sites it did not route: R took
     `norms` and then overwrote it with the producer's, and called a `.Call` registered with two
-    arguments with three. `test_end_to_end_impl.py` runs the same bindings with a sentinel.
+    arguments with three. `test_parameters_reach_the_call.py` runs them, a sentinel for every
+    parameter.
     """
 
     @pytest.fixture(params=["src", "impl"])
