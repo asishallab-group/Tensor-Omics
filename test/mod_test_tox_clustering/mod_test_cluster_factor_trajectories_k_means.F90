@@ -18,7 +18,7 @@ module mod_test_cluster_factor_trajectories_k_means
     use tox_errors
     use test_suite, only: test_case
     use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, UNWRITTEN_REAL, N_NON_FINITE, NON_FINITE_NAMES, &
-                                                non_finite_value
+                                                non_finite_value, check_documented_assignment
     implicit none
     private
     public :: get_all_tests_cluster_factor_trajectories_k_means
@@ -39,7 +39,7 @@ contains
     function get_all_tests_cluster_factor_trajectories_k_means() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(8))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_cluster_factor_trajectories_k_means_values", &
                                  test_cluster_factor_trajectories_k_means_values)
         all_tests(2) = test_case("test_cluster_factor_trajectories_k_means_expert_values", &
@@ -56,6 +56,8 @@ contains
                                  test_cluster_factor_trajectories_k_means_rejects_nan_and_inf)
         all_tests(8) = test_case("test_cluster_factor_trajectories_k_means_expert_refuses_alike", &
                                  test_cluster_factor_trajectories_k_means_expert_refuses_alike)
+        all_tests(9) = test_case("test_cluster_factor_trajectories_k_means_iterations_below_one", &
+                                 test_cluster_factor_trajectories_k_means_iterations_below_one)
     end function get_all_tests_cluster_factor_trajectories_k_means
 
     !> The four samples as `trajectories(factor, sample, timepoint)`, written out value by value
@@ -301,4 +303,39 @@ contains
                                                         centroids, labels, label_counts, work, 300_int32, ierr)
         call assert_err(ierr, ERR_NAN_INF, msg//"+Inf centroid", arg_pos=6_int32)
     end subroutine test_cluster_factor_trajectories_k_means_expert_refuses_alike
+
+    !> BUG: `max_iterations` is required here and has no lower bound; below 1 the k-means loop
+    !| never runs and the run reports success with every label 0 and `label_counts` never written
+    !| (see `mod_test_k_means_clustering`'s case of the same name). Checks only that a run
+    !| reported as successful hands back a documented assignment, for 0 and -1, through the plain
+    !| and the expert entry.
+    subroutine test_cluster_factor_trajectories_k_means_iterations_below_one()
+        real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), work(FLAT_LENGTH, SAMPLES)
+        integer(int32) :: labels(SAMPLES), label_counts(2), ierr, max_iterations, i_entry
+        character(*), parameter :: ENTRY_NAMES(2) = ["plain ", "expert"]
+
+        call fill_trajectories(trajectories)
+        do i_entry = 1, 2
+            do max_iterations = 0, -1, -1
+                centroids(:, 1) = FLAT(:, 1)
+                centroids(:, 2) = FLAT(:, 2)
+                labels = UNWRITTEN_INT
+                label_counts = UNWRITTEN_INT
+                if (i_entry == 1) then
+                    call cluster_factor_trajectories_k_means(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
+                                                             centroids, labels, label_counts, max_iterations, ierr)
+                else
+                    call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, &
+                                                                    TIMEPOINTS, centroids, labels, label_counts, work, &
+                                                                    max_iterations, ierr)
+                end if
+                if (is_ok(ierr)) then
+                    call check_documented_assignment(SAMPLES, 2_int32, labels, label_counts, &
+                                                     "test_cluster_factor_trajectories_k_means_iterations_below_one: "// &
+                                                     trim(ENTRY_NAMES(i_entry))//" entry, max_iterations "// &
+                                                     max_iterations//" reported success")
+                end if
+            end do
+        end do
+    end subroutine test_cluster_factor_trajectories_k_means_iterations_below_one
 end module mod_test_cluster_factor_trajectories_k_means

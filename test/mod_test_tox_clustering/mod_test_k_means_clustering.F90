@@ -14,7 +14,8 @@ module mod_test_k_means_clustering
     use tox_clustering, only: k_means_clustering
     use tox_errors
     use test_suite, only: test_case
-    use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, N_NON_FINITE, NON_FINITE_NAMES, non_finite_value
+    use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, N_NON_FINITE, NON_FINITE_NAMES, non_finite_value, &
+                                                check_documented_assignment
     implicit none
     private
     public :: get_all_tests_k_means_clustering
@@ -25,7 +26,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(11))
+        allocate (all_tests(12))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_one_cluster", test_k_means_clustering_one_cluster)
@@ -39,6 +40,8 @@ contains
         all_tests(9) = test_case("test_k_means_clustering_n_clusters_bounds", test_k_means_clustering_n_clusters_bounds)
         all_tests(10) = test_case("test_k_means_clustering_dimensions", test_k_means_clustering_dimensions)
         all_tests(11) = test_case("test_k_means_clustering_rejects_nan_and_inf", test_k_means_clustering_rejects_nan_and_inf)
+        all_tests(12) = test_case("test_k_means_clustering_max_iterations_below_one", &
+                                  test_k_means_clustering_max_iterations_below_one)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -329,4 +332,28 @@ contains
             end do
         end do
     end subroutine test_k_means_clustering_rejects_nan_and_inf
+
+    !> BUG: `max_iterations` has no lower bound, and below 1 the loop never runs, so the run
+    !| reports success with every label 0 -- outside the documented `1<=label<=n_clusters` -- and
+    !| `label_counts` never written. Whichever way that is settled (refuse it, or assign once), a
+    !| run reported as successful has to hand back a documented assignment; this checks just
+    !| that. 1-D points 1, 2, 8, 9 from 1 and 9; max_iterations 0 and -1.
+    subroutine test_k_means_clustering_max_iterations_below_one()
+        real(real64) :: data_points(1, 4), centroids(1, 2)
+        integer(int32) :: labels(4), label_counts(2), ierr, max_iterations
+
+        data_points(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]
+        do max_iterations = 0, -1, -1
+            centroids(1, :) = [1.0_real64, 9.0_real64]
+            labels = UNWRITTEN_INT
+            label_counts = UNWRITTEN_INT
+            call k_means_clustering(2_int32, data_points, 4_int32, 1_int32, centroids, labels, label_counts, &
+                                    max_iterations=max_iterations, ierr=ierr)
+            if (is_ok(ierr)) then
+                call check_documented_assignment(4_int32, 2_int32, labels, label_counts, &
+                                                 "test_k_means_clustering_max_iterations_below_one: max_iterations "// &
+                                                 max_iterations//" reported success")
+            end if
+        end do
+    end subroutine test_k_means_clustering_max_iterations_below_one
 end module mod_test_k_means_clustering
