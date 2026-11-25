@@ -585,7 +585,7 @@ def alloc_does_more(spec: WrapperSpec, conventions: Conventions = CONVENTIONS) -
     # every AUTO value of a pair's expert is computed by its plain tier: by `foo` where it
     # took the value over, by the binding where `foo` kept it
     return any(
-        _automatic_plan(argument) is not None and not is_derived(argument, expert, conventions)
+        automatic_plan(argument) is not None and not is_derived(argument, expert, conventions)
         for argument in expert.arguments
     )
 
@@ -611,8 +611,13 @@ def _ir_argument(argument):
     return argument.source if hasattr(argument, "source") else argument
 
 
-def _automatic_plan(argument):
-    """The `DM_OUTPUT_FROM(..., AUTO)` plan resolved for `argument`, or None."""
+def automatic_plan(argument):
+    """The `DM_OUTPUT_FROM(..., AUTO)` plan resolved for `argument`, or None.
+
+    What a producer call is -- the producer, its inputs, the output taken. Whether a binding
+    makes that call is `binding_computes`'s to say.
+    """
+    argument = _ir_argument(argument)
     roles = argument.roles if argument is not None else None
     plan = roles.computed_from if roles is not None else None
     return plan if plan is not None and plan.is_automatic else None
@@ -638,7 +643,7 @@ def _computed_by_the_expert(expert: Procedure, conventions: Conventions) -> set[
                  if is_temporary(a, conventions) or a.intent is Intent.OUT]
     named = {named.name.lower() for a in allocated for named in size_names(a)
              if not named.is_size_operand}
-    automatic = [(a, _automatic_plan(a)) for a in expert.arguments]
+    automatic = [(a, automatic_plan(a)) for a in expert.arguments]
     automatic = [(a, plan) for a, plan in automatic if plan is not None]
     calls = {plan.call for a, plan in automatic if a.name.lower() in named}
     return {a.name.lower() for a, plan in automatic if plan.call in calls}
@@ -653,7 +658,7 @@ def binding_computes(argument, wrapper, conventions: Conventions = CONVENTIONS) 
     the plain one, a lone wrapper, a hand-written consumer -- every AUTO value it has.
     """
     argument, procedure = _ir_argument(argument), _tier(wrapper)
-    if _automatic_plan(argument) is None:
+    if automatic_plan(argument) is None:
         return False
     if not is_generated_expert(procedure, conventions):
         return True
@@ -678,7 +683,7 @@ def _read_by_a_producer(argument: Argument, procedure: Procedure,
     """Whether a producer the binding calls is passed `argument` (its `binding_inputs`)."""
     name = argument.name.lower()
     for other in procedure.arguments:
-        plan = _automatic_plan(other)
+        plan = automatic_plan(other)
         if plan is None or not binding_computes(other, procedure, conventions):
             continue
         if any(supply.argument is not None and supply.argument.lower() == name

@@ -531,3 +531,39 @@ class TestEveryPublishedBindingAgrees:
                       if w.stripped_name == "fx_norm_rank_expert")
 
         assert "norms" in _names(python._inputs(expert))
+
+
+class TestTierNotesListWhatTheLanguagePublishes:
+    """R5: the Python and R note names the parameters that language's expert takes and its plain
+    tier does not -- not the C arguments, whose work arrays and sizes both tiers of a binding
+    prepare themselves -- and says a value a producer computes before the permutation sorted by
+    it."""
+
+    def notes(self, impl_published):
+        from codegen.emit.doc_tiers import build
+        from codegen.frontend.ford_frontend import FordFrontend
+
+        bag = DiagnosticBag()
+        parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=FIXTURE_IMPL), bag).parse()
+        specs = synthesize_wrappers(parsed.project, CONVENTIONS, bag).specs
+        return build(impl_published, specs, CONVENTIONS)
+
+    def test_a_computed_value_comes_before_the_permutation(self, impl_published):
+        lines = self.notes(impl_published)["fx_norm_rank_expert"].lines("`{}`")
+
+        assert lines == [
+            "The expert entry point: you supply `norms` and `norms_perm` yourself.",
+            "`fx_norm_rank` computes `norms` with `fx_column_norms` and seeds `norms_perm` and "
+            "sorts it by `norms`.",
+        ]
+
+    def test_work_arrays_and_sizes_are_not_listed(self, impl_published):
+        notes = self.notes(impl_published)
+
+        assert notes["fx_pos_sum_expert"].lines("`{}`")[0] == \
+            "The expert entry point: you supply `values_perm` yourself."
+        assert notes["fx_clip_expert"].lines("`{}`") == [
+            "The expert entry point: you supply `level` yourself.",
+            "`fx_clip` computes `level` for you and runs `fx_clip_guard` first, which may answer "
+            "the call outright.",
+        ]

@@ -17,7 +17,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from ..abi.c_abi import stripped_name
 from ..abi.model import CBinding, CWrapper
+from ..synthesize import automatic_plan
+from .python_ctypes import PythonEmitter
 
 
 @dataclass(frozen=True)
@@ -96,14 +99,19 @@ def build(binding: CBinding, specs=(), conventions=None) -> dict[str, TierNote]:
 def _prepares(plain: CWrapper, expert: CWrapper, by_impl_name, conventions):
     """What the plain half does that the expert half leaves to the caller.
 
-    The arguments only the expert half asks for, named -- and, for a generated pair, what is
-    actually done to them, which the signature alone cannot say. A hand-written pair gets the
-    argument names only: the generator does not read bodies, so it will not claim to know
+    The parameters only the expert half asks for, as Python and R publish them -- not the C
+    arguments, which list work arrays and sizes both tiers of a binding allocate and compute
+    themselves -- and, for a generated pair, what is actually done to them, which the signature
+    alone cannot say: a value a producer computes first, since a permutation may be sorted by
+    it, then the permutations, then anything else, then the prologue. A hand-written pair gets
+    the parameter names only: the generator does not read bodies, so it will not claim to know
     how a hand-written entry point prepares them.
     """
-    theirs = {argument.name.lower() for argument in expert.arguments}
-    ours = {argument.name.lower() for argument in plain.arguments}
-    extra = [a.name for a in expert.arguments if a.name.lower() in theirs - ours]
+    # one language's parameters stand for both: `test_emitter_parity` holds them equal
+    asks = PythonEmitter()._inputs
+    ours = {argument.name.lower() for argument in asks(plain)}
+    taken = [argument for argument in asks(expert) if argument.name.lower() not in ours]
+    extra = [argument.name for argument in taken]
     names = tuple(f"`{name}`" for name in extra)
 
     spec = by_impl_name.get(expert.procedure.name.lower())
@@ -114,6 +122,11 @@ def _prepares(plain: CWrapper, expert: CWrapper, by_impl_name, conventions):
 
     how = []
     ordered = set()
+    for argument in taken:
+        plan = automatic_plan(argument)
+        if plan is not None:
+            how.append(f"computes `{argument.name}` with `{stripped_name(plan.producer)}`")
+            ordered.add(argument.name.lower())
     for argument in _sorted_permutations_of(spec, conventions):
         base = argument.name[: -len(conventions.perm_suffix)]
         how.append(f"seeds `{argument.name}` and sorts it by `{base}`")

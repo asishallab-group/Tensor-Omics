@@ -867,6 +867,16 @@ class TestAnArrayAProducerFills:
         assert out == [["x", "scale", "norms", "norms_perm"], ["scale", "x", "norms_perm"],
                        ["x", "rounded"], ["x", "scale", "limit"]]
 
+    def test_the_docstring_names_what_the_expert_takes(self, built):
+        # R5: the Python parameters, not the C arguments (`work_size`, `tmp_buf`)
+        out = run_python(built, """
+            print(json.dumps(tox.fx_norm_rank_expert.__doc__))
+        """)
+
+        assert "you supply `norms` and `norms_perm` yourself." in out
+        assert ("`fx_norm_rank` computes `norms` with `fx_column_norms` and seeds `norms_perm` "
+                "and sorts it by `norms`.") in out
+
     def test_nan_in_the_caller_s_norms_is_refused_naming_them_in_python(self, built):
         out = run_python(built, _PY_PRODUCER_ERROR + _NORMS_X_PY + """
             print(json.dumps(raised(lambda: tox.fx_norm_rank_expert(

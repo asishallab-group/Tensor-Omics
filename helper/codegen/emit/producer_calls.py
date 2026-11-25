@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..abi.model import CArgument, CWrapper
 from ..ir.entities import Procedure
 from ..ir.roles import OutputFromPlan
-from ..synthesize import binding_computes
+from ..synthesize import automatic_plan, binding_computes
 
 
 def auto_plans(wrapper: CWrapper) -> list[tuple[CArgument, OutputFromPlan]]:
@@ -23,7 +23,7 @@ def auto_plans(wrapper: CWrapper) -> list[tuple[CArgument, OutputFromPlan]]:
     (`roles._refuses_chaining`), so the order is free.
     """
     return [
-        (argument, argument.source.roles.computed_from)
+        (argument, automatic_plan(argument))
         for argument in wrapper
         if binding_computes(argument, wrapper)
     ]
