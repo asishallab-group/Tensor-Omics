@@ -14,7 +14,7 @@ module fx_producers_impl
 
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
-    public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl
+    public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl, fx_rounded_impl
 
 contains
 
@@ -125,6 +125,20 @@ contains
         norms = sqrt(sum(x**2, dim=1))
         n_large = count(norms > 1.0_real64)
     end subroutine fx_large_norms_impl
+
+    !> summary: Each value rounded to the nearest integer
+    !| author: A Developer
+    pure subroutine fx_rounded_impl(n_items, x, rounded)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+            !! DM_MIN(-1000.0_real64)
+            !! DM_MAX(1000.0_real64)
+        integer(int32), dimension(n_items), intent(out) :: rounded
+            !! `x`, rounded
+        rounded = nint(x, int32)
+    end subroutine fx_rounded_impl
 
     !> summary: A size of a number of items, plus a padding when one is given
     !| author: A Developer

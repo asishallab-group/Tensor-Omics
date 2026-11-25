@@ -836,9 +836,13 @@ class TestAnAllocatingWrapperWithoutWorkArrays:
 
     def test_it_counts_as_doing_more_than_allocating(self):
         # so both tiers reach Python and R: they genuinely differ
-        spec = next(s for s in self.synthesised().specs if s.validating.name == "crunch_expert")
+        from codegen.synthesize import alloc_does_more
 
-        assert spec.alloc_does_more
+        synthesis = self.synthesised()
+        spec = next(s for s in synthesis.specs if s.validating.name == "crunch_expert")
+
+        assert alloc_does_more(spec)
+        assert "crunch_expert" not in synthesis.expert_only_in_fortran
 
 
 class TestThePrologueArgumentsComeBeforeAnOwnIerr:

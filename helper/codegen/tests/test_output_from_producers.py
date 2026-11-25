@@ -1738,3 +1738,253 @@ class TestAnIntentInoutValueIsRefused:
                 "a value a producer computes is intent(in); scratch the implementation reuses "
                 "is a 'tmp_' work array. Where the caller can supply the value, name the "
                 "producer with JUST_INFO instead of AUTO, so the caller passes it")
+
+
+# -- what a binding computes (E2), where it reads an extent (R4), what reaches it ------------
+
+
+def data_producers():
+    """`tox_dat_impl`: producers of data, of a size, and of both in one call."""
+    return module(
+        "tox_dat_impl",
+        procedure("norms_impl",
+                  integer("n_items", doc="items"),
+                  real("x", Intent.IN, "(n_items)", doc="values"),
+                  real("norms", Intent.OUT, "(n_items)", doc="the norms"),
+                  meta=IMPL, is_pure=True),
+        procedure("large_impl",
+                  integer("n_items", doc="items"),
+                  real("x", Intent.IN, "(n_items)", doc="values"),
+                  real("norms", Intent.OUT, "(n_items)", doc="the norms"),
+                  integer("n_large", Intent.OUT, doc="how many are large"),
+                  meta=IMPL, is_pure=True),
+        procedure("count_impl",
+                  integer("n_items", doc="items"),
+                  integer("counted", Intent.OUT, doc="a count"),
+                  meta=IMPL, is_pure=True),
+    )
+
+
+def computes(synthesis, procedure_name, *names, module_name="tox_cons"):
+    """Which of `names` the binding of `procedure_name` computes, as a dict."""
+    from codegen.synthesize import binding_computes
+
+    tier = synthesis.project.procedure(module_name, procedure_name)
+    return {name: binding_computes(tier.argument(name), tier) for name in names}
+
+
+class TestWhatABindingComputes:
+    """E2: in a generated pair's expert, Python and R compute only an AUTO value that sizes a
+    buffer they allocate, and whatever one call fills with it; every other one is the caller's
+    to pass, as in Fortran and C. In every other tier they compute every AUTO value."""
+
+    def consumer_of(self, *arguments, name="use_impl"):
+        return consumer(name, integer("n_items", doc="items"),
+                        real("x", Intent.IN, "(n_items)", doc="values"), *arguments)
+
+    def norms(self, producer="norms"):
+        return real("norms", Intent.IN, "(n_items)", doc="the norms",
+                    directives=auto("norms", producer, "tox_dat"))
+
+    def counted(self, name="k"):
+        return integer(name, doc="a size", directives=auto("counted", "count", "tox_dat"))
+
+    def test_a_size_is_computed_and_data_is_a_parameter(self):
+        synthesis, bag = analysed(data_producers(), self.consumer_of(
+            self.norms(), self.counted(), real("tmp_buf", Intent.OUT, "(2*k+1)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert bag.errors == (), bag.render()
+        assert computes(synthesis, "use_expert", "norms", "k") == {"norms": False, "k": True}
+
+    def test_a_size_operand_does_not_count(self):
+        # `size(norms)` reads the shape of an array the caller passed
+        synthesis, _ = analysed(data_producers(), self.consumer_of(
+            self.norms(), real("tmp_buf", Intent.OUT, "(size(norms))", doc="scratch"),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert computes(synthesis, "use_expert", "norms") == {"norms": False}
+
+    def test_a_length_counts(self):
+        synthesis, _ = analysed(data_producers(), self.consumer_of(
+            self.counted(), character("tmp_label", Intent.OUT, length="k", doc="scratch"),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert computes(synthesis, "use_expert", "k") == {"k": True}
+
+    def test_one_call_is_computed_whole(self):
+        synthesis, _ = analysed(data_producers(), self.consumer_of(
+            self.norms("large"),
+            integer("n_large", doc="the size", directives=auto("n_large", "large", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert computes(synthesis, "use_expert", "norms", "n_large") == {
+            "norms": True, "n_large": True}
+
+    def test_a_value_only_a_bound_names_is_a_parameter(self):
+        from codegen.ir.directives import Maximum
+
+        synthesis, _ = analysed(data_producers(), consumer(
+            "use_impl", integer("n_items", doc="items"), self.counted(),
+            real("x", Intent.IN, "(n_items)", doc="values",
+                 directives=Directives(maximum=Maximum("real(k, real64)"))),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert computes(synthesis, "use_expert", "k") == {"k": False}
+
+    def test_a_value_sizing_only_an_input_is_read_off_it(self):
+        from codegen.synthesize import is_derived, readable_owners
+
+        synthesis, _ = analysed(data_producers(), self.consumer_of(
+            self.counted(), real("y", Intent.IN, "(k)", doc="as long as the count"),
+            integer("x_perm", Intent.IN, "(n_items)", doc="its order"),
+            real("total", Intent.OUT, doc="the result")))
+        expert = synthesis.project.procedure("tox_cons", "use_expert")
+
+        assert computes(synthesis, "use_expert", "k") == {"k": False}
+        assert is_derived(expert.argument("k"), expert)
+        assert [o.name for o in readable_owners(expert.argument("k"), expert)] == ["y"]
+        # the plain tier keeps it -- it sizes `y` -- and computes it
+        assert computes(synthesis, "use", "k") == {"k": True}
+
+    def test_every_other_tier_computes_every_value(self):
+        hand = module("tox_hand", procedure(
+            "use",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            self.norms(),
+            real("total", Intent.OUT, doc="the result"),
+            integer("ierr", Intent.OUT, doc="error"),
+        ))
+        synthesis, _ = analysed(data_producers(), hand)
+
+        assert computes(synthesis, "use", "norms", module_name="tox_hand") == {"norms": True}
+
+    def test_auto_plans_follow_it(self):
+        from codegen.abi.c_abi import build_project
+        from codegen.emit.producer_calls import auto_plans
+
+        synthesis, bag = analysed(data_producers(), self.consumer_of(
+            self.norms(), self.counted(), real("tmp_buf", Intent.OUT, "(k)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result")))
+        binding = build_project(synthesis.project, bag)
+        expert = next(w for m in binding for w in m if w.stripped_name == "use_expert")
+
+        assert [argument.name for argument, _ in auto_plans(expert)] == ["k"]
+
+
+class TestWhereABindingReadsAnExtent:
+    """R4: off a required array the caller passes; else off one the binding computes, after
+    the producers, where no producer is passed the extent; else it is asked of the caller."""
+
+    def owners(self, synthesis, tier, extent):
+        from codegen.synthesize import readable_owners
+
+        procedure_ = synthesis.project.procedure("tox_cons", tier)
+        return [o.name for o in readable_owners(procedure_.argument(extent), procedure_)]
+
+    def large_first(self, *more):
+        return consumer(
+            "use_impl",
+            integer("n_items", doc="items"),
+            *more,
+            real("norms", Intent.IN, "(n_items)", doc="the norms",
+                 directives=auto("norms", "large", "tox_dat")),
+            integer("n_large", doc="the size", directives=auto("n_large", "large", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
+            integer("norms_perm", Intent.IN, "(n_items)", doc="their order"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+
+    def test_a_caller_s_array_first_though_declared_later(self):
+        synthesis, bag = analysed(data_producers(), self.large_first())
+
+        assert bag.errors == (), bag.render()
+        assert self.owners(synthesis, "use_expert", "n_items") == ["norms_perm", "x"]
+
+    def test_the_computed_one_where_the_caller_passes_none(self):
+        producers_ = data_producers()
+        synthesis, _ = analysed(producers_, consumer(
+            "use_impl",
+            integer("n_items", doc="items"),
+            real("norms", Intent.IN, "(n_items)", doc="the norms", directives=auto(
+                "norms", "large", "tox_dat")),
+            integer("n_large", doc="the size", directives=auto("n_large", "large", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
+            real("x", Intent.IN, "(5)", doc="values"),
+            real("res", Intent.OUT, "(n_items)", doc="one per norm"),
+            integer("norms_perm", Intent.IN, "(n_large)", doc="an order"),
+        ))
+
+        assert self.owners(synthesis, "use_expert", "n_items") == ["norms"]
+
+    def test_asked_where_a_producer_is_passed_it(self):
+        from codegen.emit.error_arguments import source_of
+        from codegen.synthesize import is_derived
+
+        synthesis, bag = analysed(data_producers(), consumer(
+            "use_impl",
+            integer("n_items", doc="items"),
+            real("norms", Intent.IN, "(n_items)", doc="the norms", directives=auto(
+                "norms", "large", "tox_dat")),
+            integer("n_large", doc="the size", directives=auto("n_large", "large", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
+            integer("k", doc="a size", directives=auto("counted", "count", "tox_dat")),
+            real("tmp_k", Intent.OUT, "(k)", doc="scratch"),
+            real("x", Intent.IN, "(5)", doc="values"),
+            real("res", Intent.OUT, "(n_items)", doc="one per norm"),
+            integer("norms_perm", Intent.IN, "(n_large)", doc="an order"),
+        ))
+        expert = synthesis.project.procedure("tox_cons", "use_expert")
+
+        assert self.owners(synthesis, "use_expert", "n_items") == []
+        assert not is_derived(expert.argument("n_items"), expert)
+        # and no error blames an array the caller never passed
+        assert source_of(expert.argument("n_items")) is None
+
+    def test_an_optional_carrier_never_provides(self):
+        synthesis, _ = analysed(data_producers(), self.large_first(
+            real("weights", Intent.IN, "(n_items)", doc="optional", optional=True)))
+
+        assert self.owners(synthesis, "use_expert", "n_items") == ["norms_perm", "x", "weights"]
+
+
+class TestWhatIsPublished:
+    """The expert reaches Python and R iff their plain tier computes a value their expert takes
+    as a parameter -- or for a permutation or a prologue, as before."""
+
+    def test_a_data_array_the_expert_takes_publishes_it(self):
+        synthesis, _ = analysed(data_producers(), consumer(
+            "use_impl", integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            real("norms", Intent.IN, "(n_items)", doc="the norms",
+                 directives=auto("norms", "norms", "tox_dat")),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert "use_expert" not in synthesis.expert_only_in_fortran
+
+    def test_a_size_alone_does_not(self):
+        synthesis, _ = analysed(data_producers(), consumer(
+            "use_impl", integer("n_items", doc="items"),
+            integer("k", doc="a size", directives=auto("counted", "count", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(k)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result")))
+
+        assert "use_expert" in synthesis.expert_only_in_fortran
+
+    def test_a_kept_value_the_expert_takes_publishes_it(self):
+        # the E2 attack's fe2_kept_data: `norms` sizes a kept output through size(), so `foo`
+        # keeps it and Python's plain tier computes it; the expert takes it, and was hidden
+        synthesis, bag = analysed(data_producers(), consumer(
+            "use_impl", integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            real("norms", Intent.IN, "(n_items)", doc="the norms",
+                 directives=auto("norms", "norms", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(n_items)", doc="scratch"),
+            real("scaled", Intent.OUT, "(size(norms))", doc="kept")))
+        assert synthesis.project.procedure("tox_cons", "use").argument("norms") is not None, \
+            "the premise: foo keeps it"
+
+        assert "use_expert" not in synthesis.expert_only_in_fortran

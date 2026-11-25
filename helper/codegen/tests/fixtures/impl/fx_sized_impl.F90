@@ -15,7 +15,8 @@ module fx_sized_impl
     public :: fx_fill_impl, fx_work_total_impl, fx_two_producers_impl, fx_extent_total_impl
     public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl, fx_both_firsts_impl
     public :: fx_two_scales_impl, fx_norm_rank_impl, fx_large_total_impl
-    public :: fx_default_scale_impl, fx_padded_total_impl
+    public :: fx_default_scale_impl, fx_padded_total_impl, fx_large_first_impl
+    public :: fx_bounded_total_impl, fx_rounded_total_impl
 
 contains
 
@@ -313,6 +314,94 @@ contains
         total = sum(x) + sum(tmp_buf)
         if (present(padding)) total = total + 0.0_real64*padding
     end subroutine fx_padded_total_impl
+
+    !> summary: The sum of the large column norms, from an array declared before the matrix
+    !| author: A Developer
+    !| `norms` is declared before `x`, which carries the same extent. One producer call gives
+    !| `norms` and the size `n_large`; another, given `n_items`, sizes `tmp_buf`, and is called
+    !| first.
+    pure subroutine fx_large_first_impl(n_dims, n_items, scale, work_size, norms, x, norms_perm, &
+                                        n_large, tmp_large, tmp_buf, total)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+        integer(int32), intent(in) :: scale
+            !! slots of scratch per column
+        integer(int32), intent(in) :: work_size
+            !! size of the scratch
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | factor         | scale       |
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        integer(int32), dimension(n_items), intent(in) :: norms_perm
+            !! the order that sorts `norms` ascending
+        integer(int32), intent(in) :: n_large
+            !! how many norms exceed one
+            !! DM_OUTPUT_FROM(n_large, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_large), intent(out) :: tmp_large
+            !! the norms above one
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of the norms above one, plus a thousand times the size of the scratch
+        integer(int32) :: i, n_found
+        n_found = 0_int32
+        do i = 1_int32, n_items
+            if (norms(norms_perm(i)) > 1.0_real64 .and. n_found < n_large) then
+                n_found = n_found + 1_int32
+                tmp_large(n_found) = norms(norms_perm(i))
+            end if
+        end do
+        tmp_buf = 1000.0_real64
+        total = sum(tmp_large(1:n_found)) + sum(tmp_buf) + 0.0_real64*sum(x)
+    end subroutine fx_large_first_impl
+
+    !> summary: The sum of values bounded by a limit a producer computes, which sizes nothing
+    !| author: A Developer
+    !| `limit` is a value only the bound on `x` names, so the Python and R expert takes it as a
+    !| parameter, and is published for it. Its plain `foo` checks `x` against `limit` before
+    !| its producer has computed it, a defect of its own, so the tests call the expert alone.
+    pure subroutine fx_bounded_total_impl(n_items, x, scale, limit, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        integer(int32), intent(in) :: scale
+            !! the limit per value
+        integer(int32), intent(in) :: limit
+            !! the largest value allowed
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | factor         | scale       |
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+            !! DM_MAX(real(limit, real64))
+        real(real64), intent(out) :: total
+            !! the sum of `x`
+        total = sum(x) + 0.0_real64*scale
+    end subroutine fx_bounded_total_impl
+
+    !> summary: The sum of the values rounded, from an integer array a producer fills
+    !| author: A Developer
+    pure subroutine fx_rounded_total_impl(n_items, x, rounded, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), dimension(n_items), intent(in) :: rounded
+            !! `x`, rounded
+            !! DM_OUTPUT_FROM(rounded, fx_rounded, fx_producers, AUTO)
+        real(real64), intent(out) :: total
+            !! the sum of `rounded`
+        total = real(sum(rounded), real64) + 0.0_real64*sum(x)
+    end subroutine fx_rounded_total_impl
 
     !> summary: A result sized by a producer that takes the shape of an input
     !| author: A Developer

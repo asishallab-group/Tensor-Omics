@@ -18,6 +18,7 @@ from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
+from ..synthesize import is_derived
 from .doc_literals import render as _render
 from .doc_roxygen import render_roxygen
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -167,7 +168,7 @@ class RWrapperEmitter:
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived(argument)
+            and not is_derived(argument, wrapper)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -178,7 +179,7 @@ class RWrapperEmitter:
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived_in_c(argument)
+            and not self._is_derived_in_c(argument, wrapper)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -195,20 +196,11 @@ class RWrapperEmitter:
         return CCallEmitter()._must_be_supplied(argument, wrapper)
 
     @staticmethod
-    def _is_derived(argument: CArgument) -> bool:
-        roles = argument.source.roles if argument.source else None
-        return bool(roles and roles.is_derived)
+    def _is_derived_in_c(argument: CArgument, wrapper: CWrapper) -> bool:
+        """What the shim derives itself, so R does not pass it: the C emitter's own rule."""
+        from .c_call import CCallEmitter
 
-    @staticmethod
-    def _is_derived_in_c(argument: CArgument) -> bool:
-        # C derives extents/shapes/counts, but not computed args (R passes those)
-        roles = argument.source.roles if argument.source else None
-        if roles is None:
-            return False
-        if roles.is_computed:
-            return False
-        return (roles.is_inferable_extent or roles.is_inferable_shape_arg
-                or roles.is_mask_count)
+        return CCallEmitter._is_derived(argument, wrapper)
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:

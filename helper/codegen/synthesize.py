@@ -27,7 +27,7 @@ from .config import CONVENTIONS, Conventions, Paths
 from .diagnostics import DiagnosticBag
 from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
-from .ir.roles import analyse
+from .ir.roles import analyse, plain_of_an_expert
 from .ir.types import BaseType, FortranType, Intent
 from .ir.validate import function_result_problems
 
@@ -386,11 +386,6 @@ class WrapperSpec:
     mode_fix: ModeFix | None = None
     #: The procedure this implementation's `DM_PROLOGUE` names, resolved
     prologue: Procedure | None = None
-    #: Whether the allocating wrapper does anything beyond validating and allocating --
-    #: builds a permutation, or runs a prologue. That is what an expert caller would be
-    #: overriding, and where there is none the two tiers only differ in who allocates,
-    #: which the binding languages do for both (`SynthesisResult.expert_only_in_fortran`).
-    alloc_does_more: bool = False
 
 
 @dataclass(frozen=True)
@@ -407,17 +402,19 @@ class SynthesisResult:
 
         The name `foo_expert` promises control over what reaches the implementation. It can
         only keep that promise where `foo` does something an expert caller would want to do
-        differently -- sort a permutation, run a prologue. Where `foo` merely validates and
+        differently (`alloc_does_more`): sort a permutation, run a prologue, or compute a value
+        the Python and R expert takes as a parameter. Where `foo` merely validates and
         allocates, the binding languages allocate for *both* tiers anyway, so `foo_expert`
         would be the same call under a name claiming otherwise.
 
         Fortran and C keep both: there the expert tier really does hand the buffers over, so
-        a caller who wants to reuse them still can.
+        a caller who wants to reuse them still can. Asked after the semantic pass, which is
+        what resolves the producers `alloc_does_more` looks at.
         """
         return {
             spec.validating.name.lower()
             for spec in self.specs
-            if spec.allocating is not None and not spec.alloc_does_more
+            if spec.allocating is not None and not alloc_does_more(spec)
         }
 
     @property
@@ -479,7 +476,6 @@ def synthesize_wrappers(
                         allocating=allocating,
                         mode_fix=mode_fix,
                         prologue=prologue,
-                        alloc_does_more=_alloc_does_more(arguments, prologue, conventions),
                     )
                 )
 
@@ -566,19 +562,177 @@ def _reexport_modules(
     ]
 
 
-def _alloc_does_more(
-    arguments: Sequence[Argument], prologue, conventions: Conventions
-) -> bool:
+def alloc_does_more(spec: WrapperSpec, conventions: Conventions = CONVENTIONS) -> bool:
     """Whether the allocating wrapper does anything beyond validating and allocating.
 
-    Two things qualify, and they are what an expert caller would be taking over: a
-    permutation it seeds and heapsorts, which fixes one ordering; and a prologue, which may
-    derive an input or decide the call is degenerate and answer it directly. Sizing a buffer
-    through `DM_OUTPUT_FROM` does not -- that is part of allocating it, and every tier does
-    it. Neither does validating, which both wrappers do.
+    Three things qualify, and they are what an expert caller would be taking over: a
+    permutation it seeds and heapsorts, which fixes one ordering; a prologue, which may derive
+    an input or decide the call is degenerate and answer it directly; and a value the Python
+    and R plain tier computes -- through `foo`, or through the binding -- that their expert
+    takes as a parameter (E2): data reaching the implementation, such as an array a producer
+    fills, is control over what it is handed. Sizing a buffer through `DM_OUTPUT_FROM` does not
+    qualify -- that is part of allocating it, and the binding does it in every tier
+    (`binding_computes`). Neither does validating, which both wrappers do.
+
+    Evaluated after the semantic pass, where it is read (`expert_only_in_fortran`): whether a
+    value is a parameter of the expert depends on which producer call fills it, and the
+    producers are resolved there.
     """
-    taken = taken_over_arguments(arguments, conventions, prologue)
-    return prologue is not None or bool(sorted_permutations(taken, prologue, conventions))
+    taken = taken_over_arguments(spec.validating.arguments, conventions, spec.prologue)
+    if spec.prologue is not None or sorted_permutations(taken, spec.prologue, conventions):
+        return True
+    expert = spec.validating
+    # every AUTO value of a pair's expert is computed by its plain tier: by `foo` where it
+    # took the value over, by the binding where `foo` kept it
+    return any(
+        _automatic_plan(argument) is not None and not is_derived(argument, expert, conventions)
+        for argument in expert.arguments
+    )
+
+
+# -- what a binding computes (E2) and where it reads an extent (R4) -----------------------
+#
+# The binding facts, which `roles` cannot state: `roles.is_computed` and `roles.is_derived`
+# are what the Fortran `foo` does, and in a generated pair the Python and R expert tier does
+# less. Every emitter and ABI rule that decides what a binding asks for, computes or reads
+# asks these, never the IR facts, so that no two of them can disagree (`design/
+# language-layers.md`, "What a binding computes"). Each takes the tier -- a `CWrapper` or the
+# `Procedure` it wraps -- since one argument is computed in one tier and passed in another.
+# They read resolved producer plans, so they hold after the semantic pass.
+
+
+def _tier(wrapper) -> Procedure:
+    """The IR procedure of a binding tier: a `CWrapper`'s, or the procedure itself."""
+    return getattr(wrapper, "procedure", wrapper)
+
+
+def _ir_argument(argument):
+    """The IR argument behind a binding's (`CArgument.source`), or the argument itself."""
+    return argument.source if hasattr(argument, "source") else argument
+
+
+def _automatic_plan(argument):
+    """The `DM_OUTPUT_FROM(..., AUTO)` plan resolved for `argument`, or None."""
+    roles = argument.roles if argument is not None else None
+    plan = roles.computed_from if roles is not None else None
+    return plan if plan is not None and plan.is_automatic else None
+
+
+def is_generated_expert(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether `procedure` is the expert half of a generated pair."""
+    module = procedure.module
+    project = module.project if module is not None else None
+    return project is not None and plain_of_an_expert(procedure, project, conventions) is not None
+
+
+def _computed_by_the_expert(expert: Procedure, conventions: Conventions) -> set[str]:
+    """The AUTO values a generated expert's binding computes, lower-cased.
+
+    One that sizes a buffer the binding allocates -- its name is in an extent or the length
+    of a work array or an output, other than as the array operand of `size()`, which reads the
+    shape of an array the caller passed -- and every value the same producer call fills: a
+    size can depend on the values that call computes (a count, a pack), so the two come from
+    one call or the size need not fit the data.
+    """
+    allocated = [a for a in expert.arguments
+                 if is_temporary(a, conventions) or a.intent is Intent.OUT]
+    named = {named.name.lower() for a in allocated for named in size_names(a)
+             if not named.is_size_operand}
+    automatic = [(a, _automatic_plan(a)) for a in expert.arguments]
+    automatic = [(a, plan) for a, plan in automatic if plan is not None]
+    calls = {plan.call for a, plan in automatic if a.name.lower() in named}
+    return {a.name.lower() for a, plan in automatic if plan.call in calls}
+
+
+def binding_computes(argument, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether the Python and R binding of `wrapper` computes `argument` through its producer (E2).
+
+    In the expert tier of a generated pair, only a value that sizes a buffer the binding
+    allocates, and whatever one call fills with it (`_computed_by_the_expert`); every other
+    AUTO value is the caller's to pass there, as it is in Fortran and C. In every other tier --
+    the plain one, a lone wrapper, a hand-written consumer -- every AUTO value it has.
+    """
+    argument, procedure = _ir_argument(argument), _tier(wrapper)
+    if _automatic_plan(argument) is None:
+        return False
+    if not is_generated_expert(procedure, conventions):
+        return True
+    return argument.name.lower() in _computed_by_the_expert(procedure, conventions)
+
+
+def carries_computed(owner, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether the binding fills `owner` itself, so an extent read off it waits for the producers.
+
+    An input the binding computes, or an output whose shape argument it computes (serde's
+    `arr`, sized by the `arr_shape` its producer returns).
+    """
+    owner, procedure = _ir_argument(owner), _tier(wrapper)
+    if owner.intent is not None and owner.intent.is_input:
+        return binding_computes(owner, procedure, conventions)
+    shape = owner.roles.shape_arg if owner.roles is not None else None
+    return shape is not None and binding_computes(shape, procedure, conventions)
+
+
+def _read_by_a_producer(argument: Argument, procedure: Procedure,
+                        conventions: Conventions) -> bool:
+    """Whether a producer the binding calls is passed `argument` (its `binding_inputs`)."""
+    name = argument.name.lower()
+    for other in procedure.arguments:
+        plan = _automatic_plan(other)
+        if plan is None or not binding_computes(other, procedure, conventions):
+            continue
+        if any(supply.argument is not None and supply.argument.lower() == name
+               for supply in plan.binding_inputs):
+            return True
+    return False
+
+
+def readable_owners(argument, wrapper, conventions: Conventions = CONVENTIONS) -> tuple:
+    """The arrays the binding of `wrapper` reads the extent `argument` off, the first one first (R4).
+
+    1. A required array the caller passes, whenever one carries it: read before the producers,
+       so any of them may be passed it. These come first; an optional one follows them, and is
+       compared with it when given.
+    2. Otherwise an array the binding fills itself (`carries_computed`), read after the
+       producers -- but only where no producer is passed the extent, which would need it first.
+    3. Otherwise none: the extent is asked of the caller, as one only outputs carry is, and no
+       error names an array the caller never passed (`error_arguments.source_of`).
+
+    An optional array never provides. Empty for anything that is no extent; `roles.readable_owners`
+    is the IR's answer, which counts every input alike.
+    """
+    argument, procedure = _ir_argument(argument), _tier(wrapper)
+    roles = argument.roles if argument is not None else None
+    if roles is None:
+        return ()
+    passed, computed = [], []
+    for owner in roles.readable_owners:
+        (computed if carries_computed(owner, procedure, conventions) else passed).append(owner)
+    required = [owner for owner in passed if not owner.optional]
+    optional = [owner for owner in passed if owner.optional]
+    if required:
+        return tuple(required + optional)
+    if computed:
+        if _read_by_a_producer(argument, procedure, conventions):
+            return ()
+        return tuple(computed + optional)
+    return tuple(optional)  # `validate` refuses an extent only optional arrays carry
+
+
+def is_derived(argument, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether the binding of `wrapper` works `argument` out itself, rather than asking for it.
+
+    Derived in this tier: computed through its producer (`binding_computes`), read off a
+    carrier (`readable_owners`), a shape read off its array, or a mask's count. The tier-aware
+    counterpart of `roles.is_derived`, which says what the Fortran `foo` does.
+    """
+    argument, procedure = _ir_argument(argument), _tier(wrapper)
+    roles = argument.roles if argument is not None else None
+    if roles is None:
+        return False
+    return (binding_computes(argument, procedure, conventions)
+            or bool(readable_owners(argument, procedure, conventions))
+            or roles.is_inferable_shape_arg or roles.is_mask_count)
 
 
 def _prologue_of(impl: Procedure, project: Project):
