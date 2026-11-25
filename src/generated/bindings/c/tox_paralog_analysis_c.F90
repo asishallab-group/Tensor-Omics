@@ -132,9 +132,13 @@ contains
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog
+            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
+            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
+            !! is refused with `ERR_INVALID_INPUT`.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes
+            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
+            !! direction either, and is dropped from the dosage effect's search like one past
+            !! `max_angle`.
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
@@ -233,9 +237,13 @@ contains
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog
+            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
+            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
+            !! is refused with `ERR_INVALID_INPUT`.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes
+            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
+            !! direction either, and is dropped from the dosage effect's search like one past
+            !! `max_angle`.
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
@@ -341,9 +349,13 @@ contains
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog
+            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
+            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
+            !! is refused with `ERR_INVALID_INPUT`.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes
+            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
+            !! direction either, and is dropped from the dosage effect's search like one past
+            !! `max_angle`.
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results
@@ -447,9 +459,13 @@ contains
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog
+            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
+            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
+            !! is refused with `ERR_INVALID_INPUT`.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes
+            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
+            !! direction either, and is dropped from the dosage effect's search like one past
+            !! `max_angle`.
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(c_int), intent(out), target :: n_results

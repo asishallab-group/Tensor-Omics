@@ -85,9 +85,13 @@ contains
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! DM_MIN(M_BIT_MASK_N_WORDS(n_genes))
         real(real64), dimension(n_dims), intent(in) :: ancestor
-            !! expression vector of ancestral ortholog
+            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
+            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
+            !! is refused with `ERR_INVALID_INPUT`.
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
-            !! expression vectors of genes
+            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
+            !! direction either, and is dropped from the dosage effect's search like one past
+            !! `max_angle`.
         integer(int32), intent(in) :: pattern_mode
             !! used pattern for detection
             !!
@@ -160,6 +164,12 @@ contains
         integer(int32) :: i_gene, subset_size, n_active_masks, n_new_active_masks, last_filtered_paralog_idx
 
         call set_ok(ierr)
+
+        ! an ancestor of zeros gives the dosage effect no direction to measure angles against
+        if (pattern_mode == MODE_DOSAGE_PATTERN .and. all(ancestor == 0.0_real64)) then
+            call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
+            return
+        end if
 
         if (max_subset_size == 0) then
             n_results = 0
@@ -302,8 +312,13 @@ contains
                         ! compute sum vector of all subset's genes
                         call add_vector(tmp_paralog_vector, genes(:, i_gene))
 
-                        call angle_between(tmp_paralog_vector, ancestor, n_dims, subset_angle, ierr)
-                        if (is_err(ierr)) return
+                        ! a sum of exactly zero has no direction: dropped like a sum past max_angle
+                        if (all(tmp_paralog_vector == 0.0_real64)) then
+                            subset_angle = huge(subset_angle)
+                        else
+                            call angle_between(tmp_paralog_vector, ancestor, n_dims, subset_angle, ierr)
+                            if (is_err(ierr)) return
+                        end if
 
                         ! If angle of the subset vector is close enough, there may be dosage effect
                         if (subset_angle <= max_angle) then

@@ -45,8 +45,12 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param ancestor a numeric vector. expression vector of ancestral ortholog
-#' @param genes a numeric matrix. expression vectors of genes
+#' @param ancestor a numeric vector. expression vector of ancestral ortholog. For the dosage effect it must not be all
+#'   zeros, which have no direction to measure a subset's angle against: such an ancestor
+#'   is refused with `ERR_INVALID_INPUT`.
+#' @param genes a numeric matrix. expression vectors of genes. A subset whose vectors sum to exactly zero has no
+#'   direction either, and is dropped from the dosage effect's search like one past
+#'   `max_angle`.
 #' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
@@ -99,8 +103,12 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param ancestor a numeric vector. expression vector of ancestral ortholog
-#' @param genes a numeric matrix. expression vectors of genes
+#' @param ancestor a numeric vector. expression vector of ancestral ortholog. For the dosage effect it must not be all
+#'   zeros, which have no direction to measure a subset's angle against: such an ancestor
+#'   is refused with `ERR_INVALID_INPUT`.
+#' @param genes a numeric matrix. expression vectors of genes. A subset whose vectors sum to exactly zero has no
+#'   direction either, and is dropped from the dosage effect's search like one past
+#'   `max_angle`.
 #' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work

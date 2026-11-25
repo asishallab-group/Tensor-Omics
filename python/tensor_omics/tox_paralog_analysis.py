@@ -242,9 +242,13 @@ def detect_dosage_effect(
     Parameters
     ----------
     ancestor : np.ndarray[np.float64] of shape (n_dims,)
-        expression vector of ancestral ortholog
+        expression vector of ancestral ortholog. For the dosage effect it must not be all
+        zeros, which have no direction to measure a subset's angle against: such an ancestor
+        is refused with `ERR_INVALID_INPUT`.
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
-        expression vectors of genes
+        expression vectors of genes. A subset whose vectors sum to exactly zero has no
+        direction either, and is dropped from the dosage effect's search like one past
+        `max_angle`.
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
         bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
     max_subset_size : int
@@ -362,9 +366,13 @@ def detect_subfunctionalization(
     Parameters
     ----------
     ancestor : np.ndarray[np.float64] of shape (n_dims,)
-        expression vector of ancestral ortholog
+        expression vector of ancestral ortholog. For the dosage effect it must not be all
+        zeros, which have no direction to measure a subset's angle against: such an ancestor
+        is refused with `ERR_INVALID_INPUT`.
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
-        expression vectors of genes
+        expression vectors of genes. A subset whose vectors sum to exactly zero has no
+        direction either, and is dropped from the dosage effect's search like one past
+        `max_angle`.
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
         bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
     max_subset_size : int
