@@ -191,8 +191,11 @@ contains
     !| - no gene kept (the word 0), and only gene 2 kept (the word 2): no pair to form;
     !| - all three kept, `max_subset_size` 1: a single gene is never a result;
     !| - all three kept, `max_subset_size` 0: the early exit, nothing checked;
-    !| - a problem of one gene.
-    !| `n_results` is 0 each time. The work array holds three subsets, room for the starting genes.
+    !| - a problem of one gene;
+    !| - no gene kept and only gene 2 kept, with a work array of no subsets, which is what the
+    !|   sizing gives for fewer than two kept genes (and what the Python and R bindings pass on).
+    !| `n_results` is 0 each time. The work array holds three subsets, room for the starting genes,
+    !| but in the last case.
     subroutine test_detect_subfunc_no_candidates()
         integer(int32), parameter :: n_genes = 3, n_slots = 3, n_cases = 4
         real(real64), parameter :: ancestor(2) = [2.0_real64, 0.0_real64]
@@ -220,6 +223,16 @@ contains
                                          index_order, ierr)
         call assert_err(ierr, ERR_OK, "test_detect_subfunc_no_candidates: one gene, ierr")
         call assert_equal_int(n_results, 0_int32, "test_detect_subfunc_no_candidates: one gene")
+
+        do i_case = 1, 2
+            mask = case_masks(i_case)
+            n_results = UNWRITTEN_COUNT
+            call detect_subfunctionalization(ancestor, genes, n_genes, 2, mask, 1, n_results, 3, subsets, 0, 0.0_real64, &
+                                             norms, index_order, ierr)
+            call assert_err(ierr, ERR_OK, "test_detect_subfunc_no_candidates: "//trim(case_names(i_case))//", no subsets, ierr")
+            call assert_equal_int(n_results, 0_int32, "test_detect_subfunc_no_candidates: "//trim(case_names(i_case)) &
+                                  //", no subsets")
+        end do
     end subroutine test_detect_subfunc_no_candidates
 
     !> The documented chain, filter -> size -> detect, on the mixed family (see the fixtures), after
@@ -303,7 +316,8 @@ contains
     !|   for 33, are ERR_INVALID_INPUT;
     !| - `max_subset_size` (argument 8) is ERR_INVALID_INPUT at -1 (0 is the early exit in
     !|   `test_detect_subfunc_no_candidates`);
-    !| - `n_paralog_subsets` (argument 10): ERR_EMPTY_INPUT at 0, ERR_INVALID_INPUT at -1.
+    !| - `n_paralog_subsets` (argument 10): ERR_INVALID_INPUT at -1; 0 passes where nothing is
+    !|   to be stored (`test_detect_subfunc_no_candidates`).
     subroutine test_detect_subfunc_dimensions()
         real(real64) :: genes_33(2, 33), norms_33(33)
         integer(int32) :: perm_33(33), mask(1), subsets(1, 3), n_results, ierr, i_gene
@@ -331,8 +345,6 @@ contains
         call subfunc(BINARY_GENES, 3, 2, 1, -1, 3, BINARY_NORMS, BINARY_PERM)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_subfunc_dimensions: max_subset_size -1", 8)
 
-        call subfunc(BINARY_GENES, 3, 2, 1, 2, 0, BINARY_NORMS, BINARY_PERM)
-        call assert_err(ierr, ERR_EMPTY_INPUT, "test_detect_subfunc_dimensions: n_paralog_subsets 0", 10)
         call subfunc(BINARY_GENES, 3, 2, 1, 2, -1, BINARY_NORMS, BINARY_PERM)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_subfunc_dimensions: n_paralog_subsets -1", 10)
     contains

@@ -227,8 +227,11 @@ contains
     !| - no gene kept (the word 0), and only gene 2 kept (the word 2): no pair to form;
     !| - all three kept, `max_subset_size` 1: a single gene is never a result;
     !| - all three kept, `max_subset_size` 0: the early exit, nothing checked;
-    !| - a problem of one gene.
-    !| `n_results` is 0 each time. The work array holds three subsets, room for the starting genes.
+    !| - a problem of one gene;
+    !| - no gene kept and only gene 2 kept, with a work array of no subsets, which is what the
+    !|   sizing gives for fewer than two kept genes (and what the Python and R bindings pass on).
+    !| `n_results` is 0 each time. The work array holds three subsets, room for the starting genes,
+    !| but in the last case.
     subroutine test_detect_dosage_effect_no_candidates()
         integer(int32), parameter :: n_genes = 3, n_slots = 3
         integer(int32), parameter :: n_cases = 4
@@ -254,6 +257,16 @@ contains
         call detect_dosage_effect(ancestor, genes(:, 1), 1, 2, mask, 1, n_results, 1, subsets, 1, ierr=ierr)
         call assert_err(ierr, ERR_OK, "test_detect_dosage_effect_no_candidates: one gene, ierr")
         call assert_equal_int(n_results, 0_int32, "test_detect_dosage_effect_no_candidates: one gene")
+
+        do i_case = 1, 2
+            mask = case_masks(i_case)
+            n_results = UNWRITTEN_COUNT
+            call detect_dosage_effect(ancestor, genes, n_genes, 2, mask, 1, n_results, 3, subsets, 0, ierr=ierr)
+            call assert_err(ierr, ERR_OK, "test_detect_dosage_effect_no_candidates: "//trim(case_names(i_case)) &
+                            //", no subsets, ierr")
+            call assert_equal_int(n_results, 0_int32, "test_detect_dosage_effect_no_candidates: "//trim(case_names(i_case)) &
+                                  //", no subsets")
+        end do
     end subroutine test_detect_dosage_effect_no_candidates
 
     !> The documented chain, filter -> size -> detect, on the mixed family (see the fixtures), after
@@ -311,7 +324,9 @@ contains
     !|   for 33, are ERR_INVALID_INPUT;
     !| - `max_subset_size` (argument 8) is ERR_INVALID_INPUT at -1 (0 is the early exit in
     !|   `test_detect_dosage_effect_no_candidates`);
-    !| - `n_paralog_subsets` (argument 10): ERR_EMPTY_INPUT at 0, ERR_INVALID_INPUT at -1.
+    !| - `n_paralog_subsets` (argument 10): ERR_INVALID_INPUT at -1; 0 passes where nothing is
+    !|   to be stored (`test_detect_dosage_effect_no_candidates`) and is ERR_SIZE_MISMATCH where
+    !|   something is (`test_detect_dosage_effect_starts_in_the_array`).
     subroutine test_detect_dosage_effect_dimensions()
         real(real64) :: genes_33(2, 33)
         integer(int32) :: mask(1), subsets(1, 3), n_results, ierr
@@ -337,8 +352,6 @@ contains
         call detect_dosage_effect(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, -1, subsets, 3, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_dosage_effect_dimensions: max_subset_size -1", 8)
 
-        call detect_dosage_effect(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 2, subsets, 0, ierr=ierr)
-        call assert_err(ierr, ERR_EMPTY_INPUT, "test_detect_dosage_effect_dimensions: n_paralog_subsets 0", 10)
         call detect_dosage_effect(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 2, subsets, -1, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_dosage_effect_dimensions: n_paralog_subsets -1", 10)
     end subroutine test_detect_dosage_effect_dimensions
@@ -517,7 +530,8 @@ contains
 
     !> The detection starts from each kept gene but the last, one subset each, and these must fit
     !| the work array too: three kept genes start two subsets, so a work array of one is
-    !| ERR_SIZE_MISMATCH, naming `n_paralog_subsets` (argument 10), before anything is written.
+    !| ERR_SIZE_MISMATCH, naming `n_paralog_subsets` (argument 10), before anything is written;
+    !| so is a work array of none.
     !| The caller's array has a second column the call is not given, holding 12345; it must stay
     !| so. (The starting subsets used to be written unchecked: past the array's end, into that
     !| column, or a bounds-check abort in a checking build.)
@@ -530,6 +544,12 @@ contains
                                   max_angle=0.0_real64, gain_gamma=100.0_real64, ierr=ierr)
         call assert_err(ierr, ERR_SIZE_MISMATCH, "test_detect_dosage_effect_starts_in_the_array: refused", 10)
         call assert_equal_int(subsets(1, 2), 12345_int32, "test_detect_dosage_effect_starts_in_the_array: column 2 untouched")
+
+        subsets = 12345
+        call detect_dosage_effect(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 0, &
+                                  max_angle=0.0_real64, gain_gamma=100.0_real64, ierr=ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_detect_dosage_effect_starts_in_the_array: no subsets", 10)
+        call assert_equal_int(subsets(1, 1), 12345_int32, "test_detect_dosage_effect_starts_in_the_array: column 1 untouched")
     end subroutine test_detect_dosage_effect_starts_in_the_array
 
 end module mod_test_detect_dosage_effect
