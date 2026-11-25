@@ -224,16 +224,17 @@ contains
         call assert_err(ierr, ERR_INVALID_INPUT, "test_calc_size_bounds: n_mask_chunks -1", 2)
     end subroutine test_calc_size_bounds
 
-    !> BUG (fails today): the subset size is to be cut to "the maximum valid size" when the work
-    !| array size would pass `huge`, but it is cut where an intermediate product of the routine's
-    !| count, C(F, s - 1)*(F - s + 1), passes `huge`, far below. The largest valid sizes, by the
-    !| count in this module's header (int32's `huge` is 2,147,483,647):
-    !| - F = 30, m = 30: 2**29 - 1 = 536,870,911 fits; today (14, 268,435,455);
-    !| - F = 32, m = 32: 2**31 - 1, `huge` itself, fits; today (11, 160,645,503);
+    !> Regression: the subset size is cut to "the maximum valid size", the largest whose work
+    !| array holds at most `huge` subsets. It used to be cut where an intermediate product of the
+    !| routine's count, C(F, s - 1)*(F - s + 1), passed `huge`, far below. The largest valid sizes,
+    !| by the count in this module's header (int32's `huge` is 2,147,483,647), and what came back
+    !| before the sizing counted in int64:
+    !| - F = 30, m = 30: 2**29 - 1 = 536,870,911 fits; it used to give (14, 268,435,455);
+    !| - F = 32, m = 32: 2**31 - 1, `huge` itself, fits; it used to give (11, 160,645,503);
     !| - F = 33, m = 33: 15 is the largest size that fits, 1,846,943,452 (16 would be
-    !|   2,448,023,842); today (11, 236,618,692);
+    !|   2,448,023,842); it used to give (11, 236,618,692);
     !| - F = 100, m = 16 (the old suite's overflow case, which only checked that the size changed):
-    !|   6 fits, 1,195,978,575 (7 would be 16,083,010,119); today (5, 75,449,319).
+    !|   6 fits, 1,195,978,575 (7 would be 16,083,010,119); it used to give (5, 75,449,319).
     subroutine test_calc_size_caps_at_largest_fit()
         integer(int32) :: one_word(1), two_words(2), four_words(4)
 

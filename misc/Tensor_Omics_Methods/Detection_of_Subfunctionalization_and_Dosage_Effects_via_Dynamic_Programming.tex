@@ -59,7 +59,7 @@
                     \item Otherwise, apply pruning logic:
                     \item For \emph{subfunctionalization}:
                           \begin{itemize}
-                              \item Check the minimal length of any still-active paralog:
+                              \item Check the minimal length among all paralogs after the subset's last one in index order, whether active (kept by the angle filter) or not:
                                     \[
                                     \min_{i} \|\vec{p}_i\| \leq \|\vec{r}\|
                                     \]
@@ -110,7 +110,7 @@ for k = 2 to MAX_PARALOGS:
                 if dosage:
                     if angle(sum_vector, o) too large:
                         continue
-                if min(paralog norms) > norm(residual):
+                if min(norms of all paralogs after the last one in bitmask) > norm(residual):
                     continue
                 next_active_sets.append(candidate_mask)
     active_sets = next_active_sets

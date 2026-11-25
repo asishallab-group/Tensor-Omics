@@ -51,12 +51,15 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param ancestor a numeric vector. expression vector of ancestral ortholog. For the dosage effect it must not be all
-#'   zeros, which have no direction to measure a subset's angle against: such an ancestor
-#'   is refused with `ERR_INVALID_INPUT`.
-#' @param genes a numeric matrix. expression vectors of genes. A subset whose vectors sum to exactly zero has no
-#'   direction either, and is dropped from the dosage effect's search like one past
-#'   `max_angle`.
+#' @param ancestor a numeric vector. expression vector of ancestral ortholog. Dosage effect only: it must not be all
+#'   zeros, which have no direction to measure a subset's angle against, and such an
+#'   ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
+#' @param genes a numeric matrix. expression vectors of genes. Dosage effect only: a subset whose summed vector has
+#'   every component exactly 0.0, bit for bit, has no direction either, and is dropped
+#'   from the search like one past `max_angle`. A sum that only rounds to near zero is
+#'   not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+#'   computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+#'   #223).
 #' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
 #'   A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
 #'   ignores such bits.
@@ -117,12 +120,15 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param ancestor a numeric vector. expression vector of ancestral ortholog. For the dosage effect it must not be all
-#'   zeros, which have no direction to measure a subset's angle against: such an ancestor
-#'   is refused with `ERR_INVALID_INPUT`.
-#' @param genes a numeric matrix. expression vectors of genes. A subset whose vectors sum to exactly zero has no
-#'   direction either, and is dropped from the dosage effect's search like one past
-#'   `max_angle`.
+#' @param ancestor a numeric vector. expression vector of ancestral ortholog. Dosage effect only: it must not be all
+#'   zeros, which have no direction to measure a subset's angle against, and such an
+#'   ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
+#' @param genes a numeric matrix. expression vectors of genes. Dosage effect only: a subset whose summed vector has
+#'   every component exactly 0.0, bit for bit, has no direction either, and is dropped
+#'   from the search like one past `max_angle`. A sum that only rounds to near zero is
+#'   not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+#'   computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+#'   #223).
 #' @param filtered_paralogs_bitmask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
 #'   A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
 #'   ignores such bits.
@@ -142,8 +148,10 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_bitmask, max
 #'   The minimum valid value is `0.0`.
 #' @param sorted_paralog_norms_perm a integer vector. ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
 #'   while the smallest norm among all genes after its last one -- kept by the filter or
-#'   not -- is at most the length of its residual. Only the entries' range is checked; an
-#'   order that is no ascending permutation gives wrong minima.
+#'   not -- is at most the length of its residual. Only the entries' range is checked: a
+#'   permutation that is not ascending gives wrong minima, and an order with a repeated
+#'   entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
+#'   pruning reads uninitialised values.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
 #' @return a named list with elements:
@@ -278,7 +286,7 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
 #'   nothing to size a work array for, which is reported back as a size of zero.
 #'   The minimum valid value is `0`.
 #'   It comes back lowered to the number of kept genes if it is larger, and lowered further
-#'   to the largest size whose work array holds at most `huge(0)` subsets, the
+#'   to the largest size whose work array holds at most 2**31 - 1 (2,147,483,647) subsets, the
 #'   maximum valid size, where the size asked for would need more.
 #' @param n_genes a integer scalar. number of genes. It is checked before `n_mask_chunks`, so a mask of too few words, none
 #'   included, is reported as `n_genes` out of range.
@@ -291,7 +299,7 @@ filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, thresho
 #'     nothing to size a work array for, which is reported back as a size of zero.
 #'     The minimum valid value is `0`.
 #'     It comes back lowered to the number of kept genes if it is larger, and lowered further
-#'     to the largest size whose work array holds at most `huge(0)` subsets, the
+#'     to the largest size whose work array holds at most 2**31 - 1 (2,147,483,647) subsets, the
 #'     maximum valid size, where the size asked for would need more.}
 #'   \item{work_array_size}{a integer scalar. The number of subsets the work array must hold in the worst case, for the
 #'     `max_subset_size` handed back}

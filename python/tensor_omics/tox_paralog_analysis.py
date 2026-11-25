@@ -7,8 +7,8 @@ in index order, starting from single genes. At every extension step the candidat
 the pattern-specific criterion (small angle plus magnitude gain for dosage effect, or bounded
 residual distance for subfunctionalization). A candidate is pruned instead of being extended further
 by a heuristic rule, issue #64's: for the dosage effect when its summed vector is past the angle
-bound, for subfunctionalization when every gene that could still join it is longer than its
-residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
+bound, for subfunctionalization when every gene after the candidate's last one (kept by the
+filter or not) is longer than its residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
 extension would have met the criterion.
 
 There is a routine per pattern rather than one taking a pattern flag:
@@ -251,13 +251,16 @@ def detect_dosage_effect(
     Parameters
     ----------
     ancestor : np.ndarray[np.float64] of shape (n_dims,)
-        expression vector of ancestral ortholog. For the dosage effect it must not be all
-        zeros, which have no direction to measure a subset's angle against: such an ancestor
-        is refused with `ERR_INVALID_INPUT`.
+        expression vector of ancestral ortholog. Dosage effect only: it must not be all
+        zeros, which have no direction to measure a subset's angle against, and such an
+        ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
-        expression vectors of genes. A subset whose vectors sum to exactly zero has no
-        direction either, and is dropped from the dosage effect's search like one past
-        `max_angle`.
+        expression vectors of genes. Dosage effect only: a subset whose summed vector has
+        every component exactly 0.0, bit for bit, has no direction either, and is dropped
+        from the search like one past `max_angle`. A sum that only rounds to near zero is
+        not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+        computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+        #223).
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
         bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
         A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
@@ -383,13 +386,16 @@ def detect_subfunctionalization(
     Parameters
     ----------
     ancestor : np.ndarray[np.float64] of shape (n_dims,)
-        expression vector of ancestral ortholog. For the dosage effect it must not be all
-        zeros, which have no direction to measure a subset's angle against: such an ancestor
-        is refused with `ERR_INVALID_INPUT`.
+        expression vector of ancestral ortholog. Dosage effect only: it must not be all
+        zeros, which have no direction to measure a subset's angle against, and such an
+        ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
-        expression vectors of genes. A subset whose vectors sum to exactly zero has no
-        direction either, and is dropped from the dosage effect's search like one past
-        `max_angle`.
+        expression vectors of genes. Dosage effect only: a subset whose summed vector has
+        every component exactly 0.0, bit for bit, has no direction either, and is dropped
+        from the search like one past `max_angle`. A sum that only rounds to near zero is
+        not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+        computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+        #223).
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
         bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
         A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
@@ -414,8 +420,10 @@ def detect_subfunctionalization(
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
         ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
         while the smallest norm among all genes after its last one -- kept by the filter or
-        not -- is at most the length of its residual. Only the entries' range is checked; an
-        order that is no ascending permutation gives wrong minima.
+        not -- is at most the length of its residual. Only the entries' range is checked: a
+        permutation that is not ascending gives wrong minima, and an order with a repeated
+        entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
+        pruning reads uninitialised values.
         The minimum valid value is `1`.
         The maximum valid value is `n_genes`.
 
@@ -708,7 +716,7 @@ def calc_paralog_subsets_bitmasks_size(
         nothing to size a work array for, which is reported back as a size of zero.
         The minimum valid value is `0`.
         It comes back lowered to the number of kept genes if it is larger, and lowered further
-        to the largest size whose work array holds at most `huge(0)` subsets, the
+        to the largest size whose work array holds at most 2**31 - 1 (2,147,483,647) subsets, the
         maximum valid size, where the size asked for would need more.
     n_genes : int
         number of genes. It is checked before `n_mask_chunks`, so a mask of too few words, none
@@ -729,7 +737,7 @@ def calc_paralog_subsets_bitmasks_size(
             nothing to size a work array for, which is reported back as a size of zero.
             The minimum valid value is `0`.
             It comes back lowered to the number of kept genes if it is larger, and lowered further
-            to the largest size whose work array holds at most `huge(0)` subsets, the
+            to the largest size whose work array holds at most 2**31 - 1 (2,147,483,647) subsets, the
             maximum valid size, where the size asked for would need more.
         work_array_size : int
             The number of subsets the work array must hold in the worst case, for the

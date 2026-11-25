@@ -9,8 +9,8 @@
 !| the pattern-specific criterion (small angle plus magnitude gain for dosage effect, or bounded
 !| residual distance for subfunctionalization). A candidate is pruned instead of being extended further
 !| by a heuristic rule, issue #64's: for the dosage effect when its summed vector is past the angle
-!| bound, for subfunctionalization when every gene that could still join it is longer than its
-!| residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
+!| bound, for subfunctionalization when every gene after the candidate's last one (kept by the
+!| filter or not) is longer than its residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
 !| extension would have met the criterion.
 !|
 !| There is a routine per pattern rather than one taking a pattern flag:
@@ -135,18 +135,21 @@ contains
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
             !! gene but the last starts a subset, so fewer slots than that are refused with
-            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! `ERR_SIZE_MISMATCH` before any subset is stored, and so is a search that runs out of
             !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
-            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
-            !! is refused with `ERR_INVALID_INPUT`.
+            !! expression vector of ancestral ortholog. Dosage effect only: it must not be all
+            !! zeros, which have no direction to measure a subset's angle against, and such an
+            !! ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
-            !! direction either, and is dropped from the dosage effect's search like one past
-            !! `max_angle`.
+            !! expression vectors of genes. Dosage effect only: a subset whose summed vector has
+            !! every component exactly 0.0, bit for bit, has no direction either, and is dropped
+            !! from the search like one past `max_angle`. A sum that only rounds to near zero is
+            !! not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+            !! computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+            !! #223).
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
             !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
@@ -247,18 +250,21 @@ contains
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
             !! gene but the last starts a subset, so fewer slots than that are refused with
-            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! `ERR_SIZE_MISMATCH` before any subset is stored, and so is a search that runs out of
             !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
-            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
-            !! is refused with `ERR_INVALID_INPUT`.
+            !! expression vector of ancestral ortholog. Dosage effect only: it must not be all
+            !! zeros, which have no direction to measure a subset's angle against, and such an
+            !! ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
-            !! direction either, and is dropped from the dosage effect's search like one past
-            !! `max_angle`.
+            !! expression vectors of genes. Dosage effect only: a subset whose summed vector has
+            !! every component exactly 0.0, bit for bit, has no direction either, and is dropped
+            !! from the search like one past `max_angle`. A sum that only rounds to near zero is
+            !! not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+            !! computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+            !! #223).
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
             !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
@@ -366,18 +372,21 @@ contains
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
             !! gene but the last starts a subset, so fewer slots than that are refused with
-            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! `ERR_SIZE_MISMATCH` before any subset is stored, and so is a search that runs out of
             !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
-            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
-            !! is refused with `ERR_INVALID_INPUT`.
+            !! expression vector of ancestral ortholog. Dosage effect only: it must not be all
+            !! zeros, which have no direction to measure a subset's angle against, and such an
+            !! ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
-            !! direction either, and is dropped from the dosage effect's search like one past
-            !! `max_angle`.
+            !! expression vectors of genes. Dosage effect only: a subset whose summed vector has
+            !! every component exactly 0.0, bit for bit, has no direction either, and is dropped
+            !! from the search like one past `max_angle`. A sum that only rounds to near zero is
+            !! not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+            !! computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+            !! #223).
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
             !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
@@ -409,8 +418,10 @@ contains
         integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
             !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
             !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked; an
-            !! order that is no ascending permutation gives wrong minima.
+            !! not -- is at most the length of its residual. Only the entries' range is checked: a
+            !! permutation that is not ascending gives wrong minima, and an order with a repeated
+            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
+            !! pruning reads uninitialised values.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         integer(c_int), intent(out), target :: ierr
@@ -487,18 +498,21 @@ contains
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
             !! gene but the last starts a subset, so fewer slots than that are refused with
-            !! `ERR_SIZE_MISMATCH` before anything is stored, and so is a search that runs out of
+            !! `ERR_SIZE_MISMATCH` before any subset is stored, and so is a search that runs out of
             !! slots later; zero slots are enough when fewer than two genes are kept.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis(module):calc_paralog_subsets_bitmasks_size]].
             !! The minimum valid value is `0_int32`.
         real(c_double), dimension(n_dims), intent(in), target :: ancestor
-            !! expression vector of ancestral ortholog. For the dosage effect it must not be all
-            !! zeros, which have no direction to measure a subset's angle against: such an ancestor
-            !! is refused with `ERR_INVALID_INPUT`.
+            !! expression vector of ancestral ortholog. Dosage effect only: it must not be all
+            !! zeros, which have no direction to measure a subset's angle against, and such an
+            !! ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
         real(c_double), dimension(n_dims, n_genes), intent(in), target :: genes
-            !! expression vectors of genes. A subset whose vectors sum to exactly zero has no
-            !! direction either, and is dropped from the dosage effect's search like one past
-            !! `max_angle`.
+            !! expression vectors of genes. Dosage effect only: a subset whose summed vector has
+            !! every component exactly 0.0, bit for bit, has no direction either, and is dropped
+            !! from the search like one past `max_angle`. A sum that only rounds to near zero is
+            !! not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+            !! computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+            !! #223).
         integer(c_int), dimension(n_mask_chunks), intent(in), target :: filtered_paralogs_bitmask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
             !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
@@ -534,8 +548,10 @@ contains
         integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
             !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
             !! while the smallest norm among all genes after its last one -- kept by the filter or
-            !! not -- is at most the length of its residual. Only the entries' range is checked; an
-            !! order that is no ascending permutation gives wrong minima.
+            !! not -- is at most the length of its residual. Only the entries' range is checked: a
+            !! permutation that is not ascending gives wrong minima, and an order with a repeated
+            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
+            !! pruning reads uninitialised values.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         real(c_double), dimension(n_genes), intent(out), target :: tmp_work_array
@@ -729,7 +745,7 @@ contains
             !! The minimum valid value is `0_int32`.
             !! @warning
             !! It comes back lowered to the number of kept genes if it is larger, and lowered further
-            !! to the largest size whose work array holds at most `huge(0_int32)` subsets, the
+            !! to the largest size whose work array holds at most 2**31 - 1 (2,147,483,647) subsets, the
             !! maximum valid size, where the size asked for would need more.
             !! @endwarning
         integer(c_int), intent(in), target :: n_genes

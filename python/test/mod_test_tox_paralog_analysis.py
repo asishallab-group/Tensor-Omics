@@ -183,10 +183,10 @@ def test_detect_dosage_effect_returns_bit_31_as_a_negative_word():
 
 
 def test_detect_dosage_effect_with_fewer_than_two_kept_genes():
-    # BUG (fails today): a family whose filter kept no gene, or one, holds no pair, and the
-    # detection has nothing to find. The binding sizes the work array at 0 subsets and passes
-    # that on, which the library refuses as ERR_EMPTY_INPUT naming n_paralog_subsets -- an
-    # argument the caller cannot pass. Expected: no result, n_results 0.
+    # Regression: a family whose filter kept no gene, or one, holds no pair, and the detection
+    # has nothing to find: no result, n_results 0. The binding sizes the work array at 0 subsets
+    # and passes that on, which the library used to refuse as ERR_EMPTY_INPUT naming
+    # n_paralog_subsets -- an argument the caller cannot pass.
     ancestor, genes, _ = _pattern_inputs()
     for kept in (0, 2):
         result = detect_dosage_effect(ancestor, genes, np.array([kept], dtype=np.int32), 3)
@@ -277,8 +277,8 @@ def test_detect_subfunctionalization_numbers_genes_from_bit_0():
 
 
 def test_detect_subfunctionalization_with_fewer_than_two_kept_genes():
-    # BUG (fails today): as test_detect_dosage_effect_with_fewer_than_two_kept_genes, refused as
-    # ERR_EMPTY_INPUT naming n_paralog_subsets. Expected: no result, n_results 0.
+    # Regression: as test_detect_dosage_effect_with_fewer_than_two_kept_genes, which used to be
+    # refused as ERR_EMPTY_INPUT naming n_paralog_subsets. No result, n_results 0.
     ancestor, genes, _, norms, ascending = _subfunc_inputs()
     for kept in (0, 2):
         result = detect_subfunctionalization(ancestor, genes, np.array([kept], dtype=np.int32), 3, 0.0, norms, ascending)
