@@ -899,9 +899,10 @@ ones, a pack), so the two must come from one call, or the size need not fit the 
 that sizes only input arrays is read off them, as any extent is; it is not checked against the
 producer, so any length is accepted, as in Fortran and C. **Everything else is a parameter**: an
 array a producer fills, a value only a bound names. The plain tier and a hand-written consumer
-compute every value, as before. That is what publishes the expert of `fx_norm_rank` in Python
-and R: it takes `norms` and `norms_perm`, while `fx_norm_rank` computes `norms` with
-`fx_column_norms` and sorts `norms_perm` by it.
+compute every value, as before. That is what publishes the expert of `fx_rounded_total` in
+Python and R, which nothing else would: it takes `rounded`, the integer array `fx_rounded_total`
+computes with `fx_rounded`; so too `fx_bounded_total`'s, which takes `limit`. (`fx_norm_rank`'s
+expert was published already, for its permutation; it now takes `norms` as well.)
 
 **Where a producer's inputs come from (P1).** A producer input that a call passes is a scalar
 constant from the table, or an input of the implementation that the caller passes, in every tier
@@ -1731,11 +1732,11 @@ it are an example's.
 | an `intent(inout)` input of a `DM_OUTPUT_FROM` producer that `foo` calls, supplied by anything but a required `intent(inout)` argument (an `intent(in)` argument, a constant, an optional) | the producer writes it back through what supplies it: an `intent(in)` argument or a constant does not compile, and the local an optional goes through would swallow the refined value (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer input supplied by another `DM_OUTPUT_FROM` value of the consumer, or by the value it computes itself | chaining producers is rejected: size for an upper bound, or take the value as an argument of the caller's (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer input supplied by a `tmp_` work array, a `<base>_perm` `foo` builds, an `intent(out)` argument, an optional without a `DM_DEFAULT` feeding a required input, or an argument only the prologue has (`'work_size' is computed from 'scaled_size', whose input 'factor' would be 'tmp_scale', a work array, which holds nothing before the implementation fills it`) | nothing has supplied it by the time the producer is called, in some tier that calls it: a producer input is a constant or an input the caller passes (Section 5.9) |
-| an array `foo` fills from a producer that is assumed-shape or assumed-size (`'norms' is computed from 'norms', and the generated wrapper allocates it before the call, but it is assumed-shape, so there is no extent to allocate it with`) | `foo` allocates it with its declared extents (Section 5.9) |
+| an array `foo` fills from a producer that is assumed-shape or assumed-size (`'norms' is computed from 'column_norms', and the generated wrapper allocates it before the call, but it is assumed-shape, so there is no extent to allocate it with`) | `foo` allocates it with its declared extents (Section 5.9) |
 | a producer output a consumer takes that is assumed-shape or assumed-size, or that it fills only partly (`DM_RESULT_SIZE_IS`) where `foo` or a binding allocates the consumer's array with its declared extents (`'norms' is computed from 'partial', which fills only the first 'n_used' elements of 'picked'`) | the array would carry elements the producer never wrote, or take a shape nothing declares (Section 5.9) |
-| an axis of an array a producer fills that differs from the producer output's, its inputs replaced by what supplies them (`'norms' is computed from 'norms', but its axis 1 is 'n_items + 1', where 'norms' is declared with 'n_items', which is 'n_items' here`), where `foo` or a binding allocates it | the producer writes the shape it declares into an array allocated with yours (Section 5.9) |
+| an axis of an array a producer fills that differs from the producer output's, its inputs replaced by what supplies them (`'norms' is computed from 'column_norms', but its axis 1 is 'n_items + 1', where 'norms' is declared with 'n_items', which is 'n_items' here`), where `foo` or a binding allocates it | the producer writes the shape it declares into an array allocated with yours (Section 5.9) |
 | a character array computed by a producer | its length would be one more thing to agree; not supported (Section 5.9) |
-| a `DM_OUTPUT_FROM` value whose type or rank differs from the producer output's, `JUST_INFO` included (`'norms' is integer(int32), but 'norms' gives 'norms' as real(real64)`, `'norms' is rank 2, but 'norms' gives 'norms' as rank 1`) | numeric kinds compare by value; logical kinds by name where `foo` calls the producer, which passes the value by keyword, and as the one C type both cross as where a binding does (Section 5.9) |
+| a `DM_OUTPUT_FROM` value whose type or rank differs from the producer output's, `JUST_INFO` included (`'norms' is integer(int32), but 'column_norms' gives 'norms' as real(real64)`, `'norms' is rank 2, but 'column_norms' gives 'norms' as rank 1`) | numeric kinds compare by value; logical kinds by name where `foo` calls the producer, which passes the value by keyword, and as the one C type both cross as where a binding does (Section 5.9) |
 | a `DM_OUTPUT_FROM(..., AUTO)` producer output that is not `intent(out)` | the producer would read what nothing set (Section 5.9) |
 | a value a `DM_OUTPUT_FROM` producer refines in place (its `intent(inout)` input) that another producer call reads or refines too | what the other call saw would depend on the call order; a refined value feeds that one call (Section 5.9) |
 | two arguments taking the same output of one `DM_OUTPUT_FROM` producer, given the same inputs | one call fills both with one value; use one argument (Section 5.9) |

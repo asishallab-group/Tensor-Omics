@@ -462,7 +462,8 @@ The parts a source author does not need, and a generator maintainer does:
   validates and allocates, `foo_expert` does not reach a language at all
   (`SynthesisResult.expert_only_in_fortran`, applied once in `generate`, after the semantic
   pass): the binding allocates the work arrays and computes the `DM_OUTPUT_FROM` sizes for both
-  tiers, and data only where `foo` computes it, so the two would be the same call under a name
+  tiers, and in the plain tier data too where `foo` keeps it (where `foo` takes it over, its
+  Fortran computes it), so the two would be the same call under a name
   promising control over it. An expert whose plain tier computes data the expert takes from the
   caller -- an array a producer fills -- is published (`synthesize.alloc_does_more`). Fortran and C keep both, because there
   the expert tier really does hand the buffers over.

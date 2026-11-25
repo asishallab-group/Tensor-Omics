@@ -651,9 +651,13 @@ read an extent R never assigned. So the rule is: **no code in `emit/` or `abi/` 
 derived in this tier: computed by the binding, read off a carrier, a shape, a mask's count -- and
 reads a plan's content through `synthesize.automatic_plan`. `producer_calls.auto_plans` filters by
 `binding_computes`, and Python's producer calls, stashes and imports and R's producer calls and
-error tables all come from it. `test_emitter_parity.TestEveryPublishedBindingAgrees` checks it by
-running over every published binding of every fixture: R's `.Call` arity against the shim's
-registration, no parameter computed or derived over. The Fortran wrapper emitter reads the IR
+error tables all come from it. `test_emitter_parity.TestEveryPublishedBindingAgrees` checks it on
+the emitters' decisions over every published binding of the fixtures: R's `.Call` arity against
+the shim's registration, no parameter computed or derived over, Python and R asking alike.
+`test_parameters_reach_the_call` checks it by running: every published Python and R function of
+every fixture library -- the R of `fixtures/carrier` aside, whose shim does not compile -- is
+called with a sentinel for each parameter, its own C call intercepted, and each parameter
+compared with what arrived. The Fortran wrapper emitter reads the IR
 facts, which are its own.
 
 ## Decision: where a binding reads an extent (R4)
