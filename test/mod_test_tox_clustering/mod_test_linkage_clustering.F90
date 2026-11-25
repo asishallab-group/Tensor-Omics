@@ -59,7 +59,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(13))
+        allocate (all_tests(14))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -74,6 +74,8 @@ contains
                                   test_linkage_clustering_distance_matrix_checks)
         all_tests(12) = test_case("test_linkage_clustering_rejects_nan_and_inf", test_linkage_clustering_rejects_nan_and_inf)
         all_tests(13) = test_case("test_linkage_clustering_check_order", test_linkage_clustering_check_order)
+        all_tests(14) = test_case("test_linkage_clustering_ward_squares_below_tiny", &
+                                  test_linkage_clustering_ward_squares_below_tiny)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -401,4 +403,17 @@ contains
         call check_refused(0_int32, distances, 9_int32, 3_int32, ERR_EMPTY_INPUT, 2_int32, &
                            "test_linkage_clustering_check_order: no points, method 3 and NaN")
     end subroutine test_linkage_clustering_check_order
+
+    !> BUG (#223, "Ward update"): Ward's update squares the distances, so three points at
+    !| s = 2**-600 from each other, all normal numbers, get squares below the smallest subnormal.
+    !| Every method merges {1, 2} at s, then {-1, 3} at s: for Ward, d(12, 3)**2 = (2 s**2 + 2 s**2
+    !| - s**2)/3 = s**2. Today Ward's second height is 0.
+    subroutine test_linkage_clustering_ward_squares_below_tiny()
+        real(real64), parameter :: s = 2.0_real64**(-600)
+        real(real64) :: distances(3, 3)
+
+        call fill_equidistant(3_int32, s, distances)
+        call check_linkage(3_int32, distances, METHOD_WARD, [1, -1], [2, 3], [s, s], WARD_RTOL, [2, 3], &
+                           .true., "test_linkage_clustering_ward_squares_below_tiny")
+    end subroutine test_linkage_clustering_ward_squares_below_tiny
 end module mod_test_linkage_clustering

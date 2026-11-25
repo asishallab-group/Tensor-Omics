@@ -26,7 +26,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(13))
+        allocate (all_tests(15))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_one_cluster", test_k_means_clustering_one_cluster)
@@ -44,6 +44,8 @@ contains
                                   test_k_means_clustering_max_iterations_below_one)
         all_tests(13) = test_case("test_k_means_clustering_empty_cluster_moves_with_the_data", &
                                   test_k_means_clustering_empty_cluster_moves_with_the_data)
+        all_tests(14) = test_case("test_k_means_clustering_squares_past_huge", test_k_means_clustering_squares_past_huge)
+        all_tests(15) = test_case("test_k_means_clustering_squares_below_tiny", test_k_means_clustering_squares_below_tiny)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -393,4 +395,36 @@ contains
         call assert_equal_array_real(shifted_back, centroids, 3_int32, 0.0_real64, &
                                      "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted centroids")
     end subroutine test_k_means_clustering_empty_cluster_moves_with_the_data
+
+    !> BUG (#223, "k-means assignment"): the squared distance to each centroid is an unscaled sum of
+    !| squares. The 1-D points 1, 2, 8, 9 from 0 and 10 split into [1, 1, 2, 2] with centroids 1.5
+    !| and 8.5 (1 and 2 are closer to 0, 8 and 9 to 10). Scaled by 2**600, every square passes huge,
+    !| every distance ties at +Inf, and the `<=` puts every point into the last cluster. Scaling by a
+    !| power of two is exact, so the expected values are the unscaled ones times 2**600, exactly.
+    subroutine test_k_means_clustering_squares_past_huge()
+        real(real64), parameter :: factor = 2.0_real64**600
+        real(real64) :: data_points(1, 4), initial_centroids(1, 2), expected_centroids(1, 2)
+
+        data_points(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]*factor
+        initial_centroids(1, :) = [0.0_real64, 10.0_real64]*factor
+        expected_centroids(1, :) = [1.5_real64, 8.5_real64]*factor
+
+        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+                           expected_centroids, "test_k_means_clustering_squares_past_huge")
+    end subroutine test_k_means_clustering_squares_past_huge
+
+    !> BUG (#223, "k-means assignment"): the same points scaled by 2**-600, all normal numbers. Every
+    !| square falls below the smallest subnormal and reads 0, every distance ties at 0, and every
+    !| point goes into the last cluster.
+    subroutine test_k_means_clustering_squares_below_tiny()
+        real(real64), parameter :: factor = 2.0_real64**(-600)
+        real(real64) :: data_points(1, 4), initial_centroids(1, 2), expected_centroids(1, 2)
+
+        data_points(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]*factor
+        initial_centroids(1, :) = [0.0_real64, 10.0_real64]*factor
+        expected_centroids(1, :) = [1.5_real64, 8.5_real64]*factor
+
+        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+                           expected_centroids, "test_k_means_clustering_squares_below_tiny")
+    end subroutine test_k_means_clustering_squares_below_tiny
 end module mod_test_k_means_clustering
