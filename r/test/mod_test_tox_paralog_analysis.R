@@ -227,6 +227,11 @@ test_detect_dosage_effect_rejects_infinite_genes <- function() {
                        "an infinite gene", ERR_NAN_INF, "genes")
 }
 
+test_detect_dosage_effect_rejects_a_zero_ancestor <- function() {
+  .assert_error_naming(detect_dosage_effect(c(0, 0), .dosage_genes(), ALL_THREE, 3L),
+                       "an ancestor of zeros", ERR_INVALID_INPUT, "ancestor")
+}
+
 test_detect_dosage_effect_rejects_no_dimensions <- function() {
   # n_dims is read off ancestor
   .assert_error_naming(detect_dosage_effect(numeric(0), matrix(numeric(0), nrow = 0L, ncol = 3L), ALL_THREE, 3L),

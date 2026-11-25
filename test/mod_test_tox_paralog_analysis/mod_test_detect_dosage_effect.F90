@@ -48,7 +48,7 @@ contains
     function get_all_tests_detect_dosage_effect() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(15))
+        allocate (all_tests(17))
         all_tests(1) = test_case("test_detect_dosage_effect_binary_weights", test_detect_dosage_effect_binary_weights)
         all_tests(2) = test_case("test_detect_dosage_effect_angle_bound", test_detect_dosage_effect_angle_bound)
         all_tests(3) = test_case("test_detect_dosage_effect_defaults", test_detect_dosage_effect_defaults)
@@ -64,6 +64,8 @@ contains
         all_tests(13) = test_case("test_detect_dosage_effect_any_scale", test_detect_dosage_effect_any_scale)
         all_tests(14) = test_case("test_angle_between", test_angle_between)
         all_tests(15) = test_case("test_detect_dosage_effect_starts_in_the_array", test_detect_dosage_effect_starts_in_the_array)
+        all_tests(16) = test_case("test_detect_dosage_effect_zero_ancestor", test_detect_dosage_effect_zero_ancestor)
+        all_tests(17) = test_case("test_detect_dosage_effect_zero_sum_dropped", test_detect_dosage_effect_zero_sum_dropped)
     end function get_all_tests_detect_dosage_effect
 
     !> The binary-weights family (see BINARY_GENES), all five genes kept, `max_angle` 0 -- every
@@ -553,5 +555,44 @@ contains
         call assert_err(ierr, ERR_SIZE_MISMATCH, "test_detect_dosage_effect_starts_in_the_array: no subsets", 10)
         call assert_equal_int(subsets(1, 1), 12345_int32, "test_detect_dosage_effect_starts_in_the_array: column 1 untouched")
     end subroutine test_detect_dosage_effect_starts_in_the_array
+
+    !> An ancestor of all zeros has no direction for a subset's angle to be measured against, and
+    !| no length to gain on: it is ERR_INVALID_INPUT naming `ancestor` (argument 1), through both
+    !| tiers, before any subset is tried. (It used to be ERR_DIVISION_BY_ZERO at no argument, from
+    !| the first angle.) [0, -0] counts as zero too.
+    subroutine test_detect_dosage_effect_zero_ancestor()
+        real(real64) :: ancestor(2), tmp_paralog_vector(2)
+        integer(int32) :: mask(1), subsets(1, 3), tmp_active_bitmask(1), n_results, ierr
+
+        mask = 7
+        ancestor = [0.0_real64, -0.0_real64]
+        call detect_dosage_effect(ancestor, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 3, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_dosage_effect_zero_ancestor", 1)
+        call detect_dosage_effect_expert(ancestor, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 3, tmp_active_bitmask, &
+                                         tmp_paralog_vector, PI, 0.1_real64, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_detect_dosage_effect_zero_ancestor: expert", 1)
+    end subroutine test_detect_dosage_effect_zero_ancestor
+
+    !> A subset whose genes sum to exactly zero has no direction either, and is dropped like one
+    !| past `max_angle`, not grown, while the search goes on. Ancestor [1, 0], genes [1, 1],
+    !| [-1, -1] and [2, 0], `max_angle` pi/2, gain 1 (a length of at least 2):
+    !| - {1, 2} sums to [0, 0] and is dropped, so {1, 2, 3} is never tried;
+    !| - {1, 3}, [3, 1], at about 0.322 and sqrt(10) long, is a result, the word 5;
+    !| - {2, 3}, [1, -1], at pi/4 but sqrt(2) long, grows, and has no gene after it.
+    !| (It used to make the whole detection ERR_DIVISION_BY_ZERO at no argument.)
+    subroutine test_detect_dosage_effect_zero_sum_dropped()
+        real(real64), parameter :: ancestor(2) = [1.0_real64, 0.0_real64]
+        real(real64), parameter :: genes(2, 3) = reshape([1.0_real64, 1.0_real64, -1.0_real64, -1.0_real64, 2.0_real64, &
+                                                          0.0_real64], [2, 3])
+        integer(int32), parameter :: expected(1, 1) = reshape([5], [1, 1])
+        integer(int32) :: mask(1), subsets(1, 3), n_results, ierr
+
+        mask = 7
+        n_results = UNWRITTEN_COUNT
+        call detect_dosage_effect(ancestor, genes, 3, 2, mask, 1, n_results, 3, subsets, 3, max_angle=PI/2, &
+                                  gain_gamma=1.0_real64, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_dosage_effect_zero_sum_dropped: ierr")
+        call check_subsets(1, 3, subsets, n_results, 1, expected, "test_detect_dosage_effect_zero_sum_dropped")
+    end subroutine test_detect_dosage_effect_zero_sum_dropped
 
 end module mod_test_detect_dosage_effect

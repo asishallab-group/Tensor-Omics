@@ -231,6 +231,12 @@ def test_detect_dosage_effect_rejects_infinite_genes():
                  "an infinite gene", ERR_NAN_INF, argument="genes")
 
 
+def test_detect_dosage_effect_rejects_a_zero_ancestor():
+    _, genes, mask = _pattern_inputs()
+    assert_error(lambda: detect_dosage_effect(np.zeros(2), genes, mask, 3),
+                 "an ancestor of zeros", ERR_INVALID_INPUT, argument="ancestor")
+
+
 def test_detect_dosage_effect_rejects_no_dimensions():
     # n_dims is read off ancestor
     _, _, mask = _pattern_inputs()
