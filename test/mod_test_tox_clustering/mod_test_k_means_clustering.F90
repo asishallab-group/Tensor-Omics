@@ -26,7 +26,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(12))
+        allocate (all_tests(13))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_one_cluster", test_k_means_clustering_one_cluster)
@@ -42,6 +42,8 @@ contains
         all_tests(11) = test_case("test_k_means_clustering_rejects_nan_and_inf", test_k_means_clustering_rejects_nan_and_inf)
         all_tests(12) = test_case("test_k_means_clustering_max_iterations_below_one", &
                                   test_k_means_clustering_max_iterations_below_one)
+        all_tests(13) = test_case("test_k_means_clustering_empty_cluster_moves_with_the_data", &
+                                  test_k_means_clustering_empty_cluster_moves_with_the_data)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -356,4 +358,39 @@ contains
             end if
         end do
     end subroutine test_k_means_clustering_max_iterations_below_one
+
+    !> BUG: a cluster that loses all its points gets the centroid 0 (the sum of no points divided
+    !| by `max(count, 1)`), wherever it was, so the result depends on where the origin is. k-means
+    !| itself does not: shifting every point and every starting centroid by the same amount must
+    !| shift the final centroids by it and keep the labels. This checks just that, so it holds for
+    !| any rule that does not involve the origin (keep the centroid, move it to a point, ...).
+    !| 1-D points -1, 3, 10, 11 from 5, 10.5 and 100: the first assignment leaves cluster 3 empty.
+    !| Today, at 0 it takes point -1 from cluster 1 (labels [3, 1, 2, 2]); shifted by 1000 it stays
+    !| empty at 0, far from all points (labels [1, 1, 2, 2]).
+    subroutine test_k_means_clustering_empty_cluster_moves_with_the_data()
+        real(real64), parameter :: shift = 1000.0_real64
+        real(real64) :: data_points(1, 4), centroids(1, 3), shifted_points(1, 4), shifted_centroids(1, 3)
+        real(real64) :: shifted_back(1, 3)
+        integer(int32) :: labels(4), label_counts(3), shifted_labels(4), shifted_counts(3), ierr
+
+        data_points(1, :) = [-1.0_real64, 3.0_real64, 10.0_real64, 11.0_real64]
+        centroids(1, :) = [5.0_real64, 10.5_real64, 100.0_real64]
+        shifted_points = data_points + shift
+        shifted_centroids = centroids + shift
+
+        call k_means_clustering(3_int32, data_points, 4_int32, 1_int32, centroids, labels, label_counts, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_k_means_clustering_empty_cluster_moves_with_the_data: ierr")
+        call k_means_clustering(3_int32, shifted_points, 4_int32, 1_int32, shifted_centroids, shifted_labels, &
+                                shifted_counts, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted, ierr")
+
+        call assert_equal_array_int(shifted_labels, labels, 4_int32, &
+                                    "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted labels")
+        call assert_equal_array_int(shifted_counts, label_counts, 3_int32, &
+                                    "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted label_counts")
+        ! the centroids are integers and halves below 2**10, so the shift by 1000 is exact
+        shifted_back = shifted_centroids - shift
+        call assert_equal_array_real(shifted_back, centroids, 3_int32, 0.0_real64, &
+                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted centroids")
+    end subroutine test_k_means_clustering_empty_cluster_moves_with_the_data
 end module mod_test_k_means_clustering
