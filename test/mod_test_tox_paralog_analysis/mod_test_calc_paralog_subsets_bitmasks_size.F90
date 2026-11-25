@@ -106,9 +106,9 @@ contains
     end subroutine test_calc_size_counts_kept_bits
 
     !> All 29 genes kept (the word 2**29 - 1), any size: 2**28 - 1 = 268,435,455 subsets, not
-    !| allocated here. Today this is the largest family the routine sizes without cutting the
-    !| subset size, though families up to 32 genes fit whole; `test_calc_size_caps_at_largest_fit`
-    !| is that bug.
+    !| allocated here. Until the sizing counted in int64 this was the largest family it sized
+    !| without cutting the subset size; families up to 32 genes fit whole
+    !| (`test_calc_size_caps_at_largest_fit`).
     subroutine test_calc_size_largest_uncapped()
         integer(int32) :: mask(1)
 

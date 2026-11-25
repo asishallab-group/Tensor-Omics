@@ -662,11 +662,13 @@ def calc_paralog_subsets_bitmasks_size(
 ):
     r"""Calculates the needed size for the paralog-subsets work array
 
-    The `detect_*` subroutines need a work array for the to be tested subsets.
-    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
-    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
-
-    This subroutine calculates the needed size for the work array.
+    The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,
+    the results found so far, the subsets still to be grown and the ones grown from them, so it is
+    sized for the worst case: every subset of the first F - 1 kept genes stays a candidate, and every
+    subset that adds the last kept gene becomes a result. With F genes kept and subsets of at most m
+    genes, that is one subset of the first F - 1 genes for each size 1 to m: the sum over
+    k = 1 .. min(m, F - 1) of C(F - 1, k), which is 2**(F - 1) - 1 for m = F, and 0 for fewer
+    than two kept genes.
 
     Parameters
     ----------
@@ -674,15 +676,17 @@ def calc_paralog_subsets_bitmasks_size(
         maximum size that a subset must not exceed. Zero is in range and means there is
         nothing to size a work array for, which is reported back as a size of zero.
         The minimum valid value is `0`.
-        If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
-
-        Also, size will be set to number of genes in `filtered_paralogs_bitmask` if larger.
+        It comes back lowered to the number of kept genes if it is larger, and lowered further
+        to the largest size whose work array holds at most `huge(0)` subsets, the
+        maximum valid size, where the size asked for would need more.
     n_genes : int
-        number of genes
+        number of genes. It is checked before `n_mask_chunks`, so a mask of too few words, none
+        included, is reported as `n_genes` out of range.
         The minimum valid value is `1`.
         The maximum valid value is `n_mask_chunks * 32`.
     filtered_paralogs_bitmask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        Output mask with all genes disabled that did not pass the filter
+        bit mask of the genes the filter kept. Only the first `n_genes` bits are counted;
+        a bit past them is ignored here, while the detections refuse it.
 
     Returns
     -------
@@ -693,11 +697,12 @@ def calc_paralog_subsets_bitmasks_size(
             maximum size that a subset must not exceed. Zero is in range and means there is
             nothing to size a work array for, which is reported back as a size of zero.
             The minimum valid value is `0`.
-            If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
-
-            Also, size will be set to number of genes in `filtered_paralogs_bitmask` if larger.
+            It comes back lowered to the number of kept genes if it is larger, and lowered further
+            to the largest size whose work array holds at most `huge(0)` subsets, the
+            maximum valid size, where the size asked for would need more.
         work_array_size : int
-            The calculated needed work array size in absolute worst case scenario. Look into source for details.
+            The number of subsets the work array must hold in the worst case, for the
+            `max_subset_size` handed back
 
     Raises
     ------

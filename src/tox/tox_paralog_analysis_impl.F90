@@ -15,7 +15,7 @@
 !| site, and each routine takes only the thresholds its own pattern needs.
 module tox_paralog_analysis_impl
     use f42_safeguard
-    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int, &
                           clear_err_arg_pos
@@ -614,14 +614,17 @@ contains
 
     !> summary: Calculates the needed size for the paralog-subsets work array
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| The `detect_*` subroutines need a work array for the to be tested subsets.
-    !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
-    !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
-    !|
-    !| This subroutine calculates the needed size for the work array.
+    !| The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,
+    !| the results found so far, the subsets still to be grown and the ones grown from them, so it is
+    !| sized for the worst case: every subset of the first F - 1 kept genes stays a candidate, and every
+    !| subset that adds the last kept gene becomes a result. With F genes kept and subsets of at most m
+    !| genes, that is one subset of the first F - 1 genes for each size 1 to m: the sum over
+    !| k = 1 .. min(m, F - 1) of C(F - 1, k), which is 2**(F - 1) - 1 for m = F, and 0 for fewer
+    !| than two kept genes.
     pure subroutine calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmask, n_mask_chunks)
         integer(int32), intent(in) :: n_genes
-            !! number of genes
+            !! number of genes. It is checked before `n_mask_chunks`, so a mask of too few words, none
+            !! included, is reported as `n_genes` out of range.
             !! DM_MIN(1_int32)
             !! DM_MAX(n_mask_chunks * 32)
         integer(int32), intent(in) :: n_mask_chunks
@@ -631,18 +634,19 @@ contains
             !! nothing to size a work array for, which is reported back as a size of zero.
             !! DM_MIN(0_int32)
             !! @warning
-            !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
-            !!
-            !! Also, size will be set to number of genes in `filtered_paralogs_bitmask` if larger.
+            !! It comes back lowered to the number of kept genes if it is larger, and lowered further
+            !! to the largest size whose work array holds at most `huge(0_int32)` subsets, the
+            !! maximum valid size, where the size asked for would need more.
             !! @endwarning
         integer(int32), intent(out) :: work_array_size
-            !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
+            !! The number of subsets the work array must hold in the worst case, for the
+            !! `max_subset_size` handed back
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! Output mask with all genes disabled that did not pass the filter
+            !! bit mask of the genes the filter kept. Only the first `n_genes` bits are counted;
+            !! a bit past them is ignored here, while the detections refuse it.
 
-        integer(int32), parameter :: max_int32 = huge(0_int32)
-        integer(int32) :: i_gene, subset_size, extensions_count, results, previous_results, n_genes_filtered
-
+        integer(int32) :: i_gene, subset_size, n_genes_filtered
+        integer(int64) :: n_subsets, binomial
 
         if (max_subset_size == 0) then
             work_array_size = 0
@@ -655,50 +659,20 @@ contains
                 n_genes_filtered = n_genes_filtered + 1
             end if
         end do
-
-        ! The idea of this calculation is to count the number of leafs in the subset extension tree.
-        ! If a subset has genes to be extended with, it gets child subsets that might be extended either.
-        ! If a subset can't be extended, it is a leaf and in worst case also a result. So in absolute worst case the number of leafs is the number of results.
-        ! As results and candidates share the same array and candidates just become results, the final needed work array size is the number of max possible results
         max_subset_size = min(n_genes_filtered, max_subset_size)
-        work_array_size = 1
-        extensions_count = 1
-        previous_results = 0
-        results = 0
-        do subset_size = 1, max_subset_size
-            ! results holds the number of subsets of current subset size that don't have any succeeding genes to be extended with -> result in worst case
-            ! previous_results holds the number of results that come from previous subset sizes
-            if (previous_results > max_int32 - results) then
+
+        ! Sum C(F - 1, k) for k = 1 .. min(m, F - 1), in int64: each binomial is the previous one
+        ! times (F - k)/k, exactly, and the product stays below 2**62 as long as the sum fits int32.
+        n_subsets = 0_int64
+        binomial = 1_int64
+        do subset_size = 1, min(max_subset_size, n_genes_filtered - 1)
+            binomial = binomial*int(n_genes_filtered - subset_size, int64)/int(subset_size, int64)
+            if (n_subsets + binomial > int(huge(0_int32), int64)) then
                 max_subset_size = subset_size - 1
                 exit
             end if
-            previous_results = previous_results + results
-            results = extensions_count - results
-
-            ! calculate the number of extensions of current subsets
-            ! overflow check
-            if (extensions_count > max_int32/(n_genes_filtered - subset_size + 1)) then
-                max_subset_size = subset_size - 1
-                exit
-            end if
-            extensions_count = extensions_count*(n_genes_filtered - subset_size + 1)
-            extensions_count = extensions_count/subset_size
-
-            ! The current subsets will be replaced by their extensions.
-            ! In worst case all extended subsets won't be pruned.
-            ! Thus, the extensions count will be the work array size, plus the subsets from previous iterations that became results.
-
-            ! if there are less extensions than before, the work array size won't grow anymore
-            if (extensions_count > max_int32 - previous_results) then
-                max_subset_size = subset_size - 1
-                exit
-            end if
-            if (extensions_count + previous_results < work_array_size) exit
-            work_array_size = extensions_count + previous_results
+            n_subsets = n_subsets + binomial
         end do
-
-        ! all subsets with last gene enabled are counted as a result.
-        ! as the subset of size 1 with last gene is not a valid subset, remove it (can not be extended, thus also not part of initialization)
-        work_array_size = work_array_size - 1
+        work_array_size = int(n_subsets, int32)
     end subroutine calc_paralog_subsets_bitmasks_size_impl
 end module tox_paralog_analysis_impl
