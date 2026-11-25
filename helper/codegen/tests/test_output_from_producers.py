@@ -19,7 +19,7 @@ from codegen.ir.roles import analyse_project
 from codegen.ir.types import Intent
 from codegen.synthesize import synthesize_wrappers
 
-from builders import C_BINDING, integer, module, procedure, project, real
+from builders import C_BINDING, character, integer, logical, module, procedure, project, real
 
 #: What an implementation carries: no export, it is not published itself
 IMPL = Meta(summary="an implementation", author="AUTHOR")
@@ -526,9 +526,22 @@ class TestPurity:
 
     def test_a_producer_that_reaches_back_to_its_consumer_ends(self):
         # work_total sizes itself by its own wrapper: refused (`TestACycle`), but nothing
-        # proves that pure either, and asking must not recurse until Python gives up
-        cons = work_consumer("work_total", "tox_cons", "total", doc=table())
-        synthesis, _ = analysed(producers(), cons)
+        # proves that pure either, and asking must not recurse until Python gives up. Its
+        # output is an integer, as the size it feeds is: a real one is refused for its type
+        # first, and then no plan is attached for the purity check to follow
+        cons = consumer(
+            "work_total_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("scale", doc="scale"),
+            integer("work_size", doc="size", directives=auto("count", "work_total", "tox_cons")),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            integer("count", Intent.OUT, doc="the result"),
+        )
+        synthesis, bag = analysed(producers(), cons)
+        assert synthesis.project.procedure("tox_cons", "work_total_expert") \
+            .argument("work_size").roles.computed_from is not None, "the premise: it is followed"
+        assert not any("gives" in e.message for e in bag.errors), bag.render()
 
         text = fortran(synthesis)  # no RecursionError
         assert "pure subroutine work_total(" not in text
@@ -1079,3 +1092,649 @@ class TestAShapeTheBindingsReadOffAnArray:
         text = RWrapperEmitter().function(wrapper)
 
         assert "count_vectors(arr_shape = if (is.null(dim(arr))) length(arr) else dim(arr))" in text
+
+
+# -- what a producer output must be, and where a producer input comes from (R2, P1) ---------
+
+#: The line every directive below is written on, so a diagnostic can be shown to point there
+DIRECTIVE_LINE = 42
+
+#: The note P1's refusals share, and the way out the Fortran route adds to it
+P1_NOTE = "supply it by an argument the caller passes, or a constant in the table"
+WAY_OUT = ("; or, where the caller can supply the value, name the producer with JUST_INFO "
+           "instead of AUTO, so the caller passes it")
+
+
+def at_line(output, producer, producer_module="tox_arr", mode=OutputFromMode.AUTO):
+    return Directives(output_from=OutputFrom(output, producer, producer_module, mode,
+                                             line_number=DIRECTIVE_LINE))
+
+
+def array_producers(*extra, parameters=()):
+    """`tox_arr_impl`: producers of arrays, of every shape the rules tell apart."""
+    from codegen.ir.directives import ResultSizeIs
+
+    return module(
+        "tox_arr_impl",
+        procedure("norms_impl",
+                  integer("n_items", doc="items"),
+                  real("x", Intent.IN, "(n_items)", doc="values"),
+                  real("norms", Intent.OUT, "(n_items)", doc="the norms"),
+                  meta=IMPL, is_pure=True),
+        procedure("any_fill_impl",
+                  integer("n_items", doc="items"),
+                  real("x", Intent.IN, "(n_items)", doc="values"),
+                  real("filled", Intent.OUT, "(:)", doc="as long as it is given"),
+                  meta=IMPL, is_pure=True),
+        procedure("partial_impl",
+                  integer("n_items", doc="items"),
+                  real("x", Intent.IN, "(n_items)", doc="values"),
+                  integer("n_used", Intent.OUT, doc="how many it fills"),
+                  real("picked", Intent.OUT, "(n_items)", doc="the first n_used filled",
+                       directives=Directives(result_size_is=ResultSizeIs("n_used"))),
+                  meta=IMPL, is_pure=True),
+        procedure("grid_impl",
+                  integer("n", doc="rows"),
+                  integer("m", doc="columns"),
+                  real("grid", Intent.OUT, "(n, m)", doc="a grid"),
+                  meta=IMPL, is_pure=True),
+        procedure("rows_impl",
+                  integer("n", doc="rows"),
+                  integer("k", doc="columns"),
+                  real("x", Intent.IN, "(n, k)", doc="values"),
+                  real("rows", Intent.OUT, "(size(x, 1))", doc="one per row"),
+                  meta=IMPL, is_pure=True),
+        procedure("padded_impl",
+                  integer("n_items", doc="items"),
+                  real("padded", Intent.OUT, "(n_items + PAD)", doc="padded"),
+                  meta=IMPL, is_pure=True),
+        procedure("counts_impl",
+                  integer("n_items", doc="items"),
+                  integer("counts", Intent.OUT, "(n_items)", doc="counts"),
+                  integer("total", Intent.OUT, doc="their sum"),
+                  logical("flags", Intent.OUT, "(n_items)", kind="c_bool", doc="flags"),
+                  logical("default_flags", Intent.OUT, "(n_items)", doc="flags"),
+                  meta=IMPL, is_pure=True),
+        procedure("level_impl",
+                  integer("n_items", doc="items"),
+                  real("level", Intent.INOUT, doc="refined in place"),
+                  meta=IMPL, is_pure=True),
+        *extra,
+        parameters=parameters,
+    )
+
+
+def norms_user(norms, *others, name="use_norms_impl"):
+    """A consumer taking `norms` over (the Fortran route): nothing it keeps names it."""
+    return consumer(
+        name,
+        integer("n_items", doc="items"),
+        real("x", Intent.IN, "(n_items)", doc="values"),
+        norms,
+        *others,
+        real("total", Intent.OUT, doc="the result"),
+    )
+
+
+def hand_user(norms, *others):
+    """A hand-written consumer: its bindings call the producer (the binding route)."""
+    return module("tox_hand", procedure(
+        "use_norms",
+        integer("n_items", doc="items"),
+        real("x", Intent.IN, "(n_items)", doc="values"),
+        norms,
+        *others,
+        real("total", Intent.OUT, doc="the result"),
+        integer("ierr", Intent.OUT, doc="error"),
+    ))
+
+
+def refusals(bag):
+    return [e for e in bag.errors if e.location.line == DIRECTIVE_LINE]
+
+
+def refused(*modules):
+    """The one error a case gets, which must be reported once, at the directive's line."""
+    _, bag = analysed(*modules)
+    found = refusals(bag)
+    assert len(found) == 1, bag.render()
+    return found[0]
+
+
+class TestWhatAProducerOutputMustBe:
+    """R2: what a consumer argument must be to hold the producer output it is computed from.
+
+    Each row is reported once per generated pair, at the directive's line, with a note, and
+    only the first that applies. On the Fortran route the note offers JUST_INFO, where the
+    caller can supply the value instead.
+    """
+
+    def test_a_assumed_shape_where_foo_allocates_it(self):
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, "(:)", doc="n", directives=at_line("norms", "norms"))))
+
+        assert error.message == (
+            "'norms' is computed from 'norms', and the generated wrapper allocates it before "
+            "the call, but it is assumed-shape, so there is no extent to allocate it with")
+        assert error.note == ("declare its extents as 'norms' has them, in this procedure's "
+                              "names" + WAY_OUT)
+
+    def test_a_assumed_size_too(self):
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, "(*)", doc="n", directives=at_line("norms", "norms"))))
+
+        assert "but it is assumed-size, so there is no extent" in error.message
+
+    def test_a_is_fortran_s_alone(self):
+        # a binding takes the shape the producer's binding hands back
+        _, bag = analysed(array_producers(), hand_user(
+            real("norms", Intent.IN, "(:)", doc="n", directives=at_line("norms", "norms"))))
+
+        assert refusals(bag) == []
+
+    def test_b_an_assumed_shape_output_on_either_route(self):
+        for user in (norms_user, hand_user):
+            error = refused(array_producers(), user(
+                real("norms", Intent.IN, "(n_items)", doc="n",
+                     directives=at_line("filled", "any_fill"))))
+
+            assert error.message == ("'norms' is computed from 'any_fill', whose output "
+                                     "'filled' is assumed-shape")
+            assert error.note.startswith("an output a consumer takes is declared with its "
+                                         "extents")
+            assert error.note.endswith(WAY_OUT) is (user is norms_user)
+
+    def test_b_a_partial_fill_where_something_allocates_it(self):
+        for user in (norms_user, hand_user):
+            error = refused(array_producers(), user(
+                real("norms", Intent.IN, "(n_items)", doc="n",
+                     directives=at_line("picked", "partial"))))
+
+            assert error.message == ("'norms' is computed from 'partial', which fills only the "
+                                     "first 'n_used' elements of 'picked'")
+
+    def test_b_a_partial_fill_an_assumed_shape_binding_takes(self):
+        # serde's shape: the binding hands on what the producer's binding returns, trimmed
+        _, bag = analysed(array_producers(), hand_user(
+            real("norms", Intent.IN, "(:)", doc="n", directives=at_line("picked", "partial"))))
+
+        assert refusals(bag) == []
+
+    def test_c_an_axis_differs(self):
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, "(n_items + 1)", doc="n",
+                 directives=at_line("norms", "norms"))))
+
+        assert error.message == (
+            "'norms' is computed from 'norms', but its axis 1 is 'n_items + 1', where 'norms' "
+            "is declared with 'n_items', which is 'n_items' here")
+        assert error.note == (
+            "the producer writes the shape it declares into the array, so spell each extent as "
+            "it does, in this procedure's names: its inputs replaced by what supplies them"
+            + WAY_OUT)
+
+    def test_c_renames_simultaneously(self):
+        def grid_user(extents, rows):
+            return consumer(
+                "use_grid_impl",
+                integer("n", doc="rows"),
+                integer("m", doc="columns"),
+                real("grid", Intent.IN, extents, doc=table(*rows),
+                     directives=at_line("grid", "grid")),
+                real("total", Intent.OUT, doc="the result"),
+            )
+
+        swapped = [("n", "m"), ("m", "n")]
+        _, bag = analysed(array_producers(), grid_user("(m, n)", swapped))
+        assert refusals(bag) == [], bag.render()
+
+        error = refused(array_producers(), grid_user("(n, m)", swapped))
+        assert "its axis 1 is 'n', where 'grid' is declared with 'n', which is 'm' here" \
+            in error.message
+
+    def test_c_renames_inside_size(self):
+        user = consumer(
+            "use_rows_impl",
+            integer("n", doc="rows"),
+            integer("k", doc="columns"),
+            real("v", Intent.IN, "(n, k)", doc="values"),
+            real("rows", Intent.IN, "(size(v, 1))", doc=table(("x", "v")),
+                 directives=at_line("rows", "rows")),
+            real("total", Intent.OUT, doc="the result"),
+        )
+        _, bag = analysed(array_producers(), user)
+
+        assert refusals(bag) == [], bag.render()
+
+    def test_c_evaluates_each_side_s_constants_in_its_own_scope(self):
+        from builders import parameter
+
+        producers_ = array_producers(parameters=(parameter("PAD", "2_int32"),))
+        for extent, accepted in (("(n_items + 2)", True), ("(n_items + 2_int32)", True),
+                                 ("(N_ITEMS + 2)", True), ("(n_items + 3)", False)):
+            _, bag = analysed(producers_, norms_user(
+                real("norms", Intent.IN, extent, doc="n",
+                     directives=at_line("padded", "padded"))))
+
+            assert (refusals(bag) == []) is accepted, (extent, bag.render())
+
+    def test_e_a_character_array(self):
+        error = refused(array_producers(), norms_user(
+            character("norms", Intent.IN, "(n_items)", length="4", doc="n",
+                      directives=at_line("norms", "norms"))))
+
+        assert error.message == "'norms' is a character array computed from 'norms'"
+
+    def test_f_a_type_differs(self):
+        error = refused(array_producers(), norms_user(
+            integer("norms", Intent.IN, "(n_items)", doc="n",
+                    directives=at_line("norms", "norms"))))
+
+        assert error.message == ("'norms' is integer(int32), but 'norms' gives 'norms' as "
+                                 "real(real64)")
+
+    def test_f_compares_a_kind_by_value(self):
+        _, bag = analysed(array_producers(), norms_user(
+            integer("counts", Intent.IN, "(n_items)", kind="c_int", doc="n",
+                    directives=at_line("counts", "counts"))))
+
+        assert refusals(bag) == [], bag.render()
+
+    def test_f_compares_a_logical_kind_by_name_where_fortran_calls_it(self):
+        def flags_user(user, kind):
+            return user(logical("counts", Intent.IN, "(n_items)", kind=kind, doc="n",
+                                directives=at_line("flags", "counts")))
+
+        error = refused(array_producers(), flags_user(norms_user, None))
+        assert error.message == ("'counts' is logical, but 'counts' gives 'flags' as "
+                                 "logical(c_bool)")
+        # a binding passes both as the same C type
+        _, bag = analysed(array_producers(), flags_user(hand_user, None))
+        assert refusals(bag) == [], bag.render()
+
+    def test_f_on_a_scalar(self):
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, doc="n", directives=at_line("total", "counts"))))
+
+        assert error.message == ("'norms' is real(real64), but 'counts' gives 'total' as "
+                                 "integer(int32)")
+
+    def test_f_and_g_on_just_info(self):
+        info = OutputFromMode.JUST_INFO
+        error = refused(array_producers(), norms_user(
+            integer("norms", Intent.IN, "(n_items)", doc="n",
+                    directives=at_line("norms", "norms", mode=info))))
+        assert "'norms' is integer(int32), but 'norms' gives" in error.message
+
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, doc="n", directives=at_line("norms", "norms", mode=info))))
+        assert error.message == "'norms' is a scalar, but 'norms' gives 'norms' as rank 1"
+
+    def test_f_is_silent_where_validate_refuses_the_type(self):
+        _, bag = analysed(array_producers(), norms_user(
+            integer("norms", Intent.IN, "(n_items)", kind="int64", doc="n",
+                    directives=at_line("counts", "counts"))))
+
+        assert refusals(bag) == []
+
+    def test_g_a_rank_differs_and_owns_it(self):
+        # one error: rank, not an axis as well
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, "(n_items, 2)", doc="n",
+                 directives=at_line("norms", "norms"))))
+
+        assert error.message == "'norms' is rank 2, but 'norms' gives 'norms' as rank 1"
+        assert error.note == "declare it with the rank 'norms' has"
+
+    def test_i_an_output_that_is_not_intent_out(self):
+        error = refused(array_producers(), norms_user(
+            real("norms", Intent.IN, doc="n", directives=at_line("level", "level"))))
+
+        assert error.message == ("'norms' is computed from 'level', whose output 'level' is "
+                                 "intent(inout), not intent(out)")
+        assert error.note == ("a producer's output is intent(out): the generated wrapper would "
+                              "pass it a local nothing has set, which the producer then reads"
+                              + WAY_OUT)
+
+    def test_a_generated_pair_reports_once(self):
+        # the plain half keeps `norms` here (an output is sized by it), so both halves have it
+        user = consumer(
+            "use_norms_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("norms", Intent.IN, "(n_items)", doc="n", directives=at_line("norms", "norms")),
+            real("tmp_buf", Intent.OUT, "(n_items)", doc="scratch"),
+            real("res", Intent.OUT, "(size(norms))", doc="sized by it"),
+        )
+        synthesis, bag = analysed(array_producers(), user)
+        assert synthesis.project.procedure("tox_cons", "use_norms").argument("norms"), \
+            "the premise: both halves have it"
+
+        assert len(refusals(bag)) == 1, bag.render()
+
+
+class TestRowDIsRefusedByValidate:
+    """Row d of the design -- an AUTO array sized by a value its producer refines -- cannot be
+    written: the refined supplier must be a required intent(inout) argument, and an extent is
+    intent(in). `validate` says the latter."""
+
+    def test_an_intent_inout_extent_is_refused(self):
+        from codegen.ir.validate import validate_project
+
+        capping = module("tox_hand", procedure(
+            "cap_norms",
+            integer("cap", Intent.INOUT, doc="lowered in place"),
+            real("norms", Intent.OUT, "(cap)", doc="the norms"),
+            integer("ierr", Intent.OUT, doc="error"),
+        ))
+        user = consumer(
+            "use_norms_impl",
+            integer("cap", Intent.INOUT, doc="refined by the producer"),
+            real("norms", Intent.IN, "(cap)", doc="n",
+                 directives=auto("norms", "cap_norms", "tox_hand")),
+            real("total", Intent.OUT, doc="the result"),
+        )
+        synthesis, bag = analysed(capping, user)
+        validate_project(synthesis.project, bag)
+
+        assert any(e.message == "extent argument 'cap' is intent(inout)" for e in bag.errors), \
+            bag.render()
+
+
+class TestWhereAProducerInputComesFrom:
+    """P1: a producer input a call passes is a constant, or an input the caller passes.
+
+    In every tier that calls the producer: in Fortran an intent(in) or intent(inout) dummy
+    `foo` keeps -- required, optional with a DM_DEFAULT (resolved before the call), or optional
+    where the producer's input is optional too -- and in a binding a parameter, or what it
+    reads off one first. Each refusal has its own message and the note they share.
+    """
+
+    def sized(self, supplier, *others, name="use_scaled_impl", rows=(("factor", "scale"),)):
+        return consumer(
+            name,
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            *others,
+            supplier,
+            integer("work_size", doc=table(*rows), directives=Directives(output_from=OutputFrom(
+                "scaled", "scaled_size", "tox_prod", OutputFromMode.AUTO,
+                line_number=DIRECTIVE_LINE))),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+
+    def message(self, supplier, why):
+        return (f"'work_size' is computed from 'scaled_size', whose input 'factor' would be "
+                f"'{supplier}', {why}")
+
+    def test_a_work_array(self):
+        error = refused(producers(), self.sized(
+            integer("tmp_scale", Intent.OUT, "(n_items)", doc="scratch"),
+            rows=(("factor", "tmp_scale"),)))
+
+        assert error.message == self.message(
+            "tmp_scale", "a work array, which holds nothing before the implementation fills it")
+        assert error.note == P1_NOTE + WAY_OUT
+
+    def test_a_permutation_foo_builds(self):
+        error = refused(producers(), self.sized(
+            integer("x_perm", Intent.IN, "(n_items)", doc="their order"),
+            rows=(("factor", "x_perm"),)))
+
+        assert error.message == self.message(
+            "x_perm", "a permutation 'use_scaled' seeds and sorts only after its producers have "
+                      "run")
+
+    def test_an_output(self):
+        error = refused(producers(), self.sized(
+            integer("scale", Intent.OUT, doc="decided by the implementation")))
+
+        assert error.message == self.message(
+            "scale", "an output, which has no value before the implementation sets it")
+
+    def test_an_optional_without_a_default(self):
+        error = refused(producers(), self.sized(
+            integer("scale", doc="a scale", optional=True)))
+
+        assert error.message == self.message(
+            "scale", "an optional without a DM_DEFAULT, which reaches the producer's required "
+                     "input absent when the caller leaves it out")
+
+    def test_an_argument_only_the_prologue_has(self):
+        from codegen.ir.directives import Prologue
+
+        guard = procedure(
+            "guard",
+            integer("n_items", doc="items"),
+            integer("scale", doc="the prologue's own"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            integer("ierr", Intent.OUT, doc="error"),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        )
+        user = self.sized(integer("other", doc="unrelated"), name="use_scaled_impl")
+        impl = user.procedures[0]
+        impl.directives = Directives(prologue=Prologue("guard", "tox_cons_impl"))
+        user = module("tox_cons_impl", guard, impl)
+
+        error = refused(producers(), user)
+
+        assert error.message == self.message(
+            "scale", "which only the prologue takes: it is the prologue's argument, not the "
+                     "implementation's")
+
+    def test_what_it_accepts(self):
+        from codegen.ir.directives import Default
+
+        accepted = {
+            "required in": integer("scale", doc="a scale"),
+            "required inout": integer("scale", Intent.INOUT, doc="a scale"),
+            "optional with a default": integer(
+                "scale", doc="a scale", optional=True,
+                directives=Directives(default=Default("2_int32"))),
+        }
+        for case, supplier in accepted.items():
+            _, bag = analysed(producers(), self.sized(supplier))
+            assert bag.errors == (), (case, bag.render())
+        _, bag = analysed(producers(), self.sized(integer("other", doc="x"),
+                                                  rows=(("factor", "3_int32"),)))
+        assert bag.errors == (), ("a constant", bag.render())
+
+    def test_an_optional_into_an_optional_input_passes_through(self):
+        optional_input = module("tox_opt_impl", procedure(
+            "padded_size_impl",
+            integer("n_items", doc="items"),
+            integer("padding", doc="extra", optional=True),
+            integer("padded", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        ))
+        user = consumer(
+            "use_padded_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("padding", doc="extra", optional=True),
+            integer("work_size", doc="size", directives=auto("padded", "padded_size", "tox_opt")),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+        synthesis, bag = analysed(optional_input, user)
+
+        assert bag.errors == (), bag.render()
+        assert "padding = padding" in call_of(fortran(synthesis), "padded_size")
+
+    def test_a_default_is_resolved_through_a_renaming_table(self):
+        # `factor | scale`: what is resolved is the supplier, by its own name
+        from codegen.ir.directives import Default
+
+        synthesis, bag = analysed(producers(), self.sized(integer(
+            "scale", doc="a scale", optional=True, directives=Directives(default=Default("2_int32")))))
+        text = body(fortran(synthesis), "use_scaled")
+
+        assert bag.errors == (), bag.render()
+        assert "M_DEFAULT_VAL(scale, scale_value, 2_int32)" in text
+        assert "factor = scale_value" in call_of(text, "scaled_size")
+
+    def test_a_hand_written_consumer_is_held_to_it_too(self):
+        hand = module("tox_hand", procedure(
+            "use_scaled",
+            integer("n_items", doc="items"),
+            integer("tmp_scale", Intent.OUT, "(n_items)", doc="scratch"),
+            integer("work_size", doc=table(("factor", "tmp_scale")),
+                    directives=Directives(output_from=OutputFrom(
+                        "scaled", "scaled_size", "tox_prod", OutputFromMode.AUTO,
+                        line_number=DIRECTIVE_LINE))),
+            real("res", Intent.OUT, "(work_size)", doc="the result"),
+            integer("ierr", Intent.OUT, doc="error"),
+        ))
+        error = refused(producers(), hand)
+
+        assert "a work array, which holds nothing" in error.message
+        assert error.note == P1_NOTE  # no JUST_INFO offer: no generated Fortran calls it
+
+
+class TestTheStatedDiagnosticChanges:
+    """What the producer-input rule moved or merged, each pinned."""
+
+    def test_chaining_is_reported_at_the_directive(self):
+        sizes = TestChainingIsRefused().sizes()
+        user = consumer(
+            "chained_impl",
+            integer("n_items", doc="items"),
+            integer("s0", doc="a size", directives=auto("base", "base_size", "tox_base")),
+            real("tmp_s0", Intent.OUT, "(s0)", doc="sized"),
+            integer("s1", doc=table(("other", "s0")), directives=Directives(output_from=OutputFrom(
+                "plus", "plus_size", "tox_base", OutputFromMode.AUTO,
+                line_number=DIRECTIVE_LINE))),
+            real("tmp_s1", Intent.OUT, "(s1)", doc="sized"),
+        )
+        error = refused(sizes, user)
+
+        assert "which a producer computes here too" in error.message
+
+    def test_chaining_into_a_kept_value_is_one_error(self):
+        # case n: `s1` sizes a kept output, so both halves have it; it used to be two
+        sizes = TestChainingIsRefused().sizes()
+        user = consumer(
+            "chained_impl",
+            integer("n_items", doc="items"),
+            integer("s0", doc="a size", directives=auto("base", "base_size", "tox_base")),
+            real("tmp_s0", Intent.OUT, "(s0)", doc="sized"),
+            integer("s1", doc=table(("other", "s0")), directives=auto("plus", "plus_size",
+                                                                      "tox_base")),
+            real("res", Intent.OUT, "(s1)", doc="sized"),
+        )
+        _, bag = analysed(sizes, user)
+
+        assert len([e for e in bag.errors if "computes here too" in e.message]) == 1, \
+            bag.render()
+
+    def test_a_work_array_supplier_no_longer_gets_a_misleading_no_such_argument(self):
+        # case j: the plain half lacks the work array, and said it had no argument of that name
+        user = consumer(
+            "use_scaled_impl",
+            integer("n_items", doc="items"),
+            integer("tmp_scale", Intent.OUT, "(n_items)", doc="scratch"),
+            integer("work_size", doc=table(("factor", "tmp_scale")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("res", Intent.OUT, "(work_size)", doc="kept, so both halves call the producer"),
+        )
+        _, bag = analysed(producers(), user)
+
+        assert [e.message for e in bag.errors if "work_size" in e.message] == [
+            "'work_size' is computed from 'scaled_size', whose input 'factor' would be "
+            "'tmp_scale', a work array, which holds nothing before the implementation fills it"
+        ], bag.render()
+
+    def test_an_extent_both_sized_by_and_passed_is_one_error(self):
+        # case h: `vals(budget)` is allocated with, and its producer passed, what the prologue
+        # writes afterwards -- one cause, which used to be two errors
+        from codegen.ir.directives import Prologue
+        from codegen.ir.validate import validate_project
+
+        reps = module("tox_reps_impl", procedure(
+            "reps_impl",
+            integer("factor", doc="how many"),
+            real("vals", Intent.OUT, "(factor)", doc="the values"),
+            meta=IMPL, is_pure=True,
+        ))
+        guard = procedure(
+            "guard",
+            integer("budget", Intent.OUT, doc="decided here"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            integer("ierr", Intent.OUT, doc="error"),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        )
+        impl = procedure(
+            "use_reps_impl",
+            integer("budget", doc="room"),
+            real("vals", Intent.IN, "(budget)", doc=table(("factor", "budget")),
+                 directives=auto("vals", "reps", "tox_reps")),
+            real("total", Intent.OUT, doc="the result"),
+            meta=IMPL, is_pure=True,
+            directives=Directives(prologue=Prologue("guard", "tox_cons_impl")),
+        )
+        synthesis, bag = analysed(reps, module("tox_cons_impl", guard, impl))
+        validate_project(synthesis.project, bag)
+
+        assert [e.message for e in bag.errors if "only fills afterwards" in e.message] == [
+            "'vals' is sized by 'budget', which the prologue only fills afterwards"
+        ], bag.render()
+
+
+class TestAPrologueStillOwnsWhatItWrites:
+    """The prologue's rule -- nothing above it reads what it writes -- is not a case of P1, and
+    keeps its own message whether or not P1 has a plan to show it."""
+
+    def test_the_inout_budget_is_still_refused_by_it(self):
+        from codegen.ir.validate import validate_project
+        from test_synthesize import prologue_feeding_a_producer_module
+
+        project_ = synthesize_wrappers(project(prologue_feeding_a_producer_module()),
+                                       diagnostics=DiagnosticBag()).project
+        bag = DiagnosticBag()
+        analyse_project(project_, bag)
+        validate_project(project_, bag)
+
+        [error] = [e for e in bag.errors if "only fills afterwards" in e.message]
+        assert error.message == "'work_size' is passed 'budget', which the prologue only fills afterwards"
+        # a work array is no way out for a producer input: it gets P1's note
+        assert error.note == P1_NOTE
+
+
+class TestAnIntentInoutValueIsRefused:
+    """Row h, in `validate`: a value a producer computes is intent(in), on either route.
+
+    Where `foo` computed it, what the implementation writes back was dropped; where a binding
+    did, nobody was asked for it.
+    """
+
+    def validated(self, sized):
+        from codegen.ir.validate import validate_project
+
+        user = consumer(
+            "use_size_impl",
+            integer("n_items", doc="items"),
+            integer("scale", doc="scale"),
+            integer("work_size", Intent.INOUT, doc=table(("factor", "scale")),
+                    directives=Directives(output_from=OutputFrom(
+                        "scaled", "scaled_size", "tox_prod", OutputFromMode.AUTO,
+                        line_number=DIRECTIVE_LINE))),
+            sized,
+        )
+        synthesis, bag = analysed(producers(), user)
+        validate_project(synthesis.project, bag)
+        return [e for e in bag.errors if "intent(inout), but it is computed" in e.message]
+
+    def test_on_either_route_once(self):
+        for sized in (real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+                      real("res", Intent.OUT, "(work_size)", doc="the result")):
+            [error] = self.validated(sized)
+
+            assert error.message == ("'work_size' is intent(inout), but it is computed with "
+                                     "'scaled_size', so what the implementation writes back is "
+                                     "discarded")
+            assert error.location.line == DIRECTIVE_LINE
+            assert error.note == (
+                "a value a producer computes is intent(in); scratch the implementation reuses "
+                "is a 'tmp_' work array. Where the caller can supply the value, name the "
+                "producer with JUST_INFO instead of AUTO, so the caller passes it")

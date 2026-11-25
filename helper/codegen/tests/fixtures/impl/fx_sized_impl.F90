@@ -15,6 +15,7 @@ module fx_sized_impl
     public :: fx_fill_impl, fx_work_total_impl, fx_two_producers_impl, fx_extent_total_impl
     public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl, fx_both_firsts_impl
     public :: fx_two_scales_impl, fx_norm_rank_impl, fx_large_total_impl
+    public :: fx_default_scale_impl, fx_padded_total_impl
 
 contains
 
@@ -264,6 +265,54 @@ contains
         tmp_large = 1000.0_real64
         total = sum(norms) + sum(tmp_large)
     end subroutine fx_large_total_impl
+
+    !> summary: A work array sized by a producer given an optional with a default, under another name
+    !| author: A Developer
+    pure subroutine fx_default_scale_impl(n_items, x, scale, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: scale
+            !! how many slots of scratch per value
+            !! DM_DEFAULT(2_int32)
+        integer(int32), intent(in) :: work_size
+            !! size of the scratch
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | factor         | scale       |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the size of the scratch
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+        if (present(scale)) total = total + 0.0_real64*scale
+    end subroutine fx_default_scale_impl
+
+    !> summary: A work array sized by a producer whose optional input an optional supplies
+    !| author: A Developer
+    !| Left out, `padding` stays absent all the way to the producer.
+    pure subroutine fx_padded_total_impl(n_items, x, padding, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: padding
+            !! extra slots of scratch
+        integer(int32), intent(in) :: work_size
+            !! size of the scratch
+            !! DM_OUTPUT_FROM(padded_size, fx_padded_size, fx_producers, AUTO)
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the size of the scratch
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+        if (present(padding)) total = total + 0.0_real64*padding
+    end subroutine fx_padded_total_impl
 
     !> summary: A result sized by a producer that takes the shape of an input
     !| author: A Developer

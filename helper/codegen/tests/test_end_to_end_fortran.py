@@ -501,11 +501,13 @@ _SIZED_PROBE = """\
 program probe
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: get_err_code, get_err_arg_pos
-    use fx_sized, only: fx_norm_rank, fx_norm_rank_expert, fx_large_total
+    use fx_sized, only: fx_norm_rank, fx_norm_rank_expert, fx_large_total, fx_default_scale, &
+        fx_padded_total
     implicit none
     real(real64) :: x(2, 3) = reshape([3.0_real64, 4.0_real64, 0.6_real64, 0.8_real64, &
                                        1.5_real64, 2.0_real64], [2, 3])
     real(real64) :: ranked(3), total
+    real(real64) :: values(3) = [1.0_real64, 2.0_real64, 4.0_real64]
     integer(int32) :: ierr
 
 {body}
@@ -571,3 +573,32 @@ class TestAnArrayAProducerFills:
         """, probe=_SIZED_PROBE)
 
         assert out == ["0", "0.00"]
+
+
+class TestAnOptionalSupplier:
+    """P1: an optional producer input's supplier, resolved or passed through as it stands."""
+
+    def test_its_default_is_resolved_under_the_name_the_table_gives_it(self):
+        # `factor | scale`: left out, `scale` is its default 2, so the scratch is 3 x 2
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_default_scale(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+            call fx_default_scale(3, values, 3, total, ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "13.00", "0", "16.00"]
+
+    def test_an_absent_one_stays_absent_through_to_the_producer(self):
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_padded_total(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+            call fx_padded_total(3, values, 2, total, ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "10.00", "0", "12.00"]
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, built, tmp_path):
+        self.built, self.tmp_path = built, tmp_path

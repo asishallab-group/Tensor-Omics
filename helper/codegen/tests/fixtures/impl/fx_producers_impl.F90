@@ -14,7 +14,7 @@ module fx_producers_impl
 
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
-    public :: fx_column_norms_impl, fx_large_norms_impl
+    public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl
 
 contains
 
@@ -125,6 +125,20 @@ contains
         norms = sqrt(sum(x**2, dim=1))
         n_large = count(norms > 1.0_real64)
     end subroutine fx_large_norms_impl
+
+    !> summary: A size of a number of items, plus a padding when one is given
+    !| author: A Developer
+    pure subroutine fx_padded_size_impl(n_items, padding, padded_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in), optional :: padding
+            !! extra slots, none when it is left out
+            !! DM_MIN(0_int32)
+        integer(int32), intent(out) :: padded_size
+            !! `n_items`, plus `padding`
+        padded_size = n_items
+        if (present(padding)) padded_size = padded_size + padding
+    end subroutine fx_padded_size_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer

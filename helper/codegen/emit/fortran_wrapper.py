@@ -1012,10 +1012,12 @@ class FortranWrapperEmitter:
             plan = roles.computed_from if roles is not None else None
             if plan is None:
                 continue
-            for dummy in plan.producer.arguments:
-                if dummy.optional:
+            for supply in plan.inputs:
+                dummy = plan.producer.argument(supply.name)
+                if supply.argument is None or dummy is None or dummy.optional:
                     continue
-                supplied = alloc.argument(dummy.name)
+                # what supplies it, which a table may name differently from the producer
+                supplied = alloc.argument(supply.argument)
                 if supplied is None or not supplied.optional:
                     continue
                 if supplied.directives.default is None:

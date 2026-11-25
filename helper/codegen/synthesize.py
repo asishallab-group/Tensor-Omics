@@ -203,6 +203,20 @@ _SIZE_TOKEN_RE = re.compile(
 )
 
 
+def extent_tokens(text: str) -> list[tuple[str, str]]:
+    """An extent or a length expression as `(kind, text)` tokens: `number` (its kind suffix
+    with it), `string`, `name` or `symbol`. Blanks are dropped."""
+    tokens = []
+    position = 0
+    while position < len(text):
+        match = _SIZE_TOKEN_RE.match(text, position)
+        if match is None:
+            break  # only blanks are left
+        position = match.end()
+        tokens.append((match.lastgroup, match.group(match.lastgroup)))
+    return tokens
+
+
 def size_names_in(text: str) -> list[SizeName]:
     """The identifiers an extent or a length expression names, in order, each marked as a value
     or as the array operand of `size()`.
@@ -214,14 +228,7 @@ def size_names_in(text: str) -> list[SizeName]:
     number names nothing, its kind suffix included (`5_int32`), nor does a string, the `size`
     intrinsic itself, or a keyword (`dim=`).
     """
-    tokens = []
-    position = 0
-    while position < len(text):
-        match = _SIZE_TOKEN_RE.match(text, position)
-        if match is None:
-            break  # only blanks are left
-        position = match.end()
-        tokens.append((match.lastgroup, match.group(match.lastgroup)))
+    tokens = extent_tokens(text)
 
     def token(index: int) -> tuple[str, str]:
         return tokens[index] if 0 <= index < len(tokens) else ("", "")

@@ -23,7 +23,8 @@ from ..diagnostics import DiagnosticBag, SourceLocation
 from .constants import ConstantError, ConstantEvaluator
 from .doc import DocTable, FordLink
 from .entities import Argument, Procedure
-from .types import BaseType, Intent
+from .types import BaseType, FortranType, Intent
+from .validate import _kind_value, bindings_cannot_carry
 
 #: A generated procedure name in a mode table's third column: a Fortran identifier.
 _PROCEDURE_NAME_RE = re.compile(r"[A-Za-z]\w*\Z")
@@ -291,10 +292,17 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     evaluator = ConstantEvaluator(project.constant_values())
     for module in project:
         for procedure in module.exported_procedures:
-            _resolve_output_from(procedure, project, diagnostics, conventions, evaluator)
-            # once per generated pair: its expert half carries every argument the plain half has
+            # once per generated pair: its expert half carries every argument the plain half has,
+            # and resolves each against the implementation's own, so it reports for both. The
+            # plain half's plans are still attached, for its binding, but what is wrong with them
+            # is said once, where the whole picture is.
             expert = module.procedure(procedure.name + conventions.expert_suffix)
-            if expert is None or _plain_of_an_expert(expert, project, conventions) is not procedure:
+            plain_half = (expert is not None
+                          and plain_of_an_expert(expert, project, conventions) is procedure)
+            _resolve_output_from(procedure, project,
+                                 DiagnosticBag() if plain_half else diagnostics,
+                                 conventions, evaluator)
+            if not plain_half:
                 _check_refined_values(procedure, project, diagnostics, conventions)
                 _check_repeated_outputs(procedure, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
@@ -329,6 +337,8 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
     wrapper in one environment.
     """
     called_here: dict[tuple, list[Argument]] = {}
+    # where `consumer` is a generated pair's expert: the plain half, which `foo` is
+    plain = plain_of_an_expert(consumer, project, conventions)
     for argument in consumer.arguments:
         directive = argument.directives.output_from
         if directive is None:
@@ -353,14 +363,14 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
-        plain = _plain_of_an_expert(producer, project, conventions)
-        if plain is not None:
+        producer_plain = plain_of_an_expert(producer, project, conventions)
+        if producer_plain is not None:
             diagnostics.error(
                 f"'{argument.name}' is computed from '{producer.name}', the expert tier, "
                 f"which leaves preparing its work to the caller",
                 entity=argument,
                 note=(f"name the plain-named wrapper, which prepares it itself: "
-                      f"'{plain.name}' in '{plain.module.name}'"),
+                      f"'{producer_plain.name}' in '{producer_plain.module.name}'"),
             )
             continue
 
@@ -370,6 +380,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 f"'{directive.argument}' is not an output of '{producer.name}'",
                 entity=argument,
             )
+            continue
+
+        fortran_calls = _is_called_from_fortran(consumer, argument, project, conventions)
+        if _refuses_the_output(argument, directive, producer, output, fortran_calls,
+                               diagnostics):
             continue
 
         if not directive.is_automatic:
@@ -389,9 +404,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
         if renames is None:
             continue
 
-        fortran_calls = _is_called_from_fortran(consumer, argument, project, conventions)
         inputs = []
         unmatched = []
+        # (producer input, supplier) where the supplier is an argument of `foo` alone: the
+        # prologue's own, which the implementation never has
+        prologue_only = []
         for producer_input in producer.arguments:
             if producer_input is output or producer_input.intent is None:
                 continue
@@ -427,6 +444,9 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                     continue
             if derived and not fortran_calls:
                 continue  # nothing that calls the producer here passes it
+            if plain is not None and plain.argument(supplier) is not None:
+                prologue_only.append((producer_input.name, plain.argument(supplier).name))
+                continue
             unmatched.append(producer_input.name)
 
         if unmatched:
@@ -439,10 +459,18 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             )
             continue
 
+        if _refuses_an_axis(argument, directive, consumer, producer, output, inputs,
+                            fortran_calls, evaluator, diagnostics):
+            continue
         if _refuses_chaining(argument, consumer, producer, inputs, fortran_calls, diagnostics):
             continue
+        # before P1, which would refuse some of the same suppliers less precisely: an input
+        # the producer refines has the narrower rule of its own
         if fortran_calls and _refuses_a_refined_input(argument, consumer, producer, inputs,
                                                       renames, diagnostics, conventions):
+            continue
+        if _refuses_a_supplier(argument, directive, consumer, plain, producer, inputs,
+                               prologue_only, fortran_calls, project, conventions, diagnostics):
             continue
 
         argument.roles.computed_from = OutputFromPlan(
@@ -473,7 +501,7 @@ def _check_producer_cycles(project, diagnostics: DiagnosticBag,
     nodes: dict[int, Procedure] = {}
     for module in project:
         for consumer in module.exported_procedures:
-            entry = _plain_of_an_expert(consumer, project, conventions) or consumer
+            entry = plain_of_an_expert(consumer, project, conventions) or consumer
             for argument in consumer.arguments:
                 plan = argument.roles.computed_from if argument.roles else None
                 if plan is None or not plan.is_automatic:
@@ -526,6 +554,359 @@ def _report_cycle(cycle: list[tuple[Procedure, Argument]], diagnostics: Diagnost
     )
 
 
+#: What every refusal of a producer input's supplier says to do instead (rule P1)
+PRODUCER_INPUT_NOTE = "supply it by an argument the caller passes, or a constant in the table"
+
+#: Appended to a note where the generated `foo` calls the producer and the caller could supply
+#: the value instead: JUST_INFO keeps the argument, and calls nothing
+_JUST_INFO_WAY_OUT = (
+    "; or, where the caller can supply the value, name the producer with JUST_INFO instead "
+    "of AUTO, so the caller passes it"
+)
+
+
+def _way_out(fortran_calls: bool) -> str:
+    return _JUST_INFO_WAY_OUT if fortran_calls else ""
+
+
+def _rank_text(argument: Argument) -> str:
+    return "a scalar" if argument.is_scalar else f"rank {argument.rank}"
+
+
+def _logical_kind(fortran: FortranType) -> str | None:
+    return (fortran.kind or "").lower() or None
+
+
+def _types_agree(consumer: FortranType, produced: FortranType, fortran_calls: bool) -> bool:
+    """Whether a consumer argument of type `consumer` can take a producer output of `produced`.
+
+    Where the generated Fortran calls the producer it passes the consumer's local by keyword,
+    so the two must be one Fortran type: the base type, a numeric kind by value (`c_int` is
+    `int32`), a logical's kind by name (`c_bool` is not the default kind, which the bindings
+    convert). Where a binding calls it, the value crosses as the C type the binding passes, so
+    the two logical kinds are one.
+    """
+    if consumer.base is not produced.base:
+        return False
+    if consumer.is_character:
+        return True
+    if consumer.is_logical:
+        return not fortran_calls or _logical_kind(consumer) == _logical_kind(produced)
+    ours, theirs = _kind_value(consumer.kind), _kind_value(produced.kind)
+    if ours is None or theirs is None:
+        return (consumer.kind or "").lower() == (produced.kind or "").lower()
+    return ours == theirs
+
+
+def _refuses_the_output(argument: Argument, directive, producer: Procedure, output: Argument,
+                        fortran_calls: bool, diagnostics: DiagnosticBag) -> bool:
+    """Refuse a consumer argument that cannot hold the producer output it is computed from.
+
+    The rows of the design's R2 that need only the two declarations, each with its own message,
+    at the directive's line, and only the first that applies (row c, which needs the producer's
+    inputs resolved, is `_refuses_an_axis`):
+
+    - (e) a character array: its length would be one more thing to agree;
+    - (i) an output that is not `intent(out)`: the producer would read what nothing set;
+    - (g) a rank that differs, and (f) a type that differs -- on a JUST_INFO pointer too, since
+      the caller is told to pass that output here; silent where `validate` refuses the type
+      itself, so a type is reported once;
+    - (a) an array `foo` allocates that is assumed-shape or assumed-size, with no extent to
+      allocate it by;
+    - (b) a producer output that is assumed-shape or assumed-size, or that it fills only partly
+      (`DM_RESULT_SIZE_IS`), which an array declared with its own extents cannot hold. The
+      partial fill is refused where something allocates the array with its declared extents:
+      `foo`, and a binding of an explicit-shape consumer; an assumed-shape one takes what comes.
+
+    True when something was refused.
+    """
+    location = _location_of(argument, directive.line_number)
+    automatic = directive.is_automatic
+    computed = f"'{argument.name}' is computed from '{producer.name}'"
+    way_out = _way_out(fortran_calls)
+
+    def refuse(message: str, note: str) -> bool:
+        diagnostics.error(message, entity=argument, location=location, note=note)
+        return True
+
+    if automatic and argument.is_array and argument.type.is_character:
+        return refuse(
+            f"'{argument.name}' is a character array computed from '{producer.name}'",
+            "a producer does not fill a character array: its length would be one more thing "
+            "to agree with the producer's" + way_out,
+        )
+    if automatic and output.intent is not Intent.OUT:
+        return refuse(
+            f"{computed}, whose output '{output.name}' is intent({output.intent.value}), not "
+            "intent(out)",
+            "a producer's output is intent(out): "
+            + ("the generated wrapper would pass it a local nothing has set, which the "
+               "producer then reads" if fortran_calls else
+               "nothing here has a value to hand it, which the producer would read first")
+            + way_out,
+        )
+    if argument.rank != output.rank:
+        return refuse(
+            f"'{argument.name}' is {_rank_text(argument)}, but '{producer.name}' gives "
+            f"'{output.name}' as {_rank_text(output)}",
+            f"declare it with the rank '{output.name}' has",
+        )
+    silent = any(t.base is BaseType.DERIVED or bindings_cannot_carry(t)
+                 for t in (argument.type, output.type))
+    if not silent and not _types_agree(argument.type, output.type, fortran_calls):
+        return refuse(
+            f"'{argument.name}' is {argument.type}, but '{producer.name}' gives "
+            f"'{output.name}' as {output.type}",
+            f"declare it as '{output.name}' is declared"
+            + (", kind and all: the generated wrapper passes it to the producer by keyword"
+               if fortran_calls else ""),
+        )
+    if not automatic or not argument.is_array:
+        return False
+    if fortran_calls and not argument.dimension.is_explicit_shape:
+        shape = "assumed-shape" if argument.dimension.is_assumed_shape else "assumed-size"
+        return refuse(
+            f"{computed}, and the generated wrapper allocates it before the call, but it is "
+            f"{shape}, so there is no extent to allocate it with",
+            f"declare its extents as '{output.name}' has them, in this procedure's names"
+            + way_out,
+        )
+    if not output.dimension.is_explicit_shape:
+        shape = "assumed-shape" if output.dimension.is_assumed_shape else "assumed-size"
+        return refuse(
+            f"{computed}, whose output '{output.name}' is {shape}",
+            "an output a consumer takes is declared with its extents: whatever calls the "
+            "producer allocates the array with the consumer's, which an output that takes its "
+            "shape from the actual argument never names" + way_out,
+        )
+    allocated = fortran_calls or argument.dimension.is_explicit_shape
+    counter = output.directives.result_size_is
+    if allocated and counter is not None:
+        return refuse(
+            f"{computed}, which fills only the first '{counter.argument}' elements of "
+            f"'{output.name}'",
+            "the implementation would be handed elements the producer never wrote; have the "
+            "producer fill the whole array" + way_out,
+        )
+    return False
+
+
+def _extent_tokens(text: str, rename) -> list[tuple[str, object]] | None:
+    """`text` as comparable tokens: names lower-cased and renamed, numbers as values.
+
+    `rename(name)` gives a name's replacement -- a name, a value, or None where the name has
+    nothing to compare by -- and the whole extent is then None.
+    """
+    from ..synthesize import extent_tokens  # local: synthesize imports this module
+
+    tokens = []
+    for kind, text_ in extent_tokens(text):
+        if kind == "number":
+            literal = text_.split("_")[0]
+            tokens.append(("number", int(literal) if literal.isdigit() else literal.lower()))
+        elif kind == "name":
+            replacement = rename(text_)
+            if replacement is None:
+                return None
+            tokens.append(replacement)
+        else:
+            tokens.append((kind, text_))
+    return tokens
+
+
+def _same_extent(left: list, right: list) -> bool:
+    """Whether two token lists are one extent: as trees where both parse, else token by token."""
+    from ..abi.extents import ExtentError, parse  # local: the ABI layer sits above the IR
+
+    def text(tokens) -> str:
+        return " ".join(str(value) for _, value in tokens)
+
+    try:
+        return parse(text(left)) == parse(text(right))
+    except ExtentError:
+        return left == right
+
+
+def _refuses_an_axis(argument: Argument, directive, consumer: Procedure, producer: Procedure,
+                     output: Argument, inputs: list[ProducerInput], fortran_calls: bool,
+                     evaluator: ConstantEvaluator | None, diagnostics: DiagnosticBag) -> bool:
+    """Refuse an AUTO array whose extent differs from the producer output's (R2 row c).
+
+    The producer writes the shape it declares into an array allocated with the consumer's, so
+    each axis must be the producer's extent with every producer input replaced by what supplies
+    it here -- all at once, so a table swapping two (`n | m`, `m | n`) swaps them, inside
+    `size(a, k)` too. A name that is no input is a constant of the producer's own scope, and one
+    that is no argument of the consumer a constant of its: each evaluated where it is declared,
+    so `5_int32` is `5` and a named parameter compares by its value. Names compare in any case.
+    Where `foo` allocates it, and a binding of an explicit-shape consumer; an assumed-shape one
+    takes the shape it is given. An axis naming an input nothing here supplies (one only the
+    producer's binding derives, on the binding route) is not compared: there is nothing to
+    spell it by. Rank is row g's, and a shape the producer does not declare row b's. True when
+    something was refused.
+    """
+    if not (directive.is_automatic and argument.is_array):
+        return False
+    if not (fortran_calls or argument.dimension.is_explicit_shape):
+        return False
+    supplied = {supply.name.lower(): supply for supply in inputs}
+    producer_inputs = {dummy.name.lower() for dummy in producer.arguments}
+    ours = {dummy.name.lower() for dummy in consumer.arguments}
+
+    def constant(name: str):
+        if evaluator is None:
+            return None
+        try:
+            value = evaluator.evaluate(name)
+        except ConstantError:
+            return None
+        return ("number", value) if isinstance(value, int) else None
+
+    def theirs(name: str):
+        supply = supplied.get(name.lower())
+        if supply is not None:
+            if supply.argument is not None:
+                return ("name", supply.argument.lower())
+            value = supply.constant
+            return ("number", int(value)) if isinstance(value, int) else ("name", str(value))
+        if name.lower() in producer_inputs:
+            return None  # an input nothing here supplies
+        return constant(name) or ("name", name.lower())
+
+    def mine(name: str):
+        if name.lower() in ours:
+            return ("name", name.lower())
+        return constant(name) or ("name", name.lower())
+
+    for axis, (extent, produced) in enumerate(
+            zip(argument.dimension.extents, output.dimension.extents), start=1):
+        expected = _extent_tokens(produced, theirs)
+        if expected is None:
+            continue
+        given = _extent_tokens(extent, mine)
+        if _same_extent(given, expected):
+            continue
+        spelled = " ".join(str(value) for _, value in expected)
+        diagnostics.error(
+            f"'{argument.name}' is computed from '{producer.name}', but its axis {axis} is "
+            f"'{extent}', where '{output.name}' is declared with '{produced}', which is "
+            f"'{spelled}' here",
+            entity=argument,
+            location=_location_of(argument, directive.line_number),
+            note=(
+                "the producer writes the shape it declares into the array, so spell each "
+                "extent as it does, in this procedure's names: its inputs replaced by what "
+                "supplies them" + _way_out(fortran_calls)
+            ),
+        )
+        return True
+    return False
+
+
+def _implementation_of(wrapper: Procedure, project, conventions: Conventions):
+    """The implementation a generated wrapper calls, or None for any other procedure.
+
+    `<base>_impl` beside it in the `_impl` module, or -- for a per-mode wrapper, named from its
+    implementation's mode table -- the implementation whose table names it.
+    """
+    module = wrapper.module
+    impl_module = project.module(module.name + conventions.impl_suffix) if module else None
+    if impl_module is None:
+        return None
+    base = wrapper.name
+    if base.lower().endswith(conventions.expert_suffix):
+        base = base[: -len(conventions.expert_suffix)]
+    impl = impl_module.procedure(base + conventions.impl_suffix)
+    if impl is not None:
+        return impl
+    for candidate in impl_module.procedures:
+        for dummy in candidate.arguments:
+            mode = dummy.roles.mode if dummy.roles is not None else None
+            if mode is not None and any(v.procedure_name.lower() == base.lower()
+                                        for v in mode.values):
+                return candidate
+    return None
+
+
+def _prologue_written(wrapper: Procedure, project, conventions: Conventions) -> set[str]:
+    """What the prologue of a generated wrapper's implementation writes, lower-cased."""
+    impl = _implementation_of(wrapper, project, conventions)
+    directive = impl.directives.prologue if impl is not None else None
+    prologue = (project.procedure(directive.module, directive.procedure)
+                if directive is not None else None)
+    if prologue is None:
+        return set()
+    return {dummy.name.lower() for dummy in prologue.arguments
+            if dummy.intent is not None and dummy.intent.is_output}
+
+
+def _refuses_a_supplier(argument: Argument, directive, consumer: Procedure, plain,
+                        producer: Procedure, inputs: list[ProducerInput], prologue_only: list,
+                        fortran_calls: bool, project, conventions: Conventions,
+                        diagnostics: DiagnosticBag) -> bool:
+    """Refuse a producer input that nothing has supplied by the time the producer is called (P1).
+
+    A producer input that a call passes is supplied by a scalar constant, or by an input of the
+    implementation that the caller passes, in every tier that calls the producer: in Fortran an
+    `intent(in)` or `intent(inout)` dummy `foo` keeps -- required; optional with a `DM_DEFAULT`,
+    which `foo` resolves before the call; or optional where the producer's input is optional
+    too, passed through so an absent value stays absent -- and in a binding a parameter, or what
+    the binding reads off one before the producers run. Refused, each with its own message: a
+    work array, a permutation `foo` seeds and sorts, an output, an optional without a default
+    feeding a required input, and an argument only the prologue has.
+
+    Not judged here, as their own rules: a value another producer computes (chaining,
+    `_refuses_chaining`), and one the prologue writes (`validate`'s rule that nothing above the
+    prologue reads what it writes, which then still finds this plan). The supplier is resolved
+    among the implementation's arguments, which the expert half of a pair has, so a pair is
+    checked once, there. An input only the producer's binding derives is passed by a Fortran
+    call alone. True when something was refused.
+    """
+    location = _location_of(argument, directive.line_number)
+    note = PRODUCER_INPUT_NOTE + _way_out(fortran_calls)
+
+    def refuse(name: str, supplier: str, why: str) -> bool:
+        diagnostics.error(
+            f"'{argument.name}' is computed from '{producer.name}', whose input '{name}' would "
+            f"be '{supplier}', {why}",
+            entity=argument, location=location, note=note,
+        )
+        return True
+
+    for name, supplier in prologue_only:
+        return refuse(name, supplier, "which only the prologue takes: it is the prologue's "
+                                      "argument, not the implementation's")
+    written = _prologue_written(consumer, project, conventions) if plain is not None else set()
+    for supply in inputs:
+        if supply.argument is None or (supply.derived and not fortran_calls):
+            continue
+        dummy = consumer.argument(supply.argument)
+        if dummy is None:
+            continue
+        own = dummy.directives.output_from
+        if own is not None and own.is_automatic:
+            continue  # chaining: `_refuses_chaining`
+        if dummy.name.lower() in written:
+            continue  # the prologue's rule: `validate._check_prologue_outputs_are_not_read_first`
+        if dummy.name.lower().startswith(conventions.temporary_prefix):
+            return refuse(supply.name, dummy.name,
+                          "a work array, which holds nothing before the implementation fills it")
+        if (plain is not None and plain.argument(dummy.name) is None
+                and dummy.name.lower().endswith(conventions.perm_suffix)):
+            return refuse(supply.name, dummy.name,
+                          f"a permutation '{plain.name}' seeds and sorts only after its "
+                          "producers have run")
+        if dummy.intent is Intent.OUT:
+            return refuse(supply.name, dummy.name,
+                          "an output, which has no value before the implementation sets it")
+        wanted = producer.argument(supply.name)
+        if (dummy.optional and dummy.directives.default is None
+                and wanted is not None and not wanted.optional):
+            return refuse(supply.name, dummy.name,
+                          "an optional without a DM_DEFAULT, which reaches the producer's "
+                          "required input absent when the caller leaves it out")
+    return False
+
+
 def _refuses_chaining(argument: Argument, consumer: Procedure, producer: Procedure,
                       inputs: list[ProducerInput], fortran_calls: bool,
                       diagnostics: DiagnosticBag) -> bool:
@@ -549,6 +930,8 @@ def _refuses_chaining(argument: Argument, consumer: Procedure, producer: Procedu
             f"'{argument.name}' is computed from '{producer.name}', whose input "
             f"'{supply.name}' would be '{supplier.name}', which a producer computes here too",
             entity=argument,
+            # at the directive, like every rule about what a DM_OUTPUT_FROM may name
+            location=_location_of(argument, argument.directives.output_from.line_number),
             note=(
                 "producers do not feed each other: size for an upper bound instead (the sizing "
                 "formulas are monotone, so a buffer sized for the bound fits), or take the value "
@@ -781,13 +1164,13 @@ def _missing_producer_note(directive, project, conventions: Conventions) -> str 
         wrapper = project.procedure(generated, directive.procedure)
         if wrapper is not None:
             # the plain-named one, even for `foo_expert`: that is what a producer names
-            wrapper = _plain_of_an_expert(wrapper, project, conventions) or wrapper
+            wrapper = plain_of_an_expert(wrapper, project, conventions) or wrapper
             return (f"'{wrapper.name}' is generated into '{generated}', not into "
                     f"'{directive.module}': name it there")
     return None
 
 
-def _plain_of_an_expert(producer: Procedure, project, conventions: Conventions):
+def plain_of_an_expert(producer: Procedure, project, conventions: Conventions):
     """The plain-named wrapper beside `producer`, if `producer` is a generated `foo_expert`."""
     module = producer.module
     suffix = conventions.expert_suffix
@@ -891,7 +1274,7 @@ def _producer_input_table_example(conventions: Conventions) -> str:
     return (
         "name-matching is tried first; where the names differ, or where the consumer has\n"
         "no argument for an input at all, map it in a table -- the right-hand cell is an\n"
-        "argument of the consumer, or a Fortran constant:\n"
+        "argument of the implementation that the caller passes, or a Fortran constant:\n"
         f"!! | {left} | {right} |\n"
         f"!! |----------------|-------------|\n"
         f"!! | n_elements     | n_genes     |\n"
