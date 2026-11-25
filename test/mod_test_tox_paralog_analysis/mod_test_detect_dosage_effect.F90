@@ -48,7 +48,7 @@ contains
     function get_all_tests_detect_dosage_effect() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(14))
+        allocate (all_tests(15))
         all_tests(1) = test_case("test_detect_dosage_effect_binary_weights", test_detect_dosage_effect_binary_weights)
         all_tests(2) = test_case("test_detect_dosage_effect_angle_bound", test_detect_dosage_effect_angle_bound)
         all_tests(3) = test_case("test_detect_dosage_effect_defaults", test_detect_dosage_effect_defaults)
@@ -63,6 +63,7 @@ contains
         all_tests(12) = test_case("test_detect_dosage_effect_expert", test_detect_dosage_effect_expert)
         all_tests(13) = test_case("test_detect_dosage_effect_any_scale", test_detect_dosage_effect_any_scale)
         all_tests(14) = test_case("test_angle_between", test_angle_between)
+        all_tests(15) = test_case("test_detect_dosage_effect_starts_in_the_array", test_detect_dosage_effect_starts_in_the_array)
     end function get_all_tests_detect_dosage_effect
 
     !> The binary-weights family (see BINARY_GENES), all five genes kept, `max_angle` 0 -- every
@@ -513,5 +514,22 @@ contains
             call assert_equal_real(scaled_angle, unscaled_angle, 0.0_real64, "test_angle_between: scaled by "//scales(i_scale))
         end do
     end subroutine test_angle_between
+
+    !> The detection starts from each kept gene but the last, one subset each, and these must fit
+    !| the work array too: three kept genes start two subsets, so a work array of one is
+    !| ERR_SIZE_MISMATCH, naming `n_paralog_subsets` (argument 10), before anything is written.
+    !| The caller's array has a second column the call is not given, holding 12345; it must stay
+    !| so. (The starting subsets used to be written unchecked: past the array's end, into that
+    !| column, or a bounds-check abort in a checking build.)
+    subroutine test_detect_dosage_effect_starts_in_the_array()
+        integer(int32) :: mask(1), subsets(1, 2), n_results, ierr
+
+        mask = 7
+        subsets = 12345
+        call detect_dosage_effect(BINARY_ANCESTOR, BINARY_GENES, 3, 2, mask, 1, n_results, 3, subsets, 1, &
+                                  max_angle=0.0_real64, gain_gamma=100.0_real64, ierr=ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_detect_dosage_effect_starts_in_the_array: refused", 10)
+        call assert_equal_int(subsets(1, 2), 12345_int32, "test_detect_dosage_effect_starts_in_the_array: column 2 untouched")
+    end subroutine test_detect_dosage_effect_starts_in_the_array
 
 end module mod_test_detect_dosage_effect
