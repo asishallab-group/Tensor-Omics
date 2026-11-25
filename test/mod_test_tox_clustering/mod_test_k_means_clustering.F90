@@ -11,6 +11,7 @@
 module mod_test_k_means_clustering
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_clustering, only: k_means_clustering
     use tox_errors
     use test_suite, only: test_case
@@ -26,27 +27,28 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(16))
+        allocate (all_tests(17))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
-        all_tests(3) = test_case("test_k_means_clustering_one_cluster", test_k_means_clustering_one_cluster)
-        all_tests(4) = test_case("test_k_means_clustering_as_many_clusters_as_points", &
+        all_tests(3) = test_case("test_k_means_clustering_many_iterations", test_k_means_clustering_many_iterations)
+        all_tests(4) = test_case("test_k_means_clustering_one_cluster", test_k_means_clustering_one_cluster)
+        all_tests(5) = test_case("test_k_means_clustering_as_many_clusters_as_points", &
                                  test_k_means_clustering_as_many_clusters_as_points)
-        all_tests(5) = test_case("test_k_means_clustering_one_point", test_k_means_clustering_one_point)
-        all_tests(6) = test_case("test_k_means_clustering_equal_points", test_k_means_clustering_equal_points)
-        all_tests(7) = test_case("test_k_means_clustering_ties_go_to_the_later_cluster", &
+        all_tests(6) = test_case("test_k_means_clustering_one_point", test_k_means_clustering_one_point)
+        all_tests(7) = test_case("test_k_means_clustering_equal_points", test_k_means_clustering_equal_points)
+        all_tests(8) = test_case("test_k_means_clustering_ties_go_to_the_later_cluster", &
                                  test_k_means_clustering_ties_go_to_the_later_cluster)
-        all_tests(8) = test_case("test_k_means_clustering_many_points", test_k_means_clustering_many_points)
-        all_tests(9) = test_case("test_k_means_clustering_n_clusters_bounds", test_k_means_clustering_n_clusters_bounds)
-        all_tests(10) = test_case("test_k_means_clustering_dimensions", test_k_means_clustering_dimensions)
-        all_tests(11) = test_case("test_k_means_clustering_rejects_nan_and_inf", test_k_means_clustering_rejects_nan_and_inf)
-        all_tests(12) = test_case("test_k_means_clustering_max_iterations_below_one", &
+        all_tests(9) = test_case("test_k_means_clustering_many_points", test_k_means_clustering_many_points)
+        all_tests(10) = test_case("test_k_means_clustering_n_clusters_bounds", test_k_means_clustering_n_clusters_bounds)
+        all_tests(11) = test_case("test_k_means_clustering_dimensions", test_k_means_clustering_dimensions)
+        all_tests(12) = test_case("test_k_means_clustering_rejects_nan_and_inf", test_k_means_clustering_rejects_nan_and_inf)
+        all_tests(13) = test_case("test_k_means_clustering_max_iterations_below_one", &
                                   test_k_means_clustering_max_iterations_below_one)
-        all_tests(13) = test_case("test_k_means_clustering_empty_cluster_moves_with_the_data", &
+        all_tests(14) = test_case("test_k_means_clustering_empty_cluster_moves_with_the_data", &
                                   test_k_means_clustering_empty_cluster_moves_with_the_data)
-        all_tests(14) = test_case("test_k_means_clustering_squares_past_huge", test_k_means_clustering_squares_past_huge)
-        all_tests(15) = test_case("test_k_means_clustering_squares_below_tiny", test_k_means_clustering_squares_below_tiny)
-        all_tests(16) = test_case("test_k_means_clustering_means_past_huge", test_k_means_clustering_means_past_huge)
+        all_tests(15) = test_case("test_k_means_clustering_squares_past_huge", test_k_means_clustering_squares_past_huge)
+        all_tests(16) = test_case("test_k_means_clustering_squares_below_tiny", test_k_means_clustering_squares_below_tiny)
+        all_tests(17) = test_case("test_k_means_clustering_means_past_huge", test_k_means_clustering_means_past_huge)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -127,7 +129,8 @@ contains
     !|   with the labels of that assignment;
     !| - two iterations reassign point 2 to (1, 1) (2 against 50) and recompute (1.5, 1.5) and
     !|   (9.5, 9.5); the run stops at the limit, though a label changed;
-    !| - the default (300) reaches the same end through a third iteration in which nothing changes.
+    !| - the default reaches the same end through a third iteration in which nothing changes. That
+    !|   shows only that the default is at least 2; `test_k_means_clustering_many_iterations` needs 6.
     subroutine test_k_means_clustering_max_iterations()
         integer(int32), parameter :: n_dims = 2, n_points = 4, n_clusters = 2
         real(real64) :: data_points(n_dims, n_points), initial_centroids(n_dims, n_clusters)
@@ -146,6 +149,45 @@ contains
         call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [1, 1, 2, 2], [2, 2], &
                            converged, "test_k_means_clustering_max_iterations: the default")
     end subroutine test_k_means_clustering_max_iterations
+
+    !> A run that needs six iterations, so a default below 6 shows: 1-D points 1, 2, 3, 5, 7, 8, 9,
+    !| 24 from 1 and 2. The boundary between the clusters moves one point to the right per iteration:
+    !| - iteration 1, centroids 1 and 2: labels [1, 2, 2, 2, 2, 2, 2, 2]; centroids 1 and 58/7;
+    !| - iteration 2: point 3 is closer to 1 (4 against 27.9); [1, 1, 1, 2, ...]; 2 and 53/5;
+    !| - iteration 3: point 5 (9 against 31.4); [1, 1, 1, 1, 2, 2, 2, 2]; 11/4 and 12;
+    !| - iteration 4: point 7 (18.1 against 25); [1, 1, 1, 1, 1, 2, 2, 2]; 18/5 and 41/3;
+    !| - iteration 5: point 8 (19.4 against 32.1); [1, 1, 1, 1, 1, 1, 2, 2]; 13/3 and 33/2;
+    !| - iteration 6: point 9 (21.8 against 56.25); [1, 1, 1, 1, 1, 1, 1, 2]; 35/7 = 5 and 24;
+    !| - iteration 7: nothing changes.
+    !| Every comparison is apart by at least 1, far above rounding. The default ends at labels
+    !| [1, 1, 1, 1, 1, 1, 1, 2], counts [7, 1] and centroids 5 and 24, exactly, as does a limit of
+    !| 6; a limit of 5 stops at [1, 1, 1, 1, 1, 1, 2, 2], counts [6, 2], with centroid 2 at 33/2
+    !| (centroid 1, 13/3, is not exact, and not checked).
+    subroutine test_k_means_clustering_many_iterations()
+        real(real64) :: data_points(1, 8), initial_centroids(1, 2), converged(1, 2), centroids(1, 2)
+        integer(int32) :: labels(8), label_counts(2), ierr
+
+        data_points(1, :) = [1.0_real64, 2.0_real64, 3.0_real64, 5.0_real64, 7.0_real64, 8.0_real64, 9.0_real64, &
+                             24.0_real64]
+        initial_centroids(1, :) = [1.0_real64, 2.0_real64]
+        converged(1, :) = [5.0_real64, 24.0_real64]
+
+        call check_k_means(2_int32, data_points, 8_int32, 1_int32, initial_centroids, [1, 1, 1, 1, 1, 1, 1, 2], [7, 1], &
+                           converged, "test_k_means_clustering_many_iterations: the default")
+        call check_k_means(2_int32, data_points, 8_int32, 1_int32, initial_centroids, [1, 1, 1, 1, 1, 1, 1, 2], [7, 1], &
+                           converged, "test_k_means_clustering_many_iterations: six iterations", max_iterations=6_int32)
+
+        centroids = initial_centroids
+        call k_means_clustering(2_int32, data_points, 8_int32, 1_int32, centroids, labels, label_counts, &
+                                max_iterations=5_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_k_means_clustering_many_iterations: five iterations, ierr")
+        call assert_equal_array_int(labels, [1, 1, 1, 1, 1, 1, 2, 2], 8_int32, &
+                                    "test_k_means_clustering_many_iterations: five iterations, labels")
+        call assert_equal_array_int(label_counts, [6, 2], 2_int32, &
+                                    "test_k_means_clustering_many_iterations: five iterations, label_counts")
+        call assert_equal_real(centroids(1, 2), 16.5_real64, 0.0_real64, &
+                               "test_k_means_clustering_many_iterations: five iterations, centroid 2")
+    end subroutine test_k_means_clustering_many_iterations
 
     !> One cluster takes every point, and its centroid is their mean wherever it starts:
     !| (1, 2), (3, 6), (5, 10), (7, -2) from (100, -100) give the mean (16/4, 16/4) = (4, 4).
@@ -192,7 +234,8 @@ contains
 
     !> Points that are all equal, (5, 5) three times, from (5, 5) and (7, 7): every point is at 0
     !| from centroid 1, so labels [1, 1, 1], counts [3, 0], and centroid 1 stays (5, 5). Where the
-    !| empty cluster's centroid ends up the documentation does not say, so it is not checked here.
+    !| empty cluster's centroid ends up the documentation does not say, so only that it is finite is
+    !| checked here (no NaN from its 0 points divided by 0).
     subroutine test_k_means_clustering_equal_points()
         integer(int32), parameter :: n_dims = 2, n_points = 3, n_clusters = 2
         real(real64) :: data_points(n_dims, n_points), centroids(n_dims, n_clusters)
@@ -208,6 +251,8 @@ contains
         call assert_equal_array_int(label_counts, [3, 0], n_clusters, "test_k_means_clustering_equal_points: label_counts")
         call assert_equal_array_real(centroids(:, 1), [5.0_real64, 5.0_real64], n_dims, 0.0_real64, &
                                      "test_k_means_clustering_equal_points: centroid 1")
+        call assert_true(all(ieee_is_finite(centroids(:, 2))), &
+                         "test_k_means_clustering_equal_points: the empty cluster's centroid is finite")
     end subroutine test_k_means_clustering_equal_points
 
     !> Kept from the old suite (`test_k_means_assign_cluster_helper`, point 2, which tested the
@@ -218,7 +263,7 @@ contains
     !|   and the centroids become 0 and 7.5;
     !| - three equal points from two equal centroids (the documentation says the centroids "should be
     !|   unique", and that this is not checked): every point ties, so all go to cluster 2, which
-    !|   ends at their value 4.
+    !|   ends at their value 4; empty cluster 1's centroid is checked only for being finite.
     subroutine test_k_means_clustering_ties_go_to_the_later_cluster()
         real(real64) :: data_points(1, 3), initial_centroids(1, 2), expected_centroids(1, 2)
         real(real64) :: centroids(1, 2)
@@ -241,6 +286,8 @@ contains
                                     "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, label_counts")
         call assert_equal_real(centroids(1, 2), 4.0_real64, 0.0_real64, &
                                "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, centroid 2")
+        call assert_true(ieee_is_finite(centroids(1, 1)), &
+                         "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, empty centroid 1 finite")
     end subroutine test_k_means_clustering_ties_go_to_the_later_cluster
 
     !> 30 points in 3 dimensions, three groups of 10 around (0, 0, 0), (100, 0, 0) and (0, 100, 0),

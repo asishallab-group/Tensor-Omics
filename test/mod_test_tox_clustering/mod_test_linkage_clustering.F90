@@ -332,9 +332,10 @@ contains
                            "test_linkage_clustering_method_range: 3")
     end subroutine test_linkage_clustering_method_range
 
-    !> No points is empty input, a negative count invalid, both naming `n_points`. (For n_points
-    !| = -2 the distance check reads (-2)**2 = 4 elements of a matrix that has none; the actual
-    !| passed here has 9, so that read stays inside it.)
+    !> No points is empty input, a negative count invalid, both naming `n_points`. For n_points =
+    !| -2 the distance check still runs and reads (-2)**2 = 4 elements of a matrix that has none
+    !| (finding G2 of batch 11); the actual passed here has 9 elements, so that read stays inside
+    !| it and this case cannot show it.
     subroutine test_linkage_clustering_dimensions()
         real(real64) :: distances(3, 3)
 
@@ -392,7 +393,9 @@ contains
     end subroutine test_linkage_clustering_rejects_nan_and_inf
 
     !> Which refusal wins when several apply: `n_points` before `method` before `distances`. A
-    !| NaN matrix with method 3 names `method`; with no points as well, `n_points`.
+    !| NaN matrix with method 3 names `method`; with no points as well, `n_points`. At n_points = 0
+    !| the matrix has no elements, so the NaN is never read: the second call shows only that
+    !| `n_points` is reported before `method`.
     subroutine test_linkage_clustering_check_order()
         real(real64) :: distances(3, 3)
 
