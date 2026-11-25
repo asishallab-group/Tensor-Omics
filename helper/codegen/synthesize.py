@@ -182,22 +182,89 @@ def is_taken_over(argument: Argument, conventions: Conventions = CONVENTIONS) ->
     )
 
 
-#: Identifiers named in an extent expression, to see which arguments an extent depends on
-_EXTENT_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
+# -- what sizes what ------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SizeName:
+    """An identifier an extent or a character length names, and how it names it."""
+
+    name: str
+    #: The array operand of `size()`: the declaration reads its shape there, not its value
+    is_size_operand: bool = False
+
+
+#: One token of an extent or a length: a number (its kind with it), a string, a name, a symbol
+_SIZE_TOKEN_RE = re.compile(
+    r"\s*(?:(?P<number>(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?(?:_\w+)?)"
+    r"|(?P<string>'[^']*'|\"[^\"]*\")"
+    r"|(?P<name>[A-Za-z]\w*)"
+    r"|(?P<symbol>\S))"
+)
+
+
+def size_names_in(text: str) -> list[SizeName]:
+    """The identifiers an extent or a length expression names, in order, each marked as a value
+    or as the array operand of `size()`.
+
+    The one answer to "what does this declaration size itself by", which every caller asks
+    rather than scanning the text its own way: `_sizes_a_kept_argument` (where a `size()` operand
+    counts, since the kept declaration names it), `binding_computes` (where it does not: the
+    binding reads the shape of an array the caller passed) and `abi.c_abi.reads_a_dummy`. A
+    number names nothing, its kind suffix included (`5_int32`), nor does a string, the `size`
+    intrinsic itself, or a keyword (`dim=`).
+    """
+    tokens = []
+    position = 0
+    while position < len(text):
+        match = _SIZE_TOKEN_RE.match(text, position)
+        if match is None:
+            break  # only blanks are left
+        position = match.end()
+        tokens.append((match.lastgroup, match.group(match.lastgroup)))
+
+    def token(index: int) -> tuple[str, str]:
+        return tokens[index] if 0 <= index < len(tokens) else ("", "")
+
+    found = []
+    for index, (kind, value) in enumerate(tokens):
+        if kind != "name":
+            continue
+        following = token(index + 1)[1]
+        if value.lower() == "size" and following == "(":
+            continue  # the intrinsic
+        if following == "=" and token(index + 2)[1] != "=":
+            continue  # a keyword, `size(a, dim=1)`
+        operand = (token(index - 1)[1] == "(" and token(index - 2)[0] == "name"
+                   and token(index - 2)[1].lower() == "size")
+        found.append(SizeName(value, operand))
+    return found
+
+
+def size_names(argument: Argument) -> list[SizeName]:
+    """`size_names_in` over every extent of `argument`, then its character length."""
+    texts = list(argument.dimension.extents)
+    length = argument.type.length if argument.type is not None else None
+    if length is not None and length.expr is not None:
+        texts.append(length.expr)
+    return [named for text in texts for named in size_names_in(text)]
 
 
 def _sizes_a_kept_argument(
     argument: Argument, arguments: Sequence[Argument], conventions: Conventions
 ) -> bool:
-    """Whether an argument the caller still passes or receives is sized by `argument`."""
+    """Whether an argument the caller still passes or receives is sized by `argument`.
+
+    By any name in an extent or the length, a `size()` operand included: the kept argument's
+    declaration names it, so the wrapper has to have it.
+    """
     name = argument.name.lower()
-    for other in arguments:
-        if other is argument or is_taken_over(other, conventions):
-            continue
-        for extent in other.dimension.extents:
-            if name in {i.lower() for i in _EXTENT_IDENTIFIER_RE.findall(extent)}:
-                return True
-    return False
+    return any(
+        named.name.lower() == name
+        for other in arguments
+        if other is not argument and not is_taken_over(other, conventions)
+        for named in size_names(other)
+    )
 
 
 def is_prologue_produced(argument: Argument, prologue=None) -> bool:

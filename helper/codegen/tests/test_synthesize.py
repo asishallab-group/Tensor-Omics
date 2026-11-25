@@ -977,3 +977,71 @@ class TestFunctionImplementations:
 
         for name in ("detect_dosage_effect", "detect_subfunctionalization"):
             assert [a.name for a in demo.procedure(name).arguments][-2:] == ["score", "ierr"]
+
+
+class TestWhatSizesWhat:
+    """`size_names_in`: the one answer to which identifiers an extent or a length names.
+
+    `_sizes_a_kept_argument` used to scan extents with its own regex, and E2's predicate needs
+    the same answer with `size()` operands told apart; two scanners for one fact drift.
+    """
+
+    #: (extent, the identifiers the old regex `[A-Za-z_]\w*` found that name a dummy here)
+    OLD = {
+        "n": {"n"},
+        "n_items + 1": {"n_items"},
+        "2*k+1": {"k"},
+        "size(norms)": {"norms"},
+        "size(x, 2)": {"x"},
+        "max(0_int32, n - 1)": {"n"},
+        "sum(counts)": {"counts"},
+        "(n_points * (n_points - 1)) / 2": {"n_points"},
+        "M_BIT_MASK_N_WORDS(n_bits)": {"n_bits"},
+        ":": set(),
+        "*": set(),
+    }
+    DUMMIES = {"n", "n_items", "k", "norms", "x", "counts", "n_points", "n_bits"}
+
+    def test_it_agrees_with_the_old_scan_wherever_that_named_a_dummy(self):
+        import re
+
+        from codegen.synthesize import size_names_in
+
+        old = re.compile(r"[A-Za-z_]\w*")
+        for extent, expected in self.OLD.items():
+            before = {i.lower() for i in old.findall(extent)} & self.DUMMIES
+            after = {named.name.lower() for named in size_names_in(extent)} & self.DUMMIES
+            assert before == expected == after, extent
+
+    def test_a_size_operand_is_marked(self):
+        from codegen.synthesize import SizeName, size_names_in
+
+        assert size_names_in("size(norms, k) + m") == [
+            SizeName("norms", is_size_operand=True), SizeName("k"), SizeName("m")]
+
+    def test_numbers_strings_the_intrinsic_and_keywords_name_nothing(self):
+        from codegen.synthesize import SizeName, size_names_in
+
+        assert [n.name for n in size_names_in("size(a, dim=2) + 5_int32 * 1.5d0")] == ["a"]
+        assert size_names_in("len('ab')") == [SizeName("len")]
+
+    def test_an_argument_is_sized_by_its_extents_and_its_length(self):
+        from codegen.synthesize import size_names
+        from builders import character
+
+        name = character("label", Intent.OUT, "(n_labels)", length="n_chars", doc="labels")
+
+        assert [n.name for n in size_names(name)] == ["n_labels", "n_chars"]
+
+    def test_a_length_keeps_its_value_in_the_allocating_wrapper(self):
+        # a recommend-sized value that only a kept string's length names: the old scan read
+        # extents alone, took it over, and left the kept declaration naming a local
+        from codegen.config import CONVENTIONS
+        from codegen.synthesize import taken_over_arguments
+        from builders import character
+
+        width = integer("width", doc="the width", directives=Directives(output_from=OutputFrom(
+            "width", "label_width", "tox_prod", OutputFromMode.AUTO)))
+        label = character("label", Intent.OUT, length="width", doc="the label")
+
+        assert taken_over_arguments([width, label], CONVENTIONS) == []
