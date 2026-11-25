@@ -21,7 +21,7 @@ module tox_paralog_analysis_impl
                           clear_err_arg_pos
     use f42_math_impl, only: PI
     use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
-    use f42_bit_masks_impl, only: bitmask_set, bitmask_clear, bitmask_last
+    use f42_bit_masks_impl, only: bitmask_set, bitmask_clear, bitmask_last, bitmask_count
     M_IMPLICIT_NONE
 
     integer(int32), parameter :: MODE_DOSAGE_PATTERN = 0_int32
@@ -168,6 +168,12 @@ contains
 
         if (last_filtered_paralog_idx > n_genes) then
             call set_err(ierr, ERR_INVALID_INPUT)
+            return
+        end if
+
+        ! every kept gene but the last starts a subset, and each needs its slot
+        if (bitmask_count(n_mask_chunks, filtered_paralogs_bitmask) - 1 > n_paralog_subsets) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, arg_pos=11_int32)
             return
         end if
 
