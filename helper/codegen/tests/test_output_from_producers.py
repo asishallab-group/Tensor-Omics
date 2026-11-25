@@ -404,6 +404,60 @@ class TestEachProducerCallIsChecked:
         assert "is_err" not in after
 
 
+class TestAnArrayAProducerFills:
+    """R1: `foo` allocates an array a producer fills right above the call that fills it.
+
+    Below the earlier calls' error checks, so a failed call returns before it; above its own
+    call, which writes into it. Every other allocation still follows all the producer calls,
+    and the permutations are sorted after that, so one whose base was produced is sorted by
+    the produced values.
+    """
+
+    def norms_producer(self):
+        return procedure(
+            "column_norms_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            real("norms", Intent.OUT, "(n_items)", doc="the norms"),
+            meta=IMPL, is_pure=True,
+        )
+
+    def norms_consumer(self):
+        return consumer(
+            "norm_rank_impl",
+            integer("n_items", doc="items"),
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("scale", doc="scale"),
+            integer("work_size", doc=table(("factor", "scale")),
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            real("norms", Intent.IN, "(n_items)", doc="the norms",
+                 directives=auto("norms", "column_norms", "tox_prod")),
+            integer("norms_perm", Intent.IN, "(n_items)", doc="their order"),
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            real("total", Intent.OUT, doc="the result"),
+        )
+
+    def test_it_is_allocated_right_above_its_call_after_the_earlier_checks(self):
+        synthesis, bag = analysed(producers(self.norms_producer()), self.norms_consumer())
+        text = body(fortran(synthesis), "norm_rank")
+
+        assert bag.errors == (), bag.render()
+        sizing, filling = text.index("call scaled_size(&"), text.index("call column_norms(&")
+        allocation = text.index("M_ALLOCATE(norms(n_items))")
+        assert sizing < text.index("end if", sizing) < allocation < filling
+        assert text[allocation:filling].count("\n") == 1, "nothing between the two"
+        assert text.count("M_ALLOCATE(norms(") == 1
+
+    def test_the_other_allocations_and_the_sort_follow_every_call(self):
+        synthesis, _ = analysed(producers(self.norms_producer()), self.norms_consumer())
+        text = body(fortran(synthesis), "norm_rank")
+
+        last_check = text.index("end if", text.index("call column_norms(&"))
+        perm, work = text.index("M_ALLOCATE(norms_perm("), text.index("M_ALLOCATE(tmp_buf(")
+        sort = text.index("call sort_array_heapsort(norms, norms_perm)")
+        assert last_check < perm < sort and last_check < work < sort
+
+
 class TestTheBindingsNameTheirOwnArgument:
     """Rule 3: Python and R raise a producer's error again, in the consumer's words."""
 

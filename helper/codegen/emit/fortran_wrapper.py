@@ -1080,6 +1080,12 @@ class FortranWrapperEmitter:
                         else _fortran_literal(supply.constant, dummy)
                     )
                     actuals.append((dummy.name, self._actual(value, materialized)))
+            # an array this call fills is allocated right above it: below the earlier calls'
+            # error checks, so a failed call returns before it, and above the call, which writes
+            # into it. Its extents name only what `foo` keeps and constants (`roles` row c and
+            # rule P1), so they are known here.
+            self._allocations(writer, [argument for argument in group if argument.is_array],
+                              produced=True)
             self._call(writer, producer.name, actuals)
             if producer.has_error_argument:
                 self._error_return(writer, self._producer_positions(group, alloc))
@@ -1208,9 +1214,15 @@ class FortranWrapperEmitter:
             return self._materialized_name(name)
         return name
 
-    def _allocations(self, writer: Writer, taken) -> None:
+    def _allocations(self, writer: Writer, taken, produced: bool = False) -> None:
+        """Allocate the taken-over arrays: the ones a producer fills (`produced`), or the rest.
+
+        An array a producer fills is allocated right above the call that fills it
+        (`_recommend_calls`); every other one -- a work array, a permutation -- after all the
+        producer calls, since its extent may be a size one of them computes.
+        """
         for argument in taken:
-            if argument.is_array:
+            if argument.is_array and is_computed(argument) is produced:
                 extents = ", ".join(argument.dimension.extents)
                 writer.line(f"M_ALLOCATE({argument.name}({extents}))")
 

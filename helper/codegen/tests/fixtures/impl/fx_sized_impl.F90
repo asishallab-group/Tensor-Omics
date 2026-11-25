@@ -14,7 +14,7 @@ module fx_sized_impl
 
     public :: fx_fill_impl, fx_work_total_impl, fx_two_producers_impl, fx_extent_total_impl
     public :: fx_first_of_two_impl, fx_status_per_vector_impl, fx_info_impl, fx_both_firsts_impl
-    public :: fx_two_scales_impl
+    public :: fx_two_scales_impl, fx_norm_rank_impl, fx_large_total_impl
 
 contains
 
@@ -201,6 +201,69 @@ contains
         tmp_b = 1000.0_real64
         total = sum(x) + sum(tmp_a) + sum(tmp_b)
     end subroutine fx_two_scales_impl
+
+    !> summary: The column norms in ascending order, beside scratch sized by a second producer
+    !| author: A Developer
+    !| `norms` is an array a producer fills, which `norms_perm` orders; `work_size` is a scalar
+    !| from another producer.
+    pure subroutine fx_norm_rank_impl(n_dims, n_items, x, scale, norms, norms_perm, work_size, &
+                                      tmp_buf, ranked, total)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        integer(int32), intent(in) :: scale
+            !! slots of scratch per column
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_column_norms, fx_producers, AUTO)
+        integer(int32), dimension(n_items), intent(in) :: norms_perm
+            !! the order that sorts `norms` ascending
+        integer(int32), intent(in) :: work_size
+            !! size of the scratch
+            !! DM_OUTPUT_FROM(scaled_size, fx_scaled_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | factor         | scale       |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch
+        real(real64), dimension(n_items), intent(out) :: ranked
+            !! `norms` in ascending order
+        real(real64), intent(out) :: total
+            !! the size of the scratch
+        tmp_buf = 1.0_real64
+        ranked = norms(norms_perm)
+        total = sum(tmp_buf)
+    end subroutine fx_norm_rank_impl
+
+    !> summary: The sum of the column norms, plus a thousand for each norm above one
+    !| author: A Developer
+    !| One producer call gives both `norms` and the size `n_large` of the scratch, which depends
+    !| on their values. Any number of columns, none included.
+    pure subroutine fx_large_total_impl(n_dims, n_items, x, norms, n_large, tmp_large, total)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_large_norms, fx_producers, AUTO)
+        integer(int32), intent(in) :: n_large
+            !! how many norms exceed one
+            !! DM_OUTPUT_FROM(n_large, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_large), intent(out) :: tmp_large
+            !! scratch, one slot per large norm
+        real(real64), intent(out) :: total
+            !! the sum of `norms`, plus a thousand per large norm
+        tmp_large = 1000.0_real64
+        total = sum(norms) + sum(tmp_large)
+    end subroutine fx_large_total_impl
 
     !> summary: A result sized by a producer that takes the shape of an input
     !| author: A Developer

@@ -14,6 +14,7 @@ module fx_producers_impl
 
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
+    public :: fx_column_norms_impl, fx_large_norms_impl
 
 contains
 
@@ -84,6 +85,46 @@ contains
         second_size = 0.5_real64*n_items
         flag = n_items > 0
     end subroutine fx_flagged_size_impl
+
+    !> summary: The Euclidean norm of each column of a matrix of at most three rows
+    !| author: A Developer
+    !| An array producer. Its bound on `n_dims` is one its consumers leave out, so its own error
+    !| reaches their callers.
+    pure subroutine fx_column_norms_impl(n_dims, n_items, x, norms)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+            !! DM_MIN(1_int32)
+            !! DM_MAX(3_int32)
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(out) :: norms
+            !! the norm of each column
+        norms = sqrt(sum(x**2, dim=1))
+    end subroutine fx_column_norms_impl
+
+    !> summary: The norm of each column of a matrix, and how many of them exceed one
+    !| author: A Developer
+    !| One call gives an array and a size that depends on its values.
+    pure subroutine fx_large_norms_impl(n_dims, n_items, x, norms, n_large)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+            !! DM_MIN(1_int32)
+            !! DM_MAX(3_int32)
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(out) :: norms
+            !! the norm of each column
+        integer(int32), intent(out) :: n_large
+            !! how many of `norms` exceed one
+        norms = sqrt(sum(x**2, dim=1))
+        n_large = count(norms > 1.0_real64)
+    end subroutine fx_large_norms_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer
