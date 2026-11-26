@@ -343,9 +343,9 @@ contains
 
             select case (method)
             case (METHOD_AVERAGE)
-                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i)
+                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, dist_AB)
             case (METHOD_WEIGHTED)
-                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i)
+                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i, dist_AB)
             case (METHOD_WARD)
                 call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, &
                                                          dist_AB, ward_exponent)
@@ -406,7 +406,7 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper for *PGMA algorithms for updating the distance matrix on merge of two clusters
-    pure subroutine merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k)
+    pure subroutine merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, dist_AB)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -421,6 +421,8 @@ contains
             !! cluster size of cluster at `idx_B`
         integer(int32), intent(in) :: iteration_k
             !! iteration of current merge
+        real(real64), intent(in) :: dist_AB
+            !! distance between cluster A and B, the merge's height; no updated distance is below it
 
         integer(int32) :: i_node
         real(real64) :: new_dist, weight_A, weight_B, new_dist_part_AC, new_dist_part_BC
@@ -443,21 +445,27 @@ contains
                 if (i_node < idx_B) then
                     new_dist_part_AC = distances(idx_A, i_node)*weight_A
                     new_dist_part_BC = distances(idx_B, i_node)*weight_B
-                    new_dist = new_dist_part_AC + new_dist_part_BC
+                    ! an average of distances that are all at least dist_AB is too, but rounding can
+                    ! land it an ulp below; that would make a later height lower than this one
+                    new_dist = max(new_dist_part_AC + new_dist_part_BC, dist_AB)
                     distances(idx_B, i_node) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
                     new_dist_part_AC = distances(idx_A, i_node)*weight_A
                     new_dist_part_BC = distances(i_node, idx_B)*weight_B
-                    new_dist = new_dist_part_AC + new_dist_part_BC
+                    ! an average of distances that are all at least dist_AB is too, but rounding can
+                    ! land it an ulp below; that would make a later height lower than this one
+                    new_dist = max(new_dist_part_AC + new_dist_part_BC, dist_AB)
                     distances(i_node, idx_B) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
                     new_dist_part_AC = distances(i_node, idx_A)*weight_A
                     new_dist_part_BC = distances(i_node, idx_B)*weight_B
-                    new_dist = new_dist_part_AC + new_dist_part_BC
+                    ! an average of distances that are all at least dist_AB is too, but rounding can
+                    ! land it an ulp below; that would make a later height lower than this one
+                    new_dist = max(new_dist_part_AC + new_dist_part_BC, dist_AB)
                     distances(i_node, idx_B) = new_dist
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
@@ -517,21 +525,24 @@ contains
                 if (i_node < idx_B) then
                     new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
                     new_dist_part_BC = scale(distances(idx_B, i_node), exponent)**2*(size_BC_real/size_ABC_real)
-                    new_dist = scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent)
+                    ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
+                    new_dist = max(scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent), dist_AB)
                     distances(idx_B, i_node) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
                     new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
                     new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
-                    new_dist = scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent)
+                    ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
+                    new_dist = max(scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent), dist_AB)
                     distances(i_node, idx_B) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
                     new_dist_part_AC = scale(distances(i_node, idx_A), exponent)**2*(size_AC_real/size_ABC_real)
                     new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
-                    new_dist = scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent)
+                    ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
+                    new_dist = max(scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent), dist_AB)
                     distances(i_node, idx_B) = new_dist
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
