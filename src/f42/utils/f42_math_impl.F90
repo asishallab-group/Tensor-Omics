@@ -11,7 +11,7 @@ module f42_math_impl
     use tox_errors, only: is_err
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite
     M_IMPLICIT_NONE
-    private :: scaled_mean, scaling_exponent_for_largest
+    private :: scaled_mean
 
     !> Generic clamp of a scalar into `[min_val, max_val]`, dispatches on the value's type.
     interface clamp

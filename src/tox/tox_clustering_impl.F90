@@ -12,6 +12,7 @@ module tox_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
+    use f42_math_impl, only: scaling_exponent_for_largest
     M_IMPLICIT_NONE
 
     integer(int32), parameter :: METHOD_AVERAGE = 0_int32
@@ -89,6 +90,11 @@ contains
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
+    !|
+    !| The squared distances are compared with the points and centroids scaled by one power of two
+    !| for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
+    !| the points and the starting centroids, so no distance overflows or underflows for finite
+    !| input. Ordinary data is not scaled at all.
     pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
@@ -118,10 +124,14 @@ contains
             !! DM_MIN(1_int32)
             !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
-        integer(int32) :: label, iteration, i_point, max_iter
+        integer(int32) :: label, iteration, i_point, max_iter, exponent
         logical(c_bool) :: labels_changed
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
+
+        ! Every later centroid is a mean of points or a centroid kept from before, so the largest
+        ! magnitude among the points and the starting centroids bounds every value of the run.
+        exponent = scaling_exponent_for_largest(max(maxval(abs(data_points)), maxval(abs(centroids))))
 
         ! initialize labels to a value outside the valid [1, n_clusters] range so the first
         ! comparison below never reads undefined intent(out) memory and always triggers
@@ -136,7 +146,8 @@ contains
             labels_changed = .false.
             label_counts = 0
             do i_point = 1, n_points
-                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
+                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, exponent, &
+                                                   label)
 
                 label_counts(label) = label_counts(label) + 1
                 if (labels(i_point) /= label) then
@@ -198,7 +209,7 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper routine to assign a cluster's label to a point in k-means
-    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
+    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, exponent, label)
         integer(int32), intent(in) :: i_point
             !! index of the point that should be assigned a cluster
         integer(int32), intent(in) :: n_clusters
@@ -214,6 +225,9 @@ contains
             !! The centroids should be unique. This is not checked in this routine.
             !!
             !! The final values will be the final centroids of the clusters
+        integer(int32), intent(in) :: exponent
+            !! power of two the points and centroids are scaled by before their differences are
+            !! squared; it changes no comparison, as every distance is scaled alike
         integer(int32), intent(out) :: label
             !! assigned label
 
@@ -228,7 +242,9 @@ contains
             squared_dist_to_centroid = 0.0_real64
             ! GFORTRAN BUG: do concurrent (i_dim = 1:n_dims) shared(data_points, i_point, i_cluster) reduce(+:squared_dist_to_centroid)
             do i_dim = 1, n_dims
-                squared_dist_to_centroid = squared_dist_to_centroid + (data_points(i_dim, i_point) - centroids(i_dim, i_cluster))**2
+                squared_dist_to_centroid = squared_dist_to_centroid &
+                                           + (scale(data_points(i_dim, i_point), exponent) &
+                                              - scale(centroids(i_dim, i_cluster), exponent))**2
             end do
 
             if (squared_dist_to_centroid <= smallest_squared_dist) then

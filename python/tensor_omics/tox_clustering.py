@@ -194,6 +194,11 @@ def k_means_clustering(
     2. Recalculates the centroids using the mean of its assigned points
     3. repeat 1-2 until assignment remains unchanged
 
+    The squared distances are compared with the points and centroids scaled by one power of two
+    for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
+    the points and the starting centroids, so no distance overflows or underflows for finite
+    input. Ordinary data is not scaled at all.
+
     Parameters
     ----------
     data_points : np.ndarray[np.float64] of shape (n_dims, n_points,), column-major (order='F')

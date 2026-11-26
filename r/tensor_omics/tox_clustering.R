@@ -59,6 +59,11 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #' 2. Recalculates the centroids using the mean of its assigned points
 #' 3. repeat 1-2 until assignment remains unchanged
 #'
+#' The squared distances are compared with the points and centroids scaled by one power of two
+#' for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
+#' the points and the starting centroids, so no distance overflows or underflows for finite
+#' input. Ordinary data is not scaled at all.
+#'
 #' Generated from the Fortran procedure \code{tox_clustering::k_means_clustering}, whose argument names
 #' are the ones an error message reports.
 #'
