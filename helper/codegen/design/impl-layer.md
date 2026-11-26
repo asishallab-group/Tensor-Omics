@@ -1055,6 +1055,41 @@ keeps it. **Rejected -- `DEFAULT` as the keyword**: it is wrong for an optional 
 and for the Fortran route, where the body's default applies; `OMITTED` reads right to a Fortran or
 C caller reading the published table, too: leave it out of your call.
 
+### A check runs once every value it names is set (rule V, 2026-11-26)
+
+`foo` validated everything at the top, so a bound naming a value it computes was checked before
+the value existed: `fx_bounded_total`'s `x`, `DM_MAX(real(limit, real64))`, refused valid input
+where the uninitialised `limit` held -1 and accepted invalid input where it held 1000; a bound
+naming a value the prologue writes refused valid input. **In the allocating `foo`, a check runs at
+the latest of three points its names need** (`fortran_wrapper._validation`): the top (P0) for what
+the caller passes and constants; after the last producer call's error return (P1) for a value
+`foo` computes; after `if (handled) return` (P2) for a value the prologue writes. **The validator
+call is split, not moved**: it stays at P0 with every keyword but the late `DM_MIN`/`DM_MAX`, which
+runs in a second call at its point with the sentinel and, for a real, finiteness allowed (checked
+at P0, so not twice; `c_bool` is imported for it). A `DM_EQUALS` moves whole. P1 and P2 are blocks
+of their own, each with its `if (is_err(ierr)) return`; positions are unchanged. On the answered
+path the deferred bounds do not run: they are the implementation's contract, and it does not run.
+`foo_expert` and a lone wrapper check everything at P0.
+
+`validate._check_bounds_name_what_is_set` refuses a name set at none of the points, each class with
+its own message at the bound's line: a `tmp_` or `<base>_perm` `foo` builds, an `intent(out)`
+argument as a value, an argument only the prologue has (`foo_expert` did not compile), a
+`DM_SENTINEL` naming a value set later, and a bound after the prologue on an argument the prologue
+writes itself (its error would blame the caller for the prologue's value).
+
+**Rejected -- moving the whole validator call** (rev 1). It skipped a NaN check on the answered
+path, accepting `y = NaN` (`fx_handled`), and let the prologue read an index unchecked, out of
+bounds (`fx_index`): the guide promises a prologue's arguments are validated like any other.
+**Rejected -- refusing bounds that name values set later**: they are meaningful in `foo_expert`,
+where the caller passes the value, and V makes them meaningful in `foo` too.
+
+**And beside it, two refusals of a value with two sources.** A prologue `intent(out)` over a value a
+producer computes discarded the producer's value silently; it is refused (item 5), `intent(inout)`
+refining it allowed (FES, Q4), and the two older prologue rules leave such a value to it, so one
+cause gives one error. A computed length of a string the caller passes (3b) is refused (FES, Q3):
+Python converted the string to the length before computing it, and reordering is circular where
+the strings' count feeds the producer.
+
 ### The prologue is the allocating tier's sugar, and has no scope
 
 `DM_PROLOGUE(PROCEDURE, MODULE)` names a routine `foo` runs after the work arrays are prepared

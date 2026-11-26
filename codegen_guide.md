@@ -438,6 +438,16 @@ appears in the Python and R documentation, because it was written as prose in th
 > An **integer** with no bound is not validated at all — integers cannot be NaN, and there is
 > nothing else to check. If an integer has a meaningful range, say so; nobody else will.
 
+**A bound may name a value a producer or the prologue computes**, and `foo` checks it once that
+value is set (V): a `DM_MIN` or `DM_MAX` naming a `DM_OUTPUT_FROM` value `foo` computes runs after
+the producers, and one naming a value the prologue writes after the prologue -- as a second
+validator call for that keyword alone. Everything else about the argument, its finiteness
+included, is still checked at the top, before anything reads it. A `DM_EQUALS` moves whole.
+`foo_expert` and a lone wrapper check everything at the top, against the values their caller
+passes. A bound names an argument the caller passes, a value a producer computes, a value the
+prologue writes, or a constant -- never a work array or a permutation `foo` builds, an output, an
+argument only the prologue has; and a `DM_SENTINEL` names a fixed marker, never a value set later.
+
 ### 5.2 A real that may be NaN or infinite
 
 **When** an argument legitimately carries non-finite values — a missing value in data that is
@@ -885,6 +895,11 @@ It passes every one of the producer's arguments:
   out, as the producer's own binding does, so it is an error only where `foo` calls the producer
   and nothing supplies it. For a consumer `c(m, x(m))` the row is `| n | m |`.
 
+**A computed length is for strings the wrapper allocates** -- an output, a work array. The
+length of a string the caller passes is never computed by a producer: the strings carry their own
+length, so declare them `character(len=*)`, or name the producer with `JUST_INFO` so the caller
+passes it.
+
 **Two modules may not consume each other's producers.** A generated wrapper that calls a producer
 in another module `use`s that module, so two modules sizing each other's arguments are a module
 cycle, which fpm stops on. **Nor may a producer come back to its consumer** through its own
@@ -1210,6 +1225,13 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
 - a value the prologue writes and the implementation reads that *also* sizes something the caller
   still passes or receives — it cannot become a local then, and Fortran will not hand an
   `intent(in)` dummy to something that writes it
+- an `intent(out)` prologue dummy over a value a `DM_OUTPUT_FROM(..., AUTO)` producer computes
+  (`the prologue 'fx_prow_guard' writes 'filled' (intent(out)), which 'fx_prow' computes with
+  'fx_fill' first, so the producer's value is discarded`) -- `foo` calls the producers above the
+  prologue. `intent(inout)` refines what the producer made and is fine, and a bound naming the
+  refined value is checked after the prologue, against it (Section 5.1)
+- a bound checked after the prologue on an argument the prologue itself writes: its error would
+  blame the caller for the prologue's value, after the caller's had been overwritten
 - a value the prologue produces that the allocations, the permutation sorts or the recommend
   calls *above* it read — the name resolves either way, so it would compile and compute rubbish.
   A recommend call reads every producer input it passes, including one the producer's own
@@ -1797,6 +1819,9 @@ it are an example's.
 | a `DM_OUTPUT_FROM` producer input supplied by a mode the implementation splits (Section 5.11) (`'work_size' is computed from 'fx_scaled_size', whose input 'factor' would be 'mode', the mode 'fy_split_impl' splits into one wrapper per mode`) | each per-mode wrapper fixes the mode, and has no argument to pass (Section 5.10) |
 | a `DM_OUTPUT_FROM` producer input given a value of another kind (T): a mode for a non-mode input or a non-mode for a mode input (`'out_size' is computed from 'fx_scaled_size', whose input 'factor' would be the mode 'method', which Python and R pass as its string and Fortran as its code`, `... whose input 'method' is a mode, but would be 'k', which is not`); a mode the producer's table does not name with the same value (`... whose mode input 'method' accepts 'one', 'two', but would be the mode 'method', which also accepts 'three'`, `... which gives 'two' another value`); an argument of another base type or rank, and where `foo` calls the producer of another kind, fixed length or extents (`... whose input 'factor' is integer(int32), a scalar, but would be 'x', real(real64), rank 1`, `... whose input 'label' is character(len=8), but would be 'tag', character(len=4)`, `... whose input 'x' has shape (n), with 'n' given 'k', but would be 'y', of shape (m)`); a constant that is not a scalar of the input's type, or does not fit its kind or length (`... whose input 'factor' is integer(int32), but the table gives it the constant 3000000000_int64, which does not fit`) | a value reaches the producer as the input declares it: a mode's code is not a number, a binding passes a mode as its string, and `foo` passes every argument by keyword, so another kind, a shorter string or a smaller array does not compile or is read past its end (Section 5.9) |
 | a mode argument computed by `DM_OUTPUT_FROM(..., AUTO)` (`'method' is a mode, so it cannot be computed with 'fx_size'`), or a mode table on an `intent(out)` argument (`'method' is an output, but has a mode table, whose values the wrapper checks before the implementation sets it`) | a mode is a choice the caller makes; the wrapper checks a mode's membership before the call (Section 5.10) |
+| a `DM_OUTPUT_FROM(..., AUTO)` value that is the length of an `intent(in)` or `intent(inout)` string (`'str_len' is computed with 'fx_capped_size', but it is the length of 'names', which the caller passes: the strings carry their own length`) | the strings the caller passes carry their own length; a computed length is for strings the wrapper allocates (Section 5.9) |
+| a `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or `DM_EQUALS` naming a `tmp_` work array or a `<base>_perm` `foo` builds (`'k' is checked against 'x_perm', which 'fx_rank' builds itself`), an `intent(out)` argument as a value, an argument only the prologue has; a `DM_SENTINEL` naming a value a producer or the prologue sets; a bound checked after the prologue on an argument the prologue writes | each names something that holds no value when it is checked: a bound names an argument the caller passes, a value a producer computes, a value the prologue writes, or a constant (Section 5.1) |
+| a prologue `intent(out)` over a `DM_OUTPUT_FROM(..., AUTO)` value | the producer's value would be discarded; `intent(inout)` refines it (Section 5.13) |
 | a `DM_OUTPUT_FROM` producer-input table that is one of two, has an empty cell, or maps a name the producer does not have (`'work_size' has 2 tables mapping the inputs of 'pr_size_of'`, `row 1 of the producer-input table of 'work_size' has an empty cell`, `the producer-input table of 'work_size' maps 'm', which is not an argument of 'pr_size_of'`) | the table says what each producer input is supplied by, and the generator will not guess (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |

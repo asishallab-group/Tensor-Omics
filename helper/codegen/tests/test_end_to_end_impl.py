@@ -971,13 +971,22 @@ class TestAnIntegerArrayTheCallerPasses:
 
 class TestAValueOnlyABoundNames:
     """`fx_bounded_total`: `limit` sizes nothing, so the Python and R expert takes it as a
-    parameter, and is published for it (E2). Only the expert is called: `foo` checks `x`
-    against `limit` before its producer has computed it, a defect of its own."""
+    parameter, and is published for it (E2); the plain tier computes it, and checks `x` against
+    it once it has (rule V; `test_end_to_end_fortran.TestABoundIsCheckedOnceItsValuesAreSet`)."""
 
     def test_the_expert_validates_by_the_caller_s_limit(self, built):
         out = run_python(built, _PY_PRODUCER_ERROR + """
             print(json.dumps([raised(lambda: tox.fx_bounded_total_expert([1.0, 2.0], 9, 3)),
                               raised(lambda: tox.fx_bounded_total_expert([1.0, 5.0], 9, 3))]))
+        """)
+
+        assert out[0] == ["returned", 3.0]
+        assert out[1][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "x"]
+
+    def test_the_plain_tier_validates_by_the_limit_it_computes(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_bounded_total([1.0, 2.0], 3)),
+                              raised(lambda: tox.fx_bounded_total([1.0, 7.0], 3))]))
         """)
 
         assert out[0] == ["returned", 3.0]

@@ -616,3 +616,129 @@ class TestAnOptionalSupplier:
     @pytest.fixture(autouse=True)
     def _paths(self, built, tmp_path):
         self.built, self.tmp_path = built, tmp_path
+
+
+#: The probe for `fx_staged_impl` and `fx_bounded_total`: bounds naming what `foo` sets later
+_STAGED_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use tox_errors, only: get_err_code, get_err_arg_pos
+    use fx_sized, only: fx_bounded_total
+    use fx_staged, only: fx_handled, fx_index, fx_two_points, fx_feeds, fx_refined
+    implicit none
+    real(real64) :: total, nan
+    integer(int32) :: ierr, itotal
+    nan = ieee_value(1.0_real64, ieee_quiet_nan)
+
+{body}
+end program probe
+"""
+
+#: prints an error's code and position, or 0 0
+_REPORT = "print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)"
+
+
+class TestABoundIsCheckedOnceItsValuesAreSet:
+    """Rule V: in `foo`, a check runs once every value it names is set -- at the top (P0), after
+    the producers (P1), or after the prologue (P2) -- and what the caller passes is checked at the
+    top all the same. Only the late bound moves, in a second call: the rest of the argument's
+    checks, finiteness included, stay at the top, so the prologue never reads it unchecked."""
+
+    def run(self, body):
+        return run_fortran(self.built, self.tmp_path, body, probe=_STAGED_PROBE)
+
+    @pytest.mark.parametrize("init", [[], ["-finit-integer=-1"], ["-finit-integer=1000"]])
+    def test_after_the_producers_whatever_the_local_held_before(self, init):
+        # `x`'s DM_MAX(real(limit, real64)) was checked before `fx_scaled_size` set `limit`:
+        # with -finit-integer=-1 valid input was refused, with 1000 invalid input accepted
+        built = self.built
+        if init:
+            built = self.tmp_path / "init"
+            built.mkdir()
+            for obj in self.built.glob("*.o"):
+                if obj.name != "fx_sized.o":
+                    (built / obj.name).symlink_to(obj)
+            for mod in self.built.glob("*.mod"):
+                (built / mod.name).symlink_to(mod)
+            source = next(self.built.rglob("fx_sized.F90"))
+            _compile(source, built, [*WRAPPER_FLAGS, *init])
+        out = run_fortran(built, self.tmp_path, f"""
+            call fx_bounded_total(2, [1.0_real64, 2.0_real64], 3, total, ierr)
+            {_REPORT}
+            call fx_bounded_total(2, [1.0_real64, 7.0_real64], 3, total, ierr)
+            {_REPORT}
+        """, probe=_STAGED_PROBE)
+
+        assert out == ["0", "0", "201", "2"]
+
+    def test_the_latest_point_a_check_names_wins(self):
+        # limit 2 (a producer), level 100 (the prologue): y between them is checked after the
+        # prologue, m's equality with the limit after the producers
+        out = self.run(f"""
+            call fx_two_points(n_items=1, factor=2, y=50, w=3, m=2, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_two_points(n_items=1, factor=2, y=1, w=3, m=2, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_two_points(n_items=1, factor=2, y=50, w=3, m=3, total=itotal, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["0", "0", "201", "3", "206", "5"]
+
+    def test_finiteness_is_checked_before_a_prologue_that_answers_the_call(self):
+        # the prologue answers a single item itself; y's bound names the level it writes, but
+        # y's finiteness does not wait for it: NaN is refused on the answered path too
+        out = self.run(f"""
+            call fx_handled(n_items=1, x=[1.0_real64], y=nan, total=total, ierr=ierr)
+            {_REPORT}
+            call fx_handled(n_items=2, x=[1.0_real64, 2.0_real64], y=5.0_real64, total=total, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["204", "3", "201", "3"]
+
+    def test_an_index_is_checked_before_the_prologue_reads_it(self):
+        # k's DM_MIN(1_int32) stays at the top; its DM_MAX(level) waits for the prologue, which
+        # reads x(k) -- out of bounds for k = 0, were the whole check moved below it
+        out = self.run(f"""
+            call fx_index(n_items=3, x=[1.0_real64, 2.0_real64, 3.0_real64], k=2, total=total, ierr=ierr)
+            {_REPORT}
+            print '(f6.2)', total
+            call fx_index(n_items=3, x=[1.0_real64, 2.0_real64, 3.0_real64], k=0, total=total, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["0", "0", "2.00", "201", "3"]
+
+    def test_a_bound_on_an_input_the_producer_reads(self):
+        # factor's DM_MIN(2_int32) is the caller's to meet, at the top; the producer refuses 0
+        # itself, its position mapped to factor's
+        out = self.run(f"""
+            call fx_feeds(n_items=3, factor=1, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_feeds(n_items=3, factor=0, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_feeds(n_items=3, factor=2, total=itotal, ierr=ierr)
+            {_REPORT}
+            print '(i0)', itotal
+        """)
+
+        assert out == ["201", "2", "201", "2", "0", "0", "8"]
+
+    def test_a_value_the_prologue_refines_is_checked_as_refined(self):
+        # item 5 allows a prologue to refine (intent(inout)) a produced value: limit 3 * 4,
+        # halved to 6. y's DM_MAX(limit) runs after the prologue, against the 6
+        out = self.run(f"""
+            call fx_refined(n_items=3, factor=4, y=5, total=itotal, ierr=ierr)
+            {_REPORT}
+            print '(i0)', itotal
+            call fx_refined(n_items=3, factor=4, y=7, total=itotal, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["0", "0", "11", "201", "3"]
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, built, tmp_path):
+        self.built, self.tmp_path = built, tmp_path

@@ -215,7 +215,7 @@ class FortranWrapperEmitter:
         # kinds the emitter itself writes, which no argument need carry: a module whose
         # arguments are all real still spells `allow_nan=.true._c_bool`
         for procedure in module:
-            kinds |= self._emitted_literal_kinds(procedure)
+            kinds |= self._emitted_literal_kinds(procedure, module)
         # and of the locals a producer's dropped outputs go into, which no argument declares
         kinds |= self._unused_output_kinds(module)
 
@@ -499,16 +499,20 @@ class FortranWrapperEmitter:
         self._materialized_locals(writer, materialized)
         self._prologue_local(writer, prologue)
         writer.blank()
-        self._validation(writer, alloc)
+        # rule V: a check runs once every value it names is set -- at the top (P0), after the
+        # producers (P1), or after the prologue (P2)
+        late = self._validation(writer, alloc, self._late_values(taken, prologue))
         writer.blank()
         self._materialized_defaults(writer, materialized)
         self._recommend_calls(writer, foo, alloc, taken, materialized)
+        self._late_checks(writer, late[1])
         self._allocations(writer, taken)
         self._permutations(writer, taken, prologue)
         writer.blank()
         # Below the work arrays, because preparing them is what a prologue is for -- it is the
         # sugar this tier adds over the expert one, which lets a caller prepare them instead.
         self._prologue_call(writer, prologue, alloc, module, taken)
+        self._late_checks(writer, late[2])
         # mapped to `alloc`'s own dummy list: `foo` is the expert sibling, whose work arrays
         # and recommend-sized values are locals here
         self._impl_call(writer, foo, module, alloc)
@@ -765,7 +769,52 @@ class FortranWrapperEmitter:
 
     # -- validation -------------------------------------------------------------
 
-    def _validation(self, writer: Writer, procedure: Procedure) -> None:
+    def _late_values(self, taken, prologue) -> tuple[set[str], set[str]]:
+        """What the allocating `foo` sets after the top, lower-cased (rule V): the AUTO values it
+        computes (P1, after the producers) and what the prologue writes (P2, after it)."""
+        produced = {argument.name.lower() for argument in taken if is_computed(argument)}
+        reserved = {self.conventions.error_arg.lower(),
+                    self.conventions.prologue_handled_arg.lower()}
+        written = ({dummy.name.lower() for dummy in prologue.arguments
+                    if dummy.intent is not None and dummy.intent.is_output} - reserved
+                   if prologue is not None else set())
+        return produced, written
+
+    @staticmethod
+    def _point(expression: str, late: tuple[set[str], set[str]] | None) -> int:
+        """Where a check naming `expression` runs: the latest point any of its names needs."""
+        if late is None:
+            return 0
+        from ..synthesize import size_names_in  # local, as the other synthesize helpers here
+
+        names = {named.name.lower() for named in size_names_in(expression)}
+        produced, written = late
+        return 2 if names & written else 1 if names & produced else 0
+
+    def _deferred(self, argument: Argument, late) -> dict[str, int]:
+        """The `min`/`max` keywords of `argument`'s validator call that wait for P1 or P2."""
+        directives = argument.directives
+        found = {}
+        for keyword, directive in (("min", directives.minimum), ("max", directives.maximum)):
+            if directive is not None:
+                point = self._point(directive.expression, late)
+                if point:
+                    found[keyword] = point
+        return found
+
+    def _late_checks(self, writer: Writer, lines: list[str]) -> None:
+        """A point's deferred checks, in a validation block of their own (rule V)."""
+        if not lines:
+            return
+        writer.directive("#ifndef NO_INPUT_VALIDATION")
+        for line in lines:
+            writer.line(line)
+        writer.line(f"if (is_err({self.conventions.error_arg})) return")
+        writer.directive("#endif")
+        writer.blank()
+
+    def _validation(self, writer: Writer, procedure: Procedure,
+                    late: tuple[set[str], set[str]] | None = None) -> dict[int, list[str]]:
         """Check every input, then bail -- all of it behind `NO_INPUT_VALIDATION`.
 
         `set_ok` stays outside the guard. It is not a check: it is what leaves `ierr` defined
@@ -777,36 +826,57 @@ class FortranWrapperEmitter:
         produced itself. It buys the checks' cost and gives up every diagnostic the framework
         offers, which is why it is a whole-build switch rather than a per-call argument: it is
         not a decision to take one call site at a time.
+
+        In the allocating `foo` (`late` given), a `DM_MIN` or `DM_MAX` naming a value set later
+        is split off its argument's call (rule V): the call stays here with every other keyword
+        -- finiteness, constant bounds, bounds naming what the caller passes -- so nothing reads
+        the argument unchecked, and the deferred keywords run in a second call at their point
+        (P1, P2), with the sentinel and, for a real, finiteness allowed, which was checked here
+        already. A `DM_EQUALS` moves whole. Returned, by point, for the caller to emit there.
         """
         error = self.conventions.error_arg
         writer.line(f"call set_ok({error})")
+        later: dict[int, dict[str, list[str]]] = {1: {"scalars": [], "arrays": []},
+                                                  2: {"scalars": [], "arrays": []}}
         # scalars (extents, bounds) before arrays, as the hand-written wrappers do; arg_pos
         # stays the argument's true position, so the ordering is presentational only
-        calls = [
-            (argument.is_array, self._validation_call(argument, position))
-            for position, argument in enumerate(procedure.arguments, start=1)
-            if argument.name.lower() != error.lower()
-        ]
+        calls = []
+        for position, argument in enumerate(procedure.arguments, start=1):
+            if argument.name.lower() == error.lower():
+                continue
+            deferred = self._deferred(argument, late)
+            calls.append((argument.is_array, self._validation_call(argument, position,
+                                                                   frozenset(deferred))))
+            for point in sorted(set(deferred.values())):
+                keys = frozenset(k for k, at in deferred.items() if at == point)
+                later[point]["arrays" if argument.is_array else "scalars"].append(
+                    self._deferred_call(argument, position, keys))
         scalars = [c for array, c in calls if not array and c]
         # after every scalar check, so an empty dimension is still ERR_EMPTY_INPUT rather than
         # a mismatch of its empty sum; before the arrays, which may be sized by the argument
-        scalars += self._equality_checks(procedure)
+        for point, check in self._equality_checks(procedure, late):
+            (later[point]["scalars"] if point else scalars).append(check)
         emitted = scalars + [c for array, c in calls if array and c]
         emitted += self._convention_checks(procedure)
+        deferred_lines = {point: lines["scalars"] + lines["arrays"]
+                          for point, lines in later.items()}
         if not emitted:
-            return  # nothing to guard, and no `is_err` to test either
+            return deferred_lines  # nothing to guard, and no `is_err` to test either
         writer.directive("#ifndef NO_INPUT_VALIDATION")
         for line in emitted:
             writer.line(line)
         writer.line(f"if (is_err({error})) return")
         writer.directive("#endif")
+        return deferred_lines
 
-    def _equality_checks(self, procedure: Procedure) -> list[str]:
-        """`DM_EQUALS(EXPR)`: the argument must equal `EXPR`, else `ERR_SIZE_MISMATCH` at it."""
+    def _equality_checks(self, procedure: Procedure, late=None) -> list[tuple[int, str]]:
+        """`DM_EQUALS(EXPR)`: the argument must equal `EXPR`, else `ERR_SIZE_MISMATCH` at it --
+        each with the point it runs at (rule V), the top unless `EXPR` names a later value."""
         error = self.conventions.error_arg
         return [
-            f"if ({argument.name} /= ({argument.directives.equals.expression})) "
-            f"call set_err_once({error}, ERR_SIZE_MISMATCH, arg_pos={position}_int32)"
+            (self._point(argument.directives.equals.expression, late),
+             f"if ({argument.name} /= ({argument.directives.equals.expression})) "
+             f"call set_err_once({error}, ERR_SIZE_MISMATCH, arg_pos={position}_int32)")
             for position, argument in enumerate(procedure.arguments, start=1)
             if argument.directives.equals is not None
         ]
@@ -930,17 +1000,21 @@ class FortranWrapperEmitter:
             return "validate_all_in_range_int" if argument.is_array else "validate_in_range_int"
         return None
 
-    def _emitted_literal_kinds(self, procedure: Procedure) -> set[str]:
+    def _emitted_literal_kinds(self, procedure: Procedure, module: Module | None = None) -> set[str]:
         """Kinds the emitter writes as literals, which no argument need carry.
 
         The import list is built from the arguments, so a kind that only ever appears in
         something the emitter invents is invisible to it -- and an unimported kind is a
-        compile error in code nobody wrote. Two sources, and this has to stay in step with
-        both: the `allow_nan=`/`allow_infinite=` keywords below, and a `DM_OUTPUT_FROM`
-        producer input supplied as a constant.
+        compile error in code nobody wrote. Three sources, and this has to stay in step with
+        them: the `allow_nan=`/`allow_infinite=` keywords below, the ones a deferred check on a
+        real carries (rule V), and a `DM_OUTPUT_FROM` producer input supplied as a constant.
         """
         kinds: set[str] = set()
+        late = self._late_of(procedure, module) if module is not None else None
         for argument in procedure.arguments:
+            if (argument.type.base is BaseType.REAL and self._validator_for(argument) is not None
+                    and self._deferred(argument, late)):
+                kinds.add(_VALIDATOR_LOGICAL_KIND)
             directives = argument.directives
             if (argument.type.base is BaseType.REAL
                     and self._validator_for(argument) is not None
@@ -960,7 +1034,47 @@ class FortranWrapperEmitter:
                     kinds.add(dummy.type.kind)
         return kinds
 
-    def _validation_call(self, argument: Argument, position: int) -> str:
+    def _late_of(self, procedure: Procedure, module: Module):
+        """`_late_values` of `procedure` where it is an allocating `foo`, else None."""
+        if not self._is_allocating(procedure, module):
+            return None
+        foo = self._sibling(module, procedure)
+        prologue = self._prologue_for(foo, module)
+        taken = taken_over_arguments(self._impl_arguments(foo), self.conventions, prologue,
+                                     self._evaluator())
+        return self._late_values(taken, prologue)
+
+    def _deferred_call(self, argument: Argument, position: int, keys: frozenset) -> str:
+        """The second validator call of a check deferred to P1 or P2 (rule V): the deferred
+        bounds, the sentinel, and for a real finiteness allowed -- the top already checked it."""
+        validator = self._validator_for(argument)
+        directives = argument.directives
+        keywords = [f"arg_pos={position}_int32"]
+        if "min" in keys:
+            keywords.append(f"min={directives.minimum.expression}")
+        if "max" in keys:
+            keywords.append(f"max={directives.maximum.expression}")
+        if directives.sentinel is not None:
+            keywords.append(f"sentinel={directives.sentinel.expression}")
+        if argument.type.base is BaseType.REAL:
+            keywords.append(f"allow_nan=.true._{_VALIDATOR_LOGICAL_KIND}")
+            keywords.append(f"allow_infinite=.true._{_VALIDATOR_LOGICAL_KIND}")
+        return f"call {validator}({self._validation_head(argument)}, {', '.join(keywords)})"
+
+    def _validation_head(self, argument: Argument) -> str:
+        """A validator call's leading arguments: the value, an array's element count, `ierr`."""
+        error = self.conventions.error_arg
+        if argument.is_array:
+            # an assumed-shape axis has no extent to name, so its size is asked of the array
+            count = _product(
+                f"size({argument.name}, {axis})" if extent == ":" else extent
+                for axis, extent in enumerate(argument.dimension.extents, start=1)
+            )
+            return f"{argument.name}, {count}, {error}"
+        return f"{argument.name}, {error}"
+
+    def _validation_call(self, argument: Argument, position: int,
+                         deferred: frozenset = frozenset()) -> str:
         validator = self._validator_for(argument)
         if validator is None:
             return ""
@@ -970,22 +1084,16 @@ class FortranWrapperEmitter:
         if validator == "validate_dimension_size":
             return f"call validate_dimension_size({argument.name}, {error}, {arg_pos})"
 
-        if argument.is_array:
-            # an assumed-shape axis has no extent to name, so its size is asked of the array
-            count = _product(
-                f"size({argument.name}, {axis})" if extent == ":" else extent
-                for axis, extent in enumerate(argument.dimension.extents, start=1)
-            )
-            head = f"{argument.name}, {count}, {error}"
-        else:
-            head = f"{argument.name}, {error}"
-
+        head = self._validation_head(argument)
         keywords = [arg_pos]
         directives = argument.directives
-        if directives.minimum is not None:
+        if directives.minimum is not None and "min" not in deferred:
             keywords.append(f"min={directives.minimum.expression}")
-        if directives.maximum is not None:
+        if directives.maximum is not None and "max" not in deferred:
             keywords.append(f"max={directives.maximum.expression}")
+        if (deferred and argument.type.base is BaseType.INTEGER
+                and not any(k.startswith(("min=", "max=")) for k in keywords)):
+            return ""  # every bound it has waits for a later point: nothing to check here
         if directives.sentinel is not None:
             keywords.append(f"sentinel={directives.sentinel.expression}")
         if argument.type.base is BaseType.REAL:

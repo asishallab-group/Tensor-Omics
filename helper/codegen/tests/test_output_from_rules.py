@@ -10,7 +10,11 @@ import pytest
 
 from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
-from codegen.ir.directives import Default, Directives, OutputFrom, OutputFromMode, RequiredIfMode
+from codegen.ir.directives import (
+    Default, Directives, Equals, Maximum, Minimum, OutputFrom, OutputFromMode, Prologue,
+    RequiredIfMode, Sentinel,
+)
+from codegen.ir.validate import validate_project
 from codegen.ir.doc import Doc
 from codegen.ir.types import Intent
 from codegen.synthesize import binding_computes, synthesize_wrappers, taken_over_arguments
@@ -727,3 +731,206 @@ class TestAConstantOfItsType:
             "ratio_size", rows=[("ratio", "3.0_real64")])) == []
         assert refusals(kinded_producers(), kind_consumer(
             "flag_size", rows=[("flag", ".false.")])) == []
+
+
+def validated(*modules):
+    synthesis, bag = analysed(*modules)
+    validate_project(synthesis.project, bag)
+    return synthesis, bag
+
+
+def staged(*arguments, prologue=None, guard_arguments=()):
+    """`staged_impl`: a consumer whose `limit` `fx`-style `scaled_size` computes, with
+    `arguments` after it, and optionally a prologue `guard` taking `guard_arguments`."""
+    directives = Directives(prologue=Prologue("guard", "tox_cons_impl")) if prologue else Directives()
+    procedures = [procedure(
+        "staged_impl",
+        integer("n_items", doc="items"),
+        integer("factor", doc="a factor"),
+        integer("limit", doc="a limit", directives=auto("scaled", "scaled_size", "tox_prod")),
+        *arguments,
+        real("total", Intent.OUT, doc="the total"),
+        meta=IMPL, is_pure=True, directives=directives,
+    )]
+    if prologue:
+        procedures.append(procedure(
+            "guard", *guard_arguments,
+            logical("handled", Intent.OUT, doc="never"),
+            integer("ierr", Intent.INOUT, doc="left as it is"),
+            meta=IMPL, is_pure=True,
+        ))
+    return module("tox_cons_impl", *procedures)
+
+
+class TestTheChecksAreStaged:
+    """Rule V's emission: the late bound alone runs below the producers, in its own block."""
+
+    def test_a_bound_naming_a_produced_value_waits_for_the_producers(self):
+        synthesis, bag = analysed(producers(), staged(
+            real("x", Intent.IN, "(n_items)", doc="values",
+                 directives=Directives(maximum=Maximum("real(limit, real64)")))))
+
+        assert errors(bag) == []
+        text = body(fortran(synthesis), "staged")
+        top, after = text.split("call scaled_size(", 1)
+        assert "call validate_all_in_range_real(x, n_items, ierr, arg_pos=3_int32)" in top
+        assert "max=real(limit" not in top
+        assert ("call validate_all_in_range_real(x, n_items, ierr, arg_pos=3_int32, "
+                "max=real(limit, real64), allow_nan=.true._c_bool, allow_infinite=.true._c_bool)"
+                in after.split("call staged_impl(")[0])
+        # its own block, after the producer's error return
+        assert "end if\n#ifndef NO_INPUT_VALIDATION" in after
+
+    def test_the_expert_checks_everything_at_the_top(self):
+        synthesis, _ = analysed(producers(), staged(
+            real("x", Intent.IN, "(n_items)", doc="values",
+                 directives=Directives(maximum=Maximum("real(limit, real64)")))))
+        text = body(fortran(synthesis), "staged_expert")
+
+        assert "max=real(limit, real64))" in text
+        assert "allow_nan" not in text
+
+    def test_an_integer_whose_only_bound_waits_is_not_checked_at_the_top(self):
+        synthesis, _ = analysed(producers(), staged(
+            integer("k", doc="a count", directives=Directives(maximum=Maximum("limit")))))
+        top = body(fortran(synthesis), "staged").split("call scaled_size(", 1)[0]
+
+        assert "validate_in_range_int(k" not in top
+
+
+class TestWhatABoundMayName:
+    """Rule V's refusals: a name set at none of the three points, at the bound's line."""
+
+    def refused(self, *arguments, **kwargs):
+        _, bag = validated(producers(), staged(*arguments, **kwargs))
+        return [(e.message, e.note, e.location.line) for e in bag.errors]
+
+    def test_a_permutation_foo_builds(self):
+        [(message, note, line)] = self.refused(
+            real("x", Intent.IN, "(n_items)", doc="values"),
+            integer("x_perm", Intent.IN, "(n_items)", doc="an order"),
+            integer("k", doc="an index", directives=Directives(minimum=Minimum("x_perm(1)", 12))))
+
+        assert message == "'k' is checked against 'x_perm', which 'staged' builds itself"
+        assert note == ("a bound names an argument the caller passes, a value a DM_OUTPUT_FROM "
+                        "producer computes, a value the prologue writes, or a constant")
+        assert line == 12
+
+    def test_a_work_array_and_its_size(self):
+        [(message, note, _)] = self.refused(
+            real("tmp_w", Intent.OUT, "(n_items)", doc="scratch"),
+            integer("k", doc="an index", directives=Directives(maximum=Maximum("size(tmp_w)"))))
+
+        assert message == "'k' is checked against 'tmp_w', which 'staged' builds itself"
+        assert note.endswith("; for a work array's size, name its extent")
+
+    def test_an_output_as_a_value(self):
+        [(message, _, _)] = self.refused(
+            integer("k", doc="a value", directives=Directives(maximum=Maximum("total"))))
+
+        assert message == ("'k' is checked against 'total', an output, which has no value until "
+                           "the implementation sets it")
+
+    def test_the_size_of_an_output_foo_keeps_is_fine(self):
+        assert self.refused(
+            real("out", Intent.OUT, "(n_items)", doc="a result"),
+            integer("k", doc="a value", directives=Directives(maximum=Maximum("size(out)")))) == []
+
+    def test_an_argument_only_the_prologue_has(self):
+        [(message, _, _)] = self.refused(
+            integer("k", doc="a value", directives=Directives(maximum=Maximum("fraction"))),
+            prologue=True, guard_arguments=(real("fraction", doc="a fraction"),))
+
+        assert message == ("'k' is checked against 'fraction', which only the prologue takes, so "
+                           "'staged_expert' has no 'fraction'")
+
+    def test_a_sentinel_naming_a_value_set_later(self):
+        [(message, note, _)] = self.refused(
+            integer("k", doc="a value", directives=Directives(
+                minimum=Minimum("0_int32"), sentinel=Sentinel("limit"))))
+
+        assert message == "'k' has a DM_SENTINEL naming 'limit', which 'staged' computes"
+        assert note.endswith("; a sentinel is a fixed marker")
+
+    def test_a_bound_after_the_prologue_on_what_the_prologue_writes(self):
+        # fv_self: the caller's y is within the bound, the prologue's is not, and the error
+        # would blame the caller after their y had been overwritten
+        [(message, _, _)] = self.refused(
+            real("level", doc="a level"),
+            real("y", Intent.INOUT, doc="refined", directives=Directives(maximum=Maximum("level"))),
+            prologue=True, guard_arguments=(real("level", Intent.OUT, doc="the level"),
+                                            real("y", Intent.INOUT, doc="refined")))
+
+        assert message == ("'y' is checked against 'level' once the prologue has run, but the "
+                           "prologue writes 'y' too, so its error would blame the caller for the "
+                           "prologue's value")
+
+    def test_what_each_point_sets_is_accepted(self):
+        assert self.refused(
+            real("level", doc="a level"),
+            integer("y", doc="between", directives=Directives(
+                minimum=Minimum("limit"), maximum=Maximum("int(level, int32)"))),
+            integer("m", doc="the limit", directives=Directives(equals=Equals("limit"))),
+            prologue=True, guard_arguments=(real("level", Intent.OUT, doc="the level"),)) == []
+
+
+class TestAComputedLengthOfAPassedString:
+    """3b: a value a producer computes is not the length of a string the caller passes."""
+
+    def test_refused_at_the_directive(self):
+        cons = module("tox_cons_impl", procedure(
+            "len_impl",
+            integer("n_items", doc="items"),
+            integer("str_len", doc="the length", directives=Directives(output_from=OutputFrom(
+                "scaled", "scaled_size", "tox_prod", OutputFromMode.AUTO, 8))),
+            character("names", Intent.IN, "(n_items)", length="str_len", doc="the names"),
+            integer("factor", doc="a factor"),
+            real("total", Intent.OUT, doc="the total"),
+            meta=IMPL, is_pure=True,
+        ))
+        _, bag = validated(producers(), cons)
+
+        [error] = [e for e in bag.errors if "length" in e.message]
+        assert error.message == ("'str_len' is computed with 'scaled_size', but it is the length "
+                                 "of 'names', which the caller passes: the strings carry their own "
+                                 "length")
+        assert error.note.startswith("a computed length is for strings the wrapper allocates")
+        assert error.location.line == 8
+
+    def test_an_output_s_computed_length_stays(self):
+        cons = module("tox_cons_impl", procedure(
+            "len_impl",
+            integer("n_items", doc="items"),
+            integer("str_len", doc="the length",
+                    directives=auto("scaled", "scaled_size", "tox_prod")),
+            integer("factor", doc="a factor"),
+            character("names", Intent.OUT, "(n_items)", length="str_len", doc="the names"),
+            meta=IMPL, is_pure=True,
+        ))
+        _, bag = validated(producers(), cons)
+
+        assert [e.message for e in bag.errors if "length" in e.message] == []
+
+
+class TestAPrologueKeepsAProducedValue:
+    """Item 5: a prologue's intent(out) does not write over a value a producer computes; an
+    intent(inout) one refines it (Q4)."""
+
+    def test_an_intent_out_is_refused_once(self):
+        # the AUTO size of a work array: one error, not this and the read-first rule's too
+        _, bag = validated(producers(), staged(
+            real("tmp_w", Intent.OUT, "(limit)", doc="scratch"),
+            prologue=True, guard_arguments=(integer("limit", Intent.OUT, doc="overwritten"),)))
+
+        [error] = bag.errors
+        assert error.message == ("the prologue 'guard' writes 'limit' (intent(out)), which "
+                                 "'staged' computes with 'scaled_size' first, so the producer's "
+                                 "value is discarded")
+        assert error.note.startswith("a value has one source")
+
+    def test_an_intent_inout_refines_it(self):
+        _, bag = validated(producers(), staged(
+            integer("y", doc="a value"),
+            prologue=True, guard_arguments=(integer("limit", Intent.INOUT, doc="refined"),)))
+
+        assert bag.errors == ()

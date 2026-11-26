@@ -377,8 +377,8 @@ contains
     !> summary: The sum of values bounded by a limit a producer computes, which sizes nothing
     !| author: A Developer
     !| `limit` is a value only the bound on `x` names, so the Python and R expert takes it as a
-    !| parameter, and is published for it. Its plain `foo` checks `x` against `limit` before
-    !| its producer has computed it, a defect of its own, so the tests call the expert alone.
+    !| parameter, and is published for it. Its plain `foo` checks `x` against `limit` once its
+    !| producer has computed it, and everything else about `x` at the top (rule V).
     pure subroutine fx_bounded_total_impl(n_items, x, scale, limit, total)
         integer(int32), intent(in) :: n_items
             !! number of values
