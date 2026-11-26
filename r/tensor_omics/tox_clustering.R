@@ -126,8 +126,6 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #'   Its structure (symmetry, non-negativity, zero diagonal) is validated by the
 #'   distance-matrix naming convention in the generated wrapper.
 #' @param method a string, one of "average", "weighted", "ward". used algorithm
-#'   The minimum valid value is `0`.
-#'   The maximum valid value is `2`.
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{distances}{a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.

@@ -298,8 +298,6 @@ contains
             !! size of cluster at iteration k
         integer(int32), intent(in) :: method
             !! used algorithm
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `2_int32`.
             !!
             !! | Method           | Value                                                     |
             !! |------------------|-----------------------------------------------------------|
@@ -314,7 +312,6 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
-        call validate_in_range_int(method, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
         call validate_distance_matrix(distances, n_points, ierr, arg_pos=1_int32)
         if (method /= METHOD_AVERAGE .and. method /= METHOD_WEIGHTED .and. method /= METHOD_WARD) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return

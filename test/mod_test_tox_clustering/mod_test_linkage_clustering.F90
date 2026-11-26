@@ -398,16 +398,17 @@ contains
         end do
     end subroutine test_linkage_clustering_rejects_nan_and_inf
 
-    !> Which refusal wins when several apply: `n_points` before `method` before `distances`. A
-    !| NaN matrix with method 3 names `method`; with no points as well, `n_points`. At n_points = 0
-    !| the matrix has no elements, so the NaN is never read: the second call shows only that
-    !| `n_points` is reported before `method`.
+    !> Which refusal wins when several apply: `n_points` before `distances` before `method`, whose
+    !| one check is the generated test against the three method codes, made after the arguments'
+    !| own checks. A NaN matrix with method 3 names `distances`; with no points as well,
+    !| `n_points`. At n_points = 0 the matrix has no elements, so the NaN is never read: the second
+    !| call shows only that `n_points` is reported before `method`.
     subroutine test_linkage_clustering_check_order()
         real(real64) :: distances(3, 3)
 
         call fill_equidistant(3_int32, 1.0_real64, distances)
         distances(2, 1) = non_finite_value(1_int32)
-        call check_refused(3_int32, distances, 9_int32, 3_int32, ERR_INVALID_INPUT, 7_int32, &
+        call check_refused(3_int32, distances, 9_int32, 3_int32, ERR_NAN_INF, 1_int32, &
                            "test_linkage_clustering_check_order: method 3 and NaN")
         call check_refused(0_int32, distances, 9_int32, 3_int32, ERR_EMPTY_INPUT, 2_int32, &
                            "test_linkage_clustering_check_order: no points, method 3 and NaN")

@@ -321,8 +321,6 @@ contains
             !! size of cluster at iteration k
         character(len=1, kind=c_char), dimension(8), intent(in), target :: method
             !! used algorithm
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `2_int32`.
             !!
             !! | Method           | Value                                                     |
             !! |------------------|-----------------------------------------------------------|

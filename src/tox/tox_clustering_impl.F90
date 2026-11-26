@@ -295,8 +295,6 @@ contains
             !! size of cluster at iteration k
         integer(int32), intent(in) :: method
             !! used algorithm
-            !! DM_MIN(0_int32)
-            !! DM_MAX(2_int32)
             !!
             !! | Method | Value |
             !! |--------|-------|
