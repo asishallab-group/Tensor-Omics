@@ -949,3 +949,39 @@ class TestAPrologueKeepsAProducedValue:
             prologue=True, guard_arguments=(integer("limit", Intent.INOUT, doc="refined"),)))
 
         assert bag.errors == ()
+
+
+class TestAKeptValueOfAPairIsReported:
+    """Once per implementation, also where `foo` keeps the value: the plain half resolves into a
+    throwaway bag, and must not mark the report as made, or the expert's is suppressed too."""
+
+    def pair(self, rows, producer="padded_size", output="padded"):
+        work = integer("out_size", doc="the size", directives=Directives(
+            output_from=OutputFrom(output, producer, "tox_prod", OutputFromMode.AUTO, 7)))
+        located(work, table(*rows))
+        return module("tox_cons_impl", procedure(
+            "pair_impl", integer("n_items", doc="items"),
+            real("tmp_buf", Intent.OUT, "(n_items)", doc="scratch, which makes this a pair"),
+            work, real("filled", Intent.OUT, "(out_size)", doc="the result"),
+            meta=IMPL, is_pure=True,
+        ))
+
+    @pytest.mark.parametrize("rows, message", [
+        ([("n_items", "OMITTED")],
+         "the producer-input table of 'out_size' omits 'n_items', which 'padded_size' requires"),
+        ([("padded", "n_items")],
+         "the producer-input table of 'out_size' maps 'padded', which is an output of "
+         "'padded_size', not an input"),
+        ([("padding", "nothing_here")],
+         "the producer-input table of 'out_size' supplies 'padding' by 'nothing_here', which is "
+         "neither an argument of 'pair_impl' nor a constant"),
+        ([], "'out_size' is computed from 'padded_size', but its input(s) padding have no "
+             "argument of the same name in 'pair_impl'"),
+    ])
+    def test_each_refusal_is_reported_once(self, rows, message):
+        synthesis, bag = analysed(optional_producers(), self.pair(rows))
+
+        # the premise: a pair, whose plain tier keeps `out_size`
+        assert synthesis.project.procedure("tox_cons", "pair_expert") is not None
+        assert synthesis.project.procedure("tox_cons", "pair").argument("out_size") is not None
+        assert [e.message for e in bag.errors] == [message]

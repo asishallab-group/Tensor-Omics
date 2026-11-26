@@ -384,7 +384,10 @@ def analyse_project(project, diagnostics: DiagnosticBag,
                           and plain_of_an_expert(expert, project, conventions) is procedure)
             bag = DiagnosticBag() if plain_half else diagnostics
             implementation = _implementation_of(procedure, project, conventions)
-            once = _OncePerImplementation(bag, reported, id(implementation or procedure))
+            # the plain half's reports are thrown away, so it marks nothing as reported: else
+            # where `foo` keeps a value, its expert's report would be suppressed with them
+            once = _OncePerImplementation(bag, set() if plain_half else reported,
+                                          id(implementation or procedure))
             _resolve_output_from(procedure, project, bag, conventions, evaluator, once)
             if not plain_half:
                 _check_refined_values(procedure, project, diagnostics, conventions)
