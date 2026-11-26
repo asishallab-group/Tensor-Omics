@@ -1920,7 +1920,6 @@ class TestWhereABindingReadsAnExtent:
             real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
             real("x", Intent.IN, "(5)", doc="values"),
             real("res", Intent.OUT, "(n_items)", doc="one per norm"),
-            integer("norms_perm", Intent.IN, "(n_large)", doc="an order"),
         ))
 
         assert self.owners(synthesis, "use_expert", "n_items") == ["norms"]
@@ -1931,7 +1930,8 @@ class TestWhereABindingReadsAnExtent:
 
         # one `ramp` call gives `norms` and the `n_large` that sizes a work array, so `foo` calls
         # it (and `count`), each passed `n_items`, which no array the caller passes carries:
-        # `norms` is computed, and `x(5)` carries none
+        # `norms` is computed, and `x(5)` carries none. No permutation of `norms`: one the caller
+        # passes would be an array of `n_items` it carries
         synthesis, bag = analysed(data_producers(), consumer(
             "use_impl",
             integer("n_items", doc="items"),
@@ -1943,7 +1943,6 @@ class TestWhereABindingReadsAnExtent:
             real("tmp_k", Intent.OUT, "(k)", doc="scratch"),
             real("x", Intent.IN, "(5)", doc="values"),
             real("res", Intent.OUT, "(n_items)", doc="one per norm"),
-            integer("norms_perm", Intent.IN, "(n_large)", doc="an order"),
         ))
         plain = synthesis.project.procedure("tox_cons", "use")
         # the premise: the Fortran route, `foo` takes both over
