@@ -159,12 +159,16 @@ contains
             ! if the assignments did not change, the clustering is done
             if (.not. labels_changed) exit
 
-            call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
+            call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, &
+                                                            label_counts, exponent)
         end do
     end subroutine k_means_clustering_impl
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Helper to recompute the centroids in k-means by taking the mean of assigned points
-    pure subroutine k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
+    !| Helper to recompute the centroids in k-means by taking the mean of assigned points. The
+    !| points are summed scaled by the run's power of two, as f42's mean sums a set, so no sum
+    !| overflows for finite points: the mean of two points at `2**1023` is `2**1023`.
+    pure subroutine k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, &
+                                                               label_counts, exponent)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
         integer(int32), intent(in) :: n_points
@@ -184,6 +188,9 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(in) :: label_counts
             !! holds the number of points having the respective label assigned
+        integer(int32), intent(in) :: exponent
+            !! power of two the points are scaled by while they are summed, from
+            !! [[f42_math_impl(module):scaling_exponent_for_largest(function)]] for the run
 
         integer(int32) :: i_point, label, i_dim, i_cluster
 
@@ -195,14 +202,15 @@ contains
         do i_point = 1, n_points
             label = labels(i_point)
             do i_dim = 1, n_dims
-                centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)
+                centroids(i_dim, label) = centroids(i_dim, label) + scale(data_points(i_dim, i_point), exponent)
             end do
         end do
 
         do i_cluster = 1, n_clusters
             if (label_counts(i_cluster) == 0) cycle
             do i_dim = 1, n_dims
-                centroids(i_dim, i_cluster) = centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64)
+                centroids(i_dim, i_cluster) = scale(centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64), &
+                                                    -exponent)
             end do
         end do
     end subroutine k_means_recompute_cluster_centroids_helper
