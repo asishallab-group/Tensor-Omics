@@ -59,7 +59,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(15))
+        allocate (all_tests(16))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -78,6 +78,7 @@ contains
                                   test_linkage_clustering_ward_squares_below_tiny)
         all_tests(15) = test_case("test_linkage_clustering_ward_squares_past_huge", &
                                   test_linkage_clustering_ward_squares_past_huge)
+        all_tests(16) = test_case("test_linkage_clustering_averages_past_huge", test_linkage_clustering_averages_past_huge)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -436,4 +437,21 @@ contains
         call check_linkage(3_int32, distances, METHOD_WARD, [1, -1], [2, 3], [s, s], WARD_RTOL, [2, 3], &
                            .true., "test_linkage_clustering_ward_squares_past_huge")
     end subroutine test_linkage_clustering_ward_squares_past_huge
+
+    !> BUG: UPGMA and WPGMA form size_A*d(A, C) + size_B*d(B, C) before dividing by the sizes'
+    !| sum, which overflows once that sum of distances passes huge. Three points at s = 2**1023
+    !| from each other should merge {1, 2}, then {-1, 3}, both at s (the average of s and s).
+    !| Today s + s is +Inf, and the second merge takes the abort path of
+    !| `test_linkage_clustering_ward_squares_past_huge`: `cluster_sizes(-1)`.
+    subroutine test_linkage_clustering_averages_past_huge()
+        real(real64), parameter :: s = 2.0_real64**1023
+        real(real64) :: distances(3, 3)
+        integer(int32) :: i_method
+
+        call fill_equidistant(3_int32, s, distances)
+        do i_method = 1, 2
+            call check_linkage(3_int32, distances, METHODS(i_method), [1, -1], [2, 3], [s, s], 0.0_real64, [2, 3], &
+                               .true., "test_linkage_clustering_averages_past_huge: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_averages_past_huge
 end module mod_test_linkage_clustering
