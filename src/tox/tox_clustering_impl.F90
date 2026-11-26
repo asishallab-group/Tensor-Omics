@@ -13,7 +13,7 @@ module tox_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
-    use f42_math_impl, only: scaling_exponent_for_largest
+    use f42_math_impl, only: scaling_exponent_for_largest, scaling_factors
     use tox_errors, only: set_ok, set_err, ERR_NAN_INF
     M_IMPLICIT_NONE
 
@@ -98,10 +98,9 @@ contains
     !| A point exactly as close to several centroids goes to the last of them, the one with the
     !| highest cluster index.
     !|
-    !| The squared distances are compared with the points and centroids scaled by one power of two
-    !| for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
-    !| the points and the starting centroids, so no distance overflows or underflows for finite
-    !| input. Ordinary data is not scaled at all.
+    !| Each point's squared distances are compared scaled by a power of two picked for that point,
+    !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
+    !| centroid in that measure; ordinary data is not scaled at all.
     pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
@@ -138,8 +137,9 @@ contains
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
 
-        ! Every later centroid is a mean of points or a centroid kept from before, so the largest
-        ! magnitude among the points and the starting centroids bounds every value of the run.
+        ! the power of two the centroids' sums are formed with: every later centroid is a mean of
+        ! points or a centroid kept from before, so the points' and starting centroids' largest
+        ! magnitude bounds them
         exponent = scaling_exponent_for_largest(max(maxval(abs(data_points)), maxval(abs(centroids))))
 
         ! initialize labels to a value outside the valid [1, n_clusters] range so the first
@@ -155,8 +155,7 @@ contains
             labels_changed = .false.
             label_counts = 0
             do i_point = 1, n_points
-                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, exponent, &
-                                                   label)
+                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
 
                 label_counts(label) = label_counts(label) + 1
                 if (labels(i_point) /= label) then
@@ -226,7 +225,7 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper routine to assign a cluster's label to a point in k-means
-    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, exponent, label)
+    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
         integer(int32), intent(in) :: i_point
             !! index of the point that should be assigned a cluster
         integer(int32), intent(in) :: n_clusters
@@ -242,14 +241,29 @@ contains
             !! The centroids should be unique. This is not checked in this routine.
             !!
             !! The final values will be the final centroids of the clusters
-        integer(int32), intent(in) :: exponent
-            !! power of two the points and centroids are scaled by before their differences are
-            !! squared; it changes no comparison, as every distance is scaled alike
         integer(int32), intent(out) :: label
             !! assigned label
 
         integer(int32) :: i_cluster, i_dim
-        real(real64) :: squared_dist_to_centroid, smallest_squared_dist
+        real(real64) :: squared_dist_to_centroid, smallest_squared_dist, nearest_largest_difference, largest_difference
+        real(real64) :: down, up
+
+        ! The squared distances are compared scaled by a power of two picked for this point: from the
+        ! largest coordinate difference to the centroid whose largest difference is smallest (an
+        ! overflowing difference counts as +Inf). Scaled so, the nearest centroid's squares neither
+        ! overflow nor all vanish; a farther one's may overflow, but it loses anyway. A common factor
+        ! changes no comparison, and an ordinary point gets the exponent 0, which leaves its
+        ! arithmetic as it was. The factors are multiplied in, not applied with scale(), which is a
+        ! library call per element.
+        nearest_largest_difference = ieee_value(1.0_real64, ieee_positive_inf)
+        do i_cluster = 1, n_clusters
+            largest_difference = 0.0_real64
+            do i_dim = 1, n_dims
+                largest_difference = max(largest_difference, abs(data_points(i_dim, i_point) - centroids(i_dim, i_cluster)))
+            end do
+            nearest_largest_difference = min(nearest_largest_difference, largest_difference)
+        end do
+        call scaling_factors(scaling_exponent_for_largest(nearest_largest_difference), down, up)
 
         label = 0_int32
         smallest_squared_dist = ieee_value(1.0_real64, ieee_positive_inf)
@@ -260,8 +274,7 @@ contains
             ! GFORTRAN BUG: do concurrent (i_dim = 1:n_dims) shared(data_points, i_point, i_cluster) reduce(+:squared_dist_to_centroid)
             do i_dim = 1, n_dims
                 squared_dist_to_centroid = squared_dist_to_centroid &
-                                           + (scale(data_points(i_dim, i_point), exponent) &
-                                              - scale(centroids(i_dim, i_cluster), exponent))**2
+                                           + ((data_points(i_dim, i_point)*down - centroids(i_dim, i_cluster)*down)*up)**2
             end do
 
             if (squared_dist_to_centroid <= smallest_squared_dist) then

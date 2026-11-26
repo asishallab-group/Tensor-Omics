@@ -216,10 +216,9 @@ contains
     !| A point exactly as close to several centroids goes to the last of them, the one with the
     !| highest cluster index.
     !|
-    !| The squared distances are compared with the points and centroids scaled by one power of two
-    !| for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
-    !| the points and the starting centroids, so no distance overflows or underflows for finite
-    !| input. Ordinary data is not scaled at all.
+    !| Each point's squared distances are compared scaled by a power of two picked for that point,
+    !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
+    !| centroid in that measure; ordinary data is not scaled at all.
     subroutine k_means_clustering_c(&
             n_clusters,&
             data_points,&
