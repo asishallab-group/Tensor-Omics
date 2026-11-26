@@ -59,7 +59,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(17))
+        allocate (all_tests(18))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -80,6 +80,8 @@ contains
                                   test_linkage_clustering_ward_squares_past_huge)
         all_tests(16) = test_case("test_linkage_clustering_averages_past_huge", test_linkage_clustering_averages_past_huge)
         all_tests(17) = test_case("test_linkage_clustering_ward_height_past_huge", test_linkage_clustering_ward_height_past_huge)
+        all_tests(18) = test_case("test_linkage_clustering_heights_never_decrease", &
+                                  test_linkage_clustering_heights_never_decrease)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -478,4 +480,38 @@ contains
         call assert_identical_array_real(passed, distances, 16_int32, &
                                          "test_linkage_clustering_ward_height_past_huge: the matrix comes back unchanged")
     end subroutine test_linkage_clustering_ward_height_past_huge
+
+    !> BUG: UPGMA, WPGMA and Ward are monotone -- every update is at least the distance of the
+    !| merge it follows -- but the rounded update can land an ulp or two below it, so a height comes
+    !| out below the one before. R's `cutree(h = ...)` refuses such a tree. Points all at the same
+    !| distance d merge at d every time; found by search among d = 0.1, 0.2, ..., 9.9:
+    !| - UPGMA, four points at 0.9, 1.8, 2.1, 2.9: the third height 1 ulp below d;
+    !| - Ward, three points at 3.9 and 7.8, four at 3.3: the last height 1 ulp below d.
+    !| The heights must not decrease and must equal d to within rounding (a few ulps: the update
+    !| rounds, and an optimizer may contract it into a fused multiply-add).
+    subroutine test_linkage_clustering_heights_never_decrease()
+        integer(int32), parameter :: n_cases = 7
+        integer(int32), parameter :: CASE_METHODS(n_cases) = [METHOD_AVERAGE, METHOD_AVERAGE, METHOD_AVERAGE, &
+                                                              METHOD_AVERAGE, METHOD_WARD, METHOD_WARD, METHOD_WARD]
+        integer(int32), parameter :: CASE_POINTS(n_cases) = [4, 4, 4, 4, 3, 3, 4]
+        real(real64), parameter :: CASE_DISTANCES(n_cases) = [0.9_real64, 1.8_real64, 2.1_real64, 2.9_real64, &
+                                                              3.9_real64, 7.8_real64, 3.3_real64]
+        real(real64) :: distances(4, 4), heights(3), expected(3)
+        integer(int32) :: merge_i(3), merge_j(3), cluster_sizes(3), ierr, i_case, n_points
+        character(len=80) :: msg
+
+        do i_case = 1, n_cases
+            n_points = CASE_POINTS(i_case)
+            write (msg, '(a,a,a,i0,a,f3.1)') "test_linkage_clustering_heights_never_decrease: ", &
+                trim(METHOD_NAMES(merge(1_int32, 3_int32, CASE_METHODS(i_case) == METHOD_AVERAGE))), ", ", &
+                n_points, " points at ", CASE_DISTANCES(i_case)
+            call fill_equidistant(n_points, CASE_DISTANCES(i_case), distances)
+            expected = CASE_DISTANCES(i_case)
+            call linkage_clustering(distances, n_points, merge_i, merge_j, heights, cluster_sizes, CASE_METHODS(i_case), ierr)
+            call assert_err(ierr, ERR_OK, trim(msg)//": ierr")
+            call assert_sorted_real(heights, n_points - 1_int32, trim(msg)//": heights")
+            call assert_allclose_array_real(heights, expected, n_points - 1_int32, WARD_RTOL, 0.0_real64, &
+                                            trim(msg)//": heights equal d")
+        end do
+    end subroutine test_linkage_clustering_heights_never_decrease
 end module mod_test_linkage_clustering
