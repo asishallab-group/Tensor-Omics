@@ -359,18 +359,34 @@ contains
             !! for finite input, as it grows with the clusters' sizes. The merges before it are
             !! written, the later ones are not, and the matrix still comes back unchanged.
 
-        integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label, ward_exponent
-        real(real64) :: dist_AB
+        integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label, storage_exponent, i_row, i_col
+        real(real64) :: dist_AB, height
         logical(c_bool) :: found
+        ! Ward's distances grow with the clusters' sizes, but stay below sqrt(n/2) times the largest
+        ! input for n points, so below 2**15.5 times it for any int32 count: stored scaled by 2**-16,
+        ! no Ward distance of an input up to huge can pass huge in the scratch triangle
+        real(real64), parameter :: LARGEST_STORED_UNSCALED = 2.0_real64**1007
+        integer(int32), parameter :: WARD_STORAGE_EXPONENT = -16_int32
 
         !TODO optimize: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
         !               one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
         !               clustering can be done in O(n^2) total with the nearest-neighbor-chain algorithm, which
         !               would matter a lot for larger n_points.
-        ! Ward's update squares distances; they are scaled first by one power of two for the run,
-        ! which f42's rule for sums of squares picks from the largest input distance, so no square
-        ! overflows or underflows. Ordinary distances get the exponent 0.
-        ward_exponent = scaling_exponent_for_largest(maxval(distances))
+        ! The scratch triangle holds Ward's distances scaled by 2**WARD_STORAGE_EXPONENT when an
+        ! input exceeds 2**1007, so that a distance whose true value passes huge on the way, and
+        ! may come back below it once more points join, stays finite and comparable; +Inf remains
+        ! the marker of a retired entry alone. Every height is scaled back as it is written.
+        storage_exponent = 0_int32
+        if (method == METHOD_WARD) then
+            if (maxval(distances) > LARGEST_STORED_UNSCALED) storage_exponent = WARD_STORAGE_EXPONENT
+        end if
+        if (storage_exponent /= 0_int32) then
+            do i_col = 1, n_points - 1
+                do i_row = i_col + 1, n_points
+                    distances(i_row, i_col) = scale(distances(i_row, i_col), storage_exponent)
+                end do
+            end do
+        end if
 
         call set_ok(ierr)
         do i = 1, n_points - 1
@@ -381,8 +397,13 @@ contains
                 call set_err(ierr, ERR_NAN_INF)
                 exit
             end if
-
-            heights(i) = dist_AB
+            ! a merge whose true height passes huge cannot be written; the merges before it are right
+            height = scale(dist_AB, -storage_exponent)
+            if (height > huge(height)) then
+                call set_err(ierr, ERR_NAN_INF)
+                exit
+            end if
+            heights(i) = height
 
             ! Get Weight and cluster index/label
             call get_cluster_data_linkage_helper(distances, n_points, cluster_sizes, idx_B, size_B, cluster_label)
@@ -399,7 +420,7 @@ contains
                 call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i, dist_AB)
             case (METHOD_WARD)
                 call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, &
-                                                         dist_AB, ward_exponent)
+                                                         dist_AB)
             end select
         end do
 
@@ -529,7 +550,7 @@ contains
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper for ward algorithm for updating the distance matrix on merge of two clusters
     pure subroutine merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, cluster_sizes, &
-                                                        dist_AB, exponent)
+                                                        dist_AB)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -548,11 +569,8 @@ contains
             !! size of cluster at iteration k, needed for ward algorithm
         real(real64), intent(in) :: dist_AB
             !! distance between cluster A and B
-        integer(int32), intent(in) :: exponent
-            !! power of two every distance is scaled by before it is squared; the result is scaled
-            !! back, so it is the true distance
 
-        integer(int32) :: i_node, size_C, cluster_label_C
+        integer(int32) :: i_node, size_C, cluster_label_C, exponent
         real(real64) :: new_dist, new_dist_part_AC, new_dist_part_BC, new_dist_part_AB, size_AC_real, size_BC_real, size_ABC_real
 
         ! Merge distances
@@ -570,10 +588,12 @@ contains
                 size_AC_real = real(size_A + size_C, real64)
                 size_BC_real = real(size_B + size_C, real64)
                 size_ABC_real = real(size_A + size_B + size_C, real64)
-                new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
 
                 ! i_node < idx_B < idx_A -> fill rows in both
                 if (i_node < idx_B) then
+                    ! scaled for the three distances this update combines
+                    exponent = scaling_exponent_for_largest(max(distances(idx_A, i_node), distances(idx_B, i_node), dist_AB))
+                    new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
                     new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
                     new_dist_part_BC = scale(distances(idx_B, i_node), exponent)**2*(size_BC_real/size_ABC_real)
                     ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
@@ -582,6 +602,9 @@ contains
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
+                    ! scaled for the three distances this update combines
+                    exponent = scaling_exponent_for_largest(max(distances(idx_A, i_node), distances(i_node, idx_B), dist_AB))
+                    new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
                     new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
                     new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
                     ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
@@ -590,6 +613,9 @@ contains
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
+                    ! scaled for the three distances this update combines
+                    exponent = scaling_exponent_for_largest(max(distances(i_node, idx_A), distances(i_node, idx_B), dist_AB))
+                    new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
                     new_dist_part_AC = scale(distances(i_node, idx_A), exponent)**2*(size_AC_real/size_ABC_real)
                     new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
                     ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
