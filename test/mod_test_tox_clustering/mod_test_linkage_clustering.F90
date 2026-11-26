@@ -58,7 +58,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(22))
+        allocate (all_tests(24))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -88,6 +88,9 @@ contains
                                   test_linkage_clustering_ward_near_huge_completes)
         all_tests(22) = test_case("test_linkage_clustering_ward_past_huge_stops_right", &
                                   test_linkage_clustering_ward_past_huge_stops_right)
+        all_tests(23) = test_case("test_linkage_clustering_equal_distances_average_to_themselves", &
+                                  test_linkage_clustering_equal_distances_average_to_themselves)
+        all_tests(24) = test_case("test_linkage_clustering_tie_after_averaging", test_linkage_clustering_tie_after_averaging)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -684,4 +687,74 @@ contains
         call assert_equal_int(merge_j(28), 29_int32, msg//"merge 28, merge_j")
         call assert_equal_real(heights(28), 0.9_real64*huge(1.0_real64), 0.0_real64, msg//"merge 28, height")
     end subroutine test_linkage_clustering_ward_past_huge_stops_right
+
+    !> BUG: an average of two equal distances is that distance. Points 1 and 2 at 1, both at 2 from
+    !| point 3, and all three at x from point 4: UPGMA merges {1, 2} at 1, {-1, 3} at 2, and then
+    !| point 4 at the average of x, x and x, which is x, exactly; WPGMA as well. Divide-first,
+    !| 7*fl(2/3) + 7*fl(1/3), gives 6.999999999999999; multiply-first, (2*2.8 + 2.8)/3, gives
+    !| 2.7999999999999994.
+    subroutine test_linkage_clustering_equal_distances_average_to_themselves()
+        real(real64), parameter :: EQUAL_DISTANCES(2) = [7.0_real64, 2.8_real64]
+        real(real64) :: distances(4, 4), expected_heights(3)
+        integer(int32) :: i_case, i_method
+        character(len=90) :: msg
+
+        do i_method = 1, 2
+            do i_case = 1, 2
+                write (msg, '(a,a,a,f3.1)') "test_linkage_clustering_equal_distances_average_to_themselves: ", &
+                    trim(METHOD_NAMES(i_method)), " at ", EQUAL_DISTANCES(i_case)
+                distances = 0.0_real64
+                call set_distance(distances, 1_int32, 2_int32, 1.0_real64)
+                call set_distance(distances, 1_int32, 3_int32, 2.0_real64)
+                call set_distance(distances, 2_int32, 3_int32, 2.0_real64)
+                call set_distance(distances, 1_int32, 4_int32, EQUAL_DISTANCES(i_case))
+                call set_distance(distances, 2_int32, 4_int32, EQUAL_DISTANCES(i_case))
+                call set_distance(distances, 3_int32, 4_int32, EQUAL_DISTANCES(i_case))
+                expected_heights(1) = 1.0_real64
+                expected_heights(2) = 2.0_real64
+                expected_heights(3) = EQUAL_DISTANCES(i_case)
+                call check_linkage(4_int32, distances, METHODS(i_method), [1, -1, -2], [2, 3, 4], expected_heights, &
+                                   0.0_real64, [2, 3, 4], .true., trim(msg))
+            end do
+        end do
+    end subroutine test_linkage_clustering_equal_distances_average_to_themselves
+
+    !> BUG: a tie that is exact in real arithmetic must be broken by the documented rule. UPGMA on
+    !| six points: {4, 5} at 0.5; point 3 at 1 from both, so {-1, 3} at 1; points 1 and 2 at 7, and
+    !| point 6 at 7 from 3, 4 and 5, so {1, 2} and {-2, 6} tie at 7; all other distances 100. The
+    !| documented order merges {1, 2} first (lowest point index 1 against 3), then {-2, 6}, then
+    !| the two clusters at 100. merge_i [5, 3, 2, 6, -4], merge_j [4, -1, 1, -2, -3]. Divide-first
+    !| rounded d(-2, 6) to 6.999999999999999 and merged it first.
+    subroutine test_linkage_clustering_tie_after_averaging()
+        real(real64) :: distances(6, 6), passed(6, 6), heights(5)
+        integer(int32) :: merge_i(5), merge_j(5), cluster_sizes(5), ierr
+        character(*), parameter :: msg = "test_linkage_clustering_tie_after_averaging: "
+
+        distances = 100.0_real64
+        call set_distance(distances, 1_int32, 2_int32, 7.0_real64)
+        call set_distance(distances, 4_int32, 5_int32, 0.5_real64)
+        call set_distance(distances, 3_int32, 4_int32, 1.0_real64)
+        call set_distance(distances, 3_int32, 5_int32, 1.0_real64)
+        call set_distance(distances, 3_int32, 6_int32, 7.0_real64)
+        call set_distance(distances, 4_int32, 6_int32, 7.0_real64)
+        call set_distance(distances, 5_int32, 6_int32, 7.0_real64)
+        call fill_diagonal_with_zeros(distances)
+        passed = distances
+        call linkage_clustering(passed, 6_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_AVERAGE, ierr)
+        call assert_err(ierr, ERR_OK, msg//"ierr")
+        call assert_equal_array_int(merge_i, [5, 3, 2, 6, -4], 5_int32, msg//"merge_i")
+        call assert_equal_array_int(merge_j, [4, -1, 1, -2, -3], 5_int32, msg//"merge_j")
+        call assert_equal_array_real(heights, [0.5_real64, 1.0_real64, 7.0_real64, 7.0_real64, 100.0_real64], 5_int32, &
+                                     0.0_real64, msg//"heights")
+    end subroutine test_linkage_clustering_tie_after_averaging
+
+    !> Sets every diagonal element of a square matrix to 0.
+    pure subroutine fill_diagonal_with_zeros(distances)
+        real(real64), intent(inout) :: distances(:, :)
+        integer(int32) :: i_point
+
+        do i_point = 1, size(distances, 1, kind=int32)
+            distances(i_point, i_point) = 0.0_real64
+        end do
+    end subroutine fill_diagonal_with_zeros
 end module mod_test_linkage_clustering
