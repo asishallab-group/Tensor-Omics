@@ -102,7 +102,9 @@ def cluster_factor_trajectories_k_means(
 
         One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
 
-        The final values will be the final centroids of the clusters
+        The final values will be the final centroids of the clusters. A cluster that ends up
+        without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+        last sample, or its starting centroid if it never had one.
     max_iterations : int
         number of maximum iterations of the clustering
         The minimum valid value is `1`.
@@ -200,7 +202,9 @@ def k_means_clustering(
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
 
-        The final values will be the final centroids of the clusters
+        The final values will be the final centroids of the clusters. A cluster that ends up
+        without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+        last point, or its starting centroid if it never had one.
     max_iterations : int, optional, default 300
         number of maximum iterations of the clustering.
         The minimum valid value is `1`.

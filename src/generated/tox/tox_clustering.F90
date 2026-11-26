@@ -62,7 +62,9 @@ contains
             !!
             !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last sample, or its starting centroid if it never had one.
         integer(int32), dimension(n_samples), intent(out) :: labels
             !! array of labels, one per sample, so the first label is the first sample's.
             !!
@@ -141,7 +143,9 @@ contains
             !!
             !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last sample, or its starting centroid if it never had one.
         integer(int32), dimension(n_samples), intent(out) :: labels
             !! array of labels, one per sample, so the first label is the first sample's.
             !!
@@ -211,7 +215,9 @@ contains
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last point, or its starting centroid if it never had one.
         integer(int32), dimension(n_points), intent(out) :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             !!

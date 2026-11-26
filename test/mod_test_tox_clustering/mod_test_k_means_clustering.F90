@@ -11,7 +11,6 @@
 module mod_test_k_means_clustering
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_clustering, only: k_means_clustering
     use tox_errors
     use test_suite, only: test_case
@@ -232,9 +231,8 @@ contains
     end subroutine test_k_means_clustering_one_point
 
     !> Points that are all equal, (5, 5) three times, from (5, 5) and (7, 7): every point is at 0
-    !| from centroid 1, so labels [1, 1, 1], counts [3, 0], and centroid 1 stays (5, 5). Where the
-    !| empty cluster's centroid ends up the documentation does not say, so only that it is finite is
-    !| checked here (no NaN from its 0 points divided by 0).
+    !| from centroid 1, so labels [1, 1, 1], counts [3, 0], centroid 1 stays (5, 5), and the empty
+    !| cluster 2 keeps its starting centroid (7, 7) (no NaN from its 0 points divided by 0).
     subroutine test_k_means_clustering_equal_points()
         integer(int32), parameter :: n_dims = 2, n_points = 3, n_clusters = 2
         real(real64) :: data_points(n_dims, n_points), centroids(n_dims, n_clusters)
@@ -250,8 +248,8 @@ contains
         call assert_equal_array_int(label_counts, [3, 0], n_clusters, "test_k_means_clustering_equal_points: label_counts")
         call assert_equal_array_real(centroids(:, 1), [5.0_real64, 5.0_real64], n_dims, 0.0_real64, &
                                      "test_k_means_clustering_equal_points: centroid 1")
-        call assert_true(all(ieee_is_finite(centroids(:, 2))), &
-                         "test_k_means_clustering_equal_points: the empty cluster's centroid is finite")
+        call assert_equal_array_real(centroids(:, 2), [7.0_real64, 7.0_real64], n_dims, 0.0_real64, &
+                                     "test_k_means_clustering_equal_points: the empty cluster keeps its centroid")
     end subroutine test_k_means_clustering_equal_points
 
     !> Kept from the old suite (`test_k_means_assign_cluster_helper`, point 2, which tested the
@@ -262,7 +260,7 @@ contains
     !|   and the centroids become 0 and 7.5;
     !| - three equal points from two equal centroids (the documentation says the centroids "should be
     !|   unique", and that this is not checked): every point ties, so all go to cluster 2, which
-    !|   ends at their value 4; empty cluster 1's centroid is checked only for being finite.
+    !|   ends at their value 4; empty cluster 1 keeps its centroid 4.
     subroutine test_k_means_clustering_ties_go_to_the_later_cluster()
         real(real64) :: data_points(1, 3), initial_centroids(1, 2), expected_centroids(1, 2)
         real(real64) :: centroids(1, 2)
@@ -285,8 +283,8 @@ contains
                                     "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, label_counts")
         call assert_equal_real(centroids(1, 2), 4.0_real64, 0.0_real64, &
                                "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, centroid 2")
-        call assert_true(ieee_is_finite(centroids(1, 1)), &
-                         "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, empty centroid 1 finite")
+        call assert_equal_real(centroids(1, 1), 4.0_real64, 0.0_real64, &
+                               "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, empty centroid 1 kept")
     end subroutine test_k_means_clustering_ties_go_to_the_later_cluster
 
     !> 30 points in 3 dimensions, three groups of 10 around (0, 0, 0), (100, 0, 0) and (0, 100, 0),
@@ -406,14 +404,13 @@ contains
         end do
     end subroutine test_k_means_clustering_max_iterations_below_one
 
-    !> BUG: a cluster that loses all its points gets the centroid 0 (the sum of no points divided
-    !| by `max(count, 1)`), wherever it was, so the result depends on where the origin is. k-means
-    !| itself does not: shifting every point and every starting centroid by the same amount must
-    !| shift the final centroids by it and keep the labels. This checks just that, so it holds for
-    !| any rule that does not involve the origin (keep the centroid, move it to a point, ...).
-    !| 1-D points -1, 3, 10, 11 from 5, 10.5 and 100: the first assignment leaves cluster 3 empty.
-    !| Today, at 0 it takes point -1 from cluster 1 (labels [3, 1, 2, 2]); shifted by 1000 it stays
-    !| empty at 0, far from all points (labels [1, 1, 2, 2]).
+    !> A cluster that loses all its points keeps its centroid, as documented, so the result does
+    !| not depend on where the origin is. 1-D points -1, 3, 10, 11 from 5, 10.5 and 100: the first
+    !| assignment gives [1, 1, 2, 2] (-1 and 3 are closest to 5) and leaves cluster 3 empty;
+    !| centroids 1 and 10.5, and 100 kept; the second changes nothing. So labels [1, 1, 2, 2],
+    !| counts [2, 2, 0], centroids 1, 10.5, 100. Shifting every point and starting centroid by
+    !| 1000 shifts the centroids by 1000 and keeps the labels. (The empty cluster used to get the
+    !| centroid 0, which took point -1 here, labels [3, 1, 2, 2], but not when shifted.)
     subroutine test_k_means_clustering_empty_cluster_moves_with_the_data()
         real(real64), parameter :: shift = 1000.0_real64
         real(real64) :: data_points(1, 4), centroids(1, 3), shifted_points(1, 4), shifted_centroids(1, 3)
@@ -435,7 +432,13 @@ contains
                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted labels")
         call assert_equal_array_int(shifted_counts, label_counts, 3_int32, &
                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted label_counts")
-        ! the centroids are integers and halves below 2**10, so the shift by 1000 is exact
+        call assert_equal_array_int(labels, [1, 1, 2, 2], 4_int32, &
+                                    "test_k_means_clustering_empty_cluster_moves_with_the_data: labels")
+        call assert_equal_array_int(label_counts, [2, 2, 0], 3_int32, &
+                                    "test_k_means_clustering_empty_cluster_moves_with_the_data: label_counts")
+        call assert_equal_array_real(centroids, [1.0_real64, 10.5_real64, 100.0_real64], 3_int32, 0.0_real64, &
+                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: centroids")
+        ! the centroids are integers and halves below 2**11, so the shift by 1000 is exact
         shifted_back = shifted_centroids - shift
         call assert_equal_array_real(shifted_back, centroids, 3_int32, 0.0_real64, &
                                      "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted centroids")

@@ -17,7 +17,9 @@
 #'
 #'   One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
 #'
-#'   The final values will be the final centroids of the clusters
+#'   The final values will be the final centroids of the clusters. A cluster that ends up
+#'   without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+#'   last sample, or its starting centroid if it never had one.
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering
 #'   The minimum valid value is `1`.
 #' @return a named list with elements:
@@ -26,7 +28,9 @@
 #'
 #'     One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
 #'
-#'     The final values will be the final centroids of the clusters}
+#'     The final values will be the final centroids of the clusters. A cluster that ends up
+#'     without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+#'     last sample, or its starting centroid if it never had one.}
 #'   \item{labels}{a integer vector. array of labels, one per sample, so the first label is the first sample's.
 #'
 #'     each label is the index of its related cluster -> `1<=label<=n_clusters=k`}
@@ -62,7 +66,9 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #' @param centroids a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
 #'   The centroids should be unique. This is not checked in this routine.
 #'
-#'   The final values will be the final centroids of the clusters
+#'   The final values will be the final centroids of the clusters. A cluster that ends up
+#'   without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+#'   last point, or its starting centroid if it never had one.
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering.
 #'   The minimum valid value is `1`.
 #'   The default value is `300`.
@@ -70,7 +76,9 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #'   \item{centroids}{a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
 #'     The centroids should be unique. This is not checked in this routine.
 #'
-#'     The final values will be the final centroids of the clusters}
+#'     The final values will be the final centroids of the clusters. A cluster that ends up
+#'     without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+#'     last point, or its starting centroid if it never had one.}
 #'   \item{labels}{a integer vector. array of labels, each index corresponds to the respective point's index, so first label is first point's label.
 #'
 #'     each label is the index of its related cluster -> `1<=label<=n_clusters=k`}

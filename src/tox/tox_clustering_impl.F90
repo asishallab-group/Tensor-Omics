@@ -50,7 +50,9 @@ contains
             !!
             !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last sample, or its starting centroid if it never had one.
         integer(int32), dimension(n_samples), intent(out) :: labels
             !! array of labels, one per sample, so the first label is the first sample's.
             !!
@@ -102,7 +104,9 @@ contains
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last point, or its starting centroid if it never had one.
         integer(int32), dimension(n_points), intent(out) :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             !!
@@ -172,17 +176,22 @@ contains
 
         integer(int32) :: i_point, label, i_dim, i_cluster
 
-        centroids = 0.0_real64
+        ! A cluster without points keeps the centroid it has: it has no mean, and any value made
+        ! up for it (the origin, say) would make the result depend on the coordinate system.
+        do i_cluster = 1, n_clusters
+            if (label_counts(i_cluster) > 0) centroids(:, i_cluster) = 0.0_real64
+        end do
         do i_point = 1, n_points
             label = labels(i_point)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, label, data_points)
+            do i_dim = 1, n_dims
                 centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)
             end do
         end do
 
-        do concurrent (i_cluster = 1:n_clusters) shared(centroids, label_counts)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, i_cluster, label_counts)
-                centroids(i_dim, i_cluster) = centroids(i_dim, i_cluster)/real(max(label_counts(i_cluster), 1_int32), real64)
+        do i_cluster = 1, n_clusters
+            if (label_counts(i_cluster) == 0) cycle
+            do i_dim = 1, n_dims
+                centroids(i_dim, i_cluster) = centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64)
             end do
         end do
     end subroutine k_means_recompute_cluster_centroids_helper
