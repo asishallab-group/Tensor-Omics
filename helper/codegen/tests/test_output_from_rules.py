@@ -11,8 +11,8 @@ import pytest
 from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
 from codegen.ir.directives import (
-    Default, Directives, Equals, Maximum, Minimum, OutputFrom, OutputFromMode, Prologue,
-    RequiredIfMode, Sentinel,
+    AllowInfinite, AllowNan, Default, Directives, Equals, Maximum, Minimum, OutputFrom,
+    OutputFromMode, Prologue, RequiredIfMode, Sentinel,
 )
 from codegen.ir.validate import validate_project
 from codegen.ir.doc import Doc
@@ -735,7 +735,7 @@ class TestAConstantOfItsType:
             "label_size", rows=[("label", "'abc'")]))
 
         assert errors(bag) == []
-        assert "label = 'abc'" in fortran(synthesis)
+        assert "label = 'abc     '" in fortran(synthesis)  # padded to its length of 8
 
     def test_a_real_and_a_logical_of_their_own_type(self):
         assert refusals(kinded_producers(), kind_consumer(
@@ -985,3 +985,106 @@ class TestAKeptValueOfAPairIsReported:
         assert synthesis.project.procedure("tox_cons", "pair_expert") is not None
         assert synthesis.project.procedure("tox_cons", "pair").argument("out_size") is not None
         assert [e.message for e in bag.errors] == [message]
+
+
+class TestAConstantRowIsReportedAtItsRow:
+    """M2: a refusal caused by one table row is reported at that row, once per implementation,
+    T's constant rows included -- a split consumer finds the row in every per-mode wrapper."""
+
+    def split(self, row):
+        modes = [
+            "Which way.",
+            "| Mode | Value | Procedure |",
+            "|------|-------|-----------|",
+            "| one | [[tox_cons_impl(module):MODE_ONE(variable)]] | use_one |",
+            "| two | [[tox_cons_impl(module):MODE_TWO(variable)]] | use_two |",
+        ]
+        work = integer("work_size", doc="the size", directives=Directives(output_from=OutputFrom(
+            "sized", "factor_size", "tox_prod", OutputFromMode.AUTO, 9)))
+        located(work, table(row))
+        return module("tox_cons_impl", procedure(
+            "use_impl", integer("mode", doc=modes), integer("n_items", doc="items"), work,
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"), meta=IMPL, is_pure=True,
+        ), parameters=(parameter("MODE_ONE", "1_int32"), parameter("MODE_TWO", "2_int32")))
+
+    def test_once_at_the_row(self):
+        synthesis, bag = analysed(kinded_producers(), self.split(("factor", ".true.")))
+
+        assert synthesis.project.procedure("tox_cons", "use_one") is not None  # the premise
+        [error] = bag.errors
+        assert error.message.endswith("but the table gives it the constant .true., a logical")
+        assert error.location.line == 103
+
+    def test_a_mode_input_given_a_number_too(self):
+        cons = self.split(("method", "2_int32"))
+        work = cons.procedures[0].argument("work_size")
+        work.directives = Directives(output_from=OutputFrom(
+            "sized", "method_size", "tox_prod", OutputFromMode.AUTO, 9))
+        _, bag = analysed(kinded_producers(), cons)
+
+        [error] = bag.errors
+        assert error.location.line == 103
+
+
+class TestAStringConstantOfAFixedLength:
+    """M1 and N4: a string constant shorter than a fixed length is padded to it, as Fortran
+    assigns and the bindings pass it; a longer one is refused, for a length named by a
+    parameter too."""
+
+    def producers(self, length):
+        return module(
+            "tox_prod_impl",
+            procedure("label_size_impl", integer("n_items", doc="items"),
+                      character("label", length=length, doc="a label"),
+                      integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+            parameters=(parameter("LABEL_LEN", "6_int32"),),
+        )
+
+    @pytest.mark.parametrize("length", ["6", "LABEL_LEN"])
+    def test_a_shorter_one_is_padded(self, length):
+        synthesis, bag = analysed(self.producers(length), kind_consumer(
+            "label_size", rows=[("label", "'abc'")]))
+
+        assert errors(bag) == []
+        assert "label = 'abc   '" in fortran(synthesis)
+
+    @pytest.mark.parametrize("length", ["6", "LABEL_LEN"])
+    def test_a_longer_one_is_refused(self, length):
+        [(message, _, _)] = refusals(self.producers(length), kind_consumer(
+            "label_size", rows=[("label", "'abcdefg'")]))
+
+        assert message.endswith(f"which is longer than 6")
+
+
+class TestNothingLeftToCheckAtTheTop:
+    """N3: a real allowing NaN and infinity whose bounds all wait has no call at the top."""
+
+    def test_no_empty_call(self):
+        synthesis, bag = analysed(producers(), staged(
+            real("y", doc="a value", directives=Directives(
+                maximum=Maximum("real(limit, real64)"), allow_nan=AllowNan(),
+                allow_infinite=AllowInfinite()))))
+
+        assert errors(bag) == []
+        top, after = body(fortran(synthesis), "staged").split("call scaled_size(", 1)
+        assert "validate_in_range_real(y" not in top
+        assert "validate_in_range_real(y, ierr, arg_pos=3_int32, max=real(limit, real64)" in after
+
+
+class TestABoundOfALoneWrapper:
+    """S1: a lone wrapper's bound naming an output reads what nothing set, in every tier."""
+
+    def test_an_output_named_as_a_value_is_refused(self):
+        cons = module("tox_cons_impl", procedure(
+            "lone_impl",
+            integer("k", doc="a value", directives=Directives(maximum=Maximum("n_out", 5))),
+            integer("n_out", Intent.OUT, doc="a count"),
+            meta=IMPL, is_pure=True,
+        ))
+        synthesis, bag = validated(cons)
+
+        assert synthesis.project.procedure("tox_cons", "lone_expert") is None  # the premise
+        [error] = bag.errors
+        assert error.message == ("'k' is checked against 'n_out', an output, which has no value "
+                                 "until the implementation sets it")
+        assert error.location.line == 5

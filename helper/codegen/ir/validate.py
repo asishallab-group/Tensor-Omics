@@ -873,7 +873,8 @@ def _check_bounds_name_what_is_set(impl: Procedure, diagnostics: DiagnosticBag,
 
     - a `tmp_` work array or a `<base>_perm` that `foo` takes over: `foo` builds it itself, and a
       bound reads it before it does (for a work array's size, name its extent);
-    - an `intent(out)` argument as a value (a `size()` operand of one `foo` keeps is its shape);
+    - an `intent(out)` argument as a value (a `size()` operand of one `foo` keeps is its shape),
+      in every wrapper, a lone one included, where nothing else here applies;
     - an argument only the prologue has, which `foo_expert` does not;
     - in a `DM_SENTINEL`, a value a producer or the prologue sets: a sentinel is a fixed marker;
     - a bound checked after the prologue on an argument the prologue writes itself: its error
@@ -890,8 +891,8 @@ def _check_bounds_name_what_is_set(impl: Procedure, diagnostics: DiagnosticBag,
     taken = taken_over_arguments(arguments, conventions, prologue, project_evaluator(impl))
     only_prologue = {a.name.lower() for a in prologue_only_arguments(prologue, arguments,
                                                                      conventions)}
-    if not taken and not only_prologue:
-        return  # one wrapper, which checks everything the caller passes at the top
+    # in a lone wrapper nothing is taken over and there is no prologue, so only the classes
+    # that hold in every tier apply: an output named as a value is set in none
     built = {a.name.lower() for a in taken
              if is_temporary(a, conventions) or is_permutation(a, conventions)}
     produced = {a.name.lower() for a in taken if is_computed(a)}

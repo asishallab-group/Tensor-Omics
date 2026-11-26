@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from ..config import CONVENTIONS, Conventions
 from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
-from ..ir.roles import unused_outputs
+from ..ir.roles import fixed_length, unused_outputs
 from ..ir.types import BaseType
 from ..names import DEFAULT_VALUE, UNUSED_OUTPUT, local_name
 from ..render import Writer
@@ -1091,9 +1091,12 @@ class FortranWrapperEmitter:
             keywords.append(f"min={directives.minimum.expression}")
         if directives.maximum is not None and "max" not in deferred:
             keywords.append(f"max={directives.maximum.expression}")
-        if (deferred and argument.type.base is BaseType.INTEGER
-                and not any(k.startswith(("min=", "max=")) for k in keywords)):
-            return ""  # every bound it has waits for a later point: nothing to check here
+        unbounded = not any(k.startswith(("min=", "max=")) for k in keywords)
+        unchecked = argument.type.base is BaseType.INTEGER or (
+            argument.type.base is BaseType.REAL and directives.allows_nan
+            and directives.allows_infinite)
+        if deferred and unbounded and unchecked:
+            return ""  # every check it has waits for a later point: nothing to check here
         if directives.sentinel is not None:
             keywords.append(f"sentinel={directives.sentinel.expression}")
         if argument.type.base is BaseType.REAL:
@@ -1197,7 +1200,7 @@ class FortranWrapperEmitter:
                     value = (
                         supply.argument
                         if supply.argument is not None
-                        else _fortran_literal(supply.constant, dummy)
+                        else _fortran_literal(supply.constant, dummy, self._evaluator())
                     )
                     actuals.append((dummy.name, self._actual(value, materialized)))
             # an array this call fills is allocated right above it: below the earlier calls'
@@ -1451,7 +1454,7 @@ def _kind_module(kind: str) -> str:
     return "iso_c_binding" if kind in _C_BINDING_KINDS else "iso_fortran_env"
 
 
-def _fortran_literal(value: object, argument: Argument) -> str:
+def _fortran_literal(value: object, argument: Argument, evaluator=None) -> str:
     """A constant producer input, rendered back as a kinded Fortran literal.
 
     The kind is the producer dummy's own, so `1` handed to an `integer(int32)` input comes
@@ -1469,6 +1472,10 @@ def _fortran_literal(value: object, argument: Argument) -> str:
     if isinstance(value, float):
         return f"{value!r}_{kind}" if kind else repr(value)
     if isinstance(value, str):
-        # a string constant, quoted as Fortran quotes it: unquoted, it was a name (rule T)
-        return "'" + value.replace("'", "''") + "'"
+        # a string constant, quoted as Fortran quotes it: unquoted, it was a name (rule T); and
+        # padded to a fixed length, as Fortran assigns one and the bindings pass it -- a shorter
+        # actual is no Fortran program (a longer one `roles` refuses)
+        length = fixed_length(argument.type, evaluator)
+        padded = value.ljust(length) if length is not None else value
+        return "'" + padded.replace("'", "''") + "'"
     return str(value)

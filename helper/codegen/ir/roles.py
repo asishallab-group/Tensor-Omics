@@ -634,7 +634,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                                prologue_only, fortran_calls, project, conventions, diagnostics):
             continue
         if _refuses_a_kind(argument, directive, consumer, producer, inputs, renames,
-                           fortran_calls, project, evaluator, diagnostics):
+                           fortran_calls, project, evaluator, diagnostics, once):
             continue
 
         argument.roles.computed_from = OutputFromPlan(
@@ -1036,7 +1036,8 @@ _CONSTANT_OF_ITS_TYPE = ("a constant supplies a scalar input of its own type, wr
 
 def _refuses_a_kind(argument: Argument, directive, consumer: Procedure, producer: Procedure,
                     inputs: list[ProducerInput], renames, fortran_calls: bool, project,
-                    evaluator: ConstantEvaluator | None, diagnostics: DiagnosticBag) -> bool:
+                    evaluator: ConstantEvaluator | None, diagnostics: DiagnosticBag,
+                    once: _OncePerImplementation | None = None) -> bool:
     """Refuse a producer input given a value of another kind than its own (rule T).
 
     Judged where the generated Fortran calls the producer for every input it passes, whether or
@@ -1056,9 +1057,11 @@ def _refuses_a_kind(argument: Argument, directive, consumer: Procedure, producer
        fits the kind, a real for a real (an integer is refused, not converted), a string no
        longer than a fixed length.
 
-    At the directive's line, once per pair; it runs after P1, so a supplier P1 refused is not
-    judged here. True when something was refused.
+    An argument supplier at the directive's line, once per pair; a constant, which a table row
+    gives, at that row, once per implementation, as every refusal one row causes. It runs after P1,
+    so a supplier P1 refused is not judged here. True when something was refused.
     """
+    once = once or _OncePerImplementation(diagnostics, set(), id(consumer))
     location = _location_of(argument, directive.line_number)
     computed = f"'{argument.name}' is computed from '{producer.name}'"
     theirs, mine = _renamers(consumer, producer, inputs, evaluator)
@@ -1070,7 +1073,7 @@ def _refuses_a_kind(argument: Argument, directive, consumer: Procedure, producer
         if wanted is None:
             continue
         if supply.is_constant:
-            cause = _a_constant_of_another_kind(supply, wanted, renames)
+            cause = _a_constant_of_another_kind(supply, wanted, renames, evaluator)
         else:
             cause = _an_argument_of_another_kind(supply, wanted, consumer.argument(supply.argument),
                                                  inputs, fortran_calls, theirs, mine, project,
@@ -1078,8 +1081,12 @@ def _refuses_a_kind(argument: Argument, directive, consumer: Procedure, producer
         if cause is None:
             continue
         message, note = cause
-        diagnostics.error(f"{computed}, whose {message}", entity=argument, location=location,
-                          note=note + (_way_out(fortran_calls) if not supply.is_constant else ""))
+        if supply.is_constant:
+            once.error(f"{computed}, whose {message}", entity=argument, note=note,
+                       location=_location_of(argument, renames.lines.get(supply.name.lower())))
+        else:
+            diagnostics.error(f"{computed}, whose {message}", entity=argument,
+                              location=location, note=note + _way_out(fortran_calls))
         refused = True
     return refused
 
@@ -1179,7 +1186,25 @@ def _as_written(supply: ProducerInput) -> str:
     return str(value)
 
 
-def _a_constant_of_another_kind(supply, wanted: Argument, renames):
+def fixed_length(fortran: FortranType, evaluator: ConstantEvaluator | None) -> int | None:
+    """A character type's fixed length -- a literal, or a constant the evaluator knows
+    (`len=LABEL_LEN`) -- or None for `len=*` or a length it cannot evaluate."""
+    length = fortran.length
+    if length is None or length.expr is None:
+        return None
+    if length.is_constant:
+        return int(length.expr)
+    if evaluator is None:
+        return None
+    try:
+        value = evaluator.evaluate(length.expr)
+    except ConstantError:
+        return None
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _a_constant_of_another_kind(supply, wanted: Argument, renames,
+                                evaluator: ConstantEvaluator | None = None):
     """Why the table's constant cannot be passed for the producer input `wanted` (T), as
     (message, note), or None."""
     if not _carried(wanted.type):
@@ -1210,11 +1235,10 @@ def _a_constant_of_another_kind(supply, wanted: Argument, renames):
         if not fits_integer_kind(value, _kind_value(wanted.type.kind) or 4):
             return (f"{given}, but the table gives it the constant {cell}, which does not fit",
                     _CONSTANT_OF_ITS_TYPE)
-    length = wanted.type.length
-    if base is BaseType.CHARACTER and length is not None and length.is_constant:
-        if len(value) > int(length.expr):
-            return (f"{given}, but the table gives it the constant {cell}, which is longer than "
-                    f"{length.expr}", _CONSTANT_OF_ITS_TYPE)
+    length = fixed_length(wanted.type, evaluator) if base is BaseType.CHARACTER else None
+    if length is not None and len(value) > length:
+        return (f"{given}, but the table gives it the constant {cell}, which is longer than "
+                f"{length}", _CONSTANT_OF_ITS_TYPE)
     return None
 
 
@@ -1768,10 +1792,12 @@ def _refuses_to_omit(dummy: Argument, producer: Procedure, consumer: Procedure,
                 f"only an optional input may be left out; supply '{name}' by an argument the "
                 "caller passes, or a constant")
     required = dummy.directives.required_if_mode
-    if required is not None:
+    selector = producer.argument(required.mode_arg) if required is not None else None
+    table = selector.roles.mode if selector is not None and selector.roles else None
+    # only where the mode is chosen at run time: a split producer's per-mode wrapper has the
+    # mode fixed, and the input there required (refused above) or absent
+    if required is not None and (table is None or not table.is_split):
         mode = required.mode_param
-        selector = producer.argument(required.mode_arg)
-        table = selector.roles.mode if selector is not None and selector.roles else None
         value = next((v for v in table.values if v.parameter.lower() == mode.lower()),
                      None) if table is not None else None
         return (f"omits '{name}', which '{producer.name}' requires in mode "

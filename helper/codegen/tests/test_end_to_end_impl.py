@@ -1155,6 +1155,29 @@ class TestAnAbsentOptionalStaysAbsent:
         assert out == ["9", "6", "6", "3", "12"]
 
 
+class TestAStringConstantForAFixedLength:
+    """Rule T: `| label | 'abc' |` into a `character(len=6)` producer input. `foo` passes it padded
+    to six -- `'abc'` alone did not compile ("shorter than of dummy argument") -- as Python and R
+    pass it, so every tier sizes 3 items plus 3 characters."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([tox.fx_labelled_total(x), len(tox.fx_labelled(x))]))
+        """)
+
+        assert out == [6 + 6, 6]
+
+    def test_r(self, built):
+        assert run_r(built, "x <- c(1, 2, 3); cat(fx_labelled_total(x), length(fx_labelled(x)))") \
+            == ["12", "6"]
+
+    def test_foo_passes_it_padded(self, built):
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        assert "label = 'abc   ',&" in function_body(
+            fortran, "subroutine fx_labelled_total(", "end subroutine fx_labelled_total")
+
+
 FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
 
 

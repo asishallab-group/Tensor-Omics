@@ -16,6 +16,7 @@ module fx_producers_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
     public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl, fx_rounded_impl
     public :: fx_strided_size_impl, fx_method_size_impl, fx_any_method_size_impl
+    public :: fx_label_size_impl
     public :: METHOD_ONE, METHOD_TWO, METHOD_THREE
 
     !> the first method: one slot per item
@@ -217,6 +218,18 @@ contains
         M_DEFAULT_VAL(method, code, METHOD_TWO)
         method_size = n_items*code
     end subroutine fx_any_method_size_impl
+
+    !> summary: A size of a number of items, plus the trimmed length of a six-character label
+    !| author: A Developer
+    pure subroutine fx_label_size_impl(n_items, label, label_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        character(len=6), intent(in) :: label
+            !! a label
+        integer(int32), intent(out) :: label_size
+            !! `n_items`, plus the length of `label` without its trailing blanks
+        label_size = n_items + len_trim(label, kind=int32)
+    end subroutine fx_label_size_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer
