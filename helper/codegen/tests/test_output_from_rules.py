@@ -466,6 +466,17 @@ class TestWhatNothingSupplies:
         assert error.location.line == 7  # the directive's
         assert "each per-mode wrapper fixes the mode" in error.note
 
+    def test_a_cell_naming_nothing_is_at_its_row(self):
+        # 4a: `2*scale` is neither an argument nor a constant; the row, not the directive
+        _, bag = analysed(producers(), self.split(("factor", "2*scale")))
+
+        [error] = bag.errors
+        assert error.message == ("the producer-input table of 'work_size' supplies 'factor' by "
+                                 "'2*scale', which is neither an argument of 'scaled_impl' nor a "
+                                 "constant")
+        assert error.location.line == 103
+        assert "an expression is not computed" in error.note
+
     def test_an_unmatched_input_is_at_the_directive_once_naming_the_implementation(self):
         _, bag = analysed(producers(), self.split(("n_items", "n_items")))
 
@@ -916,13 +927,17 @@ class TestAPrologueKeepsAProducedValue:
     """Item 5: a prologue's intent(out) does not write over a value a producer computes; an
     intent(inout) one refines it (Q4)."""
 
-    def test_an_intent_out_is_refused_once(self):
+    def test_an_intent_out_is_refused_once_at_the_directive(self):
         # the AUTO size of a work array: one error, not this and the read-first rule's too
-        _, bag = validated(producers(), staged(
-            real("tmp_w", Intent.OUT, "(limit)", doc="scratch"),
-            prologue=True, guard_arguments=(integer("limit", Intent.OUT, doc="overwritten"),)))
+        cons = staged(real("tmp_w", Intent.OUT, "(limit)", doc="scratch"), prologue=True,
+                      guard_arguments=(integer("limit", Intent.OUT, doc="overwritten"),))
+        limit = cons.procedures[0].argument("limit")
+        limit.directives = Directives(output_from=OutputFrom(
+            "scaled", "scaled_size", "tox_prod", OutputFromMode.AUTO, 21))
+        _, bag = validated(producers(), cons)
 
         [error] = bag.errors
+        assert error.location.line == 21
         assert error.message == ("the prologue 'guard' writes 'limit' (intent(out)), which "
                                  "'staged' computes with 'scaled_size' first, so the producer's "
                                  "value is discarded")
