@@ -1475,7 +1475,7 @@ def _fortran_literal(value: object, argument: Argument, evaluator=None) -> str:
         # a string constant, quoted as Fortran quotes it: unquoted, it was a name (rule T); and
         # padded to a fixed length, as Fortran assigns one and the bindings pass it -- a shorter
         # actual is no Fortran program (a longer one `roles` refuses)
-        length = fixed_length(argument.type, evaluator)
+        length = fixed_length(argument, evaluator)
         padded = value.ljust(length) if length is not None else value
         return "'" + padded.replace("'", "''") + "'"
     return str(value)

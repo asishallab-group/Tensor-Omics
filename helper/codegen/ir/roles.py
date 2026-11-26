@@ -1186,21 +1186,50 @@ def _as_written(supply: ProducerInput) -> str:
     return str(value)
 
 
-def fixed_length(fortran: FortranType, evaluator: ConstantEvaluator | None) -> int | None:
-    """A character type's fixed length -- a literal, or a constant the evaluator knows
-    (`len=LABEL_LEN`) -- or None for `len=*` or a length it cannot evaluate."""
-    length = fortran.length
+def fixed_length(argument: Argument, evaluator: ConstantEvaluator | None) -> int | None:
+    """A character argument's fixed length -- a literal, or a constant (`len=LABEL_LEN`) evaluated
+    where the argument is declared -- or None for `len=*` or a length it cannot evaluate.
+
+    Not by name in the project's flat table of constants, where two modules' parameters of one
+    name are one entry: a consumer's `LABEL_LEN` would size the producer's input. A generated
+    wrapper is declared with its implementation's names, so its implementation module counts as
+    its own (`_in_its_module`).
+    """
+    length = argument.type.length if argument.type is not None else None
     if length is None or length.expr is None:
         return None
     if length.is_constant:
         return int(length.expr)
+    value = _in_its_module(length.expr, argument, evaluator)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _in_its_module(expression: str, argument: Argument, evaluator: ConstantEvaluator | None):
+    """`expression` evaluated with the parameters of the module `argument` is declared in -- and,
+    for a generated wrapper, of its implementation module -- before the project's others; None
+    where it is not a constant."""
     if evaluator is None:
         return None
+    procedure = argument.parent
+    module = procedure.module if procedure is not None else None
+    project = module.project if module is not None else None
+    constants = dict(evaluator.constants)
+    if project is not None:
+        own = [module, project.module(module.name + CONVENTIONS.impl_suffix)]
+        local = ConstantEvaluator(constants, evaluator.intrinsics)
+        parameters = [p for m in own if m is not None for p in m.parameters if p.expression]
+        for _ in parameters:  # as many rounds as there are parameters: one may name another
+            for parameter in parameters:
+                try:
+                    local.constants[parameter.name.lower()] = local.evaluate_with_kind(
+                        parameter.expression)
+                except ConstantError:
+                    continue
+        constants = local.constants
     try:
-        value = evaluator.evaluate(length.expr)
+        return ConstantEvaluator(constants, evaluator.intrinsics).evaluate(expression)
     except ConstantError:
         return None
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def _a_constant_of_another_kind(supply, wanted: Argument, renames,
@@ -1235,7 +1264,7 @@ def _a_constant_of_another_kind(supply, wanted: Argument, renames,
         if not fits_integer_kind(value, _kind_value(wanted.type.kind) or 4):
             return (f"{given}, but the table gives it the constant {cell}, which does not fit",
                     _CONSTANT_OF_ITS_TYPE)
-    length = fixed_length(wanted.type, evaluator) if base is BaseType.CHARACTER else None
+    length = fixed_length(wanted, evaluator) if base is BaseType.CHARACTER else None
     if length is not None and len(value) > length:
         return (f"{given}, but the table gives it the constant {cell}, which is longer than "
                 f"{length}", _CONSTANT_OF_ITS_TYPE)
@@ -1792,11 +1821,11 @@ def _refuses_to_omit(dummy: Argument, producer: Procedure, consumer: Procedure,
                 f"only an optional input may be left out; supply '{name}' by an argument the "
                 "caller passes, or a constant")
     required = dummy.directives.required_if_mode
-    selector = producer.argument(required.mode_arg) if required is not None else None
-    table = selector.roles.mode if selector is not None and selector.roles else None
-    # only where the mode is chosen at run time: a split producer's per-mode wrapper has the
-    # mode fixed, and the input there required (refused above) or absent
-    if required is not None and (table is None or not table.is_split):
+    # a mode chosen at run time: a split producer's per-mode wrapper carries no such directive --
+    # its input is required there (refused above) or not an argument at all
+    if required is not None:
+        selector = producer.argument(required.mode_arg)
+        table = selector.roles.mode if selector is not None and selector.roles else None
         mode = required.mode_param
         value = next((v for v in table.values if v.parameter.lower() == mode.lower()),
                      None) if table is not None else None

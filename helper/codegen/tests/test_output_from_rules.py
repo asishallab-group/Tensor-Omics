@@ -1088,3 +1088,38 @@ class TestABoundOfALoneWrapper:
         assert error.message == ("'k' is checked against 'n_out', an output, which has no value "
                                  "until the implementation sets it")
         assert error.location.line == 5
+
+
+class TestANamedLengthIsTheProducersOwn:
+    """A producer input's `len=LABEL_LEN` is evaluated in the producer's own module: the
+    consumer's module may declare a `LABEL_LEN` of its own, which the project's flat table of
+    constants would give instead (`fx/m1clash` of the second review)."""
+
+    def pair(self, producer_len, consumer_len):
+        producer = module(
+            "tox_prod_impl",
+            procedure("label_size_impl", integer("n_items", doc="items"),
+                      character("label", length="LABEL_LEN", doc="a label"),
+                      integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+            parameters=(parameter("LABEL_LEN", f"{producer_len}_int32"),),
+        )
+        work = integer("work_size", doc="the size", directives=Directives(output_from=OutputFrom(
+            "sized", "label_size", "tox_prod", OutputFromMode.AUTO, 9)))
+        work.doc = Doc.parse(table(("label", "'abc'")))
+        # named to sort after the producer's module, so its LABEL_LEN is the flat table's
+        consumer = module("tox_zz_impl", procedure(
+            "use_impl", integer("n_items", doc="items"), work,
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"), meta=IMPL, is_pure=True,
+        ), parameters=(parameter("LABEL_LEN", f"{consumer_len}_int32"),))
+        return producer, consumer
+
+    def test_a_longer_one_of_the_consumer_s_does_not_refuse_it(self):
+        synthesis, bag = analysed(*self.pair(6, 2))
+
+        assert errors(bag) == []
+        assert "label = 'abc   '" in fortran(synthesis, "tox_zz")
+
+    def test_a_shorter_one_of_the_producer_s_refuses_it(self):
+        [(message, _, _)] = refusals(*self.pair(2, 6))
+
+        assert message.endswith("which is longer than 2")
