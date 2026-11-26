@@ -25,7 +25,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(20))
+        allocate (all_tests(21))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_many_iterations", test_k_means_clustering_many_iterations)
@@ -53,6 +53,7 @@ contains
                                   test_k_means_clustering_small_differences_beside_large_values)
         all_tests(20) = test_case("test_k_means_clustering_one_large_starting_centroid", &
                                   test_k_means_clustering_one_large_starting_centroid)
+        all_tests(21) = test_case("test_k_means_clustering_means_per_dimension", test_k_means_clustering_means_per_dimension)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -582,4 +583,19 @@ contains
         call check_k_means(3_int32, points_4, 4_int32, 1_int32, initial_3, [1, 1, 2, 2], [2, 2, 0], expected_3, &
                            "test_k_means_clustering_one_large_starting_centroid: a starting centroid at 1e300")
     end subroutine test_k_means_clustering_one_large_starting_centroid
+
+    !> BUG: a centroid's coordinates are means of different sets of values, one per dimension, and
+    !| each must be scaled for its own magnitude. Points (1e200, 3e-200) and (1e200, 5e-200) in one
+    !| cluster have the centroid (1e200, 4e-200): the second coordinate is (3e-200 + 5e-200)/2, all
+    !| normal numbers. Scaled for the first coordinate, the second coordinate's values underflow
+    !| and the centroid comes out (1e200, 0).
+    subroutine test_k_means_clustering_means_per_dimension()
+        real(real64) :: data_points(2, 2), initial_centroids(2, 1), expected_centroids(2, 1)
+
+        data_points = reshape([1.0e200_real64, 3.0e-200_real64, 1.0e200_real64, 5.0e-200_real64], shape(data_points))
+        initial_centroids = 0.0_real64
+        expected_centroids(:, 1) = [1.0e200_real64, (3.0e-200_real64 + 5.0e-200_real64)/2]
+        call check_k_means(1_int32, data_points, 2_int32, 2_int32, initial_centroids, [1, 1], [2], expected_centroids, &
+                           "test_k_means_clustering_means_per_dimension")
+    end subroutine test_k_means_clustering_means_per_dimension
 end module mod_test_k_means_clustering
