@@ -303,13 +303,18 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward | [[tox_clustering_impl(module):METHOD_WARD(variable)]] |
 
-        integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label
+        integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label, ward_exponent
         real(real64) :: dist_AB
 
         !TODO optimize: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
         !               one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
         !               clustering can be done in O(n^2) total with the nearest-neighbor-chain algorithm, which
         !               would matter a lot for larger n_points.
+        ! Ward's update squares distances; they are scaled first by one power of two for the run,
+        ! which f42's rule for sums of squares picks from the largest input distance, so no square
+        ! overflows or underflows. Ordinary distances get the exponent 0.
+        ward_exponent = scaling_exponent_for_largest(maxval(distances))
+
         do i = 1, n_points - 1
             call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB)
 
@@ -329,7 +334,8 @@ contains
             case (METHOD_WEIGHTED)
                 call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i)
             case (METHOD_WARD)
-                call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, dist_AB)
+                call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, &
+                                                         dist_AB, ward_exponent)
             end select
         end do
 
@@ -447,7 +453,8 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper for ward algorithm for updating the distance matrix on merge of two clusters
-    pure subroutine merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, cluster_sizes, dist_AB)
+    pure subroutine merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, cluster_sizes, &
+                                                        dist_AB, exponent)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -466,6 +473,9 @@ contains
             !! size of cluster at iteration k, needed for ward algorithm
         real(real64), intent(in) :: dist_AB
             !! distance between cluster A and B
+        integer(int32), intent(in) :: exponent
+            !! power of two every distance is scaled by before it is squared; the result is scaled
+            !! back, so it is the true distance
 
         integer(int32) :: i_node, size_C, cluster_label_C
         real(real64) :: new_dist, new_dist_part_AC, new_dist_part_BC, new_dist_part_AB, size_AC_real, size_BC_real, size_ABC_real
@@ -485,27 +495,27 @@ contains
                 size_AC_real = real(size_A + size_C, real64)
                 size_BC_real = real(size_B + size_C, real64)
                 size_ABC_real = real(size_A + size_B + size_C, real64)
-                new_dist_part_AB = dist_AB**2 * (real(size_C, real64)/size_ABC_real)
+                new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
 
                 ! i_node < idx_B < idx_A -> fill rows in both
                 if (i_node < idx_B) then
-                    new_dist_part_AC = distances(idx_A, i_node)**2 * (size_AC_real/size_ABC_real)
-                    new_dist_part_BC = distances(idx_B, i_node)**2 * (size_BC_real/size_ABC_real)
-                    new_dist = sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB)
+                    new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
+                    new_dist_part_BC = scale(distances(idx_B, i_node), exponent)**2*(size_BC_real/size_ABC_real)
+                    new_dist = scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent)
                     distances(idx_B, i_node) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
-                    new_dist_part_AC = distances(idx_A, i_node)**2 * (size_AC_real/size_ABC_real)
-                    new_dist_part_BC = distances(i_node, idx_B)**2 * (size_BC_real/size_ABC_real)
-                    new_dist = sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB)
+                    new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
+                    new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
+                    new_dist = scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent)
                     distances(i_node, idx_B) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
-                    new_dist_part_AC = distances(i_node, idx_A)**2 * (size_AC_real/size_ABC_real)
-                    new_dist_part_BC = distances(i_node, idx_B)**2 * (size_BC_real/size_ABC_real)
-                    new_dist = sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB)
+                    new_dist_part_AC = scale(distances(i_node, idx_A), exponent)**2*(size_AC_real/size_ABC_real)
+                    new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
+                    new_dist = scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent)
                     distances(i_node, idx_B) = new_dist
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
