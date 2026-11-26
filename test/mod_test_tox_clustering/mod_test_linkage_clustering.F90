@@ -59,7 +59,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(16))
+        allocate (all_tests(17))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -79,6 +79,7 @@ contains
         all_tests(15) = test_case("test_linkage_clustering_ward_squares_past_huge", &
                                   test_linkage_clustering_ward_squares_past_huge)
         all_tests(16) = test_case("test_linkage_clustering_averages_past_huge", test_linkage_clustering_averages_past_huge)
+        all_tests(17) = test_case("test_linkage_clustering_ward_height_past_huge", test_linkage_clustering_ward_height_past_huge)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -454,4 +455,27 @@ contains
                                .true., "test_linkage_clustering_averages_past_huge: "//trim(METHOD_NAMES(i_method)))
         end do
     end subroutine test_linkage_clustering_averages_past_huge
+
+    !> BUG: a Ward distance can exceed every input distance -- it grows with the clusters' sizes --
+    !| so finite input can still make a merge distance pass huge. Points 1 and 2 coincide, so do 3
+    !| and 4, and the pairs are D = 1.5*2**1023 apart. {1, 2} and {3, 4} merge at 0; the last merge
+    !| would be at sqrt(2 nA nB/(nA + nB)) D = sqrt(2) D, past huge, so its update is +Inf. Nothing
+    !| is then left below +Inf, the marker of a retired entry, and no merge can be found. The run
+    !| must say so (ERR_NAN_INF, naming no argument) and hand the matrix back unchanged; today the
+    !| merge reuses the previous one's indices and takes the abort path of
+    !| `test_linkage_clustering_ward_squares_past_huge`: `cluster_sizes(-1)`. (At D = 2**1023 the
+    !| last merge, sqrt(2) D = 1.27e308, is still finite and the run is right.)
+    subroutine test_linkage_clustering_ward_height_past_huge()
+        real(real64), parameter :: d = 1.5_real64*2.0_real64**1023
+        real(real64) :: distances(4, 4), passed(4, 4), heights(3)
+        integer(int32) :: merge_i(3), merge_j(3), cluster_sizes(3), ierr
+
+        distances = reshape([0.0_real64, 0.0_real64, d, d, 0.0_real64, 0.0_real64, d, d, &
+                             d, d, 0.0_real64, 0.0_real64, d, d, 0.0_real64, 0.0_real64], shape(distances))
+        passed = distances
+        call linkage_clustering(passed, 4_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
+        call assert_err(ierr, ERR_NAN_INF, "test_linkage_clustering_ward_height_past_huge", arg_pos=0_int32)
+        call assert_identical_array_real(passed, distances, 16_int32, &
+                                         "test_linkage_clustering_ward_height_past_huge: the matrix comes back unchanged")
+    end subroutine test_linkage_clustering_ward_height_past_huge
 end module mod_test_linkage_clustering
