@@ -127,6 +127,11 @@ def test_cluster_factor_trajectories_k_means_rejects_row_major_centroids():
                            "row-major centroids", "centroids")
 
 
+def test_cluster_factor_trajectories_k_means_rejects_no_iterations():
+    assert_error(lambda: cluster_factor_trajectories_k_means(_trajectories(), _trajectory_centroids(), 0),
+                 "max_iterations 0", ERR_INVALID_INPUT, argument="max_iterations")
+
+
 def test_cluster_factor_trajectories_k_means_rejects_a_fractional_max_iterations():
     assert_refused_by_name(lambda: cluster_factor_trajectories_k_means(_trajectories(), _trajectory_centroids(), 2.5),
                            "max_iterations 2.5", "max_iterations")
@@ -208,6 +213,11 @@ def test_k_means_clustering_rejects_centroids_it_cannot_write_in_place():
 def test_k_means_clustering_rejects_non_numeric_points():
     assert_refused_by_name(lambda: k_means_clustering(np.array([["a", "b"], ["c", "d"]]), _centroids()),
                            "strings", "data_points")
+
+
+def test_k_means_clustering_rejects_no_iterations():
+    assert_error(lambda: k_means_clustering(_points(), _centroids(), max_iterations=0),
+                 "max_iterations 0", ERR_INVALID_INPUT, argument="max_iterations")
 
 
 def test_k_means_clustering_rejects_a_fractional_max_iterations():

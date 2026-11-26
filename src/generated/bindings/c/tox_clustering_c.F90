@@ -74,6 +74,7 @@ contains
             !! holds the number of samples having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -161,6 +162,7 @@ contains
             !! Work matrix holding each sample's trajectory as one column
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -237,6 +239,7 @@ contains
             !! holds the number of points having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering.
+            !! The minimum valid value is `1_int32`.
             !! The default value is `300_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.

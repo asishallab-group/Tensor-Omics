@@ -71,6 +71,7 @@ contains
             !! holds the number of samples having the respective label assigned
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
+            !! The minimum valid value is `1_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:, :), allocatable :: tmp_flattened_trajectories
@@ -81,6 +82,7 @@ contains
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
+        call validate_in_range_int(max_iterations, ierr, arg_pos=9_int32, min=1_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(centroids, (n_factors*n_timepoints) * n_clusters, ierr, arg_pos=6_int32)
         if (is_err(ierr)) return
@@ -150,6 +152,7 @@ contains
             !! Work matrix holding each sample's trajectory as one column
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
+            !! The minimum valid value is `1_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -159,6 +162,7 @@ contains
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
+        call validate_in_range_int(max_iterations, ierr, arg_pos=10_int32, min=1_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(centroids, (n_factors*n_timepoints) * n_clusters, ierr, arg_pos=6_int32)
         if (is_err(ierr)) return
@@ -216,6 +220,7 @@ contains
             !! holds the number of points having the respective label assigned
         integer(int32), intent(in), optional :: max_iterations
             !! number of maximum iterations of the clustering.
+            !! The minimum valid value is `1_int32`.
             !! The default value is `300_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -225,6 +230,7 @@ contains
         call validate_in_range_int(n_clusters, ierr, arg_pos=1_int32, min=1_int32, max=n_points)
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
+        call validate_in_range_int(max_iterations, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(data_points, n_dims * n_points, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(centroids, n_dims * n_clusters, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return

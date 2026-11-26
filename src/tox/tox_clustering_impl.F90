@@ -61,6 +61,7 @@ contains
             !! Work matrix holding each sample's trajectory as one column
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
+            !! DM_MIN(1_int32)
 
         integer(int32) :: i_sample, i_time, i_factor
 
@@ -110,6 +111,7 @@ contains
             !! holds the number of points having the respective label assigned
         integer(int32), intent(in), optional :: max_iterations
             !! number of maximum iterations of the clustering.
+            !! DM_MIN(1_int32)
             !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
         integer(int32) :: label, iteration, i_point, max_iter

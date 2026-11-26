@@ -15,8 +15,7 @@ module mod_test_k_means_clustering
     use tox_clustering, only: k_means_clustering
     use tox_errors
     use test_suite, only: test_case
-    use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, N_NON_FINITE, NON_FINITE_NAMES, non_finite_value, &
-                                                check_documented_assignment
+    use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, N_NON_FINITE, NON_FINITE_NAMES, non_finite_value
     implicit none
     private
     public :: get_all_tests_k_means_clustering
@@ -385,27 +384,25 @@ contains
         end do
     end subroutine test_k_means_clustering_rejects_nan_and_inf
 
-    !> BUG: `max_iterations` has no lower bound, and below 1 the loop never runs, so the run
-    !| reports success with every label 0 -- outside the documented `1<=label<=n_clusters` -- and
-    !| `label_counts` never written. Whichever way that is settled (refuse it, or assign once), a
-    !| run reported as successful has to hand back a documented assignment; this checks just
-    !| that. 1-D points 1, 2, 8, 9 from 1 and 9; max_iterations 0 and -1.
+    !> `max_iterations` lies in [1, ...) (DM_MIN(1)): 0 and -1 are refused, naming it (argument
+    !| 8), and the centroids come back unchanged. Below 1 the loop never ran, and the run used to
+    !| report success with every label 0 and `label_counts` never written. 1-D points 1, 2, 8, 9
+    !| from 1 and 9.
     subroutine test_k_means_clustering_max_iterations_below_one()
-        real(real64) :: data_points(1, 4), centroids(1, 2)
+        real(real64) :: data_points(1, 4), centroids(1, 2), initial_centroids(1, 2)
         integer(int32) :: labels(4), label_counts(2), ierr, max_iterations
 
         data_points(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]
+        initial_centroids(1, :) = [1.0_real64, 9.0_real64]
         do max_iterations = 0, -1, -1
-            centroids(1, :) = [1.0_real64, 9.0_real64]
-            labels = UNWRITTEN_INT
-            label_counts = UNWRITTEN_INT
+            centroids = initial_centroids
             call k_means_clustering(2_int32, data_points, 4_int32, 1_int32, centroids, labels, label_counts, &
                                     max_iterations=max_iterations, ierr=ierr)
-            if (is_ok(ierr)) then
-                call check_documented_assignment(4_int32, 2_int32, labels, label_counts, &
-                                                 "test_k_means_clustering_max_iterations_below_one: max_iterations "// &
-                                                 max_iterations//" reported success")
-            end if
+            call assert_err(ierr, ERR_INVALID_INPUT, "test_k_means_clustering_max_iterations_below_one: max_iterations "// &
+                            max_iterations, arg_pos=8_int32)
+            call assert_equal_array_real(centroids, initial_centroids, 2_int32, 0.0_real64, &
+                                         "test_k_means_clustering_max_iterations_below_one: max_iterations "// &
+                                         max_iterations//": centroids unchanged")
         end do
     end subroutine test_k_means_clustering_max_iterations_below_one
 

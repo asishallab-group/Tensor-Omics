@@ -18,7 +18,7 @@ module mod_test_cluster_factor_trajectories_k_means
     use tox_errors
     use test_suite, only: test_case
     use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, UNWRITTEN_REAL, N_NON_FINITE, NON_FINITE_NAMES, &
-                                                non_finite_value, check_documented_assignment
+                                                non_finite_value
     implicit none
     private
     public :: get_all_tests_cluster_factor_trajectories_k_means
@@ -304,23 +304,24 @@ contains
         call assert_err(ierr, ERR_NAN_INF, msg//"+Inf centroid", arg_pos=6_int32)
     end subroutine test_cluster_factor_trajectories_k_means_expert_refuses_alike
 
-    !> BUG: `max_iterations` is required here and has no lower bound; below 1 the k-means loop
-    !| never runs and the run reports success with every label 0 and `label_counts` never written
-    !| (see `mod_test_k_means_clustering`'s case of the same name). Checks only that a run
-    !| reported as successful hands back a documented assignment, for 0 and -1, through the plain
-    !| and the expert entry.
+    !> `max_iterations` is required here and lies in [1, ...) (DM_MIN(1)): 0 and -1 are refused,
+    !| naming it -- argument 9 of the plain entry, 10 of the expert one, after its work array --
+    !| and the centroids come back unchanged. Below 1 the k-means loop never ran, and the run used to
+    !| report success with every label 0 and `label_counts` never written.
     subroutine test_cluster_factor_trajectories_k_means_iterations_below_one()
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), work(FLAT_LENGTH, SAMPLES)
+        real(real64) :: initial_centroids(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES), label_counts(2), ierr, max_iterations, i_entry
         character(*), parameter :: ENTRY_NAMES(2) = ["plain ", "expert"]
+        integer(int32), parameter :: ARG_POS(2) = [9_int32, 10_int32]
+        character(*), parameter :: msg = "test_cluster_factor_trajectories_k_means_iterations_below_one: "
 
         call fill_trajectories(trajectories)
+        initial_centroids(:, 1) = FLAT(:, 1)
+        initial_centroids(:, 2) = FLAT(:, 2)
         do i_entry = 1, 2
             do max_iterations = 0, -1, -1
-                centroids(:, 1) = FLAT(:, 1)
-                centroids(:, 2) = FLAT(:, 2)
-                labels = UNWRITTEN_INT
-                label_counts = UNWRITTEN_INT
+                centroids = initial_centroids
                 if (i_entry == 1) then
                     call cluster_factor_trajectories_k_means(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
                                                              centroids, labels, label_counts, max_iterations, ierr)
@@ -329,12 +330,11 @@ contains
                                                                     TIMEPOINTS, centroids, labels, label_counts, work, &
                                                                     max_iterations, ierr)
                 end if
-                if (is_ok(ierr)) then
-                    call check_documented_assignment(SAMPLES, 2_int32, labels, label_counts, &
-                                                     "test_cluster_factor_trajectories_k_means_iterations_below_one: "// &
-                                                     trim(ENTRY_NAMES(i_entry))//" entry, max_iterations "// &
-                                                     max_iterations//" reported success")
-                end if
+                call assert_err(ierr, ERR_INVALID_INPUT, msg//trim(ENTRY_NAMES(i_entry))//" entry, max_iterations "// &
+                                max_iterations, arg_pos=ARG_POS(i_entry))
+                call assert_equal_array_real(centroids, initial_centroids, FLAT_LENGTH*2_int32, 0.0_real64, &
+                                             msg//trim(ENTRY_NAMES(i_entry))//" entry, max_iterations "// &
+                                             max_iterations//": centroids unchanged", n_rows=FLAT_LENGTH)
             end do
         end do
     end subroutine test_cluster_factor_trajectories_k_means_iterations_below_one

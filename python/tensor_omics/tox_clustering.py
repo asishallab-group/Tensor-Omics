@@ -105,6 +105,7 @@ def cluster_factor_trajectories_k_means(
         The final values will be the final centroids of the clusters
     max_iterations : int
         number of maximum iterations of the clustering
+        The minimum valid value is `1`.
 
     Returns
     -------
@@ -202,6 +203,7 @@ def k_means_clustering(
         The final values will be the final centroids of the clusters
     max_iterations : int, optional, default 300
         number of maximum iterations of the clustering.
+        The minimum valid value is `1`.
         The default value is `300`.
 
     Returns

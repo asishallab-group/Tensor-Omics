@@ -19,6 +19,7 @@
 #'
 #'   The final values will be the final centroids of the clusters
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering
+#'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{centroids}{a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
 #'     The centroids should be unique. This is not checked in this routine.
@@ -63,6 +64,7 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #'
 #'   The final values will be the final centroids of the clusters
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering.
+#'   The minimum valid value is `1`.
 #'   The default value is `300`.
 #' @return a named list with elements:
 #'   \item{centroids}{a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.

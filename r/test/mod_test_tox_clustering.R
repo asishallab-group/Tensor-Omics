@@ -108,6 +108,11 @@ test_cluster_factor_trajectories_k_means_rejects_a_matrix_of_trajectories <- fun
                        "2-D trajectories", NULL, "trajectories")
 }
 
+test_cluster_factor_trajectories_k_means_rejects_no_iterations <- function() {
+  .assert_error_naming(cluster_factor_trajectories_k_means(.trajectories(), .trajectory_centroids(), 0L),
+                       "max_iterations 0", ERR_INVALID_INPUT, "max_iterations")
+}
+
 test_cluster_factor_trajectories_k_means_rejects_a_fractional_max_iterations <- function() {
   .assert_error_naming(cluster_factor_trajectories_k_means(.trajectories(), .trajectory_centroids(), 2.5),
                        "max_iterations 2.5", NULL, "max_iterations")
@@ -180,6 +185,11 @@ test_k_means_clustering_rejects_centroids_of_other_dimensions <- function() {
 test_k_means_clustering_rejects_non_numeric_points <- function() {
   .assert_error_naming(k_means_clustering(matrix(c("a", "b", "c", "d"), 2L), .centroids()), "strings", NULL,
                        "data_points")
+}
+
+test_k_means_clustering_rejects_no_iterations <- function() {
+  .assert_error_naming(k_means_clustering(.points(), .centroids(), max_iterations = 0L), "max_iterations 0",
+                       ERR_INVALID_INPUT, "max_iterations")
 }
 
 test_k_means_clustering_rejects_a_fractional_max_iterations <- function() {
