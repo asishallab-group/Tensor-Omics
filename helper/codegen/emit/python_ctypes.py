@@ -45,7 +45,13 @@ from ..render import Writer
 from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
 from .producer_calls import auto_plans, returns_single, supplied_by
-from ..synthesize import binding_computes, carries_computed, is_derived, readable_owners
+from ..synthesize import (
+    binding_computes,
+    carries_computed,
+    is_derived,
+    read_off_a_carrier,
+    readable_owners,
+)
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -977,8 +983,8 @@ class PythonEmitter:
 
         if roles.is_extent:
             # the same predicate the signature uses, so an argument is never both asked
-            # for and derived
-            if not readable_owners(argument, wrapper):
+            # for and derived -- and never both computed and read off a carrier (3a)
+            if not read_off_a_carrier(argument, wrapper):
                 return ""
             provider = self._extent_provider(argument, wrapper)
             return provider or ""

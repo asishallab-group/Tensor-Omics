@@ -989,31 +989,9 @@ FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
 
 @pytest.fixture(scope="module")
 def carrier_built(tmp_path_factory):
-    """`fixtures/carrier` built without R shims, for Python.
-
-    Its plain tier keeps `n_cap`, which a producer computes and which sizes the input `y`, and
-    the R shim of such a tier declares `n_cap` twice -- a known defect outside this fixture's
-    concern -- so the library is built from the Fortran and C wrappers alone.
-    """
+    """`fixtures/carrier` built into a library of its own, R shims included."""
     out = tmp_path_factory.mktemp("e2e_carrier")
-    paths = Paths(
-        root=REPO_ROOT, src_dir=REPO_ROOT / FIXTURE_CARRIER, generated_dir=out / "fortran",
-        c_binding_dir=out / "c", r_binding_dir=out / "shim",
-        python_out_dir=out / "py" / "fx_impl", r_out_dir=out / "r",
-    )
-    targets = ("fortran", "c", "python")
-    result = generate(paths=paths, targets=targets, library="build/libtensor_omics.so")
-    unexpected = [d for d in result.diagnostics if _NO_ERROR_MODULE not in d.message]
-    assert unexpected == [], "\n".join(d.render() for d in unexpected)
-    for file in result.files:
-        file.write()
-    errors = DiagnosticBag()
-    real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), errors).parse()
-    catalogue = ErrorCatalogue.from_module(
-        real.project.module("tox_errors"), errors,
-        real.project.constant_values(), arg_pos_factor=real.arg_pos_factor,
-    )
-    (out / "py" / "fx_impl" / "error_handling.py").write_text(PythonErrorEmitter(catalogue).module())
+    _generate(out, REPO_ROOT / FIXTURE_CARRIER)
     _build(out, REPO_ROOT / FIXTURE_CARRIER)
     return out
 
@@ -1051,30 +1029,64 @@ class TestAValueThatSizesOnlyAnInput:
 
         assert out == ["x", "x_perm", "y"]
 
-    def test_the_r_expert_passes_the_shim_what_it_registers(self):
-        # R cannot be run here (see `carrier_built`); its expert is checked as written: it asks
-        # for no `n_cap`, computes none, and its `.Call` has the arity the shim registers
-        import re
+    def test_r_reads_it_off_the_array(self, carrier_built):
+        assert r_raised(carrier_built,
+                        "fx_capacity_total_expert(c(3, 1), c(2L, 1L), c(1, 1))") == ["returned", "3"]
+        # six items: the producer refuses more than five, and is not called
+        assert r_raised(carrier_built, "fx_capacity_total_expert(c(6, 5, 4, 3, 2, 1), "
+                                       "c(6L, 5L, 4L, 3L, 2L, 1L), c(10))") == ["returned", "11"]
 
-        from codegen.emit.c_call import CCallEmitter
-        from codegen.emit.r_wrapper import RWrapperEmitter
-        from codegen.generate import _published_to_the_languages
-        from codegen.abi.c_abi import build_project
-        from codegen.config import CONVENTIONS
-        from codegen.ir.roles import analyse_project
-        from codegen.synthesize import synthesize_wrappers
+    def test_r_computes_it_in_the_plain_tier_and_checks_the_array(self, carrier_built):
+        # the shim takes the capacity R computed, and reads no second one off `y`: it compiled
+        assert r_raised(carrier_built, "fx_capacity_total(c(3, 1), c(1, 1, 1))") == ["returned", "4"]
+        wrong = r_raised(carrier_built, "fx_capacity_total(c(3, 1), c(1, 1))")
+        assert wrong[:3] == ["tox_shape_error", "NA", "y"], wrong
 
-        bag = DiagnosticBag()
-        parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=FIXTURE_CARRIER), bag).parse()
-        synthesis = synthesize_wrappers(parsed.project, CONVENTIONS, bag)
-        analyse_project(synthesis.project, bag)
-        binding = _published_to_the_languages(build_project(synthesis.project, bag), synthesis)
-        [expert] = [w for m in binding for w in m if w.stripped_name == "fx_capacity_total_expert"]
+    def test_the_r_expert_asks_for_no_capacity(self, carrier_built):
+        assert run_r(carrier_built, 'cat(names(formals(fx_capacity_total_expert)))') == [
+            "x", "x_perm", "y"]
 
-        text = RWrapperEmitter().function(expert.with_constant_sizes_evaluated())
-        registration = CCallEmitter().registration(list(binding))
+    def test_python_computes_it_in_the_plain_tier_and_reads_nothing_off_the_array(self):
+        # computed through the producer, then `y` is checked against it: no `n_cap = y.shape[0]`
+        # first, which the producer's value overwrote (3a). The expert, which reads it off `y`,
+        # is the negative control
+        from codegen.generate import generate
 
-        assert "fx_capacity_total_expert <- function(x, x_perm, y)" in text
-        assert "fx_room_for(" not in text
-        assert '.Call("fx_capacity_total_expert_call", x, x_perm, y)' in text
-        assert re.search(r'"fx_capacity_total_expert_call", \(DL_FUNC\) &\w+, 3\}', registration)
+        paths = Paths(root=REPO_ROOT, src_dir=REPO_ROOT / FIXTURE_CARRIER)
+        result = generate(paths=paths, targets=("python",), library="build/libtensor_omics.so")
+        [module] = [f.content for f in result.files if f.path.name == "fx_carrier.py"]
+        bodies = {name: module.split(f"def {name}(", 1)[1].split("\ndef ", 1)[0]
+                  for name in ("fx_capacity_total", "fx_capacity_total_expert",
+                               "fx_inout_capacity")}
+
+        assert "n_cap = y.shape[0]" not in bodies["fx_capacity_total"]
+        assert "n_cap = fx_room_for(" in bodies["fx_capacity_total"]
+        assert "n_cap = y.shape[0]" not in bodies["fx_inout_capacity"]
+        assert "n_cap = y.shape[0]" in bodies["fx_capacity_total_expert"]
+
+
+class TestAComputedCapacityOfAnInOutArray:
+    """A lone wrapper whose computed capacity sizes an `intent(inout)` array (3a).
+
+    Nothing is taken over, so there is one wrapper, whose binding computes `n_cap` through the
+    producer and checks `y` against it. Its R shim declared `n_cap` twice -- the `.Call`
+    parameter R computed, and a second one read off `y` -- and did not compile.
+    """
+
+    def test_python(self, carrier_built):
+        out = run_python(carrier_built, _PY_PRODUCER_ERROR + """
+            y = np.zeros(3)
+            first = raised(lambda: tox.fx_inout_capacity([1.0, 2.0], y))
+            print(json.dumps([first, y.tolist(),
+                              raised(lambda: tox.fx_inout_capacity([1.0, 2.0], np.zeros(2)))]))
+        """)
+
+        assert out[0] == ["returned", None]
+        assert out[1] == [3.0, 3.0, 3.0]
+        assert out[2][:3] == ["ToxArgumentError", None, "y"], out[2]
+
+    def test_r(self, carrier_built):
+        assert r_raised(carrier_built, "fx_inout_capacity(c(1, 2), c(0, 0, 0))") == [
+            "returned", "3 3 3"]
+        wrong = r_raised(carrier_built, "fx_inout_capacity(c(1, 2), c(0, 0))")
+        assert wrong[:3] == ["tox_shape_error", "NA", "y"], wrong

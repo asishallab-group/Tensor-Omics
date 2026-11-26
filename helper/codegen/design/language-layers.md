@@ -655,7 +655,7 @@ error tables all come from it. `test_emitter_parity.TestEveryPublishedBindingAgr
 the emitters' decisions over every published binding of the fixtures: R's `.Call` arity against
 the shim's registration, no parameter computed or derived over, Python and R asking alike.
 `test_parameters_reach_the_call` checks it by running: every published Python and R function of
-every fixture library -- the R of `fixtures/carrier` aside, whose shim does not compile -- is
+every fixture library is
 called with a sentinel for each parameter, its own C call intercepted, and each parameter
 compared with what arrived. The Fortran wrapper emitter reads the IR
 facts, which are its own.
@@ -682,6 +682,17 @@ did not fail: R looked the name up in the global environment and **silently used
 of the same name**. Python at least raised. Any R expression a binding writes must name only
 what that function has assigned by then; `TestDataAndASizeFromOneCall` sets globals named like the
 array and the extent to show none is read.
+
+**Computed or read, never both (3a).** A tier whose binding computes a value through its producer
+passes C what the producer gave and checks the carriers against it; it does not also read the
+value off a carrier. `synthesize.read_off_a_carrier` says so, and the two sites that emit a
+derivation from a carrier ask it (`c_call._derived_value`, `python_ctypes._extent_expression`).
+Asking `readable_owners` there instead was the defect: in the plain tier of `fx_capacity_total`,
+which keeps `n_cap` and computes it, the R shim took `n_cap` as a `.Call` parameter and declared
+`int n_cap = (int) Rf_length(y)` beside it, and did not compile; Python read `n_cap` off `y` and
+then overwrote it with the producer's. `readable_owners` itself is unchanged, so an error at
+`n_cap` still names `y` (`error_arguments.source_of`), and the expert, which does not compute
+`n_cap`, still reads it off `y`.
 
 ## Decision: a default is rendered in the vocabulary of the layer that reads it
 

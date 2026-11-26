@@ -54,6 +54,7 @@ cannot disagree — **never re-derive any of it in an emitter**:
 | `.source.roles` | the IR roles: the `is_*` predicates (`is_extent`, `is_shape_arg`, `is_mask_count`, `is_temporary`, `is_bitmask`, `is_mode`) and the links between arguments (`extent_of`, `shape_of`, `shape_arg`, `mask_count_of`, `count_arg`, `result_size_arg`). `is_computed`, `is_derived` and `computed_from` are what the Fortran `foo` does: never decide a binding by them |
 | `synthesize.binding_computes(argument, wrapper)` | whether this tier's binding computes an AUTO value through its producer -- in a generated pair's expert only what sizes a buffer you allocate, and whatever one call fills with it (E2); everywhere else every AUTO value |
 | `synthesize.is_derived(argument, wrapper)` / `readable_owners` | whether this tier's binding works an argument out itself (computes it, reads it off a carrier, a shape, a mask's count) rather than asking for it; and the arrays an extent is read off, in the order to read them (R4). `automatic_plan` gives a producer call's content |
+| `synthesize.read_off_a_carrier(argument, wrapper)` | whether the binding reads an extent off an array that carries it: only where it does not compute it through its producer. Emit a derivation from a carrier only where this holds -- a value is computed or read, never both (a computed one is passed in, and the carriers are checked against it) |
 | `CWrapper.validation_order` | the order in which pointers may safely be null-checked |
 | `.doc` | the parsed documentation, links and all |
 

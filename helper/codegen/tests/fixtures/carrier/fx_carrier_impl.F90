@@ -4,14 +4,15 @@
 !| author: A Developer
 !| `n_cap` sizes the input `y` and nothing the bindings allocate, so the Python and R expert
 !| reads it off `y`, as Fortran's and C's take it from the caller, instead of calling its
-!| producer. Its plain tier keeps `n_cap` and computes it, which the R shim of that tier cannot
-!| compile yet, so this is built and run through Python alone, by `test_end_to_end_impl.py`.
+!| producer. Its plain tier keeps `n_cap` and computes it, and checks `y` against it, without
+!| also reading it off `y`; so does a lone wrapper whose computed capacity sizes an
+!| `intent(inout)` array. Built and run through Python and R by `test_end_to_end_impl.py`.
 module fx_carrier_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     M_IMPLICIT_NONE
     private
 
-    public :: fx_room_for_impl, fx_capacity_total_impl
+    public :: fx_room_for_impl, fx_capacity_total_impl, fx_inout_capacity_impl
 
 contains
 
@@ -48,4 +49,23 @@ contains
             !! the smallest of `x`, plus the sum of `y`
         total = x(x_perm(1)) + sum(y)
     end subroutine fx_capacity_total_impl
+
+    !> summary: Add the sum of some values to every slot of an array as long as a computed capacity
+    !| author: A Developer
+    pure subroutine fx_inout_capacity_impl(n_items, x, n_cap, y)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: n_cap
+            !! the capacity
+            !! DM_OUTPUT_FROM(room, fx_room_for, fx_carrier, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | n_count        | n_items     |
+        real(real64), dimension(n_cap), intent(inout) :: y
+            !! one slot per capacity, each added the sum of `x`
+        y = y + sum(x)
+    end subroutine fx_inout_capacity_impl
 end module fx_carrier_impl

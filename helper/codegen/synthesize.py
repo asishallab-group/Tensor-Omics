@@ -724,6 +724,20 @@ def readable_owners(argument, wrapper, conventions: Conventions = CONVENTIONS) -
     return tuple(optional)  # `validate` refuses an extent only optional arrays carry
 
 
+def read_off_a_carrier(argument, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether the binding of `wrapper` reads the extent `argument` off an array that carries it.
+
+    Only where it does not compute it: a tier whose binding computes a value through its
+    producer passes C what the producer gave, and the carriers are checked against that
+    (`shape_checks`), so nothing also reads it off them -- a value is computed or read, never
+    both. The two sites that emit a derivation ask this (`c_call`, `python_ctypes`);
+    `readable_owners` itself is unchanged, so an error at the extent still names the carrier
+    (`error_arguments.source_of`).
+    """
+    return (not binding_computes(argument, wrapper, conventions)
+            and bool(readable_owners(argument, wrapper, conventions)))
+
+
 def is_derived(argument, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
     """Whether the binding of `wrapper` works `argument` out itself, rather than asking for it.
 

@@ -30,7 +30,7 @@ import hashlib
 from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
-from ..synthesize import binding_computes, is_derived, readable_owners
+from ..synthesize import binding_computes, is_derived, read_off_a_carrier, readable_owners
 from ..ir.errors import ErrorCatalogue
 from ..names import (
     BUFFER,
@@ -428,6 +428,8 @@ class CCallEmitter:
             return f"tox_shape_of({roles.shape_of.name})"
 
         if roles.is_extent:
+            if not read_off_a_carrier(argument, wrapper):
+                return None  # computed through its producer, and passed in by R (3a)
             # off the carriers the binding reads it off, in its order (R4)
             owners = readable_owners(argument, wrapper)
             for owner in owners:
