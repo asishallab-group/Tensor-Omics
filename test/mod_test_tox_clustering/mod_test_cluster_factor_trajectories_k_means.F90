@@ -128,7 +128,7 @@ contains
     !| says ("each sample's trajectory as one column").
     subroutine test_cluster_factor_trajectories_k_means_expert_values()
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), expected(FLAT_LENGTH, 2)
-        real(real64) :: work(FLAT_LENGTH, SAMPLES)
+        real(real64) :: work(FLAT_LENGTH, SAMPLES), factors_work(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES + 1), label_counts(3), ierr
 
         call fill_trajectories(trajectories)
@@ -141,7 +141,7 @@ contains
         work = UNWRITTEN_REAL
 
         call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
-                                                        centroids, labels, label_counts, work, 300_int32, ierr)
+                                                        centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
         call check_result(ierr, labels, label_counts, centroids, [1, 2, 1, 2], [2, 2], expected, &
                           "test_cluster_factor_trajectories_k_means_expert_values")
         call assert_equal_array_real(work, FLAT, FLAT_LENGTH*SAMPLES, 0.0_real64, &
@@ -279,41 +279,43 @@ contains
     !| no factors (3), no timepoints (5), a NaN trajectory (2), an infinite centroid (6).
     subroutine test_cluster_factor_trajectories_k_means_expert_refuses_alike()
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), work(FLAT_LENGTH, SAMPLES)
+        real(real64) :: factors_work(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES), label_counts(2), ierr
         character(*), parameter :: msg = "test_cluster_factor_trajectories_k_means_expert_refuses_alike: "
 
         call fill_trajectories(trajectories)
         centroids = 1.0_real64
         call cluster_factor_trajectories_k_means_expert(0_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
-                                                        centroids, labels, label_counts, work, 300_int32, ierr)
+                                                        centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, msg//"n_clusters 0", arg_pos=1_int32)
         call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, 0_int32, SAMPLES, TIMEPOINTS, &
-                                                        centroids, labels, label_counts, work, 300_int32, ierr)
+                                                        centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
         call assert_err(ierr, ERR_EMPTY_INPUT, msg//"n_factors 0", arg_pos=3_int32)
         call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, 0_int32, &
-                                                        centroids, labels, label_counts, work, 300_int32, ierr)
+                                                        centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
         call assert_err(ierr, ERR_EMPTY_INPUT, msg//"n_timepoints 0", arg_pos=5_int32)
         trajectories(2, 3, 2) = non_finite_value(1_int32)
         call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
-                                                        centroids, labels, label_counts, work, 300_int32, ierr)
+                                                        centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
         call assert_err(ierr, ERR_NAN_INF, msg//"NaN trajectory", arg_pos=2_int32)
         call fill_trajectories(trajectories)
         centroids(3, 2) = non_finite_value(2_int32)
         call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
-                                                        centroids, labels, label_counts, work, 300_int32, ierr)
+                                                        centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
         call assert_err(ierr, ERR_NAN_INF, msg//"+Inf centroid", arg_pos=6_int32)
     end subroutine test_cluster_factor_trajectories_k_means_expert_refuses_alike
 
     !> `max_iterations` is required here and lies in [1, ...) (DM_MIN(1)): 0 and -1 are refused,
-    !| naming it -- argument 9 of the plain entry, 10 of the expert one, after its work array --
+    !| naming it -- argument 9 of the plain entry, 11 of the expert one, after its two work arrays --
     !| and the centroids come back unchanged. Below 1 the k-means loop never ran, and the run used to
     !| report success with every label 0 and `label_counts` never written.
     subroutine test_cluster_factor_trajectories_k_means_iterations_below_one()
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), work(FLAT_LENGTH, SAMPLES)
+        real(real64) :: factors_work(FLAT_LENGTH, 2)
         real(real64) :: initial_centroids(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES), label_counts(2), ierr, max_iterations, i_entry
         character(*), parameter :: ENTRY_NAMES(2) = ["plain ", "expert"]
-        integer(int32), parameter :: ARG_POS(2) = [9_int32, 10_int32]
+        integer(int32), parameter :: ARG_POS(2) = [9_int32, 11_int32]
         character(*), parameter :: msg = "test_cluster_factor_trajectories_k_means_iterations_below_one: "
 
         call fill_trajectories(trajectories)
@@ -328,7 +330,7 @@ contains
                 else
                     call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, &
                                                                     TIMEPOINTS, centroids, labels, label_counts, work, &
-                                                                    max_iterations, ierr)
+                                                                    factors_work, max_iterations, ierr)
                 end if
                 call assert_err(ierr, ERR_INVALID_INPUT, msg//trim(ENTRY_NAMES(i_entry))//" entry, max_iterations "// &
                                 max_iterations, arg_pos=ARG_POS(i_entry))

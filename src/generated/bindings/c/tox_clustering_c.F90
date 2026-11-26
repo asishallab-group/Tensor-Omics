@@ -21,6 +21,7 @@ module tox_clustering_c
     public :: cluster_factor_trajectories_k_means_c
     public :: cluster_factor_trajectories_k_means_expert_c
     public :: k_means_clustering_c
+    public :: k_means_clustering_expert_c
     public :: linkage_clustering_c
 
 contains
@@ -131,6 +132,7 @@ contains
             labels,&
             label_counts,&
             tmp_flattened_trajectories,&
+            tmp_centroid_factors,&
             max_iterations,&
             ierr&
         ) bind(C, name="cluster_factor_trajectories_k_means_expert_c")
@@ -167,6 +169,9 @@ contains
             !! holds the number of samples having the respective label assigned
         real(c_double), dimension(n_factors*n_timepoints, n_samples), intent(out), target :: tmp_flattened_trajectories
             !! Work matrix holding each sample's trajectory as one column
+        real(c_double), dimension(n_factors*n_timepoints, n_clusters), intent(out), target :: tmp_centroid_factors
+            !! Work matrix: for each cluster and each entry of a flattened trajectory, the power of
+            !! two its values are summed with when the centroids are recomputed
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering. Unlike
             !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
@@ -188,6 +193,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(labels, n_samples)
         M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
         M_CHECK_ARRAY_NON_NULL(tmp_flattened_trajectories, (n_factors*n_timepoints) * n_samples)
+        M_CHECK_ARRAY_NON_NULL(tmp_centroid_factors, (n_factors*n_timepoints) * n_clusters)
         if (n_centroids_elements_dim_1 /= n_factors*n_timepoints) then
             call set_err(ierr, ERR_SIZE_MISMATCH, 6_int32)
             return
@@ -203,6 +209,7 @@ contains
             labels = labels,&
             label_counts = label_counts,&
             tmp_flattened_trajectories = tmp_flattened_trajectories,&
+            tmp_centroid_factors = tmp_centroid_factors,&
             max_iterations = max_iterations,&
             ierr = ierr&
         )
@@ -287,6 +294,92 @@ contains
             ierr = ierr&
         )
     end subroutine k_means_clustering_c
+
+    !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering_expert(subroutine)]]
+    !| 1. Assigns each data point to one of `k` clusters whose centroid is closest
+    !| 2. Recalculates the centroids using the mean of its assigned points
+    !| 3. repeat 1-2 until assignment remains unchanged
+    !|
+    !| A point exactly as close to several centroids goes to the last of them, the one with the
+    !| highest cluster index.
+    !|
+    !| Each point's squared distances are compared scaled by a power of two picked for that point,
+    !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
+    !| centroid in that measure; ordinary data is not scaled at all.
+    subroutine k_means_clustering_expert_c(&
+            n_clusters,&
+            data_points,&
+            n_points,&
+            n_dims,&
+            centroids,&
+            labels,&
+            label_counts,&
+            tmp_centroid_factors,&
+            max_iterations,&
+            ierr&
+        ) bind(C, name="k_means_clustering_expert_c")
+        use tox_clustering, only: k_means_clustering_expert
+
+        integer(c_int), intent(in), target :: n_clusters
+            !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
+        integer(c_int), intent(in), target :: n_points
+            !! number of points to cluster
+        integer(c_int), intent(in), target :: n_dims
+            !! number of elements a point has
+        real(c_double), dimension(n_dims, n_points), intent(in), target :: data_points
+            !! matrix with data points to cluster
+        real(c_double), dimension(n_dims, n_clusters), intent(inout), target :: centroids
+            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+            !! The centroids should be unique. This is not checked in this routine.
+            !!
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last point, or its starting centroid if it never had one.
+        integer(c_int), dimension(n_points), intent(out), target :: labels
+            !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+            !!
+            !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
+        integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
+            !! holds the number of points having the respective label assigned
+        real(c_double), dimension(n_dims, n_clusters), intent(out), target :: tmp_centroid_factors
+            !! Work matrix: for each cluster and dimension, the power of two the values are summed
+            !! with when the centroids are recomputed
+        integer(c_int), intent(in), target :: max_iterations
+            !! number of maximum iterations of the clustering. Defaults to 300, while
+            !! [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl(subroutine)]]
+            !! requires it.
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `300_int32`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_clusters)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_dims)
+        M_CHECK_NON_NULL(max_iterations)
+        M_CHECK_ARRAY_NON_NULL(data_points, n_dims * n_points)
+        M_CHECK_ARRAY_NON_NULL(centroids, n_dims * n_clusters)
+        M_CHECK_ARRAY_NON_NULL(labels, n_points)
+        M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
+        M_CHECK_ARRAY_NON_NULL(tmp_centroid_factors, n_dims * n_clusters)
+
+        call k_means_clustering_expert(&
+            n_clusters = n_clusters,&
+            data_points = data_points,&
+            n_points = n_points,&
+            n_dims = n_dims,&
+            centroids = centroids,&
+            labels = labels,&
+            label_counts = label_counts,&
+            tmp_centroid_factors = tmp_centroid_factors,&
+            max_iterations = max_iterations,&
+            ierr = ierr&
+        )
+    end subroutine k_means_clustering_expert_c
 
     !> summary: C-wrapper for [[tox_clustering(module):linkage_clustering(subroutine)]]
     !| @note

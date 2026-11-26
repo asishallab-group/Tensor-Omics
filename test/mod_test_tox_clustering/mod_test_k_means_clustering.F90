@@ -11,7 +11,7 @@
 module mod_test_k_means_clustering
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_clustering, only: k_means_clustering
+    use tox_clustering, only: k_means_clustering, k_means_clustering_expert
     use tox_errors
     use test_suite, only: test_case
     use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, N_NON_FINITE, NON_FINITE_NAMES, non_finite_value
@@ -25,7 +25,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(21))
+        allocate (all_tests(22))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_many_iterations", test_k_means_clustering_many_iterations)
@@ -54,6 +54,7 @@ contains
         all_tests(20) = test_case("test_k_means_clustering_one_large_starting_centroid", &
                                   test_k_means_clustering_one_large_starting_centroid)
         all_tests(21) = test_case("test_k_means_clustering_means_per_dimension", test_k_means_clustering_means_per_dimension)
+        all_tests(22) = test_case("test_k_means_clustering_expert", test_k_means_clustering_expert)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -598,4 +599,36 @@ contains
         call check_k_means(1_int32, data_points, 2_int32, 2_int32, initial_centroids, [1, 1], [2], expected_centroids, &
                            "test_k_means_clustering_means_per_dimension")
     end subroutine test_k_means_clustering_means_per_dimension
+
+    !> The expert entry takes the centroid work array from the caller and gives the plain entry's
+    !| result: `test_k_means_clustering_values`' points from their first two give labels
+    !| [1, 1, 2, 2] and centroids (1.5, 1.5) and (9, 9). It validates alike: no clusters (argument 1),
+    !| a NaN point (2), and max_iterations 0, which is argument 9 here, after the work array.
+    subroutine test_k_means_clustering_expert()
+        real(real64) :: data_points(2, 4), centroids(2, 2), expected(2, 2), work(2, 2)
+        integer(int32) :: labels(4), label_counts(2), ierr
+        character(*), parameter :: msg = "test_k_means_clustering_expert: "
+
+        data_points = reshape([1.0_real64, 1.0_real64, 2.0_real64, 2.0_real64, 8.0_real64, 8.0_real64, &
+                               10.0_real64, 10.0_real64], shape(data_points))
+        centroids = data_points(:, 1:2)
+        expected = reshape([1.5_real64, 1.5_real64, 9.0_real64, 9.0_real64], shape(expected))
+        call k_means_clustering_expert(2_int32, data_points, 4_int32, 2_int32, centroids, labels, label_counts, work, &
+                                       ierr=ierr)
+        call assert_err(ierr, ERR_OK, msg//"ierr")
+        call assert_equal_array_int(labels, [1, 1, 2, 2], 4_int32, msg//"labels")
+        call assert_equal_array_int(label_counts, [2, 2], 2_int32, msg//"label_counts")
+        call assert_equal_array_real(centroids, expected, 4_int32, 0.0_real64, msg//"centroids", n_rows=2_int32)
+
+        call k_means_clustering_expert(0_int32, data_points, 4_int32, 2_int32, centroids, labels, label_counts, work, &
+                                       ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, msg//"n_clusters 0", arg_pos=1_int32)
+        call k_means_clustering_expert(2_int32, data_points, 4_int32, 2_int32, centroids, labels, label_counts, work, &
+                                       max_iterations=0_int32, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, msg//"max_iterations 0", arg_pos=9_int32)
+        data_points(2, 3) = non_finite_value(1_int32)
+        call k_means_clustering_expert(2_int32, data_points, 4_int32, 2_int32, centroids, labels, label_counts, work, &
+                                       ierr=ierr)
+        call assert_err(ierr, ERR_NAN_INF, msg//"a NaN point", arg_pos=2_int32)
+    end subroutine test_k_means_clustering_expert
 end module mod_test_k_means_clustering

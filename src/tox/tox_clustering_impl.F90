@@ -34,7 +34,8 @@ contains
     !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
     !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
     !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
-    pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, max_iterations)
+    pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, &
+                                                         tmp_centroid_factors, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
             !! DM_MIN(1_int32)
@@ -64,6 +65,9 @@ contains
             !! holds the number of samples having the respective label assigned
         real(real64), dimension(n_factors*n_timepoints, n_samples), intent(out) :: tmp_flattened_trajectories
             !! Work matrix holding each sample's trajectory as one column
+        real(real64), dimension(n_factors*n_timepoints, n_clusters), intent(out) :: tmp_centroid_factors
+            !! Work matrix: for each cluster and each entry of a flattened trajectory, the power of
+            !! two its values are summed with when the centroids are recomputed
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering. Unlike
             !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
@@ -85,7 +89,7 @@ contains
         end do
 
         call k_means_clustering_impl(n_clusters, tmp_flattened_trajectories, n_samples, n_factors*n_timepoints, &
-                                     centroids, labels, label_counts, max_iterations)
+                                     centroids, labels, label_counts, tmp_centroid_factors, max_iterations)
     end subroutine cluster_factor_trajectories_k_means_impl
 
     !> summary: k-means clustering algorithm
@@ -101,7 +105,8 @@ contains
     !| Each point's squared distances are compared scaled by a power of two picked for that point,
     !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
     !| centroid in that measure; ordinary data is not scaled at all.
-    pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
+    pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, &
+                                            tmp_centroid_factors, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
             !! DM_MIN(1_int32)
@@ -125,6 +130,9 @@ contains
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
+        real(real64), dimension(n_dims, n_clusters), intent(out) :: tmp_centroid_factors
+            !! Work matrix: for each cluster and dimension, the power of two the values are summed
+            !! with when the centroids are recomputed
         integer(int32), intent(in), optional :: max_iterations
             !! number of maximum iterations of the clustering. Defaults to 300, while
             !! [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl(subroutine)]]
@@ -132,15 +140,10 @@ contains
             !! DM_MIN(1_int32)
             !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
-        integer(int32) :: label, iteration, i_point, max_iter, exponent
+        integer(int32) :: label, iteration, i_point, max_iter
         logical(c_bool) :: labels_changed
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
-
-        ! the power of two the centroids' sums are formed with: every later centroid is a mean of
-        ! points or a centroid kept from before, so the points' and starting centroids' largest
-        ! magnitude bounds them
-        exponent = scaling_exponent_for_largest(max(maxval(abs(data_points)), maxval(abs(centroids))))
 
         ! initialize labels to a value outside the valid [1, n_clusters] range so the first
         ! comparison below never reads undefined intent(out) memory and always triggers
@@ -168,15 +171,19 @@ contains
             if (.not. labels_changed) exit
 
             call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, &
-                                                            label_counts, exponent)
+                                                            label_counts, tmp_centroid_factors)
         end do
     end subroutine k_means_clustering_impl
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Helper to recompute the centroids in k-means by taking the mean of assigned points. The
-    !| points are summed scaled by the run's power of two, as f42's mean sums a set, so no sum
-    !| overflows for finite points: the mean of two points at `2**1023` is `2**1023`.
+    !| Helper to recompute the centroids in k-means by taking the mean of assigned points. Each
+    !| coordinate of a centroid is the mean of one set, its points' values in that dimension, and
+    !| is summed scaled by the power of two f42's rule picks for that set's largest magnitude, as
+    !| f42's mean sums a set: the mean of two values at `2**1023` is `2**1023`, and a coordinate of
+    !| small values beside a large one keeps its own. The factors are multiplied in, not applied
+    !| with scale(), which is a library call per element; values whose set needs no scaling are
+    !| summed exactly as before, in point order.
     pure subroutine k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, &
-                                                               label_counts, exponent)
+                                                               label_counts, factors)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
         integer(int32), intent(in) :: n_points
@@ -186,39 +193,53 @@ contains
         real(real64), dimension(n_dims, n_points), intent(in) :: data_points
             !! matrix with data points to cluster
         real(real64), dimension(n_dims, n_clusters), intent(inout) :: centroids
-            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-            !! The centroids should be unique. This is not checked in this routine.
-            !!
-            !! The final values will be the final centroids of the clusters
+            !! the centroids, recomputed in place; a cluster without points keeps its own
         integer(int32), dimension(n_points), intent(in) :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             !!
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(in) :: label_counts
             !! holds the number of points having the respective label assigned
-        integer(int32), intent(in) :: exponent
-            !! power of two the points are scaled by while they are summed, from
-            !! [[f42_math_impl(module):scaling_exponent_for_largest(function)]] for the run
+        real(real64), dimension(n_dims, n_clusters), intent(out) :: factors
+            !! work: first each set's largest magnitude, then the factor its values are summed with
 
         integer(int32) :: i_point, label, i_dim, i_cluster
+        real(real64) :: down, up
+
+        ! the largest magnitude of each (cluster, dimension) set
+        factors = 0.0_real64
+        do i_point = 1, n_points
+            label = labels(i_point)
+            do i_dim = 1, n_dims
+                factors(i_dim, label) = max(factors(i_dim, label), abs(data_points(i_dim, i_point)))
+            end do
+        end do
 
         ! A cluster without points keeps the centroid it has: it has no mean, and any value made
         ! up for it (the origin, say) would make the result depend on the coordinate system.
         do i_cluster = 1, n_clusters
-            if (label_counts(i_cluster) > 0) centroids(:, i_cluster) = 0.0_real64
+            if (label_counts(i_cluster) == 0) cycle
+            do i_dim = 1, n_dims
+                ! one of the two factors is 1, so their product is the power of two itself
+                call scaling_factors(scaling_exponent_for_largest(factors(i_dim, i_cluster)), down, up)
+                factors(i_dim, i_cluster) = down*up
+                centroids(i_dim, i_cluster) = 0.0_real64
+            end do
         end do
+
         do i_point = 1, n_points
             label = labels(i_point)
             do i_dim = 1, n_dims
-                centroids(i_dim, label) = centroids(i_dim, label) + scale(data_points(i_dim, i_point), exponent)
+                centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)*factors(i_dim, label)
             end do
         end do
 
         do i_cluster = 1, n_clusters
             if (label_counts(i_cluster) == 0) cycle
             do i_dim = 1, n_dims
-                centroids(i_dim, i_cluster) = scale(centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64), &
-                                                    -exponent)
+                ! dividing by a power of two is exact, and brings the mean back to its values' scale
+                centroids(i_dim, i_cluster) = (centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64)) &
+                                              /factors(i_dim, i_cluster)
             end do
         end do
     end subroutine k_means_recompute_cluster_centroids_helper
