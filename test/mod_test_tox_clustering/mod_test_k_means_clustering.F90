@@ -25,7 +25,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(17))
+        allocate (all_tests(18))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_many_iterations", test_k_means_clustering_many_iterations)
@@ -46,7 +46,9 @@ contains
                                   test_k_means_clustering_empty_cluster_moves_with_the_data)
         all_tests(15) = test_case("test_k_means_clustering_squares_past_huge", test_k_means_clustering_squares_past_huge)
         all_tests(16) = test_case("test_k_means_clustering_squares_below_tiny", test_k_means_clustering_squares_below_tiny)
-        all_tests(17) = test_case("test_k_means_clustering_means_past_huge", test_k_means_clustering_means_past_huge)
+        all_tests(17) = test_case("test_k_means_clustering_means_past_huge_of_opposite_signs", &
+                                  test_k_means_clustering_means_past_huge_of_opposite_signs)
+        all_tests(18) = test_case("test_k_means_clustering_means_past_huge", test_k_means_clustering_means_past_huge)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -476,13 +478,13 @@ contains
                            expected_centroids, "test_k_means_clustering_squares_below_tiny")
     end subroutine test_k_means_clustering_squares_below_tiny
 
-    !> A centroid near huge is the mean of its points (the #223 class, not listed there): the
-    !| points are summed scaled by the run's power of two, so two points at x = 2**1023 have the
-    !| mean x, where a plain sum gave +Inf. 1-D points x, x, -x, -x from x and -x: the
+    !> A centroid near huge is the mean of its points, of either sign: two points at x = 2**1023
+    !| have the mean x, and two at -x the mean -x, where a plain sum gave +Inf and -Inf. 1-D points
+    !| x, x, -x, -x from x and -x: the
     !| differences across the clusters, 2x, have squares that fit once scaled, so the labels are
     !| [1, 1, 2, 2] and the centroids x and -x, exactly. (A plain sum made both centroids infinite,
     !| every point then tied at +Inf, and all went into cluster 2.)
-    subroutine test_k_means_clustering_means_past_huge()
+    subroutine test_k_means_clustering_means_past_huge_of_opposite_signs()
         real(real64), parameter :: x = 2.0_real64**1023
         real(real64) :: data_points(1, 4), initial_centroids(1, 2)
 
@@ -490,6 +492,26 @@ contains
         initial_centroids(1, :) = [x, -x]
 
         call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
-                           initial_centroids, "test_k_means_clustering_means_past_huge")
+                           initial_centroids, "test_k_means_clustering_means_past_huge_of_opposite_signs")
+    end subroutine test_k_means_clustering_means_past_huge_of_opposite_signs
+
+    !> BUG (the #223 class, not listed there): a centroid is the plain sum of its points divided by
+    !| their count, so the mean of two points at 2**1023 is +Inf. Points (x, 0), (x, 0), (x, 4),
+    !| (x, 6) with x = 2**1023, from (x, 0) and (x, 6): every difference is in the second
+    !| coordinate and its square small, so the first assignment is right ([1, 1, 2, 2]), and the
+    !| centroids should end at (x, 0) and (x, 5). Today the run returns labels [2, 2, 2, 2]: a run
+    !| exponent picked for x makes the squares of the differences 4 and 6 read 0, so every distance
+    !| ties and the tie puts every point into cluster 2. (Before the run exponent, the centroids
+    !| became +Inf instead, with the same labels.)
+    subroutine test_k_means_clustering_means_past_huge()
+        real(real64), parameter :: x = 2.0_real64**1023
+        real(real64) :: data_points(2, 4), initial_centroids(2, 2), expected_centroids(2, 2)
+
+        data_points = reshape([x, 0.0_real64, x, 0.0_real64, x, 4.0_real64, x, 6.0_real64], shape(data_points))
+        initial_centroids = reshape([x, 0.0_real64, x, 6.0_real64], shape(initial_centroids))
+        expected_centroids = reshape([x, 0.0_real64, x, 5.0_real64], shape(expected_centroids))
+
+        call check_k_means(2_int32, data_points, 4_int32, 2_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+                           expected_centroids, "test_k_means_clustering_means_past_huge")
     end subroutine test_k_means_clustering_means_past_huge
 end module mod_test_k_means_clustering
