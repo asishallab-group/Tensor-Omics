@@ -927,8 +927,12 @@ only a size. `foo` called the producer before allocating what it writes into, wh
 - **P1, where a producer input comes from** (`roles._refuses_a_supplier`): a scalar constant, or
   an input of the implementation the caller passes in every tier that calls the producer -- in
   Fortran an `intent(in)` or `intent(inout)` dummy `foo` keeps, required, optional with a
-  `DM_DEFAULT` (resolved before the call, by the supplier's own name), or optional into an optional
-  producer input (passed through); in a binding a parameter, or what it reads off one first. A
+  `DM_DEFAULT` (resolved before the call, by the supplier's own name, whether or not the producer's
+  input is optional too: passed through absent, the producer applied its own default while the
+  implementation applied the consumer's, and a work array came out sized for another stride --
+  memory corruption where the producer's default is the smaller), or optional without one into an
+  optional producer input (passed through, and left out of the Python and R call, which passed
+  `None`/`NULL` the producer's binding refused); in a binding a parameter, or what it reads off one first. A
   work array, a permutation `foo` builds, an output, an optional without a default into a required
   input (a crash before), and a prologue-only argument are refused, each with its own message.
   Chaining, and `validate`'s rule that the prologue writes nothing the setup read, stay their own

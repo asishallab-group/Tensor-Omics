@@ -21,6 +21,7 @@ module fx_sized_impl
     public :: fx_unpadded_total_impl, fx_unpadded_impl, fx_unstrided_total_impl, fx_unstrided_impl
     public :: fx_omitted_once_impl
     public :: fx_method_total_impl, fx_method_filled_impl, fx_second_total_impl, fx_second_impl
+    public :: fx_wide_stride_total_impl, fx_absent_stride_impl, fx_absent_method_impl
     public :: METHOD_ONE, METHOD_TWO
 
     !> the first method
@@ -715,4 +716,77 @@ contains
             !! the sum of `x`, in each slot
         filled = sum(x)
     end subroutine fx_second_impl
+
+    !> summary: Slots of a work array, plus a thousand for each slot the stride and it disagree on
+    !| author: A Developer
+    !| `stride` defaults to four here and to three in the producer: `foo` resolves this default
+    !| before the call (P1), as Python and R pass it, so the producer sizes the work array for the
+    !| stride the implementation uses. Before, an omitted `stride` reached the producer absent, and
+    !| the work array was sized for three.
+    pure subroutine fx_wide_stride_total_impl(n_items, x, stride, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: stride
+            !! slots per value
+            !! DM_DEFAULT(4_int32)
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the number of slots, plus a thousand for each the stride expects beyond them
+        integer(int32) :: slots
+        M_DEFAULT_VAL(stride, slots, 4_int32)
+        tmp_buf = 1.0_real64
+        total = sum(tmp_buf) + 1000.0_real64*real(n_items*slots - work_size, real64) + 0.0_real64*sum(x)
+    end subroutine fx_wide_stride_total_impl
+
+    !> summary: A result sized by the producer's stride, or by one the caller gives
+    !| author: A Developer
+    !| `stride` is optional without a default, so where it is left out the producer is called
+    !| without it and takes its own default (P1); Python and R used to pass `None` or `NULL`,
+    !| which the producer's binding refused.
+    pure subroutine fx_absent_stride_impl(n_items, x, stride, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: stride
+            !! slots per value; the producer's own where it is left out
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+        if (present(stride)) filled = filled + 0.0_real64*real(stride, real64)
+    end subroutine fx_absent_stride_impl
+
+    !> summary: A result sized by the producer's method, or by one the caller gives
+    !| author: A Developer
+    !| The same with a mode: left out, the producer takes its own default, `two`.
+    pure subroutine fx_absent_method_impl(n_items, x, method, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: method
+            !! how many slots per item; the producer's own where it is left out
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_sized_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_sized_impl(module):METHOD_TWO(variable)]] |
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(method_size, fx_any_method_size, fx_producers, AUTO)
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+        if (present(method)) filled = filled + 0.0_real64*real(method, real64)
+    end subroutine fx_absent_method_impl
 end module fx_sized_impl

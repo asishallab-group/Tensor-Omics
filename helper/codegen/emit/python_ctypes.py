@@ -803,6 +803,16 @@ class PythonEmitter:
             writer.extend(body)
         return writer.render()
 
+    def _producer_keyword(self, supply, wrapper: CWrapper, stashes: dict[str, str]) -> str:
+        """One producer input of the call, as `name=value` -- or, for an optional of the caller's
+        without a default, left out where it is `None`, so absent stays absent and the
+        producer's own default applies (P1); its binding refuses `None` for a defaulted one."""
+        value = self._producer_value(supply, stashes)
+        supplied = wrapper.argument(supply.argument) if supply.argument is not None else None
+        if supplied is not None and supplied.optional and not supplied.has_default:
+            return f'**({{}} if {value} is None else {{"{supply.name}": {value}}})'
+        return f"{supply.name}={value}"
+
     @staticmethod
     def _producer_value(supply, stashes: dict[str, str]) -> str:
         """What to pass for one producer input: an argument, or a constant outright -- a mode
@@ -874,7 +884,7 @@ class PythonEmitter:
             # the keyword is the *producer's* parameter name, the value the consumer's
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
-                f"{supply.name}={self._producer_value(supply, stashes)}"
+                self._producer_keyword(supply, wrapper, stashes)
                 for supply in plan.binding_inputs)
             single = returns_single(plan.producer)
             if single:

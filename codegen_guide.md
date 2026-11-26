@@ -945,8 +945,10 @@ that calls the producer:
 
 - in Fortran an `intent(in)` or `intent(inout)` argument `foo` keeps -- required; optional with a
   `DM_DEFAULT`, which `foo` resolves before the call (by its own name, whatever the table calls
-  it); or optional where the producer's input is optional too, passed through, so an absent value
-  stays absent;
+  it), whether or not the producer's input is optional too, so the producer is given your default,
+  as Python and R give it; or optional without one where the producer's input is optional too,
+  passed through, so an absent value stays absent -- an omitted optional stays omitted in every
+  tier: Python and R leave it out of their call rather than passing `None` or `NULL`;
 - in a binding a parameter, or what the binding reads off one before the producers run: an
   extent, a shape, a mask's count, a string's length.
 

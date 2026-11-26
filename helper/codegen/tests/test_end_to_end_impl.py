@@ -1117,6 +1117,35 @@ class TestAModeReachesAProducerAsAMode:
             fortran, "subroutine fx_second_total(", "end subroutine fx_second_total")
 
 
+class TestAnAbsentOptionalStaysAbsent:
+    """P1's pass-through: an optional of the caller's without a default, feeding a producer's
+    optional input that has one, is left out of the binding's call where the caller left it out,
+    so the producer takes its own default. Python and R passed `None` and `NULL`, which the
+    producer's binding refused -- for an integer and for a mode alike. And a consumer's own
+    default reaches the producer in every tier (`fx_wide_stride_total`, 4 where the producer's
+    is 3)."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([len(tox.fx_absent_stride(x)), len(tox.fx_absent_stride(x, 2)),
+                              len(tox.fx_absent_method(x)), len(tox.fx_absent_method(x, "one")),
+                              tox.fx_wide_stride_total(x)]))
+        """)
+
+        assert out == [9, 6, 6, 3, 12.0]
+
+    def test_r(self, built):
+        out = run_r(built, """
+            x <- c(1, 2, 3)
+            cat(length(fx_absent_stride(x)), length(fx_absent_stride(x, 2L)),
+                length(fx_absent_method(x)), length(fx_absent_method(x, "one")),
+                fx_wide_stride_total(x))
+        """)
+
+        assert out == ["9", "6", "6", "3", "12"]
+
+
 FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
 
 

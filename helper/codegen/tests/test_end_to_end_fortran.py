@@ -502,7 +502,7 @@ program probe
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: get_err_code, get_err_arg_pos
     use fx_sized, only: fx_norm_rank, fx_norm_rank_expert, fx_large_total, fx_default_scale, &
-        fx_padded_total
+        fx_padded_total, fx_wide_stride_total
     implicit none
     real(real64) :: x(2, 3) = reshape([3.0_real64, 4.0_real64, 0.6_real64, 0.8_real64, &
                                        1.5_real64, 2.0_real64], [2, 3])
@@ -598,6 +598,20 @@ class TestAnOptionalSupplier:
         """, probe=_SIZED_PROBE)
 
         assert out == ["0", "10.00", "0", "12.00"]
+
+    def test_its_default_is_resolved_where_the_producer_s_input_is_optional_too(self):
+        # `stride` defaults to 4 here and to 3 in the producer: left out, `foo` passes the 4 it
+        # resolved, so the work array has the 12 slots the implementation expects. Passed
+        # through absent, the producer sized it for 3 (9 slots), and 3 more were expected than
+        # there were: 9 + 3000
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_wide_stride_total(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+            call fx_wide_stride_total(3, values, 2, total, ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "12.00", "0", "6.00"]
 
     @pytest.fixture(autouse=True)
     def _paths(self, built, tmp_path):

@@ -1005,12 +1005,14 @@ class FortranWrapperEmitter:
     ) -> dict[str, Argument]:
         """Wrapper arguments a recommend routine needs by value, keyed by name.
 
-        A recommend routine is called directly, so an input the wrapper takes optionally
-        cannot simply be forwarded when the routine's own dummy is mandatory: an absent
-        optional passed there is not a Fortran program. Such an input has a `DM_DEFAULT`
-        (that is what makes it optional in the first place), so the wrapper resolves it into
-        a local first -- the argument when the caller gave one, the documented default when
-        not -- and hands the routine that.
+        A recommend routine is called directly, so an input the wrapper takes optionally with a
+        `DM_DEFAULT` is resolved into a local first -- the argument when the caller gave one,
+        the documented default when not -- and the routine is handed that (P1). Whether or not
+        the routine's own dummy is optional: an absent optional passed to a mandatory one is not
+        a Fortran program, and passed to an optional one it applied the *producer's* default,
+        while the implementation applies the consumer's -- a work array sized for a stride of
+        three, used with one of four. Python and R pass the consumer's published default too. An
+        optional without a default is passed through, so absent stays absent.
         """
         materialized: dict[str, Argument] = {}
         for argument in taken:
@@ -1022,7 +1024,7 @@ class FortranWrapperEmitter:
                 continue
             for supply in plan.inputs:
                 dummy = plan.producer.argument(supply.name)
-                if supply.argument is None or dummy is None or dummy.optional:
+                if supply.argument is None or dummy is None:
                     continue
                 # what supplies it, which a table may name differently from the producer
                 supplied = alloc.argument(supply.argument)

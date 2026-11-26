@@ -97,14 +97,25 @@ class RWrapperEmitter:
             producer = stripped_name(plan.producer)
             call_args = ", ".join(
                 f"{supply.name} = {self._producer_value(supply, wrapper)}"
-                for supply in plan.binding_inputs
+                for supply in plan.binding_inputs if not self._may_be_absent(supply, wrapper)
             )
-            call = f"{producer}({call_args})"
+            absent = [supply for supply in plan.binding_inputs
+                      if self._may_be_absent(supply, wrapper)]
+            if absent:
+                # an optional of the caller's without a default is left out where it is NULL,
+                # so absent stays absent and the producer's own default applies (P1)
+                given = ", ".join(
+                    f"if (!is.null({self._producer_value(supply, wrapper)})) "
+                    f"list({supply.name} = {self._producer_value(supply, wrapper)})"
+                    for supply in absent)
+                call = f"do.call({producer}, c(list({call_args}), {given}))"
+            else:
+                call = f"{producer}({call_args})"
             if returns_single(plan.producer):
                 writer.line(f"{argument.name} <- {self._producer_call(wrapper, plan, call, tables)}")
                 continue
 
-            key = (producer, call_args)
+            key = (producer, call)
             if key not in calls:
                 suffix = "" if not calls else f"_{len(calls)}"
                 calls[key] = f".{producer}_result{suffix}"
@@ -127,6 +138,13 @@ class RWrapperEmitter:
         names = ", ".join(t for t in tables if "=" not in t)
         return (f"tryCatch({call}, tox_error = function(e) "
                 f"{CONSUMER_ERROR}(e, c({positions}), {names}))")
+
+    @staticmethod
+    def _may_be_absent(supply, wrapper: CWrapper) -> bool:
+        """Whether the caller's argument supplying `supply` is an optional without a default,
+        which is `NULL` where it was left out."""
+        supplied = wrapper.argument(supply.argument) if supply.argument is not None else None
+        return supplied is not None and supplied.optional and not supplied.has_default
 
     def _producer_value(self, supply, wrapper: CWrapper) -> str:
         """What to pass for one producer input: an argument, or a constant outright -- a mode

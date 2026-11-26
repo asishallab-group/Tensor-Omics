@@ -15,7 +15,7 @@ module fx_producers_impl
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
     public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl, fx_rounded_impl
-    public :: fx_strided_size_impl, fx_method_size_impl
+    public :: fx_strided_size_impl, fx_method_size_impl, fx_any_method_size_impl
     public :: METHOD_ONE, METHOD_TWO, METHOD_THREE
 
     !> the first method: one slot per item
@@ -196,6 +196,27 @@ contains
             !! `n_items` times the method's code
         method_size = n_items*method
     end subroutine fx_method_size_impl
+
+    !> summary: A size of a number of items, times the code of a method, the second unless given
+    !| author: A Developer
+    pure subroutine fx_any_method_size_impl(n_items, method, method_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in), optional :: method
+            !! how many slots per item
+            !! DM_DEFAULT(METHOD_TWO)
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_producers_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_producers_impl(module):METHOD_TWO(variable)]] |
+            !! | three slots | [[fx_producers_impl(module):METHOD_THREE(variable)]] |
+        integer(int32), intent(out) :: method_size
+            !! `n_items` times the method's code
+        integer(int32) :: code
+        M_DEFAULT_VAL(method, code, METHOD_TWO)
+        method_size = n_items*code
+    end subroutine fx_any_method_size_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer
