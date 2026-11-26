@@ -4,7 +4,8 @@ Clustering for tensor omics: k-means over factors and trajectories, and hierarch
 (agglomerative) linkage clustering over a precomputed distance matrix.
 
 `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
-applies the same to whole time series, treating each factor's trajectory as one point.
+applies the same to whole time series, treating each sample's trajectory, over all its factors
+and timepoints, as one point.
 `linkage_clustering` takes the distances already computed and merges under the linkage
 criterion asked for, so the same matrix can be re-clustered without recomputing it.
 
@@ -106,7 +107,9 @@ def cluster_factor_trajectories_k_means(
         without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
         last sample, or its starting centroid if it never had one.
     max_iterations : int
-        number of maximum iterations of the clustering
+        number of maximum iterations of the clustering. Unlike
+        :func:`tensor_omics.k_means_clustering`, which defaults to
+        300, this one has to be given.
         The minimum valid value is `1`.
 
     Returns
@@ -190,9 +193,12 @@ def k_means_clustering(
 ):
     r"""k-means clustering algorithm
 
-    1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    1. Assigns each data point to one of `k` clusters whose centroid is closest
     2. Recalculates the centroids using the mean of its assigned points
     3. repeat 1-2 until assignment remains unchanged
+
+    A point exactly as close to several centroids goes to the last of them, the one with the
+    highest cluster index.
 
     The squared distances are compared with the points and centroids scaled by one power of two
     for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
@@ -211,7 +217,9 @@ def k_means_clustering(
         without points (its `label_counts` is 0) keeps the centroid it had when it lost its
         last point, or its starting centroid if it never had one.
     max_iterations : int, optional, default 300
-        number of maximum iterations of the clustering.
+        number of maximum iterations of the clustering. Defaults to 300, while
+        :func:`tensor_omics.cluster_factor_trajectories_k_means`
+        requires it.
         The minimum valid value is `1`.
         The default value is `300`.
 
@@ -302,7 +310,7 @@ def linkage_clustering(
     Parameters
     ----------
     distances : np.ndarray[np.float64] of shape (n_points, n_points,), column-major (order='F'), modified in place
-        symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+        symmetric distance matrix, holding the non-negative distances between points. Distance of X->X is always zero.
 
         The bottom triangle is used as scratch and restored from the top triangle before
         returning, on success or on error, so the matrix comes back unchanged. There is no
@@ -320,16 +328,27 @@ def linkage_clustering(
         with keys:
 
         merge_i : np.ndarray[np.int32] of shape (n_points - 1,), read-only
-            holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            the first of the two clusters merged at merge k: a positive label is a point, its
+            1-based index; a negative label `-j` is the cluster made by merge j. Of the two, this
+            is the one whose lowest point index is the higher.
+
+            The signs are the reverse of R's `hclust`, whose `merge` holds points as negative
+            and merged clusters as positive numbers.
             A result is a value; call `.copy()` to obtain a modifiable array.
         merge_j : np.ndarray[np.int32] of shape (n_points - 1,), read-only
-            holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            the second of the two clusters merged at merge k, labelled as in `merge_i`: the one
+            whose lowest point index is the lower.
+
+            Two pairs at the same distance merge in the order of their lowest point indices: the
+            pair whose lower cluster has the lowest point index first, then the one whose higher
+            cluster has.
             A result is a value; call `.copy()` to obtain a modifiable array.
         heights : np.ndarray[np.float64] of shape (n_points - 1,), read-only
-            height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
+            the linkage distance at which merge k joins its two clusters, by the method's
+            criterion. The heights never decrease from one merge to the next.
             A result is a value; call `.copy()` to obtain a modifiable array.
         cluster_sizes : np.ndarray[np.int32] of shape (n_points - 1,), read-only
-            size of cluster at iteration k
+            number of points in the cluster made by merge k
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

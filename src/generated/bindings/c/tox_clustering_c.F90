@@ -6,7 +6,8 @@
 !| (agglomerative) linkage clustering over a precomputed distance matrix.
 !|
 !| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
-!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| applies the same to whole time series, treating each sample's trajectory, over all its factors
+!| and timepoints, as one point.
 !| `linkage_clustering` takes the distances already computed and merges under the linkage
 !| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_c
@@ -75,7 +76,9 @@ contains
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
             !! holds the number of samples having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering
+            !! number of maximum iterations of the clustering. Unlike
+            !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
+            !! 300, this one has to be given.
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -165,7 +168,9 @@ contains
         real(c_double), dimension(n_factors*n_timepoints, n_samples), intent(out), target :: tmp_flattened_trajectories
             !! Work matrix holding each sample's trajectory as one column
         integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering
+            !! number of maximum iterations of the clustering. Unlike
+            !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
+            !! 300, this one has to be given.
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -204,9 +209,12 @@ contains
     end subroutine cluster_factor_trajectories_k_means_expert_c
 
     !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering(subroutine)]]
-    !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    !| 1. Assigns each data point to one of `k` clusters whose centroid is closest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
+    !|
+    !| A point exactly as close to several centroids goes to the last of them, the one with the
+    !| highest cluster index.
     !|
     !| The squared distances are compared with the points and centroids scaled by one power of two
     !| for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
@@ -249,7 +257,9 @@ contains
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
             !! holds the number of points having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering.
+            !! number of maximum iterations of the clustering. Defaults to 300, while
+            !! [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl(subroutine)]]
+            !! requires it.
             !! The minimum valid value is `1_int32`.
             !! The default value is `300_int32`.
         integer(c_int), intent(out), target :: ierr
@@ -301,7 +311,7 @@ contains
         integer(c_int), intent(in), target :: n_points
             !! number of points to cluster
         real(c_double), dimension(n_points, n_points), intent(inout), target :: distances
-            !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+            !! symmetric distance matrix, holding the non-negative distances between points. Distance of X->X is always zero.
             !!
             !! @note
             !! The bottom triangle is used as scratch and restored from the top triangle before
@@ -312,13 +322,24 @@ contains
             !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
             !! distance-matrix naming convention in the generated wrapper.
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_i
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            !! the first of the two clusters merged at merge k: a positive label is a point, its
+            !! 1-based index; a negative label `-j` is the cluster made by merge j. Of the two, this
+            !! is the one whose lowest point index is the higher.
+            !!
+            !! The signs are the reverse of R's `hclust`, whose `merge` holds points as negative
+            !! and merged clusters as positive numbers.
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_j
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            !! the second of the two clusters merged at merge k, labelled as in `merge_i`: the one
+            !! whose lowest point index is the lower.
+            !!
+            !! Two pairs at the same distance merge in the order of their lowest point indices: the
+            !! pair whose lower cluster has the lowest point index first, then the one whose higher
+            !! cluster has.
         real(c_double), dimension(n_points - 1), intent(out), target :: heights
-            !! height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
+            !! the linkage distance at which merge k joins its two clusters, by the method's
+            !! criterion. The heights never decrease from one merge to the next.
         integer(c_int), dimension(n_points - 1), intent(out), target :: cluster_sizes
-            !! size of cluster at iteration k
+            !! number of points in the cluster made by merge k
         character(len=1, kind=c_char), dimension(8), intent(in), target :: method
             !! used algorithm
             !!

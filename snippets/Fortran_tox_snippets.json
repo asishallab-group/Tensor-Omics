@@ -43,7 +43,7 @@
   },
   "k_means_clustering (call)": {
     "prefix": "tox:k_means_clustering",
-    "description": "1. Assigns each data point to one of `k` clusters whose centroid is clostest",
+    "description": "1. Assigns each data point to one of `k` clusters whose centroid is closest",
     "body": [
       "call k_means_clustering( &",
       "    n_clusters=${1:n_clusters}, &",
@@ -59,7 +59,7 @@
   },
   "k_means_clustering (call, checked)": {
     "prefix": "tox:k_means_clustering.checked",
-    "description": "1. Assigns each data point to one of `k` clusters whose centroid is clostest (with error check)",
+    "description": "1. Assigns each data point to one of `k` clusters whose centroid is closest (with error check)",
     "body": [
       "call k_means_clustering( &",
       "    n_clusters=${1:n_clusters}, &",

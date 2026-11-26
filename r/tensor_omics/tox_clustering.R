@@ -20,7 +20,9 @@
 #'   The final values will be the final centroids of the clusters. A cluster that ends up
 #'   without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
 #'   last sample, or its starting centroid if it never had one.
-#' @param max_iterations a integer scalar. number of maximum iterations of the clustering
+#' @param max_iterations a integer scalar. number of maximum iterations of the clustering. Unlike
+#'   \code{\link{k_means_clustering}}, which defaults to
+#'   300, this one has to be given.
 #'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{centroids}{a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
@@ -55,9 +57,12 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 
 #' k-means clustering algorithm
 #'
-#' 1. Assigns each data point to one of `k` clusters whose centroid is clostest
+#' 1. Assigns each data point to one of `k` clusters whose centroid is closest
 #' 2. Recalculates the centroids using the mean of its assigned points
 #' 3. repeat 1-2 until assignment remains unchanged
+#'
+#' A point exactly as close to several centroids goes to the last of them, the one with the
+#' highest cluster index.
 #'
 #' The squared distances are compared with the points and centroids scaled by one power of two
 #' for the whole run, chosen by f42's rule for sums of squares from the largest magnitude among
@@ -74,7 +79,9 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #'   The final values will be the final centroids of the clusters. A cluster that ends up
 #'   without points (its `label_counts` is 0) keeps the centroid it had when it lost its
 #'   last point, or its starting centroid if it never had one.
-#' @param max_iterations a integer scalar. number of maximum iterations of the clustering.
+#' @param max_iterations a integer scalar. number of maximum iterations of the clustering. Defaults to 300, while
+#'   \code{\link{cluster_factor_trajectories_k_means}}
+#'   requires it.
 #'   The minimum valid value is `1`.
 #'   The default value is `300`.
 #' @return a named list with elements:
@@ -117,7 +124,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #' Generated from the Fortran procedure \code{tox_clustering::linkage_clustering}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param distances a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+#' @param distances a numeric matrix. symmetric distance matrix, holding the non-negative distances between points. Distance of X->X is always zero.
 #'
 #'   The bottom triangle is used as scratch and restored from the top triangle before
 #'   returning, on success or on error, so the matrix comes back unchanged. There is no
@@ -128,7 +135,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #' @param method a string, one of "average", "weighted", "ward". used algorithm
 #'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
-#'   \item{distances}{a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+#'   \item{distances}{a numeric matrix. symmetric distance matrix, holding the non-negative distances between points. Distance of X->X is always zero.
 #'
 #'     The bottom triangle is used as scratch and restored from the top triangle before
 #'     returning, on success or on error, so the matrix comes back unchanged. There is no
@@ -136,10 +143,21 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #'
 #'     Its structure (symmetry, non-negativity, zero diagonal) is validated by the
 #'     distance-matrix naming convention in the generated wrapper.}
-#'   \item{merge_i}{a integer vector. holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes}
-#'   \item{merge_j}{a integer vector. holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes}
-#'   \item{heights}{a numeric vector. height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter}
-#'   \item{cluster_sizes}{a integer vector. size of cluster at iteration k}
+#'   \item{merge_i}{a integer vector. the first of the two clusters merged at merge k: a positive label is a point, its
+#'     1-based index; a negative label `-j` is the cluster made by merge j. Of the two, this
+#'     is the one whose lowest point index is the higher.
+#'
+#'     The signs are the reverse of R's `hclust`, whose `merge` holds points as negative
+#'     and merged clusters as positive numbers.}
+#'   \item{merge_j}{a integer vector. the second of the two clusters merged at merge k, labelled as in `merge_i`: the one
+#'     whose lowest point index is the lower.
+#'
+#'     Two pairs at the same distance merge in the order of their lowest point indices: the
+#'     pair whose lower cluster has the lowest point index first, then the one whose higher
+#'     cluster has.}
+#'   \item{heights}{a numeric vector. the linkage distance at which merge k joins its two clusters, by the method's
+#'     criterion. The heights never decrease from one merge to the next.}
+#'   \item{cluster_sizes}{a integer vector. number of points in the cluster made by merge k}
 #' @export
 linkage_clustering <- function(distances, method) {
     distances <- .tox_as_double_matrix(distances, "distances")
