@@ -642,6 +642,18 @@ what reaches the implementation, and data is the most direct case of it.
 could be decided at synthesis. The plan is the truth: a table row `| a | a |` against a name match
 is one call by the plans and two by the text.
 
+**Its Fortran half: rule K** (`impl-layer.md`, "A producer call is taken over whole or kept
+whole"). `foo` keeps every value of a call one of whose values it must keep, so no call is split
+between `foo` and the caller. K decides `foo`'s *signature*, during synthesis, before any plan
+exists, so it cannot consult the plans; it keys a call by `roles.producer_call_key`, which resolves
+each row with the function the plans are built with (`roles.resolve_cell`: `| a | a |` is no row
+there either) and the project's one evaluator, refuses the one row the plans ignore (N1, a row
+naming an output), and `roles._check_calls_kept_whole` asserts on every run that the key grouped
+the calls as `OutputFromPlan.call` does. **The collapse:** where K leaves `foo` nothing to take
+over, the pair is one lone wrapper, whose binding computes every AUTO value -- so an expert E2
+published for that call's data is no longer published in Python and R (FES accepted it,
+2026-11-26).
+
 **Enforced, not listed.** The attack that prototyped E2 found the sites a list of them missed
 misbehaving: R took the caller's `norms` and then overwrote it with the producer's, the shim
 skipped its integer check for a data array (NA reached Fortran as INT_MIN), and a shape check

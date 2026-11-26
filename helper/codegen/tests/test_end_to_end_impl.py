@@ -984,6 +984,62 @@ class TestAValueOnlyABoundNames:
         assert out[1][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "x"]
 
 
+def function_body(text: str, start: str, end: str) -> str:
+    """The text of one generated function, from `start` to the next `end` after it."""
+    head = text.index(start)
+    tail = text.find(end, head + len(start))
+    return text[head:] if tail < 0 else text[head:tail]
+
+
+class TestACallKeptWhole:
+    """Rule K: one producer call gives `norms` and `n_large`, which sizes something the caller
+    passes or receives, so the call is kept whole -- the wrapper computes neither, and Python and
+    R make the call once. Before, `foo` took `norms` over and called the producer again for it.
+    """
+
+    def test_python(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            x = np.array([[2.0, 0.5, 3.0]])
+            print(json.dumps([tox.fx_picked_norms(x).tolist(),
+                              raised(lambda: tox.fx_weighted_norms(x, np.array([10.0, 20.0]))),
+                              raised(lambda: tox.fx_weighted_norms(x, np.array([10.0])))]))
+        """)
+
+        assert out[0] == [2.0, 3.0]
+        assert out[1] == ["returned", 2.0 + 0.5 + 3.0 + 30.0]
+        assert out[2][:3] == ["ToxArgumentError", None, "w"], out[2]
+
+    def test_r(self, built):
+        x = "matrix(c(2, 0.5, 3), nrow = 1)"
+        assert r_raised(built, f"fx_picked_norms({x})") == ["returned", "2 3"]
+        assert r_raised(built, f"fx_weighted_norms({x}, c(10, 20))") == ["returned", "35.5"]
+        assert r_raised(built, f"fx_weighted_norms({x}, c(10))")[:3] == [
+            "tox_shape_error", "NA", "w"]
+
+    def test_each_binding_makes_the_call_once_and_the_wrapper_none(self, built):
+        python = (built / "py" / "fx_impl" / "fx_sized.py").read_text()
+        r = (built / "r" / "fx_sized.R").read_text()
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        for name in ("fx_picked_norms", "fx_weighted_norms"):
+            assert function_body(python, f"def {name}(", "\ndef ").count("fx_large_norms(") == 1
+            assert function_body(r, f"{name} <- function(", "\n}").count("fx_large_norms(") == 1
+            assert "call fx_large_norms(" not in function_body(
+                fortran, f"subroutine {name}(", f"end subroutine {name}")
+        # the negative control: a call nothing keeps is taken over, so `foo` makes it
+        assert "call fx_large_norms(" in function_body(
+            fortran, "subroutine fx_large_total(", "end subroutine fx_large_total")
+
+    def test_nothing_is_left_to_take_over_so_there_is_one_wrapper(self, built):
+        out = run_python(built, """
+            import inspect
+            print(json.dumps([list(inspect.signature(tox.fx_weighted_norms).parameters),
+                              hasattr(tox, "fx_weighted_norms_expert"),
+                              hasattr(tox, "fx_picked_norms_expert")]))
+        """)
+
+        assert out == [["x", "w"], False, False]
+
+
 FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
 
 

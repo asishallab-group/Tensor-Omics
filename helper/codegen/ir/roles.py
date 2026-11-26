@@ -99,6 +99,71 @@ class ProducerInput:
 
 
 @dataclass(frozen=True)
+class Supplier:
+    """What one `Supplied by` cell resolves to: the key a producer call is made of (rule K).
+
+    `kind` is `argument` (`value` the consumer's argument, lower-cased), `constant` (`value` the
+    evaluated constant with its Python type, so `.true.` is not `1`), or `unresolved` (`value`
+    the text, which `_resolve_output_from` reports).
+    """
+
+    kind: str
+    value: object
+
+
+def resolve_cell(text: str, has_argument, evaluator: ConstantEvaluator | None) -> Supplier:
+    """Resolve one `Supplied by` cell: the consumer's argument of that name, else a constant.
+
+    The one resolution of a cell. `roles` builds the plans with it, and synthesis keys a producer
+    call with it (`producer_call_key`) before any plan exists, with the project's one evaluator
+    (`Project.evaluator`), so the two group calls alike. `has_argument(name)` says whether the
+    consumer has an argument of that name.
+    """
+    cell = text.strip()
+    if has_argument(cell):
+        return Supplier("argument", cell.lower())
+    if evaluator is not None:
+        try:
+            value = evaluator.evaluate(cell)
+        except ConstantError:
+            pass
+        else:
+            return Supplier("constant", (type(value).__name__, value))
+    return Supplier("unresolved", cell.lower())
+
+
+def producer_input_rows(argument: Argument, conventions: Conventions = CONVENTIONS):
+    """The `(producer input, cell)` rows of `argument`'s producer-input tables, as written."""
+    return [
+        (wanted.text.strip(), given.text.strip())
+        for table in argument.doc.tables
+        if _looks_like_a_producer_input_table(table, conventions)
+        for wanted, given in table.rows
+    ]
+
+
+def producer_call_key(argument: Argument, arguments, conventions: Conventions = CONVENTIONS,
+                      evaluator: ConstantEvaluator | None = None) -> tuple:
+    """The producer call a `DM_OUTPUT_FROM` names, as synthesis keys it (rule K).
+
+    The producer, and each table row resolved as `_resolve_output_from` resolves it
+    (`resolve_cell`) against `arguments`, the consumer's; a row whose cell resolves to the
+    name-matched argument is no row (`| n_items | N_ITEMS |`). Name-matched inputs need no part
+    in it: one consumer matches them alike in every plan. Two arguments share a key exactly
+    where their plans share `OutputFromPlan.call`, which `_check_calls_kept_whole` asserts.
+    """
+    directive = argument.directives.output_from
+    names = {other.name.lower() for other in arguments}
+    rows = set()
+    for wanted, given in producer_input_rows(argument, conventions):
+        supplier = resolve_cell(given, lambda name: name.lower() in names, evaluator)
+        if supplier == Supplier("argument", wanted.lower()):
+            continue
+        rows.add((wanted.lower(), supplier))
+    return directive.module.lower(), directive.procedure.lower(), frozenset(rows)
+
+
+@dataclass(frozen=True)
 class OutputFromPlan:
     """How an argument is obtained by calling another procedure.
 
@@ -124,7 +189,10 @@ class OutputFromPlan:
 
         One call fills every argument it outputs into -- but only arguments whose plans pass it
         the same inputs. Two arguments a table supplies differently (`a | a1`, `a | a2`) are two
-        calls, each into its own argument. Python and R key their calls the same way.
+        calls, each into its own argument. Synthesis keys a call before any plan exists, through
+        the resolver this is built with (`producer_call_key`), so `foo` keeps or takes over a
+        call whole (rule K). Python and R group their calls by the call they render, which can
+        only merge plans whose binding inputs agree, never split one.
         """
         return id(self.producer), self.inputs
 
@@ -289,7 +357,10 @@ def analyse_project(project, diagnostics: DiagnosticBag,
     # has its own roles and the producer can be looked up. The evaluator is built once:
     # a producer-input table may supply a constant, which has to be a value by the time
     # an emitter passes it on.
-    evaluator = ConstantEvaluator(project.constant_values())
+    evaluator = project.evaluator()
+    # what the rules whose cause sits in an implementation's source have said, so each says it
+    # once per implementation, not once per wrapper of a mode split (`_OncePerImplementation`)
+    reported: set = set()
     for module in project:
         for procedure in module.exported_procedures:
             # once per generated pair: its expert half carries every argument the plain half has,
@@ -299,18 +370,74 @@ def analyse_project(project, diagnostics: DiagnosticBag,
             expert = module.procedure(procedure.name + conventions.expert_suffix)
             plain_half = (expert is not None
                           and plain_of_an_expert(expert, project, conventions) is procedure)
-            _resolve_output_from(procedure, project,
-                                 DiagnosticBag() if plain_half else diagnostics,
-                                 conventions, evaluator)
+            bag = DiagnosticBag() if plain_half else diagnostics
+            implementation = _implementation_of(procedure, project, conventions)
+            once = _OncePerImplementation(bag, reported, id(implementation or procedure))
+            _resolve_output_from(procedure, project, bag, conventions, evaluator, once)
             if not plain_half:
                 _check_refined_values(procedure, project, diagnostics, conventions)
                 _check_repeated_outputs(procedure, diagnostics)
+                plain = plain_of_an_expert(procedure, project, conventions)
+                if plain is not None:
+                    _check_calls_kept_whole(procedure, plain, diagnostics)
     _check_producer_cycles(project, diagnostics, conventions)
+
+
+class _OncePerImplementation:
+    """Reports a diagnostic once per implementation: once, not once per wrapper of a mode split.
+
+    For the rules whose cause sits in the implementation's own source -- a table row, the
+    supplier a directive names -- and which every per-mode wrapper would otherwise find again,
+    the same message at the same line. Keyed by the implementation, the location and the
+    message, which name the implementation rather than the wrapper (4c), so they agree.
+    """
+
+    def __init__(self, diagnostics: DiagnosticBag, reported: set, implementation: int):
+        self.diagnostics = diagnostics
+        self.reported = reported
+        self.implementation = implementation
+
+    def error(self, message: str, entity=None, location: SourceLocation | None = None,
+              note: str | None = None) -> None:
+        where = location or (entity.location if entity is not None else None)
+        key = (self.implementation, str(where), message)
+        if key in self.reported:
+            return
+        self.reported.add(key)
+        self.diagnostics.error(message, entity=entity, location=location, note=note)
+
+
+def _check_calls_kept_whole(expert: Procedure, plain: Procedure,
+                            diagnostics: DiagnosticBag) -> None:
+    """Assert rule K: no producer call of a generated pair is kept in part and taken over in part.
+
+    Synthesis decided `plain`'s signature by `producer_call_key` before any plan existed; this
+    checks, on the plans, that it grouped the calls as `OutputFromPlan.call` does. With the
+    table rows refused that the plans would ignore (N1), no source reaches it: a failure is the
+    generator's, reported once per pair at the first kept value's directive.
+    """
+    for arguments in _producer_calls(expert):
+        kept = [a for a in arguments if plain.argument(a.name) is not None]
+        taken = [a for a in arguments if plain.argument(a.name) is None]
+        if not kept or not taken:
+            continue
+        plan = kept[0].roles.computed_from
+        directive = kept[0].directives.output_from
+        diagnostics.error(
+            f"internal error: '{plain.name}' keeps {', '.join(repr(a.name) for a in kept)} but "
+            f"takes over {', '.join(repr(a.name) for a in taken)}, which one call of "
+            f"'{plan.producer.name}' fills (pair '{plain.name}' / '{expert.name}')",
+            entity=kept[0],
+            location=_location_of(kept[0], directive.line_number if directive else None),
+            note=("a producer call is taken over whole or kept whole (rule K); synthesis keyed "
+                  "this call differently from its plans, which is a defect of the generator"),
+        )
 
 
 def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBag,
                          conventions: Conventions = CONVENTIONS,
-                         evaluator: ConstantEvaluator | None = None) -> None:
+                         evaluator: ConstantEvaluator | None = None,
+                         once: _OncePerImplementation | None = None) -> None:
     """Attach an `OutputFromPlan` to every argument documented with `DM_OUTPUT_FROM`.
 
     The producer is a published entry point: a hand-written `M_EXPORT_C` procedure, or the
@@ -336,6 +463,8 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
     another module; the Python emitter imports it where it is called, and R has every
     wrapper in one environment.
     """
+    if once is None:
+        once = _OncePerImplementation(diagnostics, set(), id(consumer))
     called_here: dict[tuple, list[Argument]] = {}
     # where `consumer` is a generated pair's expert: the plain half, which `foo` is
     plain = plain_of_an_expert(consumer, project, conventions)
@@ -400,7 +529,7 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             continue
 
         renames = _producer_input_table(argument, consumer, producer,
-                                        diagnostics, conventions)
+                                        diagnostics, conventions, once)
         if renames is None:
             continue
 
@@ -425,23 +554,27 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             nested = producer_input.directives.output_from
             derived = bool(producer_input.roles and producer_input.roles.is_derived) or bool(
                 nested is not None and nested.is_automatic)
-            supplier = renames.get(producer_input.name.lower(), producer_input.name)
-            match = consumer.argument(supplier)
-            if match is not None:
-                inputs.append(ProducerInput(producer_input.name, argument=match.name,
+            cell = renames.get(producer_input.name.lower())
+            supplier = cell if cell is not None else producer_input.name
+            # a row is resolved as synthesis keys the call (`resolve_cell`): the consumer's
+            # argument, else a constant, which is how a producer input the consumer simply
+            # does not have gets a value; without a row, the argument of the input's name
+            if cell is not None:
+                resolved = resolve_cell(cell, lambda name: consumer.argument(name) is not None,
+                                        evaluator)
+            elif consumer.argument(supplier) is not None:
+                resolved = Supplier("argument", supplier.lower())
+            else:
+                resolved = Supplier("unresolved", supplier.lower())
+            if resolved.kind == "argument":
+                inputs.append(ProducerInput(producer_input.name,
+                                            argument=consumer.argument(resolved.value).name,
                                             derived=derived))
                 continue
-            # not an argument of the consumer: a table may supply it as a constant, which
-            # is how a producer input the consumer simply does not have gets a value
-            if supplier != producer_input.name and evaluator is not None:
-                try:
-                    value = evaluator.evaluate(supplier)
-                except ConstantError:
-                    pass
-                else:
-                    inputs.append(ProducerInput(producer_input.name, constant=value,
-                                                derived=derived))
-                    continue
+            if resolved.kind == "constant":
+                inputs.append(ProducerInput(producer_input.name, constant=resolved.value[1],
+                                            derived=derived))
+                continue
             if derived and not fortran_calls:
                 continue  # nothing that calls the producer here passes it
             if plain is not None and plain.argument(supplier) is not None:
@@ -1225,13 +1358,17 @@ def _looks_like_a_producer_input_table(table: DocTable, conventions: Conventions
 
 
 def _producer_input_table(argument: Argument, consumer: Procedure, producer: Procedure,
-                          diagnostics: DiagnosticBag,
-                          conventions: Conventions) -> dict[str, str] | None:
+                          diagnostics: DiagnosticBag, conventions: Conventions,
+                          once: _OncePerImplementation | None = None) -> dict[str, str] | None:
     """The producer-input -> consumer-argument overrides this argument documents.
 
     An empty mapping when there is no table. `None` when the table is there but wrong, so
-    the caller stops rather than reporting a pile of consequential name mismatches.
+    the caller stops rather than reporting a pile of consequential name mismatches. A row
+    names an input of the producer (N1): one naming an output or `ierr` would be ignored by
+    the plans while synthesis keys the call by it (rule K), so it is refused at its line, once
+    per implementation.
     """
+    once = once or _OncePerImplementation(diagnostics, set(), id(consumer))
     tables = [t for t in argument.doc.tables
               if _looks_like_a_producer_input_table(t, conventions)]
     if not tables:
@@ -1257,11 +1394,23 @@ def _producer_input_table(argument: Argument, consumer: Procedure, producer: Pro
                 note=_producer_input_table_example(conventions),
             )
             return None
-        if producer.argument(wanted) is None:
+        dummy = producer.argument(wanted)
+        if dummy is None:
             diagnostics.error(
                 f"the producer-input table of '{argument.name}' maps '{wanted}', which "
                 f"is not an argument of '{producer.name}'",
                 entity=argument,
+            )
+            return None
+        if (dummy.intent is None or not dummy.intent.is_input
+                or dummy.name.lower() == conventions.error_arg.lower()):
+            once.error(
+                f"the producer-input table of '{argument.name}' maps '{wanted}', which is an "
+                f"output of '{producer.name}', not an input",
+                entity=argument,
+                location=_location_of(argument, producer_input.line_number),
+                note=("a row supplies an input the producer reads; DM_OUTPUT_FROM names the "
+                      "output it takes"),
             )
             return None
         mapping[wanted.lower()] = given

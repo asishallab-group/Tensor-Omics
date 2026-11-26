@@ -746,6 +746,7 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
         is_computed,
         is_permutation,
         is_temporary,
+        project_evaluator,
         published_arguments,
         taken_over_arguments,
     )
@@ -774,7 +775,8 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
                 "passes it"
             ),
         )
-    for argument in taken_over_arguments(arguments, conventions, prologue):
+    for argument in taken_over_arguments(arguments, conventions, prologue,
+                                         project_evaluator(impl)):
         if argument.intent is not Intent.OUT or is_temporary(argument, conventions):
             continue
         if is_permutation(argument, conventions):
@@ -1476,10 +1478,12 @@ def _check_prologue_runs_somewhere(impl: Procedure, prologue: Procedure,
     its own. A prologue with neither is attached to a procedure that is never generated: no
     call is emitted anywhere, and nothing said so.
     """
-    from ..synthesize import prologue_only_arguments, published_arguments, taken_over_arguments
+    from ..synthesize import (
+        project_evaluator, prologue_only_arguments, published_arguments, taken_over_arguments,
+    )
 
     arguments = published_arguments(impl, conventions)
-    if taken_over_arguments(arguments, conventions, prologue):
+    if taken_over_arguments(arguments, conventions, prologue, project_evaluator(impl)):
         return
     if prologue_only_arguments(prologue, arguments, conventions):
         return  # the wrapper exists to carry those, whether or not anything is allocated
@@ -1684,10 +1688,11 @@ def _check_prologue_writes_what_it_may(impl: Procedure, prologue: Procedure,
     prologue then refines.
     """
     # local: synthesize imports this module
-    from ..synthesize import published_arguments, taken_over_arguments
+    from ..synthesize import project_evaluator, published_arguments, taken_over_arguments
 
     arguments = published_arguments(impl, conventions)
-    taken = {a.name.lower() for a in taken_over_arguments(arguments, conventions, prologue)}
+    taken = {a.name.lower() for a in taken_over_arguments(arguments, conventions, prologue,
+                                                          project_evaluator(impl))}
     by_name = {a.name.lower(): a for a in arguments}
     for dummy in prologue.arguments:
         if dummy.intent is None or not dummy.intent.is_output:
@@ -1721,7 +1726,9 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     rubbish rather than failing.
     """
     # local imports: synthesize imports this module
-    from ..synthesize import published_arguments, sorted_permutations, taken_over_arguments
+    from ..synthesize import (
+        project_evaluator, published_arguments, sorted_permutations, taken_over_arguments,
+    )
 
     written = {
         dummy.name.lower()
@@ -1733,7 +1740,7 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
         return
 
     taken = taken_over_arguments(published_arguments(impl, conventions), conventions,
-                                 prologue)
+                                 prologue, project_evaluator(impl))
 
     # `M_ALLOCATE(tmp_x(<extent>))` -- an array a producer fills included, which is allocated
     # with its extents right above the producer call that is also passed them: one cause, so

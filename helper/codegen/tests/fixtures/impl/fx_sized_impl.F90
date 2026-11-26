@@ -17,6 +17,7 @@ module fx_sized_impl
     public :: fx_two_scales_impl, fx_norm_rank_impl, fx_large_total_impl
     public :: fx_default_scale_impl, fx_padded_total_impl, fx_large_first_impl
     public :: fx_bounded_total_impl, fx_rounded_total_impl
+    public :: fx_picked_norms_impl, fx_weighted_norms_impl
 
 contains
 
@@ -436,4 +437,62 @@ contains
             !! ones
         ones = 1.0_real64 + 0.0_real64*sum(x)
     end subroutine fx_info_impl
+
+    !> summary: The norms above one, in column order
+    !| author: A Developer
+    !| One producer call gives both `norms` and `n_large`, and `n_large` sizes the result, so the
+    !| caller makes the call (rule K): the wrapper keeps both, and computes neither. Python and R
+    !| make it once.
+    pure subroutine fx_picked_norms_impl(n_dims, n_items, x, norms, n_large, picked)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_large_norms, fx_producers, AUTO)
+        integer(int32), intent(in) :: n_large
+            !! how many norms exceed one
+            !! DM_OUTPUT_FROM(n_large, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_large), intent(out) :: picked
+            !! the norms above one, in column order
+        integer(int32) :: i, k
+        k = 0_int32
+        picked = 0.0_real64*sum(x)
+        do i = 1_int32, n_items
+            if (norms(i) > 1.0_real64 .and. k < n_large) then
+                k = k + 1_int32
+                picked(k) = norms(i)
+            end if
+        end do
+    end subroutine fx_picked_norms_impl
+
+    !> summary: The sum of the column norms, plus a weight for each norm above one
+    !| author: A Developer
+    !| One producer call gives both `norms` and `n_large`, and `n_large` sizes the weights the
+    !| caller passes, so the call is kept whole (rule K): nothing is left to take over, and this
+    !| is one wrapper, whose Python and R binding computes both and checks `w` against `n_large`.
+    pure subroutine fx_weighted_norms_impl(n_dims, n_items, x, norms, n_large, w, total)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_large_norms, fx_producers, AUTO)
+        integer(int32), intent(in) :: n_large
+            !! how many norms exceed one
+            !! DM_OUTPUT_FROM(n_large, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_large), intent(in) :: w
+            !! one weight per norm above one
+        real(real64), intent(out) :: total
+            !! the sum of `norms`, plus the sum of `w`
+        total = sum(norms) + sum(w) + 0.0_real64*sum(x)
+    end subroutine fx_weighted_norms_impl
 end module fx_sized_impl

@@ -826,7 +826,18 @@ A generated producer validates its inputs, so calling it can fail. What you get 
 `foo` calls the producer directly — once for each distinct set of inputs: two sizes from one
 producer through different table rows are two calls, each into its own size. Two arguments
 taking the *same* output with the same inputs would be one call holding one value, and are
-refused: use one argument. It passes every one of the producer's arguments:
+refused: use one argument.
+
+**A call is taken over whole or kept whole (K).** Where one value a call fills sizes something
+the caller passes or receives, `foo` cannot compute it -- the caller has to know it first -- so
+`foo` keeps **every** value that call fills, and computes none of them: one call, made by the
+caller (Python and R make it for theirs), never one in each place. `fx_picked_norms` in
+`helper/codegen/tests/fixtures/impl/fx_sized_impl.F90` keeps `norms` beside the `n_large` that
+sizes its result. Where that leaves `foo` nothing to take over, there is one wrapper, whose Python
+and R binding computes them all (`fx_weighted_norms`). Rows that resolve alike are one call:
+`4_int32` and a parameter `FOUR`, or a row naming the argument name-matching finds anyway.
+
+It passes every one of the producer's arguments:
 
 - **An input the producer refines in place** (`intent(inout)`, a cap it lowers) is written back
   through whatever supplies it, so it must be supplied by a **required `intent(inout)`** argument
@@ -1725,6 +1736,7 @@ it are an example's.
 | a defaulted mode whose default is not in its table (`the default of 'mode' (3) matches no value in its mode table`) | the binding passes the default as its mode string, which must be one the table names |
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
 | a `DM_OUTPUT_FROM` naming a producer that does not exist, or an output the producer does not have (`'work_size' is computed from 'pr_nothing' in 'pr_p_impl', which does not exist`, `'n' is not an output of 'pr_size_of'`) | the first parameter names the producer's output, the next two the producer and its module (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer-input table row naming an output of the producer or its `ierr` (`the producer-input table of 'norms' maps 'n_large', which is an output of 'fx_large_norms', not an input`) | a row supplies an input the producer reads; the directive names the output it takes (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer-input table that is one of two, has an empty cell, or maps a name the producer does not have (`'work_size' has 2 tables mapping the inputs of 'pr_size_of'`, `row 1 of the producer-input table of 'work_size' has an empty cell`, `the producer-input table of 'work_size' maps 'm', which is not an argument of 'pr_size_of'`) | the table says what each producer input is supplied by, and the generator will not guess (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |

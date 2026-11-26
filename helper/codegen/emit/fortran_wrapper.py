@@ -353,7 +353,8 @@ class FortranWrapperEmitter:
                 continue
             foo = self._sibling(module, alloc)
             taken = taken_over_arguments(
-                self._impl_arguments(foo), self.conventions, self._prologue_for(foo, module)
+                self._impl_arguments(foo), self.conventions, self._prologue_for(foo, module),
+                self._evaluator(),
             )
             for group in self._producer_groups(foo, taken):
                 yield alloc, foo, group
@@ -387,7 +388,7 @@ class FortranWrapperEmitter:
                 foo = self._sibling(module, procedure)
                 prologue = self._prologue_for(foo, module)
                 taken = taken_over_arguments(
-                    self._impl_arguments(foo), self.conventions, prologue
+                    self._impl_arguments(foo), self.conventions, prologue, self._evaluator()
                 )
                 for group in self._producer_groups(foo, taken):
                     if group[0].roles.computed_from.producer.has_error_argument:
@@ -425,7 +426,7 @@ class FortranWrapperEmitter:
             foo = self._sibling(module, alloc)
             prologue = self._prologue_for(foo, module)
             taken = taken_over_arguments(
-                self._impl_arguments(foo), self.conventions, prologue
+                self._impl_arguments(foo), self.conventions, prologue, self._evaluator()
             )
             if sorted_permutations(taken, prologue, self.conventions):
                 return True
@@ -489,7 +490,7 @@ class FortranWrapperEmitter:
         foo = self._sibling(module, alloc)
         prologue = self._prologue_for(foo, module)
         taken = taken_over_arguments(
-            self._impl_arguments(foo), self.conventions, prologue
+            self._impl_arguments(foo), self.conventions, prologue, self._evaluator()
         )
         materialized = self._materialized_producer_inputs(foo, alloc, taken)
         self._declarations(writer, alloc.arguments)
@@ -511,6 +512,11 @@ class FortranWrapperEmitter:
         # mapped to `alloc`'s own dummy list: `foo` is the expert sibling, whose work arrays
         # and recommend-sized values are locals here
         self._impl_call(writer, foo, module, alloc)
+
+    def _evaluator(self):
+        """The project's one constant evaluator, which keys a producer call as synthesis did
+        (rule K); None in a unit test without a project."""
+        return self.project.evaluator() if self.project is not None else None
 
     # -- prologue ---------------------------------------------------------------
 

@@ -943,6 +943,48 @@ assumed-shape producer output**, which takes its shape from what `foo` allocates
 be sized by a value another producer computes later, making R1 order-dependent, and on the binding
 route the producer's binding wants a size the consumer never passes.
 
+### A producer call is taken over whole or kept whole (rule K, 2026-11-26)
+
+`foo` keeps a value a producer computes where it sizes an argument the caller still passes or
+receives, and took the rest over. Where one call filled both -- `norms` and the `n_large` that
+sizes the result `picked` -- `foo` called the producer for `norms`, dropped its `n_large`, and
+handed the implementation the caller's: two calls whose values were never compared, and Python and
+R called the producer, then `foo`, which called it again. **One call is now made in one place, in
+every tier:** where `foo` must keep a value one AUTO call fills, it keeps every value that call
+fills (`synthesize.taken_over_arguments`); otherwise it takes them all over. It is the Fortran half
+of E2's same-call clause (`language-layers.md`). A JUST_INFO value belongs to no call: the caller
+supplies it, so it neither keeps a call nor is kept by one.
+
+- **The key.** Synthesis decides `foo`'s signature before any plan exists, so it keys a call by
+  `roles.producer_call_key`: the producer, and each table row resolved by `roles.resolve_cell` --
+  the function `_resolve_output_from` builds the plans with -- with the project's one constant
+  evaluator (`Project.evaluator`, handed on to the project synthesis builds). A row whose cell is
+  the name-matched argument is no row (`| n_items | N_ITEMS |`), and `4_int32` and a parameter
+  `FOUR` are one constant. All ten callers of `taken_over_arguments` pass that evaluator, the
+  Fortran emitter recomputing `foo`'s body included: with two, the body could disagree with the
+  signature.
+- **N1, refused:** a producer-input row naming a producer argument that is not an input (an
+  output, `ierr`). The plans ignore such a row while the key counts it, so it would split a call;
+  it was accepted silently before. At the row's line, once per implementation.
+- **The assertion.** After analysis `roles._check_calls_kept_whole` checks that no `plan.call`
+  group of a pair is kept in part -- an internal error, once per pair at the first kept value's
+  directive, which no source reaches with N1 in place.
+- **No closure.** A kept value names no other call's AUTO value in its declaration: an AUTO extent
+  is spelled in suppliers (row c), a supplier is never AUTO (chaining), and a computed length of a
+  string the caller passes is refused (3b). Without that refusal K would have to iterate.
+- **The collapse.** Where K leaves `foo` nothing to take over, the pair is one lone wrapper, whose
+  Python and R binding computes every AUTO value (E2): an expert E2 published for that call's data
+  is no longer published (`fx_weighted_norms` in `tests/fixtures/impl/fx_sized_impl.F90`).
+
+**Rejected -- refusing the split** ("size the result for an upper bound"): it makes the author
+restructure a procedure the generator can serve as written. **Rejected -- synthesising, analysing,
+then synthesising again** the implementations whose group came out split: it keys by the plans
+themselves, but it is a second pass for a case nothing in the tree contains, where the shared
+resolver, N1 and the assertion give the same answer in one. E2's record rejects keying by "the
+directive and the table" because the plan is the truth; that concerned a rule evaluated after the
+plans exist, and K keys not by the raw text but by the resolver the plans are built with, checked
+against them on every run.
+
 ### The prologue is the allocating tier's sugar, and has no scope
 
 `DM_PROLOGUE(PROCEDURE, MODULE)` names a routine `foo` runs after the work arrays are prepared
