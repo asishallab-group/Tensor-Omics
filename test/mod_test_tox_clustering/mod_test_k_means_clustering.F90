@@ -452,10 +452,10 @@ contains
                                      "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted centroids")
     end subroutine test_k_means_clustering_empty_cluster_moves_with_the_data
 
-    !> BUG (#223, "k-means assignment"): the squared distance to each centroid is an unscaled sum of
-    !| squares. The 1-D points 1, 2, 8, 9 from 0 and 10 split into [1, 1, 2, 2] with centroids 1.5
-    !| and 8.5 (1 and 2 are closer to 0, 8 and 9 to 10). Scaled by 2**600, every square passes huge,
-    !| every distance ties at +Inf, and the `<=` puts every point into the last cluster. Scaling by a
+    !> Regression (#223, "k-means assignment"): the 1-D points 1, 2, 8, 9 from 0 and 10 split into
+    !| [1, 1, 2, 2] with centroids 1.5 and 8.5 (1 and 2 are closer to 0, 8 and 9 to 10), and so do
+    !| they scaled by 2**600. As an unscaled sum of squares, every square used to pass huge, every
+    !| distance tied at +Inf, and the `<=` put every point into the last cluster. Scaling by a
     !| power of two is exact, so the expected values are the unscaled ones times 2**600, exactly.
     subroutine test_k_means_clustering_squares_past_huge()
         real(real64), parameter :: factor = 2.0_real64**600
@@ -469,9 +469,9 @@ contains
                            expected_centroids, "test_k_means_clustering_squares_past_huge")
     end subroutine test_k_means_clustering_squares_past_huge
 
-    !> BUG (#223, "k-means assignment"): the same points scaled by 2**-600, all normal numbers. Every
-    !| square falls below the smallest subnormal and reads 0, every distance ties at 0, and every
-    !| point goes into the last cluster.
+    !> Regression (#223, "k-means assignment"): the same points scaled by 2**-600, all normal
+    !| numbers. Unscaled, every square used to fall below the smallest subnormal and read 0, every
+    !| distance tied at 0, and every point went into the last cluster.
     subroutine test_k_means_clustering_squares_below_tiny()
         real(real64), parameter :: factor = 2.0_real64**(-600)
         real(real64) :: data_points(1, 4), initial_centroids(1, 2), expected_centroids(1, 2)
@@ -501,14 +501,12 @@ contains
                            initial_centroids, "test_k_means_clustering_means_past_huge_of_opposite_signs")
     end subroutine test_k_means_clustering_means_past_huge_of_opposite_signs
 
-    !> BUG (the #223 class, not listed there): a centroid is the plain sum of its points divided by
-    !| their count, so the mean of two points at 2**1023 is +Inf. Points (x, 0), (x, 0), (x, 4),
-    !| (x, 6) with x = 2**1023, from (x, 0) and (x, 6): every difference is in the second
-    !| coordinate and its square small, so the first assignment is right ([1, 1, 2, 2]), and the
-    !| centroids should end at (x, 0) and (x, 5). Today the run returns labels [2, 2, 2, 2]: a run
-    !| exponent picked for x makes the squares of the differences 4 and 6 read 0, so every distance
-    !| ties and the tie puts every point into cluster 2. (Before the run exponent, the centroids
-    !| became +Inf instead, with the same labels.)
+    !> Regression (the #223 class, not listed there): points (x, 0), (x, 0), (x, 4), (x, 6) with
+    !| x = 2**1023, from (x, 0) and (x, 6): every difference is in the second coordinate and its
+    !| square small, so the labels are [1, 1, 2, 2] and the centroids end at (x, 0) and (x, 5). A
+    !| plain sum of the points used to make the centroids +Inf; one exponent per run picked for x
+    !| later made the squares of the differences 4 and 6 read 0; both times every distance tied
+    !| and the tie put every point into cluster 2.
     subroutine test_k_means_clustering_means_past_huge()
         real(real64), parameter :: x = 2.0_real64**1023
         real(real64) :: data_points(2, 4), initial_centroids(2, 2), expected_centroids(2, 2)
@@ -535,7 +533,8 @@ contains
         call assert_equal_int(labels(1), expected, msg//": label of the first point")
     end subroutine check_first_label
 
-    !> BUG: differences far below the largest magnitude around must still decide. A point's
+    !> Regression: differences far below the largest magnitude around still decide; with one
+    !| exponent per run, picked for the largest value, they used to square to 0. A point's
     !| distances may be scaled, but by a power of two that suits the differences that decide its
     !| label, not by one picked for the largest value in the run. Each first point belongs to
     !| cluster 1:
@@ -564,7 +563,8 @@ contains
         call check_first_label(2_int32, points_2d, 2_int32, 2_int32, centroids_2d, 1_int32, msg//"(1e150, 1e-30)")
     end subroutine test_k_means_clustering_small_differences_beside_large_values
 
-    !> BUG: one value far from the others must not change how the others cluster.
+    !> Regression: one value far from the others does not change how the others cluster (one
+    !| exponent per run, picked for it, used to make their distances tie).
     !| - 1-D points 0, 0.1, 5, 5.1, 1e150 from 0, 5 and 1e150: labels [1, 1, 2, 2, 3], centroids
     !|   0.1/2, (5 + 5.1)/2 and 1e150, each the plain mean of its points;
     !| - points 1, 2, 8, 9 from 0, 10 and a "garbage" starting centroid 1e300 that no point is
@@ -585,11 +585,11 @@ contains
                            "test_k_means_clustering_one_large_starting_centroid: a starting centroid at 1e300")
     end subroutine test_k_means_clustering_one_large_starting_centroid
 
-    !> BUG: a centroid's coordinates are means of different sets of values, one per dimension, and
-    !| each must be scaled for its own magnitude. Points (1e200, 3e-200) and (1e200, 5e-200) in one
-    !| cluster have the centroid (1e200, 4e-200): the second coordinate is (3e-200 + 5e-200)/2, all
-    !| normal numbers. Scaled for the first coordinate, the second coordinate's values underflow
-    !| and the centroid comes out (1e200, 0).
+    !> A centroid's coordinates are means of different sets of values, one per dimension, each
+    !| scaled for its own magnitude. Points (1e200, 3e-200) and (1e200, 5e-200) in one cluster have
+    !| the centroid (1e200, 4e-200): the second coordinate is (3e-200 + 5e-200)/2, all normal
+    !| numbers. Regression: scaled for the first coordinate, the second coordinate's values used to
+    !| underflow, and the centroid came out (1e200, 0).
     subroutine test_k_means_clustering_means_per_dimension()
         real(real64) :: data_points(2, 2), initial_centroids(2, 1), expected_centroids(2, 1)
 

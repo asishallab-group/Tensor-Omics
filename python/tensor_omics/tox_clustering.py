@@ -210,8 +210,8 @@ def k_means_clustering(
     point may overflow, and those centroids lose. One limit stays: where the build or the host
     flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
 
-    Ordinary data needs no scaling and gets the arithmetic of the plain formulas: its results
-    are bit-identical to those of the code before this scaling in builds that do not contract a
+    Ordinary data needs no scaling: its distances and means are computed with the plain
+    formulas' arithmetic, rounded as those formulas round in builds that do not contract a
     multiplication and an addition into one fused operation (FMA); where a build does, a near
     tie can fall the other way.
 
@@ -329,9 +329,9 @@ def linkage_clustering(
     Every update is clamped where rounding can leave the range it lies in mathematically: an
     average into the pair it averages, a Ward update to at least the merge's height. So the
     heights never decrease, and equal distances average to themselves. Distances that need no
-    scaling get the plain formulas: their results are bit-identical to those of the code before
-    this scaling in builds that do not contract a multiplication and an addition into one fused
-    operation (FMA), except where the clamps apply.
+    scaling get the plain formulas' arithmetic, rounded as those formulas round in builds that
+    do not contract a multiplication and an addition into one fused operation (FMA); a clamp
+    changes such a result only where that rounding left the range.
 
     Parameters
     ----------

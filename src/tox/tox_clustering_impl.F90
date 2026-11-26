@@ -112,8 +112,8 @@ contains
     !| point may overflow, and those centroids lose. One limit stays: where the build or the host
     !| flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
     !|
-    !| Ordinary data needs no scaling and gets the arithmetic of the plain formulas: its results
-    !| are bit-identical to those of the code before this scaling in builds that do not contract a
+    !| Ordinary data needs no scaling: its distances and means are computed with the plain
+    !| formulas' arithmetic, rounded as those formulas round in builds that do not contract a
     !| multiplication and an addition into one fused operation (FMA); where a build does, a near
     !| tie can fall the other way.
     pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, &
@@ -153,8 +153,10 @@ contains
 
         integer(int32) :: label, iteration, i_point, max_iter
         logical(c_bool) :: labels_changed
+        real(real64) :: positive_infinity
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
+        positive_infinity = ieee_value(1.0_real64, ieee_positive_inf)
 
         ! initialize labels to a value outside the valid [1, n_clusters] range so the first
         ! comparison below never reads undefined intent(out) memory and always triggers
@@ -169,7 +171,8 @@ contains
             labels_changed = .false.
             label_counts = 0
             do i_point = 1, n_points
-                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
+                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, &
+                                                   positive_infinity, label)
 
                 label_counts(label) = label_counts(label) + 1
                 if (labels(i_point) /= label) then
@@ -248,7 +251,9 @@ contains
         do i_cluster = 1, n_clusters
             if (label_counts(i_cluster) == 0) cycle
             do i_dim = 1, n_dims
-                ! dividing by a power of two is exact, and brings the mean back to its values' scale
+                ! dividing by the factor brings the mean back to its values' scale; it is exact unless
+                ! the result is subnormal (a set scaled up by 2**600 whose mean lies below tiny), where
+                ! it rounds once
                 centroids(i_dim, i_cluster) = (centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64)) &
                                               /factors(i_dim, i_cluster)
             end do
@@ -257,7 +262,8 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper routine to assign a cluster's label to a point in k-means
-    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
+    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, &
+                                                  positive_infinity, label)
         integer(int32), intent(in) :: i_point
             !! index of the point that should be assigned a cluster
         integer(int32), intent(in) :: n_clusters
@@ -273,6 +279,9 @@ contains
             !! The centroids should be unique. This is not checked in this routine.
             !!
             !! The final values will be the final centroids of the clusters
+        real(real64), intent(in) :: positive_infinity
+            !! +Inf, which the searches for the smallest values start from; passed in, as
+            !! `ieee_value` is a library call on ifx and this runs once per point
         integer(int32), intent(out) :: label
             !! assigned label
 
@@ -288,7 +297,7 @@ contains
         ! comparison, and an ordinary point gets the exponent 0, so the factors are 1 and the
         ! expression is the plain one. The factors are multiplied in, not applied with scale(),
         ! which is a library call per element.
-        nearest_largest_difference = ieee_value(1.0_real64, ieee_positive_inf)
+        nearest_largest_difference = positive_infinity
         do i_cluster = 1, n_clusters
             largest_difference = 0.0_real64
             do i_dim = 1, n_dims
@@ -299,7 +308,7 @@ contains
         call scaling_factors(scaling_exponent_for_largest(nearest_largest_difference), down, up)
 
         label = 0_int32
-        smallest_squared_dist = ieee_value(1.0_real64, ieee_positive_inf)
+        smallest_squared_dist = positive_infinity
 
         ! calculate distance to each centroid and assign to closest
         do i_cluster = 1, n_clusters
@@ -338,9 +347,9 @@ contains
     !| Every update is clamped where rounding can leave the range it lies in mathematically: an
     !| average into the pair it averages, a Ward update to at least the merge's height. So the
     !| heights never decrease, and equal distances average to themselves. Distances that need no
-    !| scaling get the plain formulas: their results are bit-identical to those of the code before
-    !| this scaling in builds that do not contract a multiplication and an addition into one fused
-    !| operation (FMA), except where the clamps apply.
+    !| scaling get the plain formulas' arithmetic, rounded as those formulas round in builds that
+    !| do not contract a multiplication and an addition into one fused operation (FMA); a clamp
+    !| changes such a result only where that rounding left the range.
     pure subroutine linkage_clustering_impl(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster

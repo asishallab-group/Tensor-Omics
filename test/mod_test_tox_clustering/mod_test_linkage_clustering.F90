@@ -423,10 +423,10 @@ contains
                            "test_linkage_clustering_check_order: no points, method 3 and NaN")
     end subroutine test_linkage_clustering_check_order
 
-    !> BUG (#223, "Ward update"): Ward's update squares the distances, so three points at
-    !| s = 2**-600 from each other, all normal numbers, get squares below the smallest subnormal.
-    !| Every method merges {1, 2} at s, then {-1, 3} at s: for Ward, d(12, 3)**2 = (2 s**2 + 2 s**2
-    !| - s**2)/3 = s**2. Today Ward's second height is 0.
+    !> Regression (#223, "Ward update"): Ward's update squares the distances, and three points at
+    !| s = 2**-600 from each other, all normal numbers, have squares below the smallest subnormal;
+    !| unscaled, Ward's second height used to come out 0. Every method merges {1, 2} at s, then
+    !| {-1, 3} at s: for Ward, d(12, 3)**2 = (2 s**2 + 2 s**2 - s**2)/3 = s**2.
     subroutine test_linkage_clustering_ward_squares_below_tiny()
         real(real64), parameter :: s = 2.0_real64**(-600)
         real(real64) :: distances(3, 3)
@@ -436,12 +436,11 @@ contains
                            .true., "test_linkage_clustering_ward_squares_below_tiny")
     end subroutine test_linkage_clustering_ward_squares_below_tiny
 
-    !> BUG (#223, "Ward update"): Ward's update squares the distances, so three points at
-    !| s = 2**600 from each other get squares past huge, and Inf + Inf - Inf is NaN. They should
-    !| merge {1, 2} at s, then {-1, 3} at s (d(12, 3)**2 = (2 s**2 + 2 s**2 - s**2)/3 = s**2).
-    !| Today the second merge finds no distance below +Inf, reuses the first merge's indices, reads
-    !| the retired cluster's diagonal -1 as an iteration and indexes `cluster_sizes(-1)`: a
-    !| bounds-checked build aborts, and with it the test runner.
+    !> Regression (#223, "Ward update"): three points at s = 2**600 from each other merge {1, 2}
+    !| at s, then {-1, 3} at s (d(12, 3)**2 = (2 s**2 + 2 s**2 - s**2)/3 = s**2). Their squares pass
+    !| huge, and unscaled the update used to be Inf + Inf - Inf = NaN: the second merge then found no
+    !| distance below +Inf, reused the first merge's indices, read the retired cluster's diagonal
+    !| -1 as an iteration and indexed `cluster_sizes(-1)`, which aborted a bounds-checked build.
     subroutine test_linkage_clustering_ward_squares_past_huge()
         real(real64), parameter :: s = 2.0_real64**600
         real(real64) :: distances(3, 3)
@@ -451,11 +450,10 @@ contains
                            .true., "test_linkage_clustering_ward_squares_past_huge")
     end subroutine test_linkage_clustering_ward_squares_past_huge
 
-    !> BUG: UPGMA and WPGMA form size_A*d(A, C) + size_B*d(B, C) before dividing by the sizes'
-    !| sum, which overflows once that sum of distances passes huge. Three points at s = 2**1023
-    !| from each other should merge {1, 2}, then {-1, 3}, both at s (the average of s and s).
-    !| Today s + s is +Inf, and the second merge takes the abort path of
-    !| `test_linkage_clustering_ward_squares_past_huge`: `cluster_sizes(-1)`.
+    !> Regression: three points at s = 2**1023 from each other merge {1, 2}, then {-1, 3}, both at
+    !| s (the average of s and s), with UPGMA and WPGMA. Forming size_A*d(A, C) + size_B*d(B, C)
+    !| unscaled, s + s used to be +Inf, and the second merge took the abort path described in
+    !| `test_linkage_clustering_ward_squares_past_huge`.
     subroutine test_linkage_clustering_averages_past_huge()
         real(real64), parameter :: s = 2.0_real64**1023
         real(real64) :: distances(3, 3)
@@ -468,15 +466,14 @@ contains
         end do
     end subroutine test_linkage_clustering_averages_past_huge
 
-    !> BUG: a Ward distance can exceed every input distance -- it grows with the clusters' sizes --
-    !| so finite input can still make a merge distance pass huge. Points 1 and 2 coincide, so do 3
-    !| and 4, and the pairs are D = 1.5*2**1023 apart. {1, 2} and {3, 4} merge at 0; the last merge
-    !| would be at sqrt(2 nA nB/(nA + nB)) D = sqrt(2) D, past huge, so its update is +Inf. Nothing
-    !| is then left below +Inf, the marker of a retired entry, and no merge can be found. The run
-    !| must say so (ERR_NAN_INF, naming no argument) and hand the matrix back unchanged; today the
-    !| merge reuses the previous one's indices and takes the abort path of
-    !| `test_linkage_clustering_ward_squares_past_huge`: `cluster_sizes(-1)`. (At D = 2**1023 the
-    !| last merge, sqrt(2) D = 1.27e308, is still finite and the run is right.)
+    !> A Ward distance can exceed every input distance -- it grows with the clusters' sizes -- so
+    !| finite input can make a merge height pass huge, and the run then says so: ERR_NAN_INF, naming
+    !| no argument, with the matrix handed back unchanged. Points 1 and 2 coincide, so do 3 and 4,
+    !| and the pairs are D = 1.5*2**1023 apart: {1, 2} and {3, 4} merge at 0, and the last merge
+    !| would be at sqrt(2 nA nB/(nA + nB)) D = sqrt(2) D, past huge. (At D = 2**1023 the last merge,
+    !| sqrt(2) D = 1.27e308, is still finite and the run completes.) Regression: the run used to
+    !| find no distance below +Inf, the retired-entry marker, reuse the previous merge's indices and
+    !| take the abort path described in `test_linkage_clustering_ward_squares_past_huge`.
     subroutine test_linkage_clustering_ward_height_past_huge()
         real(real64), parameter :: d = 1.5_real64*2.0_real64**1023
         real(real64) :: distances(4, 4), passed(4, 4), heights(3)
@@ -491,9 +488,9 @@ contains
                                          "test_linkage_clustering_ward_height_past_huge: the matrix comes back unchanged")
     end subroutine test_linkage_clustering_ward_height_past_huge
 
-    !> BUG: UPGMA, WPGMA and Ward are monotone -- every update is at least the distance of the
-    !| merge it follows -- but the rounded update can land an ulp or two below it, so a height comes
-    !| out below the one before. R's `cutree(h = ...)` refuses such a tree. Points all at the same
+    !> UPGMA, WPGMA and Ward are monotone -- every update is at least the distance of the merge it
+    !| follows -- and the heights must not decrease, though an unclamped rounded update can land an
+    !| ulp or two below it (regression: it used to, and R's `cutree(h = ...)` refuses such a tree). Points all at the same
     !| distance d merge at d every time; found by search among d = 0.1, 0.2, ..., 9.9:
     !| - UPGMA, four points at 0.7, 1.4, 1.9, 2.8: the third height, (2d + d)/3, 1 ulp below d;
     !| - Ward, three points at 3.9 and 7.8, four at 3.3: the last height 1 ulp below d.
@@ -566,13 +563,14 @@ contains
         distances(j, i) = distance
     end subroutine set_distance
 
-    !> BUG: Ward's distances must be scaled for the distances each update combines, not for the
-    !| largest in the run. Points 1, 2 at 1, both at 2 from point 3, and all three at L from point 4:
+    !> Regression: Ward's distances are scaled for the distances each update combines; scaled for
+    !| the largest in the run, small ones beside a large one used to lose their squares. Points 1, 2 at 1, both at 2 from point 3, and all three at L from point 4:
     !| {1, 2} merge at 1, then {-1, 3} at sqrt((2*4 + 2*4 - 1)/3) = sqrt(5), then point 4 at
     !| sqrt(((2 + 1)*(4/3) L**2 + 2 L**2 - 5)/4), which is sqrt(1.5) L to well within rounding.
-    !| - L = 2**664 (about 1e200): scaled for L, the squares of 1 and 2 read 0 and the second
-    !|   height came out 1 (the merge's own height, by the monotonicity clamp);
-    !| - the same scaled by 2**-664, s = 2**-664 at 2**-332: the small squares underflow unscaled.
+    !| - L = 2**664 (about 1e200): scaled for L, the squares of 1 and 2 read 0, and the second
+    !|   height used to come out 1 (the merge's own height, by the monotonicity clamp);
+    !| - the same scaled by 2**-664, s = 2**-664 at 2**-332, whose small squares underflow
+    !|   unscaled.
     subroutine test_linkage_clustering_ward_small_beside_large()
         real(real64) :: distances(4, 4), unit, large, expected_heights(3)
         integer(int32) :: i_case
@@ -634,12 +632,13 @@ contains
         end if
     end subroutine fill_near_huge
 
-    !> BUG: a Ward distance whose true value passes huge can come back below it once more points
-    !| join. 28 points on a line, 4 near 0.28 huge, 20 near 0, 4 near -0.28 huge: an intermediate
-    !| update passes huge, but every merge height stays below it; the exact tree (rational
-    !| arithmetic) ends with {-19, -24} at 0.722958691093232 huge and {-25, -26} at
-    !| 0.855416274676020 huge. The run must complete; today it stops with a false ERR_NAN_INF after
-    !| 26 merges, as the retired-entry marker +Inf cannot be told from the passed distance.
+    !> A Ward distance whose true value passes huge can come back below it once more points join,
+    !| and the run must then complete. 28 points on a line, 4 near 0.28 huge, 20 near 0, 4 near
+    !| -0.28 huge: an intermediate distance passes huge, but every merge height stays below it; the
+    !| exact tree (rational arithmetic) ends with {-19, -24} at 0.722958691093232 huge and
+    !| {-25, -26} at 0.855416274676020 huge. Regression: unscaled, the run used to stop with a false
+    !| ERR_NAN_INF after 26 merges, as the retired-entry marker +Inf could not be told from the
+    !| passed distance.
     subroutine test_linkage_clustering_ward_near_huge_completes()
         real(real64) :: distances(28, 28), passed(28, 28), heights(27), last_in_huge(2)
         integer(int32) :: merge_i(27), merge_j(27), cluster_sizes(27), ierr
@@ -661,13 +660,13 @@ contains
                                         1.0e-14_real64, 0.0_real64, msg//"the last two heights")
     end subroutine test_linkage_clustering_ward_near_huge_completes
 
-    !> BUG: the run must stop exactly at the first merge whose true height passes huge, with every
-    !| merge before it written and right. The 28 points of
+    !> The run stops exactly at the first merge whose true height passes huge, with every merge
+    !| before it written and right. The 28 points of
     !| `test_linkage_clustering_ward_near_huge_completes` and two more, 0.9 huge apart and huge
     !| from all others: the 28 points merge as before, then {29, 30} at 0.9 huge, and the last merge
     !| would be at 1.70 huge. So ERR_NAN_INF naming no argument, the first 27 merges those of the
-    !| 28 points alone, merge 28 {30, 29} at 0.9 huge, and the matrix back unchanged. Today the run
-    !| writes {30, 29} as merge 27, in place of {-25, -26}, before it stops.
+    !| 28 points alone, merge 28 {30, 29} at 0.9 huge, and the matrix back unchanged. Regression:
+    !| the run used to write {30, 29} as merge 27, in place of {-25, -26}, before it stopped.
     subroutine test_linkage_clustering_ward_past_huge_stops_right()
         real(real64) :: distances(30, 30), passed(30, 30), heights(29), alone(28, 28), alone_heights(27)
         integer(int32) :: merge_i(29), merge_j(29), cluster_sizes(29), alone_i(27), alone_j(27), alone_sizes(27), ierr
@@ -688,11 +687,11 @@ contains
         call assert_equal_real(heights(28), 0.9_real64*huge(1.0_real64), 0.0_real64, msg//"merge 28, height")
     end subroutine test_linkage_clustering_ward_past_huge_stops_right
 
-    !> BUG: an average of two equal distances is that distance. Points 1 and 2 at 1, both at 2 from
+    !> An average of two equal distances is that distance. Points 1 and 2 at 1, both at 2 from
     !| point 3, and all three at x from point 4: UPGMA merges {1, 2} at 1, {-1, 3} at 2, and then
-    !| point 4 at the average of x, x and x, which is x, exactly; WPGMA as well. Divide-first,
-    !| 7*fl(2/3) + 7*fl(1/3), gives 6.999999999999999; multiply-first, (2*2.8 + 2.8)/3, gives
-    !| 2.7999999999999994.
+    !| point 4 at the average of x, x and x, which is x, exactly; WPGMA as well. Unclamped, the
+    !| average rounds off: divide-first, 7*fl(2/3) + 7*fl(1/3), gives 6.999999999999999 (a
+    !| regression of an earlier fix), and multiply-first, (2*2.8 + 2.8)/3, 2.7999999999999994.
     subroutine test_linkage_clustering_equal_distances_average_to_themselves()
         real(real64), parameter :: EQUAL_DISTANCES(2) = [7.0_real64, 2.8_real64]
         real(real64) :: distances(4, 4), expected_heights(3)
@@ -719,12 +718,12 @@ contains
         end do
     end subroutine test_linkage_clustering_equal_distances_average_to_themselves
 
-    !> BUG: a tie that is exact in real arithmetic must be broken by the documented rule. UPGMA on
+    !> A tie that is exact in real arithmetic is broken by the documented rule. UPGMA on
     !| six points: {4, 5} at 0.5; point 3 at 1 from both, so {-1, 3} at 1; points 1 and 2 at 7, and
     !| point 6 at 7 from 3, 4 and 5, so {1, 2} and {-2, 6} tie at 7; all other distances 100. The
     !| documented order merges {1, 2} first (lowest point index 1 against 3), then {-2, 6}, then
-    !| the two clusters at 100. merge_i [5, -1, 2, 6, -4], merge_j [4, 3, 1, -2, -3]. Divide-first
-    !| rounded d(-2, 6) to 6.999999999999999 and merged it first.
+    !| the two clusters at 100. merge_i [5, -1, 2, 6, -4], merge_j [4, 3, 1, -2, -3]. Regression:
+    !| divide-first used to round d(-2, 6) to 6.999999999999999 and merge it first.
     subroutine test_linkage_clustering_tie_after_averaging()
         real(real64) :: distances(6, 6), passed(6, 6), heights(5)
         integer(int32) :: merge_i(5), merge_j(5), cluster_sizes(5), ierr
