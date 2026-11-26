@@ -58,7 +58,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(19))
+        allocate (all_tests(22))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -82,6 +82,12 @@ contains
         all_tests(18) = test_case("test_linkage_clustering_heights_never_decrease", &
                                   test_linkage_clustering_heights_never_decrease)
         all_tests(19) = test_case("test_linkage_clustering_merge_order", test_linkage_clustering_merge_order)
+        all_tests(20) = test_case("test_linkage_clustering_ward_small_beside_large", &
+                                  test_linkage_clustering_ward_small_beside_large)
+        all_tests(21) = test_case("test_linkage_clustering_ward_near_huge_completes", &
+                                  test_linkage_clustering_ward_near_huge_completes)
+        all_tests(22) = test_case("test_linkage_clustering_ward_past_huge_stops_right", &
+                                  test_linkage_clustering_ward_past_huge_stops_right)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -546,4 +552,136 @@ contains
             call assert_equal_array_int(merge_j, [2, 5, 1, 3, -3], LINE_N - 1_int32, trim(msg)//": line, merge_j")
         end do
     end subroutine test_linkage_clustering_merge_order
+
+    !> Sets the distance between points `i` and `j`, both ways.
+    pure subroutine set_distance(distances, i, j, distance)
+        real(real64), intent(inout) :: distances(:, :)
+        integer(int32), intent(in) :: i, j
+        real(real64), intent(in) :: distance
+
+        distances(i, j) = distance
+        distances(j, i) = distance
+    end subroutine set_distance
+
+    !> BUG: Ward's distances must be scaled for the distances each update combines, not for the
+    !| largest in the run. Points 1, 2 at 1, both at 2 from point 3, and all three at L from point 4:
+    !| {1, 2} merge at 1, then {-1, 3} at sqrt((2*4 + 2*4 - 1)/3) = sqrt(5), then point 4 at
+    !| sqrt(((2 + 1)*(4/3) L**2 + 2 L**2 - 5)/4), which is sqrt(1.5) L to well within rounding.
+    !| - L = 2**664 (about 1e200): scaled for L, the squares of 1 and 2 read 0 and the second
+    !|   height came out 1 (the merge's own height, by the monotonicity clamp);
+    !| - the same scaled by 2**-664, s = 2**-664 at 2**-332: the small squares underflow unscaled.
+    subroutine test_linkage_clustering_ward_small_beside_large()
+        real(real64) :: distances(4, 4), unit, large, expected_heights(3)
+        integer(int32) :: i_case
+        character(len=70) :: msg
+
+        do i_case = 1, 2
+            if (i_case == 1) then
+                unit = 1.0_real64
+                large = 2.0_real64**664
+            else
+                unit = 2.0_real64**(-664)
+                large = 2.0_real64**(-332)
+            end if
+            write (msg, '(a,i0)') "test_linkage_clustering_ward_small_beside_large: case ", i_case
+            distances = 0.0_real64
+            call set_distance(distances, 1_int32, 2_int32, unit)
+            call set_distance(distances, 1_int32, 3_int32, 2*unit)
+            call set_distance(distances, 2_int32, 3_int32, 2*unit)
+            call set_distance(distances, 1_int32, 4_int32, large)
+            call set_distance(distances, 2_int32, 4_int32, large)
+            call set_distance(distances, 3_int32, 4_int32, large)
+            expected_heights(1) = unit
+            expected_heights(2) = sqrt(5.0_real64)*unit
+            expected_heights(3) = sqrt(1.5_real64)*large
+            call check_linkage(4_int32, distances, METHOD_WARD, [1, -1, -2], [2, 3, 4], expected_heights, WARD_RTOL, &
+                               [2, 3, 4], .true., trim(msg))
+        end do
+    end subroutine test_linkage_clustering_ward_small_beside_large
+
+    !> The points of the two Ward cases below: 4 near L, 20 near 0 and 4 near -L on a line,
+    !| L = 0.28 huge, as distances; with `with_pair`, two more points 29 and 30, 0.9 huge apart
+    !| and huge from all others (a distance matrix need not come from points).
+    subroutine fill_near_huge(with_pair, distances)
+        logical, intent(in) :: with_pair
+        real(real64), intent(out) :: distances(:, :)
+        real(real64) :: positions(28), line_length
+        integer(int32) :: i_point, j_point
+
+        line_length = 0.28_real64*huge(1.0_real64)
+        do i_point = 1, 4
+            positions(i_point) = line_length*(1.0_real64 + i_point*1.0e-6_real64)
+        end do
+        do i_point = 5, 24
+            positions(i_point) = line_length*((i_point - 4)*1.0e-9_real64)
+        end do
+        do i_point = 25, 28
+            positions(i_point) = -line_length*(1.0_real64 + (i_point - 24)*1.0e-6_real64)
+        end do
+        distances = huge(1.0_real64)
+        do j_point = 1, 28
+            do i_point = 1, 28
+                distances(i_point, j_point) = abs(positions(i_point) - positions(j_point))
+            end do
+        end do
+        if (with_pair) then
+            call set_distance(distances, 29_int32, 30_int32, 0.9_real64*huge(1.0_real64))
+            distances(29, 29) = 0.0_real64
+            distances(30, 30) = 0.0_real64
+        end if
+    end subroutine fill_near_huge
+
+    !> BUG: a Ward distance whose true value passes huge can come back below it once more points
+    !| join. 28 points on a line, 4 near 0.28 huge, 20 near 0, 4 near -0.28 huge: an intermediate
+    !| update passes huge, but every merge height stays below it; the exact tree (rational
+    !| arithmetic) ends with {-19, -24} at 0.722958691093232 huge and {-25, -26} at
+    !| 0.855416274676020 huge. The run must complete; today it stops with a false ERR_NAN_INF after
+    !| 26 merges, as the retired-entry marker +Inf cannot be told from the passed distance.
+    subroutine test_linkage_clustering_ward_near_huge_completes()
+        real(real64) :: distances(28, 28), passed(28, 28), heights(27), last_in_huge(2)
+        integer(int32) :: merge_i(27), merge_j(27), cluster_sizes(27), ierr
+        character(*), parameter :: msg = "test_linkage_clustering_ward_near_huge_completes: "
+
+        call fill_near_huge(.false., distances)
+        passed = distances
+        call linkage_clustering(passed, 28_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
+        call assert_err(ierr, ERR_OK, msg//"ierr")
+        call assert_identical_array_real(passed, distances, 28_int32*28_int32, msg//"the matrix comes back unchanged")
+        call assert_sorted_real(heights, 27_int32, msg//"heights")
+        call assert_equal_int(merge_i(26), -19_int32, msg//"merge 26, merge_i")
+        call assert_equal_int(merge_j(26), -24_int32, msg//"merge 26, merge_j")
+        call assert_equal_int(merge_i(27), -25_int32, msg//"merge 27, merge_i")
+        call assert_equal_int(merge_j(27), -26_int32, msg//"merge 27, merge_j")
+        ! the exact heights are known to 15 digits
+        last_in_huge = heights(26:27)/huge(1.0_real64)
+        call assert_allclose_array_real(last_in_huge, [0.722958691093232_real64, 0.855416274676020_real64], 2_int32, &
+                                        1.0e-14_real64, 0.0_real64, msg//"the last two heights")
+    end subroutine test_linkage_clustering_ward_near_huge_completes
+
+    !> BUG: the run must stop exactly at the first merge whose true height passes huge, with every
+    !| merge before it written and right. The 28 points of
+    !| `test_linkage_clustering_ward_near_huge_completes` and two more, 0.9 huge apart and huge
+    !| from all others: the 28 points merge as before, then {29, 30} at 0.9 huge, and the last merge
+    !| would be at 1.70 huge. So ERR_NAN_INF naming no argument, the first 27 merges those of the
+    !| 28 points alone, merge 28 {30, 29} at 0.9 huge, and the matrix back unchanged. Today the run
+    !| writes {30, 29} as merge 27, in place of {-25, -26}, before it stops.
+    subroutine test_linkage_clustering_ward_past_huge_stops_right()
+        real(real64) :: distances(30, 30), passed(30, 30), heights(29), alone(28, 28), alone_heights(27)
+        integer(int32) :: merge_i(29), merge_j(29), cluster_sizes(29), alone_i(27), alone_j(27), alone_sizes(27), ierr
+        character(*), parameter :: msg = "test_linkage_clustering_ward_past_huge_stops_right: "
+
+        call fill_near_huge(.false., alone)
+        call linkage_clustering(alone, 28_int32, alone_i, alone_j, alone_heights, alone_sizes, METHOD_WARD, ierr)
+        call fill_near_huge(.true., distances)
+        passed = distances
+        call linkage_clustering(passed, 30_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
+        call assert_err(ierr, ERR_NAN_INF, msg//"ierr", arg_pos=0_int32)
+        call assert_identical_array_real(passed, distances, 30_int32*30_int32, msg//"the matrix comes back unchanged")
+        call assert_equal_array_int(merge_i, alone_i, 27_int32, msg//"merges 1 to 27, merge_i")
+        call assert_equal_array_int(merge_j, alone_j, 27_int32, msg//"merges 1 to 27, merge_j")
+        call assert_equal_array_real(heights, alone_heights, 27_int32, 0.0_real64, msg//"merges 1 to 27, heights")
+        call assert_equal_int(merge_i(28), 30_int32, msg//"merge 28, merge_i")
+        call assert_equal_int(merge_j(28), 29_int32, msg//"merge 28, merge_j")
+        call assert_equal_real(heights(28), 0.9_real64*huge(1.0_real64), 0.0_real64, msg//"merge 28, height")
+    end subroutine test_linkage_clustering_ward_past_huge_stops_right
 end module mod_test_linkage_clustering
