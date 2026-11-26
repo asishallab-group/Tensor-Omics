@@ -1001,8 +1001,9 @@ and R do, what they pass:
   converted), a string no longer than a fixed length for a character, which `foo` passes quoted
   and padded to that length, as Fortran assigns it and Python and R pass it.
 
-Each is refused at the directive's line, one error per input (`helper/codegen/tests/fixtures/impl/
-fx_sized_impl.F90`: `fx_method_total`, `fx_second`).
+Each is refused one error per input: an argument supplier at the directive's line, a constant at
+the row of the table that gives it (`helper/codegen/tests/fixtures/impl/fx_sized_impl.F90`:
+`fx_method_total`, `fx_second`).
 
 **A bound naming a value a producer computes (V).** A `DM_MIN` or `DM_MAX` of yours may name a
 `DM_OUTPUT_FROM` value (`DM_MAX(real(limit, real64))` beside an AUTO `limit`): `foo` checks it
@@ -1879,8 +1880,11 @@ it are an example's.
 
 Every refusal about what a `DM_OUTPUT_FROM` may take or be given points at the directive's line --
 or, where one row of its table is the cause, at that row -- and is reported once for a generated
-pair, and once for an implementation where its cause is in the implementation's own source (a
-table row, a supplier it names), however many per-mode wrappers it splits into. Where `foo` calls
+pair. A refusal one row causes (a constant that does not fit, `OMITTED`, a duplicate row), a cell
+naming nothing, an input nothing supplies, or a mode the implementation splits is reported once for
+the implementation, however many per-mode wrappers it splits into; one about an argument a
+directive's producer is given (its kind, rank, length or shape) is reported at the directive, once
+for each generated pair, so a split implementation reports it once per mode. Where `foo` calls
 the producer and the caller could supply the value instead, its note offers `JUST_INFO`.
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than

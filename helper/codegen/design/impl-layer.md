@@ -882,8 +882,8 @@ And what calling one directly takes:
   refusal applies only where `foo` makes the call.
 - **A derived producer input** -- one the producer's binding works out itself, an extent read
   off one of its arrays -- is resolved like any other: by name, by a table row, as a constant,
-  else refused -- a cell naming nothing at its row, an input with no row and no argument of its name
-at the directive's line (`roles._refuses_what_nothing_supplies`). The plan marks it derived
+  else refused -- a cell naming nothing at its row, an input with no row and no argument of its
+  name at the directive's line (`roles._refuses_what_nothing_supplies`). The plan marks it derived
   (`ProducerInput.derived`), so Python and R still leave it out (`binding_inputs`), and the error
   applies only where `foo` calls the producer: a hand-written consumer's producer is called by
   Python and R alone, which never pass it. The resolution used to skip derived inputs before it
@@ -973,7 +973,13 @@ array whose extent the table set from another argument, read past its end with n
   carries one kind per base type and reads lengths and extents off the value -- checked on both, the
   extents gave false positives.
 - **A constant supplies a scalar input of its own type**, an integer fitting the kind, a string no
-  longer than a fixed length; `fortran_wrapper._fortran_literal` quotes a string.
+  longer than a fixed length; `fortran_wrapper._fortran_literal` quotes a string and pads it to that
+  length (a shorter actual does not compile), as Fortran assigns it and the bindings pass it. The
+  length is a literal or a constant evaluated in the producer's own module (`roles.fixed_length`),
+  not looked up in the flat table, where a consumer's parameter of the same name would size it.
+- **Where it is reported.** An argument supplier's refusal at the directive's line, once per pair;
+  a constant's, which a table row gives, at that row, once per implementation, as every refusal
+  one row causes.
 
 **Rejected -- converting a mode's string to its code in the bindings**, so a mode could feed an
 integer input: it works, but it makes a mode's code a published number, which Section 5.10 of the
@@ -1040,7 +1046,9 @@ in K's key, so omitting in one table and supplying in another are two calls. A r
 name-matching, as a constant row does.
 
 Refused, once per implementation at the row's line, one error per cell: `OMITTED` on an input the
-producer requires, or one `DM_REQUIRED_IF_MODE` makes required in a runtime mode; another spelling
+producer requires, or one `DM_REQUIRED_IF_MODE` makes required in a runtime mode (only a runtime
+mode can: a split producer's per-mode wrapper carries no such directive, its input there required,
+and refused as such, or not an argument at all); another spelling
 of it (`Omitted`, quoted, backticked -- a quoted one generated `padding = OMITTED` before, an
 implicit-type error); and the keyword where the consumer has an argument or the project a constant
 named `omitted`. **The table's grammar**, which `OMITTED` makes riskier, is checked in the same

@@ -173,9 +173,10 @@ mode (`supply.mode` set) as its string, `supply.mode.string`, which the producer
 its code -- never `supply.constant`, the code itself. And leave out of the call an input whose
 supplier is an optional of the caller's without a default, where the caller left it out: passing
 your host's null (`None`, `NULL`) is refused by a producer's binding that has a default, while
-leaving it out keeps it absent, as it is in Fortran. And raise the producer's error again in the consumer's words — its argument is the
-producer's, which your caller never wrote: re-decode its code at the position of the consumer
-argument that supplied it (none for a constant), as `_consumer_error` does in Python.
+leaving it out keeps it absent, as it is in Fortran. And raise the producer's error again in the
+consumer's words — its argument is the producer's, which your caller never wrote: re-decode its
+code at the position of the consumer argument that supplied it (none for a constant), as
+`_consumer_error` does in Python.
 In Python the producer import goes *inside* the function, because two modules may size each
 other's outputs and a module-level import would be circular.
 
