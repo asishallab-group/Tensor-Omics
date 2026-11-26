@@ -25,7 +25,7 @@ contains
     function get_all_tests_k_means_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(18))
+        allocate (all_tests(20))
         all_tests(1) = test_case("test_k_means_clustering_values", test_k_means_clustering_values)
         all_tests(2) = test_case("test_k_means_clustering_max_iterations", test_k_means_clustering_max_iterations)
         all_tests(3) = test_case("test_k_means_clustering_many_iterations", test_k_means_clustering_many_iterations)
@@ -49,6 +49,10 @@ contains
         all_tests(17) = test_case("test_k_means_clustering_means_past_huge_of_opposite_signs", &
                                   test_k_means_clustering_means_past_huge_of_opposite_signs)
         all_tests(18) = test_case("test_k_means_clustering_means_past_huge", test_k_means_clustering_means_past_huge)
+        all_tests(19) = test_case("test_k_means_clustering_small_differences_beside_large_values", &
+                                  test_k_means_clustering_small_differences_beside_large_values)
+        all_tests(20) = test_case("test_k_means_clustering_one_large_starting_centroid", &
+                                  test_k_means_clustering_one_large_starting_centroid)
     end function get_all_tests_k_means_clustering
 
     !> Runs k-means from `initial_centroids` and checks `ierr` OK, every label, every count and
@@ -514,4 +518,68 @@ contains
         call check_k_means(2_int32, data_points, 4_int32, 2_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
                            expected_centroids, "test_k_means_clustering_means_past_huge")
     end subroutine test_k_means_clustering_means_past_huge
+
+    !> Calls k-means on 1-D or 2-D points for one iteration and checks the first point's label.
+    subroutine check_first_label(n_clusters, data_points, n_points, n_dims, centroids, expected, msg)
+        integer(int32), intent(in) :: n_clusters, n_points, n_dims, expected
+        real(real64), intent(in) :: data_points(n_dims, n_points)
+        real(real64), intent(inout) :: centroids(n_dims, n_clusters)
+        character(*), intent(in) :: msg
+        integer(int32) :: labels(n_points), label_counts(n_clusters), ierr
+
+        call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, &
+                                max_iterations=1_int32, ierr=ierr)
+        call assert_err(ierr, ERR_OK, msg//": ierr")
+        call assert_equal_int(labels(1), expected, msg//": label of the first point")
+    end subroutine check_first_label
+
+    !> BUG: differences far below the largest magnitude around must still decide. A point's
+    !| distances may be scaled, but by a power of two that suits the differences that decide its
+    !| label, not by one picked for the largest value in the run. Each first point belongs to
+    !| cluster 1:
+    !| - (1e200, 1) against (1e200, 0) and (1e200, 3): squared distances 1 and 4;
+    !| - 0 against 1, 2 and 1e300: 1, 4 and 1e600;
+    !| - 1.4e-200 against 1e-200, 3e-200 and 1e100: (0.4e-200)**2, (1.6e-200)**2 and 1e200;
+    !| - (1e150, 1e-30) against (1e150, 0) and (1e150, 3e-30): (1e-30)**2 and (2e-30)**2.
+    subroutine test_k_means_clustering_small_differences_beside_large_values()
+        real(real64) :: points_2d(2, 2), centroids_2d(2, 2), points_1d(1, 3), centroids_1d(1, 3)
+        character(*), parameter :: msg = "test_k_means_clustering_small_differences_beside_large_values: "
+
+        points_2d = reshape([1.0e200_real64, 1.0_real64, 1.0e200_real64, 3.0_real64], shape(points_2d))
+        centroids_2d = reshape([1.0e200_real64, 0.0_real64, 1.0e200_real64, 3.0_real64], shape(centroids_2d))
+        call check_first_label(2_int32, points_2d, 2_int32, 2_int32, centroids_2d, 1_int32, msg//"(1e200, 1)")
+
+        points_1d(1, :) = [0.0_real64, 2.0_real64, 1.0e300_real64]
+        centroids_1d(1, :) = [1.0_real64, 2.0_real64, 1.0e300_real64]
+        call check_first_label(3_int32, points_1d, 3_int32, 1_int32, centroids_1d, 1_int32, msg//"0 beside 1e300")
+
+        points_1d(1, :) = [1.4e-200_real64, 3.0e-200_real64, 1.0e100_real64]
+        centroids_1d(1, :) = [1.0e-200_real64, 3.0e-200_real64, 1.0e100_real64]
+        call check_first_label(3_int32, points_1d, 3_int32, 1_int32, centroids_1d, 1_int32, msg//"1.4e-200 beside 1e100")
+
+        points_2d = reshape([1.0e150_real64, 1.0e-30_real64, 1.0e150_real64, 3.0e-30_real64], shape(points_2d))
+        centroids_2d = reshape([1.0e150_real64, 0.0_real64, 1.0e150_real64, 3.0e-30_real64], shape(centroids_2d))
+        call check_first_label(2_int32, points_2d, 2_int32, 2_int32, centroids_2d, 1_int32, msg//"(1e150, 1e-30)")
+    end subroutine test_k_means_clustering_small_differences_beside_large_values
+
+    !> BUG: one value far from the others must not change how the others cluster.
+    !| - 1-D points 0, 0.1, 5, 5.1, 1e150 from 0, 5 and 1e150: labels [1, 1, 2, 2, 3], centroids
+    !|   0.1/2, (5 + 5.1)/2 and 1e150, each the plain mean of its points;
+    !| - points 1, 2, 8, 9 from 0, 10 and a "garbage" starting centroid 1e300 that no point is
+    !|   near: labels [1, 1, 2, 2], counts [2, 2, 0], centroids 1.5, 8.5, and 1e300 kept.
+    subroutine test_k_means_clustering_one_large_starting_centroid()
+        real(real64) :: points_5(1, 5), initial_3(1, 3), expected_3(1, 3), points_4(1, 4)
+
+        points_5(1, :) = [0.0_real64, 0.1_real64, 5.0_real64, 5.1_real64, 1.0e150_real64]
+        initial_3(1, :) = [0.0_real64, 5.0_real64, 1.0e150_real64]
+        expected_3(1, :) = [0.1_real64/2, (5.0_real64 + 5.1_real64)/2, 1.0e150_real64]
+        call check_k_means(3_int32, points_5, 5_int32, 1_int32, initial_3, [1, 1, 2, 2, 3], [2, 2, 1], expected_3, &
+                           "test_k_means_clustering_one_large_starting_centroid: a point at 1e150")
+
+        points_4(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]
+        initial_3(1, :) = [0.0_real64, 10.0_real64, 1.0e300_real64]
+        expected_3(1, :) = [1.5_real64, 8.5_real64, 1.0e300_real64]
+        call check_k_means(3_int32, points_4, 4_int32, 1_int32, initial_3, [1, 1, 2, 2], [2, 2, 0], expected_3, &
+                           "test_k_means_clustering_one_large_starting_centroid: a starting centroid at 1e300")
+    end subroutine test_k_means_clustering_one_large_starting_centroid
 end module mod_test_k_means_clustering
