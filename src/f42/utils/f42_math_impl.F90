@@ -94,6 +94,35 @@ contains
     end function scaling_exponent_for_largest
 
     !> AUTHOR_FRANZ_ERIC_SILL
+    !| The two constant factors that apply the power of two `2**exponent` in two steps, for an
+    !| `exponent` from [[f42_math_impl(module):scaling_exponent_for_largest(function)]]: `down` is
+    !| `2**min(exponent, 0)` and `up` is `2**max(exponent, 0)`, so for the rule's exponents -600, 0
+    !| and 600 they are `2**-600` and 1, 1 and 1, or 1 and `2**600` -- exact, normal numbers. A
+    !| difference formed as `(a*down - b*down)*up` cannot overflow where a scale-down is needed,
+    !| and is scaled up only after it is formed.
+    !|
+    !| Factors rather than `scale()` calls, for loops over many elements: `scale()` is a library
+    !| call per element on gfortran and ifx and keeps the loop from vectorising, many times the
+    !| cost of a multiplication by a constant. The concern recorded in
+    !| [[f42_math_impl(module):scaling_exponent_for_largest(function)]], that an optimizer may hoist
+    !| a factor out of a sum, applies to ifx without `-fp-model precise`, which is not a build the
+    !| project ships. The factors are fixed by the exponent alone, never `2**-exponent(x)` of a
+    !| value, so none is subnormal. The thresholds stay in
+    !| [[f42_math_impl(module):scaling_exponent_for_largest(function)]]; this only turns its result
+    !| into factors.
+    pure subroutine scaling_factors(exponent, down, up)
+        integer(int32), intent(in) :: exponent
+            !! The power of two, from [[f42_math_impl(module):scaling_exponent_for_largest(function)]]
+        real(real64), intent(out) :: down
+            !! `2**min(exponent, 0)`, applied first
+        real(real64), intent(out) :: up
+            !! `2**max(exponent, 0)`, applied second
+
+        down = scale(1.0_real64, min(exponent, 0_int32))
+        up = scale(1.0_real64, max(exponent, 0_int32))
+    end subroutine scaling_factors
+
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculates the arithmetic mean of vector. The values are summed scaled by the power of two
     !| [[f42_math_impl(module):scaling_exponent(function)]] picks, so the sum overflows for no
     !| finite values: the mean of `[huge, huge, huge]` is `huge`. Ordinary data is summed unscaled.

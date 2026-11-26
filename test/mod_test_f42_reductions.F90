@@ -8,7 +8,7 @@ module mod_test_f42_reductions
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_support_underflow_control, ieee_get_underflow_mode, &
                                              ieee_set_underflow_mode
-    use f42_math_impl, only: scaling_exponent, mean, std_dev
+    use f42_math_impl, only: scaling_exponent, scaling_exponent_for_largest, scaling_factors, mean, std_dev
     use f42_vector_impl, only: norm, scaled_length
     use test_suite, only: test_case
     implicit none
@@ -22,7 +22,7 @@ contains
     function get_all_tests_f42_reductions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(10))
+        allocate (all_tests(11))
         all_tests(1) = test_case("test_scaling_exponent_range_edges", test_scaling_exponent_range_edges)
         all_tests(2) = test_case("test_mean_values", test_mean_values)
         all_tests(3) = test_case("test_mean_extreme_magnitudes", test_mean_extreme_magnitudes)
@@ -33,6 +33,7 @@ contains
         all_tests(8) = test_case("test_scaled_length_zero_vector", test_scaled_length_zero_vector)
         all_tests(9) = test_case("test_norm_values", test_norm_values)
         all_tests(10) = test_case("test_norm_extreme_magnitudes", test_norm_extreme_magnitudes)
+        all_tests(11) = test_case("test_scaling_factors", test_scaling_factors)
     end function get_all_tests_f42_reductions
 
     !> Values whose largest magnitude lies in [2**-470, 2**496] are not scaled (exponent 0); one ulp
@@ -257,4 +258,35 @@ contains
                          "test_norm_extreme_magnitudes: [huge, huge] has a length past huge, Inf")
     end subroutine test_norm_extreme_magnitudes
 
+    !> The factors for the rule's three exponents are exact powers of two, normal numbers: -600 gives
+    !| 2**-600 and 1, 0 gives 1 and 1, 600 gives 1 and 2**600. Applied to a value, `value*down*up`
+    !| equals `scale(value, exponent)`, and the factors of -exponent undo it exactly. The exponents
+    !| are taken from `scaling_exponent_for_largest` itself (2**497, 1, 2**-471), so a change of the
+    !| rule's exponents reaches this case.
+    subroutine test_scaling_factors()
+        real(real64), parameter :: LARGEST(3) = [2.0_real64**497, 1.0_real64, 2.0_real64**(-471)]
+        real(real64), parameter :: EXPECTED_DOWN(3) = [2.0_real64**(-600), 1.0_real64, 1.0_real64]
+        real(real64), parameter :: EXPECTED_UP(3) = [1.0_real64, 1.0_real64, 2.0_real64**600]
+        real(real64), parameter :: VALUES(3) = [3.0_real64, -0.75_real64, 2.0_real64**100]
+        real(real64) :: down, up, back_down, back_up, scaled
+        integer(int32) :: exponent, i_case, i_value
+        character(len=40) :: msg
+
+        do i_case = 1, 3
+            exponent = scaling_exponent_for_largest(LARGEST(i_case))
+            write (msg, '(a,i0)') "test_scaling_factors: exponent ", exponent
+            call scaling_factors(exponent, down, up)
+            call assert_equal_real(down, EXPECTED_DOWN(i_case), 0.0_real64, trim(msg)//": down")
+            call assert_equal_real(up, EXPECTED_UP(i_case), 0.0_real64, trim(msg)//": up")
+            call assert_true(down >= tiny(1.0_real64) .and. up >= tiny(1.0_real64), trim(msg)//": normal factors")
+            call scaling_factors(-exponent, back_down, back_up)
+            do i_value = 1, 3
+                scaled = VALUES(i_value)*down*up
+                call assert_equal_real(scaled, scale(VALUES(i_value), exponent), 0.0_real64, &
+                                       trim(msg)//": value*down*up = scale(value, exponent)")
+                call assert_equal_real(scaled*back_down*back_up, VALUES(i_value), 0.0_real64, &
+                                       trim(msg)//": the factors of -exponent undo it")
+            end do
+        end do
+    end subroutine test_scaling_factors
 end module mod_test_f42_reductions
