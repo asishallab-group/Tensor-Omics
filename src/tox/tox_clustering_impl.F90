@@ -410,13 +410,16 @@ contains
             !! iteration of current merge
 
         integer(int32) :: i_node
-        real(real64) :: new_dist, size_AB_real, new_dist_part_AC, new_dist_part_BC
+        real(real64) :: new_dist, weight_A, weight_B, new_dist_part_AC, new_dist_part_BC
 
         ! Merge distances
         ! Update merged nodes with arithmetic mean distances
         ! Use column index for merged distances -> fill idx_A with infinity values
         ! update bottom triangle
-        size_AB_real = real(size_B + size_A, real64)
+        ! Each distance is weighted before the two are added, so the sum is an average of finite
+        ! distances and cannot overflow; forming size_A*d(A,C) + size_B*d(B,C) first could.
+        weight_A = real(size_A, real64)/real(size_A + size_B, real64)
+        weight_B = real(size_B, real64)/real(size_A + size_B, real64)
         ! Lance-Williams update formula for UPGMA/WPGMA: new d(AB,C) = (size_A*d(A,C) + size_B*d(B,C)) / (size_A+size_B).
         ! For WPGMA (METHOD_WEIGHTED) the caller passes size_A=size_B=1 instead of the true cluster
         ! sizes, which reduces this to the unweighted average (d(A,C)+d(B,C))/2, giving every
@@ -425,23 +428,23 @@ contains
             if (distances(i_node, i_node) >= 0.0_real64) then
                 ! i_node < idx_B < idx_A -> fill rows in both
                 if (i_node < idx_B) then
-                    new_dist_part_AC = distances(idx_A, i_node)*real(size_A, real64)
-                    new_dist_part_BC = distances(idx_B, i_node)*real(size_B, real64)
-                    new_dist = (new_dist_part_AC + new_dist_part_BC)/size_AB_real
+                    new_dist_part_AC = distances(idx_A, i_node)*weight_A
+                    new_dist_part_BC = distances(idx_B, i_node)*weight_B
+                    new_dist = new_dist_part_AC + new_dist_part_BC
                     distances(idx_B, i_node) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
-                    new_dist_part_AC = distances(idx_A, i_node)*real(size_A, real64)
-                    new_dist_part_BC = distances(i_node, idx_B)*real(size_B, real64)
-                    new_dist = (new_dist_part_AC + new_dist_part_BC)/size_AB_real
+                    new_dist_part_AC = distances(idx_A, i_node)*weight_A
+                    new_dist_part_BC = distances(i_node, idx_B)*weight_B
+                    new_dist = new_dist_part_AC + new_dist_part_BC
                     distances(i_node, idx_B) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
-                    new_dist_part_AC = distances(i_node, idx_A)*real(size_A, real64)
-                    new_dist_part_BC = distances(i_node, idx_B)*real(size_B, real64)
-                    new_dist = (new_dist_part_AC + new_dist_part_BC)/size_AB_real
+                    new_dist_part_AC = distances(i_node, idx_A)*weight_A
+                    new_dist_part_BC = distances(i_node, idx_B)*weight_B
+                    new_dist = new_dist_part_AC + new_dist_part_BC
                     distances(i_node, idx_B) = new_dist
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
