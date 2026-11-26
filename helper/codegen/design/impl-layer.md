@@ -882,7 +882,8 @@ And what calling one directly takes:
   refusal applies only where `foo` makes the call.
 - **A derived producer input** -- one the producer's binding works out itself, an extent read
   off one of its arrays -- is resolved like any other: by name, by a table row, as a constant,
-  else the "no argument of the same name" error. The plan marks it derived
+  else refused -- a cell naming nothing at its row, an input with no row and no argument of its name
+at the directive's line (`roles._refuses_what_nothing_supplies`). The plan marks it derived
   (`ProducerInput.derived`), so Python and R still leave it out (`binding_inputs`), and the error
   applies only where `foo` calls the producer: a hand-written consumer's producer is called by
   Python and R alone, which never pass it. The resolution used to skip derived inputs before it
@@ -979,8 +980,9 @@ integer input: it works, but it makes a mode's code a published number, which Se
 guide says it is not. **Rejected -- a mode constant by value** (any constant equal to a code, FES's
 Q8): two parameters sharing a code would be indistinguishable, renumbering the codes would break it,
 and the value would be looked up in the flat namespace; naming the parameter takes the code and the
-string from one row. **Rejected -- converting an integer constant for a real input**: a constant is
-written as Fortran writes it.
+string from one row. **An integer constant for a real input is refused, not converted** -- a
+constant is written as Fortran writes it. That is attack-T's call, adopted by the design; FES has
+not decided it, and converting it instead is open.
 
 ### A producer call is taken over whole or kept whole (rule K, 2026-11-26)
 
@@ -999,7 +1001,7 @@ supplies it, so it neither keeps a call nor is kept by one.
   the function `_resolve_output_from` builds the plans with -- with the project's one constant
   evaluator (`Project.evaluator`, handed on to the project synthesis builds). A row whose cell is
   the name-matched argument is no row (`| n_items | N_ITEMS |`), and `4_int32` and a parameter
-  `FOUR` are one constant. All ten callers of `taken_over_arguments` pass that evaluator, the
+  `FOUR` are one constant. All 13 callers of `taken_over_arguments` pass that evaluator, the
   Fortran emitter recomputing `foo`'s body included: with two, the body could disagree with the
   signature.
 - **N1, refused:** a producer-input row naming a producer argument that is not an input (an

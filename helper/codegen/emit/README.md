@@ -168,7 +168,12 @@ Two producer subtleties: match producer inputs to consumer arguments **by name**
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);
 and if the producer refines a value you handed it — capping it, say — adopt what it returned.
 Pass `plan.binding_inputs`, not `plan.inputs`: the derived ones are the producer binding's own to
-work out. And raise the producer's error again in the consumer's words — its argument is the
+work out, and an input a table row leaves out (`OMITTED`) is in neither. Pass a constant that is a
+mode (`supply.mode` set) as its string, `supply.mode.string`, which the producer's binding maps to
+its code -- never `supply.constant`, the code itself. And leave out of the call an input whose
+supplier is an optional of the caller's without a default, where the caller left it out: passing
+your host's null (`None`, `NULL`) is refused by a producer's binding that has a default, while
+leaving it out keeps it absent, as it is in Fortran. And raise the producer's error again in the consumer's words — its argument is the
 producer's, which your caller never wrote: re-decode its code at the position of the consumer
 argument that supplied it (none for a constant), as `_consumer_error` does in Python.
 In Python the producer import goes *inside* the function, because two modules may size each

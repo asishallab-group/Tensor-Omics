@@ -443,10 +443,13 @@ value is set (V): a `DM_MIN` or `DM_MAX` naming a `DM_OUTPUT_FROM` value `foo` c
 the producers, and one naming a value the prologue writes after the prologue -- as a second
 validator call for that keyword alone. Everything else about the argument, its finiteness
 included, is still checked at the top, before anything reads it. A `DM_EQUALS` moves whole.
+Where the prologue answers the call itself (`handled`), the bounds that wait for it are not
+checked: they are the implementation's contract, and the implementation does not run.
 `foo_expert` and a lone wrapper check everything at the top, against the values their caller
 passes. A bound names an argument the caller passes, a value a producer computes, a value the
-prologue writes, or a constant -- never a work array or a permutation `foo` builds, an output, an
-argument only the prologue has; and a `DM_SENTINEL` names a fixed marker, never a value set later.
+prologue writes, or a constant -- never a work array or a permutation `foo` builds, an argument
+only the prologue has, or an output as a value (the `size()` of an output `foo` keeps is its
+shape, which is fine); and a `DM_SENTINEL` names a fixed marker, never a value set later.
 
 ### 5.2 A real that may be NaN or infinite
 
@@ -867,8 +870,9 @@ the caller passes or receives, `foo` cannot compute it -- the caller has to know
 `foo` keeps **every** value that call fills, and computes none of them: one call, made by the
 caller (Python and R make it for theirs), never one in each place. `fx_picked_norms` in
 `helper/codegen/tests/fixtures/impl/fx_sized_impl.F90` keeps `norms` beside the `n_large` that
-sizes its result. Where that leaves `foo` nothing to take over, there is one wrapper, whose Python
-and R binding computes them all (`fx_weighted_norms`). Rows that resolve alike are one call:
+sizes its result, and `fx_weighted_norms` beside the `n_large` that sizes an input the caller
+passes. Where that leaves `foo` nothing to take over -- as in both -- there is one wrapper, whose
+Python and R binding computes them all. Rows that resolve alike are one call:
 `4_int32` and a parameter `FOUR`, or a row naming the argument name-matching finds anyway.
 
 It passes every one of the producer's arguments:
@@ -994,10 +998,20 @@ and R do, what they pass:
   end. A binding reads lengths and extents off what it passes, so those are not compared there.
 - **A constant supplies a scalar input of its own type**: a logical for a logical, an integer that
   fits the kind for an integer, a real for a real (write `3.0_real64`: an integer is refused, not
-  converted), a string no longer than a fixed length for a character, which `foo` passes quoted.
+  converted), a string no longer than a fixed length for a character, which `foo` passes quoted
+  and padded to that length, as Fortran assigns it and Python and R pass it.
 
 Each is refused at the directive's line, one error per input (`helper/codegen/tests/fixtures/impl/
 fx_sized_impl.F90`: `fx_method_total`, `fx_second`).
+
+**A bound naming a value a producer computes (V).** A `DM_MIN` or `DM_MAX` of yours may name a
+`DM_OUTPUT_FROM` value (`DM_MAX(real(limit, real64))` beside an AUTO `limit`): `foo` checks it
+once the producers have run, right after the last one's error return and before the other
+allocations, the permutation sorts and the prologue, in a second validator call for that bound
+alone; the rest of the argument's checks, finiteness included, stay at the top, before any
+producer reads it. A `DM_EQUALS` naming one moves there whole. `foo_expert` checks it at the top,
+against the value its caller passes (Section 5.1; `fx_bounded_total` in
+`helper/codegen/tests/fixtures/impl/fx_sized_impl.F90`).
 
 Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
 then the docs say where to get the value, and nothing is called for them. It names the producer the same
@@ -1204,6 +1218,11 @@ if (is_err(ierr)) then
 end if
 if (handled) return
 ```
+
+A bound naming a value the prologue writes is checked after `if (handled) return`, against what
+the prologue wrote (Section 5.1); where the prologue answers the call, it is not checked, since the
+implementation it is the contract of does not run. Every other check of that argument still runs
+at the top, before the prologue reads it.
 
 **There is no scope**, and that is the point. `foo_expert` is the tier that gives a caller full
 control over what reaches the implementation; a prologue running there would override exactly the
