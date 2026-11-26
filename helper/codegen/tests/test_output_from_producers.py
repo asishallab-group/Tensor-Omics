@@ -1762,6 +1762,11 @@ def data_producers():
                   integer("n_items", doc="items"),
                   integer("counted", Intent.OUT, doc="a count"),
                   meta=IMPL, is_pure=True),
+        procedure("ramp_impl",
+                  integer("n_items", doc="items"),
+                  real("ramp", Intent.OUT, "(n_items)", doc="1 to n_items"),
+                  integer("n_up", Intent.OUT, doc="how many are above one"),
+                  meta=IMPL, is_pure=True),
     )
 
 
@@ -1924,22 +1929,25 @@ class TestWhereABindingReadsAnExtent:
         from codegen.emit.error_arguments import source_of
         from codegen.synthesize import is_derived
 
-        # `n_large` sizes a result, so only the bindings call `large` (rule K keeps its call
-        # whole), which read `x(5)` for its own `x(n_items)`: where `foo` called it, `n_items`
-        # beside `x(5)` would have been refused (rule T)
+        # one `ramp` call gives `norms` and the `n_large` that sizes a work array, so `foo` calls
+        # it (and `count`), each passed `n_items`, which no array the caller passes carries:
+        # `norms` is computed, and `x(5)` carries none
         synthesis, bag = analysed(data_producers(), consumer(
             "use_impl",
             integer("n_items", doc="items"),
             real("norms", Intent.IN, "(n_items)", doc="the norms", directives=auto(
-                "norms", "large", "tox_dat")),
-            integer("n_large", doc="the size", directives=auto("n_large", "large", "tox_dat")),
-            real("picked", Intent.OUT, "(n_large)", doc="one per large norm"),
+                "ramp", "ramp", "tox_dat")),
+            integer("n_large", doc="the size", directives=auto("n_up", "ramp", "tox_dat")),
+            real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
             integer("k", doc="a size", directives=auto("counted", "count", "tox_dat")),
             real("tmp_k", Intent.OUT, "(k)", doc="scratch"),
             real("x", Intent.IN, "(5)", doc="values"),
             real("res", Intent.OUT, "(n_items)", doc="one per norm"),
             integer("norms_perm", Intent.IN, "(n_large)", doc="an order"),
         ))
+        plain = synthesis.project.procedure("tox_cons", "use")
+        # the premise: the Fortran route, `foo` takes both over
+        assert plain.argument("norms") is None and plain.argument("n_large") is None
         expert = synthesis.project.procedure("tox_cons", "use_expert")
 
         assert bag.errors == ()
