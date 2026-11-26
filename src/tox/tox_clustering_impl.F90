@@ -574,10 +574,14 @@ contains
             !! weight of B: its size for UPGMA, 1 for WPGMA
 
         integer(int32) :: exponent
+        real(real64) :: weighted_AC, weighted_BC
 
         exponent = scaling_exponent_for_largest(max(dist_AC, dist_BC))
-        new_dist = scale((real(size_A, real64)*scale(dist_AC, exponent) + real(size_B, real64)*scale(dist_BC, exponent)) &
-                         /real(size_A + size_B, real64), -exponent)
+        ! in separate statements, as the formula always was: a compiler that fuses a multiplication
+        ! and an addition within one expression (nvfortran does, even at -O0) then rounds as before
+        weighted_AC = scale(dist_AC, exponent)*real(size_A, real64)
+        weighted_BC = scale(dist_BC, exponent)*real(size_B, real64)
+        new_dist = scale((weighted_AC + weighted_BC)/real(size_A + size_B, real64), -exponent)
         new_dist = min(max(new_dist, min(dist_AC, dist_BC)), max(dist_AC, dist_BC))
     end function average_linkage_update_helper
 
