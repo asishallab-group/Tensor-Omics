@@ -1081,6 +1081,42 @@ class TestAnOmittedProducerInput:
             fortran, "subroutine fx_padded_total(", "end subroutine fx_padded_total")
 
 
+class TestAModeReachesAProducerAsAMode:
+    """Rule T: a mode argument supplies a producer's mode input whose table names its modes, and
+    one more (`fx_method_size` accepts `three`); a constant naming one of the input's mode
+    parameters is its code in Fortran and its string in Python and R. Before, Python and R passed
+    `METHOD_TWO` as the integer 2, which the producer's binding refused."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([tox.fx_method_total(x, "one"), tox.fx_method_total(x, "two"),
+                              len(tox.fx_method_filled(x, "one")), len(tox.fx_method_filled(x, "two")),
+                              tox.fx_second_total(x), len(tox.fx_second(x))]))
+        """)
+
+        assert out == [6 + 3, 6 + 6, 3, 6, 6 + 6, 6]
+
+    def test_r(self, built):
+        out = run_r(built, """
+            x <- c(1, 2, 3)
+            cat(fx_method_total(x, "one"), fx_method_total(x, "two"), length(fx_method_filled(x, "one")),
+                length(fx_method_filled(x, "two")), fx_second_total(x), length(fx_second(x)))
+        """)
+
+        assert out == ["9", "12", "3", "6", "12", "6"]
+
+    def test_the_constant_crosses_as_its_code_and_its_string(self, built):
+        python = (built / "py" / "fx_impl" / "fx_sized.py").read_text()
+        r = (built / "r" / "fx_sized.R").read_text()
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        assert "fx_method_size(n_items=n_items, method='two')" in function_body(
+            python, "def fx_second(", "\ndef ")
+        assert 'method = "two"' in function_body(r, "fx_second <- function(", "\n}")
+        assert "method = 2_int32" in function_body(
+            fortran, "subroutine fx_second_total(", "end subroutine fx_second_total")
+
+
 FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
 
 

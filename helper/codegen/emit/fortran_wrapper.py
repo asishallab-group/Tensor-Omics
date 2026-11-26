@@ -954,7 +954,9 @@ class FortranWrapperEmitter:
                 supply = supplied.get(dummy.name.lower())
                 if supply is None or supply.argument is not None:
                     continue
-                if isinstance(supply.constant, bool) and dummy.type.kind:
+                # rendered in the input's kind (`_fortran_literal`), whatever its type; a
+                # string carries none
+                if dummy.type.kind and not isinstance(supply.constant, str):
                     kinds.add(dummy.type.kind)
         return kinds
 
@@ -1356,4 +1358,7 @@ def _fortran_literal(value: object, argument: Argument) -> str:
         return f"{value}_{kind}" if kind else str(value)
     if isinstance(value, float):
         return f"{value!r}_{kind}" if kind else repr(value)
+    if isinstance(value, str):
+        # a string constant, quoted as Fortran quotes it: unquoted, it was a name (rule T)
+        return "'" + value.replace("'", "''") + "'"
     return str(value)

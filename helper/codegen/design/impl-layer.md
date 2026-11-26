@@ -943,6 +943,41 @@ assumed-shape producer output**, which takes its shape from what `foo` allocates
 be sized by a value another producer computes later, making R1 order-dependent, and on the binding
 route the producer's binding wants a size the consumer never passes.
 
+### A producer input is given a value of its own kind (rule T, 2026-11-26)
+
+P1 says where a producer input's value comes from; nothing said what it may be. A mode string
+reached an integer producer input in Python and R (`'factor' must be a whole number ... not
+'one'`), a constant mode parameter crossed Python and R as its integer where the producer's binding
+wanted the string, and a real array, a shorter string, a smaller array, a default `logical` into a
+`logical(c_bool)`, or a constant of another type generated Fortran that did not compile -- or, for an
+array whose extent the table set from another argument, read past its end with no `-fcheck` error.
+**T: a producer input is given a value of its own kind, in every tier that calls the producer**
+(`roles._refuses_a_kind`, after P1): every input where the generated Fortran calls the producer,
+`binding_inputs` where only a binding does, silent where `validate` refuses the type itself.
+
+- **Modes meet only modes, on either side.** A mode argument supplies only a mode input whose table
+  names each of its modes with the same value; each value is evaluated in the module its row links
+  (`roles._mode_code`), not in the project's flat table of constants, where two modules' parameters
+  of one name are one entry. A mode input is supplied by such an argument or by a cell naming one of
+  its own mode parameters (`ProducerInput.mode`): Fortran passes its code, Python and R its string.
+  A mode is never computed by `DM_OUTPUT_FROM`, and a mode table on an `intent(out)` argument is
+  refused (`validate`). A split mode supplies nothing (FES's Q1: refused, not supported).
+- **An argument has the input's base type and rank**; where the Fortran calls the producer also its
+  kind, its length where the input's is fixed, and its extents where the input is explicit-shape,
+  compared as row (c) compares an AUTO array's (`roles._renamers`). Only on that route: a binding
+  carries one kind per base type and reads lengths and extents off the value -- checked on both, the
+  extents gave false positives.
+- **A constant supplies a scalar input of its own type**, an integer fitting the kind, a string no
+  longer than a fixed length; `fortran_wrapper._fortran_literal` quotes a string.
+
+**Rejected -- converting a mode's string to its code in the bindings**, so a mode could feed an
+integer input: it works, but it makes a mode's code a published number, which Section 5.10 of the
+guide says it is not. **Rejected -- a mode constant by value** (any constant equal to a code, FES's
+Q8): two parameters sharing a code would be indistinguishable, renumbering the codes would break it,
+and the value would be looked up in the flat namespace; naming the parameter takes the code and the
+string from one row. **Rejected -- converting an integer constant for a real input**: a constant is
+written as Fortran writes it.
+
 ### A producer call is taken over whole or kept whole (rule K, 2026-11-26)
 
 `foo` keeps a value a producer computes where it sizes an argument the caller still passes or

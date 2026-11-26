@@ -1924,13 +1924,16 @@ class TestWhereABindingReadsAnExtent:
         from codegen.emit.error_arguments import source_of
         from codegen.synthesize import is_derived
 
+        # `n_large` sizes a result, so only the bindings call `large` (rule K keeps its call
+        # whole), which read `x(5)` for its own `x(n_items)`: where `foo` called it, `n_items`
+        # beside `x(5)` would have been refused (rule T)
         synthesis, bag = analysed(data_producers(), consumer(
             "use_impl",
             integer("n_items", doc="items"),
             real("norms", Intent.IN, "(n_items)", doc="the norms", directives=auto(
                 "norms", "large", "tox_dat")),
             integer("n_large", doc="the size", directives=auto("n_large", "large", "tox_dat")),
-            real("tmp_buf", Intent.OUT, "(n_large)", doc="scratch"),
+            real("picked", Intent.OUT, "(n_large)", doc="one per large norm"),
             integer("k", doc="a size", directives=auto("counted", "count", "tox_dat")),
             real("tmp_k", Intent.OUT, "(k)", doc="scratch"),
             real("x", Intent.IN, "(5)", doc="values"),
@@ -1939,6 +1942,7 @@ class TestWhereABindingReadsAnExtent:
         ))
         expert = synthesis.project.procedure("tox_cons", "use_expert")
 
+        assert bag.errors == ()
         assert self.owners(synthesis, "use_expert", "n_items") == []
         assert not is_derived(expert.argument("n_items"), expert)
         # and no error blames an array the caller never passed

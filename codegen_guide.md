@@ -959,6 +959,29 @@ absent); and an argument only the prologue has (it is the prologue's, not the im
 A value another producer computes is chaining (above), and one the prologue writes is the
 prologue's rule (Section 5.13); each keeps its own message.
 
+**What a producer input is given (T).** A producer input is given a value of its own kind, in
+every tier that calls the producer -- where `foo` calls it, every input it passes; where only Python
+and R do, what they pass:
+
+- **A mode meets only a mode.** A mode argument of yours supplies only a producer input that is a
+  mode itself, whose table names every one of your modes with the same value (each evaluated in
+  the module its row links; the producer may accept more). A producer's mode input is supplied by
+  such an argument, or by a cell naming **one of its own mode parameters** (`| method |
+  METHOD_TWO |`), which `foo` passes as its code and Python and R as its string -- not by a number
+  equal to a code (`2_int32`), which is refused. A mode the implementation splits (Section 5.11)
+  supplies nothing: each per-mode wrapper has it fixed.
+- **An argument has the input's base type and rank**, and where `foo` calls the producer also its
+  kind (numeric by value, logical by name), its length if the input's is fixed (`len=*` takes any),
+  and its extents if the input is explicit-shape, with every producer input replaced by what
+  supplies it: `foo` passes `n = k` beside `x = y`, so a `y(m)` with `m < k` would be read past its
+  end. A binding reads lengths and extents off what it passes, so those are not compared there.
+- **A constant supplies a scalar input of its own type**: a logical for a logical, an integer that
+  fits the kind for an integer, a real for a real (write `3.0_real64`: an integer is refused, not
+  converted), a string no longer than a fixed length for a character, which `foo` passes quoted.
+
+Each is refused at the directive's line, one error per input (`helper/codegen/tests/fixtures/impl/
+fx_sized_impl.F90`: `fx_method_total`, `fx_second`).
+
 Use `JUST_INFO` instead of `AUTO` when the caller genuinely has to make the call themselves —
 then the docs say where to get the value, and nothing is called for them. It names the producer the same
 way, so the link the docs render, in Ford as in Python and R, is to the published wrapper a
@@ -998,6 +1021,11 @@ if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call 
 
 A mode may also be optional **without** a default (Section 5.5). Omitted from Python or R, it
 reaches your implementation absent, so test `present(mode)` before you read it.
+
+A mode is a choice, not a number, so it reaches a `DM_OUTPUT_FROM` producer only as a mode
+(Section 5.9), and it is never computed by one: a mode argument with `DM_OUTPUT_FROM(..., AUTO)` is
+refused, and so is a mode table on an `intent(out)` argument, whose membership the wrapper would
+check before the implementation set it -- document an output's codes in prose.
 
 Do **not** bound a mode with `DM_MIN`/`DM_MAX`: the accepted set need not be contiguous, and a
 hand-written range goes stale the moment a mode is added — rejecting the new mode at run time
@@ -1765,6 +1793,8 @@ it are an example's.
 | a `Supplied by` cell that is neither an argument of the implementation nor a constant (`the producer-input table of 'work_size' supplies 'factor' by '2*scale', which is neither an argument of 'fy_expr_impl' nor a constant`), at its row; one edit from an argument, the note asks if that was meant | an expression is not computed: give the implementation an argument the caller passes for the value (Section 5.9) |
 | `OMITTED` on an input the producer requires, or requires in a mode chosen at run time; another spelling of it (`Omitted`, `'OMITTED'`); or the keyword where the implementation has an argument, or the project a constant, named `omitted` (`the producer-input table of 'work_size' omits 'n_items', which 'fx_padded_size' requires`) | only an optional input may be left out; the keyword is written bare and in capitals, and means one thing (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer input supplied by a mode the implementation splits (Section 5.11) (`'work_size' is computed from 'fx_scaled_size', whose input 'factor' would be 'mode', the mode 'fy_split_impl' splits into one wrapper per mode`) | each per-mode wrapper fixes the mode, and has no argument to pass (Section 5.10) |
+| a `DM_OUTPUT_FROM` producer input given a value of another kind (T): a mode for a non-mode input or a non-mode for a mode input (`'out_size' is computed from 'fx_scaled_size', whose input 'factor' would be the mode 'method', which Python and R pass as its string and Fortran as its code`, `... whose input 'method' is a mode, but would be 'k', which is not`); a mode the producer's table does not name with the same value (`... whose mode input 'method' accepts 'one', 'two', but would be the mode 'method', which also accepts 'three'`, `... which gives 'two' another value`); an argument of another base type or rank, and where `foo` calls the producer of another kind, fixed length or extents (`... whose input 'factor' is integer(int32), a scalar, but would be 'x', real(real64), rank 1`, `... whose input 'label' is character(len=8), but would be 'tag', character(len=4)`, `... whose input 'x' has shape (n), with 'n' given 'k', but would be 'y', of shape (m)`); a constant that is not a scalar of the input's type, or does not fit its kind or length (`... whose input 'factor' is integer(int32), but the table gives it the constant 3000000000_int64, which does not fit`) | a value reaches the producer as the input declares it: a mode's code is not a number, a binding passes a mode as its string, and `foo` passes every argument by keyword, so another kind, a shorter string or a smaller array does not compile or is read past its end (Section 5.9) |
+| a mode argument computed by `DM_OUTPUT_FROM(..., AUTO)` (`'method' is a mode, so it cannot be computed with 'fx_size'`), or a mode table on an `intent(out)` argument (`'method' is an output, but has a mode table, whose values the wrapper checks before the implementation sets it`) | a mode is a choice the caller makes; the wrapper checks a mode's membership before the call (Section 5.10) |
 | a `DM_OUTPUT_FROM` producer-input table that is one of two, has an empty cell, or maps a name the producer does not have (`'work_size' has 2 tables mapping the inputs of 'pr_size_of'`, `row 1 of the producer-input table of 'work_size' has an empty cell`, `the producer-input table of 'work_size' maps 'm', which is not an argument of 'pr_size_of'`) | the table says what each producer input is supplied by, and the generator will not guess (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |

@@ -20,6 +20,13 @@ module fx_sized_impl
     public :: fx_picked_norms_impl, fx_weighted_norms_impl
     public :: fx_unpadded_total_impl, fx_unpadded_impl, fx_unstrided_total_impl, fx_unstrided_impl
     public :: fx_omitted_once_impl
+    public :: fx_method_total_impl, fx_method_filled_impl, fx_second_total_impl, fx_second_impl
+    public :: METHOD_ONE, METHOD_TWO
+
+    !> the first method
+    integer(int32), parameter :: METHOD_ONE = 1_int32
+    !> the second method
+    integer(int32), parameter :: METHOD_TWO = 2_int32
 
 contains
 
@@ -615,4 +622,97 @@ contains
         tmp_b = 1.0_real64
         total = sum(x) + sum(tmp_a) + sum(tmp_b)
     end subroutine fx_omitted_once_impl
+
+    !> summary: The sum of some values, plus a slot per item and method code
+    !| author: A Developer
+    !| The mode `method` supplies the producer's mode input, whose table names every mode of
+    !| it, with the same value, and one more (rule T): Fortran passes the code, through `foo`.
+    pure subroutine fx_method_total_impl(n_items, x, method, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: method
+            !! how many slots per item
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_sized_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_sized_impl(module):METHOD_TWO(variable)]] |
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_method_total_impl
+
+    !> summary: A result of a slot per item and method code
+    !| author: A Developer
+    !| The same, through the bindings: Python and R pass the mode's string.
+    pure subroutine fx_method_filled_impl(n_items, x, method, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: method
+            !! how many slots per item
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_sized_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_sized_impl(module):METHOD_TWO(variable)]] |
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_method_filled_impl
+
+    !> summary: The sum of some values, plus two slots per item, the producer's second method
+    !| author: A Developer
+    !| A constant naming one of the mode input's own parameters (rule T): Fortran passes its code.
+    pure subroutine fx_second_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | method         | METHOD_TWO  |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_second_total_impl
+
+    !> summary: A result of two slots per item, the producer's second method
+    !| author: A Developer
+    !| The same, through the bindings: Python and R pass the mode's string, `two`.
+    pure subroutine fx_second_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | method         | METHOD_TWO  |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_second_impl
 end module fx_sized_impl

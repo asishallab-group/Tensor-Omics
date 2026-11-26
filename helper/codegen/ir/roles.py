@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag, SourceLocation
-from .constants import ConstantError, ConstantEvaluator
+from .constants import ConstantError, ConstantEvaluator, fits_integer_kind
 from .doc import DocTable, FordLink
 from .entities import Argument, Procedure
 from .types import BaseType, FortranType, Intent
@@ -92,6 +92,9 @@ class ProducerInput:
     #: nested producer's value) and so leaves it out of what Python and R ask for. Only a
     #: generated Fortran wrapper, which calls the producer directly, passes it.
     derived: bool = False
+    #: The mode, where the input is a mode and a cell names one of its mode parameters (rule
+    #: T): Fortran passes `constant`, its code evaluated in its own module, Python and R its string
+    mode: ModeValue | None = None
 
     @property
     def is_constant(self) -> bool:
@@ -587,8 +590,13 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                                             derived=derived))
                 continue
             if resolved.kind == "constant":
-                inputs.append(ProducerInput(producer_input.name, constant=resolved.value[1],
-                                            derived=derived))
+                # a cell naming one of a mode input's own parameters is that mode (T, Q8): its
+                # code from its own module, its string for Python and R
+                mode = _mode_named(producer_input, cell)
+                code = _mode_code(mode, project, evaluator) if mode is not None else None
+                inputs.append(ProducerInput(
+                    producer_input.name, constant=resolved.value[1] if code is None else code,
+                    derived=derived, mode=mode))
                 continue
             if resolved.kind == "omitted":
                 continue  # rule O: no call passes it, in any tier
@@ -621,6 +629,9 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             continue
         if _refuses_a_supplier(argument, directive, consumer, plain, producer, inputs,
                                prologue_only, fortran_calls, project, conventions, diagnostics):
+            continue
+        if _refuses_a_kind(argument, directive, consumer, producer, inputs, renames,
+                           fortran_calls, project, evaluator, diagnostics):
             continue
 
         argument.roles.computed_from = OutputFromPlan(
@@ -779,6 +790,12 @@ def _refuses_the_output(argument: Argument, directive, producer: Procedure, outp
         diagnostics.error(message, entity=argument, location=location, note=note)
         return True
 
+    if automatic and argument.roles is not None and argument.roles.is_mode:
+        return refuse(
+            f"'{argument.name}' is a mode, so it cannot be computed with '{producer.name}'",
+            "a mode is a choice the caller makes (Section 5.10); it comes from the caller, never "
+            "from a producer" + way_out,
+        )
     if automatic and argument.is_array and argument.type.is_character:
         return refuse(
             f"'{argument.name}' is a character array computed from '{producer.name}'",
@@ -877,27 +894,15 @@ def _same_extent(left: list, right: list) -> bool:
         return left == right
 
 
-def _refuses_an_axis(argument: Argument, directive, consumer: Procedure, producer: Procedure,
-                     output: Argument, inputs: list[ProducerInput], fortran_calls: bool,
-                     evaluator: ConstantEvaluator | None, diagnostics: DiagnosticBag) -> bool:
-    """Refuse an AUTO array whose extent differs from the producer output's (R2 row c).
+def _renamers(consumer: Procedure, producer: Procedure, inputs, evaluator):
+    """`(theirs, mine)`: how `_extent_tokens` reads a name of the producer's declarations, and one
+    of the consumer's, so the two compare.
 
-    The producer writes the shape it declares into an array allocated with the consumer's, so
-    each axis must be the producer's extent with every producer input replaced by what supplies
-    it here -- all at once, so a table swapping two (`n | m`, `m | n`) swaps them, inside
-    `size(a, k)` too. A name that is no input is a constant of the producer's own scope, and one
-    that is no argument of the consumer a constant of its: each evaluated where it is declared,
-    so `5_int32` is `5` and a named parameter compares by its value. Names compare in any case.
-    Where `foo` allocates it, and a binding of an explicit-shape consumer; an assumed-shape one
-    takes the shape it is given. An axis naming an input nothing here supplies (one only the
-    producer's binding derives, on the binding route) is not compared: there is nothing to
-    spell it by. Rank is row g's, and a shape the producer does not declare row b's. True when
-    something was refused.
+    A producer input is replaced by what supplies it here; a name that is no input is a constant
+    of the producer's own scope, and one that is no argument of the consumer a constant of its --
+    each evaluated where it is declared, so `5_int32` is `5`. `theirs` gives None for an input
+    nothing here supplies (one only the producer's binding derives): nothing spells it.
     """
-    if not (directive.is_automatic and argument.is_array):
-        return False
-    if not (fortran_calls or argument.dimension.is_explicit_shape):
-        return False
     supplied = {supply.name.lower(): supply for supply in inputs}
     producer_inputs = {dummy.name.lower() for dummy in producer.arguments}
     ours = {dummy.name.lower() for dummy in consumer.arguments}
@@ -927,6 +932,31 @@ def _refuses_an_axis(argument: Argument, directive, consumer: Procedure, produce
             return ("name", name.lower())
         return constant(name) or ("name", name.lower())
 
+    return theirs, mine
+
+
+def _refuses_an_axis(argument: Argument, directive, consumer: Procedure, producer: Procedure,
+                     output: Argument, inputs: list[ProducerInput], fortran_calls: bool,
+                     evaluator: ConstantEvaluator | None, diagnostics: DiagnosticBag) -> bool:
+    """Refuse an AUTO array whose extent differs from the producer output's (R2 row c).
+
+    The producer writes the shape it declares into an array allocated with the consumer's, so
+    each axis must be the producer's extent with every producer input replaced by what supplies
+    it here -- all at once, so a table swapping two (`n | m`, `m | n`) swaps them, inside
+    `size(a, k)` too. A name that is no input is a constant of the producer's own scope, and one
+    that is no argument of the consumer a constant of its: each evaluated where it is declared,
+    so `5_int32` is `5` and a named parameter compares by its value. Names compare in any case.
+    Where `foo` allocates it, and a binding of an explicit-shape consumer; an assumed-shape one
+    takes the shape it is given. An axis naming an input nothing here supplies (one only the
+    producer's binding derives, on the binding route) is not compared: there is nothing to
+    spell it by. Rank is row g's, and a shape the producer does not declare row b's. True when
+    something was refused.
+    """
+    if not (directive.is_automatic and argument.is_array):
+        return False
+    if not (fortran_calls or argument.dimension.is_explicit_shape):
+        return False
+    theirs, mine = _renamers(consumer, producer, inputs, evaluator)
     for axis, (extent, produced) in enumerate(
             zip(argument.dimension.extents, output.dimension.extents), start=1):
         expected = _extent_tokens(produced, theirs)
@@ -950,6 +980,239 @@ def _refuses_an_axis(argument: Argument, directive, consumer: Procedure, produce
         )
         return True
     return False
+
+
+def _mode_named(producer_input: Argument, cell: str | None) -> ModeValue | None:
+    """The mode of `producer_input`'s own table whose parameter the cell names, or None."""
+    table = producer_input.roles.mode if producer_input.roles is not None else None
+    if table is None or cell is None:
+        return None
+    return next((value for value in table.values
+                 if value.parameter.lower() == cell.strip().lower()), None)
+
+
+def _mode_code(value: ModeValue, project, evaluator: ConstantEvaluator | None):
+    """A mode's code: its parameter evaluated in the module its table row links (T).
+
+    Not looked up by name in the project's flat table of constants, where two modules' parameters
+    of one name are one entry. None where it cannot be evaluated.
+    """
+    module = project.module(value.module) if project is not None else None
+    if module is None or evaluator is None:
+        return None
+    for parameter in module.parameters:
+        if parameter.name.lower() == value.parameter.lower() and parameter.expression:
+            try:
+                return evaluator.evaluate(parameter.expression)
+            except ConstantError:
+                return None
+    return None
+
+
+def _same_mode(left: ModeValue, right: ModeValue, project, evaluator) -> bool:
+    """Whether two rows of mode tables are one mode with one value: one parameter, or two that
+    evaluate, each in its own module, to one code."""
+    if (left.module.lower(), left.parameter.lower()) == (right.module.lower(),
+                                                         right.parameter.lower()):
+        return True
+    code = _mode_code(left, project, evaluator)
+    return code is not None and code == _mode_code(right, project, evaluator)
+
+
+def _quoted(strings) -> str:
+    return ", ".join(f"'{string}'" for string in strings)
+
+
+#: The note every type, kind or rank refusal of an argument supplier carries (T)
+_SUPPLY_ITS_KIND = "supply it by an argument of its type, kind and rank, or a constant in the table"
+
+#: The note every refusal of a constant supplier carries (T)
+_CONSTANT_OF_ITS_TYPE = ("a constant supplies a scalar input of its own type, written as Fortran "
+                         "writes it (3.0_real64, .false., 'abc')")
+
+
+def _refuses_a_kind(argument: Argument, directive, consumer: Procedure, producer: Procedure,
+                    inputs: list[ProducerInput], renames, fortran_calls: bool, project,
+                    evaluator: ConstantEvaluator | None, diagnostics: DiagnosticBag) -> bool:
+    """Refuse a producer input given a value of another kind than its own (rule T).
+
+    Judged where the generated Fortran calls the producer for every input it passes, whether or
+    not a binding calls it too; where only a binding does, for `binding_inputs`. Silent where
+    `validate` refuses the type itself (`bindings_cannot_carry`, a derived type), so a type is
+    reported once. One error per failing input, at most one cause each, in this order:
+
+    1. modes: a mode and a non-mode never meet; a mode argument supplies only a mode input whose
+       table names each of its modes with the same value, each evaluated in its own module (the
+       producer may accept more); a constant given to a mode input names one of its parameters;
+    2. an argument's base type and rank -- and where the Fortran calls the producer, its kind
+       (numeric by value, logical by name), a fixed length's value, and an explicit shape's
+       extents with every producer input replaced by what supplies it (`_renamers`). The
+       binding route carries one kind per base type, reads a string's length and an array's
+       extents off the value, so only base type and rank are compared there;
+    3. a constant: a scalar input, of its own type -- a logical for a logical, an integer that
+       fits the kind, a real for a real (an integer is refused, not converted), a string no
+       longer than a fixed length.
+
+    At the directive's line, once per pair; it runs after P1, so a supplier P1 refused is not
+    judged here. True when something was refused.
+    """
+    location = _location_of(argument, directive.line_number)
+    computed = f"'{argument.name}' is computed from '{producer.name}'"
+    theirs, mine = _renamers(consumer, producer, inputs, evaluator)
+    refused = False
+    for supply in inputs:
+        if supply.derived and not fortran_calls:
+            continue  # not passed where only a binding calls the producer
+        wanted = producer.argument(supply.name)
+        if wanted is None:
+            continue
+        if supply.is_constant:
+            cause = _a_constant_of_another_kind(supply, wanted, renames)
+        else:
+            cause = _an_argument_of_another_kind(supply, wanted, consumer.argument(supply.argument),
+                                                 inputs, fortran_calls, theirs, mine, project,
+                                                 evaluator)
+        if cause is None:
+            continue
+        message, note = cause
+        diagnostics.error(f"{computed}, whose {message}", entity=argument, location=location,
+                          note=note + (_way_out(fortran_calls) if not supply.is_constant else ""))
+        refused = True
+    return refused
+
+
+def _carried(*types: FortranType) -> bool:
+    """Whether every type is one `validate` lets through, so T may judge them."""
+    return not any(t.base is BaseType.DERIVED or bindings_cannot_carry(t) for t in types)
+
+
+def _mode_parameters(table: ModeTable) -> str:
+    return ", ".join(value.parameter for value in table.values)
+
+
+def _an_argument_of_another_kind(supply, wanted: Argument, given: Argument | None, inputs,
+                                 fortran_calls: bool, theirs, mine, project, evaluator):
+    """Why the argument `given` cannot be passed for the producer input `wanted` (T), as
+    (message, note), or None."""
+    if given is None or not _carried(wanted.type, given.type):
+        return None
+    wanted_mode = wanted.roles.mode if wanted.roles is not None else None
+    given_mode = given.roles.mode if given.roles is not None else None
+    if given_mode is not None and wanted_mode is None:
+        return (f"input '{wanted.name}' would be the mode '{given.name}', which Python and R pass "
+                "as its string and Fortran as its code",
+                "a mode is a choice, not a number (Section 5.10): it reaches a producer only as a "
+                f"mode, whose table names the same modes. Supply '{wanted.name}' by an argument "
+                "or a constant in the table")
+    if wanted_mode is not None and given_mode is None:
+        return (f"input '{wanted.name}' is a mode, but would be '{given.name}', which is not",
+                "supply a mode input by a mode argument whose table names the same modes, or by "
+                f"one of its mode parameters in the table ({_mode_parameters(wanted_mode)})")
+    if wanted_mode is not None:
+        accepts = _quoted(value.string for value in wanted_mode.values)
+        missing = [value.string for value in given_mode.values
+                   if wanted_mode.value_for(value.string) is None]
+        other = [value.string for value in given_mode.values
+                 if wanted_mode.value_for(value.string) is not None
+                 and not _same_mode(value, wanted_mode.value_for(value.string), project,
+                                    evaluator)]
+        why = (f"which also accepts {_quoted(missing)}" if missing else
+               f"which gives {_quoted(other)} another value" if other else None)
+        if why is None:
+            return None
+        return (f"mode input '{wanted.name}' accepts {accepts}, but would be the mode "
+                f"'{given.name}', {why}",
+                "a mode passes through as its string in Python and R and as its code in Fortran, "
+                "so the producer's table must name every mode of the supplier with the same value")
+    if (given.rank != wanted.rank
+            or not (_types_agree(wanted.type, given.type, True) if fortran_calls
+                    else wanted.type.base is given.type.base)):
+        return (f"input '{wanted.name}' is {wanted.type}, {_rank_text(wanted)}, but would be "
+                f"'{given.name}', {given.type}, {_rank_text(given)}", _SUPPLY_ITS_KIND)
+    if not fortran_calls:
+        return None
+    length = wanted.type.length
+    if length is not None and not length.is_assumed:
+        expected = _extent_tokens(length.expr, theirs)
+        given_length = given.type.length
+        same = (given_length is not None and not given_length.is_assumed and expected is not None
+                and _same_extent(_extent_tokens(given_length.expr, mine), expected))
+        if expected is not None and not same:
+            return (f"input '{wanted.name}' is {wanted.type}, but would be '{given.name}', "
+                    f"{given.type}",
+                    "a fixed-length input takes a value of that length; declare the producer's "
+                    f"input len=*, or give '{given.name}' its length")
+    if wanted.is_array and wanted.dimension.is_explicit_shape:
+        for extent, own in zip(wanted.dimension.extents, given.dimension.extents):
+            expected = _extent_tokens(extent, theirs)
+            if expected is None:
+                continue  # it names an input nothing here supplies
+            if _same_extent(_extent_tokens(own, mine), expected):
+                continue
+            from ..synthesize import size_names_in  # local: synthesize imports this module
+
+            supplied = {s.name.lower(): s for s in inputs}
+            named = [n.name for n in size_names_in(extent) if n.name.lower() in supplied]
+            given_as = {n: supplied[n.lower()].argument or _as_written(supplied[n.lower()])
+                        for n in named}
+            with_ = (", with " + ", ".join(f"'{n}' given '{s}'" for n, s in given_as.items())
+                     if given_as else "")
+            passes = ", ".join(f"'{n} = {s}'" for n, s in given_as.items())
+            return (f"input '{wanted.name}' has shape ({', '.join(wanted.dimension.extents)})"
+                    f"{with_}, but would be '{given.name}', of shape "
+                    f"({', '.join(given.dimension.extents)})",
+                    f"the generated wrapper passes {passes or 'its extents'} beside "
+                    f"'{wanted.name} = {given.name}', so a different '{own}' reads past "
+                    f"'{given.name}': supply {_quoted(named) or 'its extents'} by what sizes "
+                    f"'{given.name}'")
+    return None
+
+
+def _as_written(supply: ProducerInput) -> str:
+    """How a constant supply reads in a message: as Fortran would write it."""
+    value = supply.constant
+    if isinstance(value, bool):
+        return ".true." if value else ".false."
+    return str(value)
+
+
+def _a_constant_of_another_kind(supply, wanted: Argument, renames):
+    """Why the table's constant cannot be passed for the producer input `wanted` (T), as
+    (message, note), or None."""
+    if not _carried(wanted.type):
+        return None
+    cell = renames.get(wanted.name.lower(), _as_written(supply))
+    wanted_mode = wanted.roles.mode if wanted.roles is not None else None
+    if wanted_mode is not None:
+        if supply.mode is not None:
+            return None
+        return (f"input '{wanted.name}' is a mode, but would be '{cell}', which is not",
+                "supply a mode input by a mode argument whose table names the same modes, or by "
+                f"one of its mode parameters in the table ({_mode_parameters(wanted_mode)})")
+    given = f"input '{wanted.name}' is {wanted.type}"
+    if wanted.is_array:
+        return (f"{given}, {_rank_text(wanted)}, but the table gives it the constant {cell}, a "
+                "scalar", _CONSTANT_OF_ITS_TYPE)
+    value = supply.constant
+    base = wanted.type.base
+    kinds = {bool: "a logical", int: "an integer", float: "a real", str: "a string",
+             complex: "a complex"}
+    what = kinds.get(type(value), "of another type")
+    expected = {BaseType.LOGICAL: bool, BaseType.INTEGER: int, BaseType.REAL: float,
+                BaseType.CHARACTER: str, BaseType.COMPLEX: complex}.get(base)
+    if expected is None or type(value) is not expected:
+        return (f"{given}, but the table gives it the constant {cell}, {what}",
+                _CONSTANT_OF_ITS_TYPE)
+    if base is BaseType.INTEGER:
+        if not fits_integer_kind(value, _kind_value(wanted.type.kind) or 4):
+            return (f"{given}, but the table gives it the constant {cell}, which does not fit",
+                    _CONSTANT_OF_ITS_TYPE)
+    length = wanted.type.length
+    if base is BaseType.CHARACTER and length is not None and length.is_constant:
+        if len(value) > int(length.expr):
+            return (f"{given}, but the table gives it the constant {cell}, which is longer than "
+                    f"{length.expr}", _CONSTANT_OF_ITS_TYPE)
+    return None
 
 
 def _implementation_of(wrapper: Procedure, project, conventions: Conventions):

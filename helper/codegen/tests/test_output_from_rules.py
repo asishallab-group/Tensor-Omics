@@ -15,7 +15,7 @@ from codegen.ir.doc import Doc
 from codegen.ir.types import Intent
 from codegen.synthesize import binding_computes, synthesize_wrappers, taken_over_arguments
 
-from builders import integer, module, parameter, procedure, project, real
+from builders import character, integer, logical, module, parameter, procedure, project, real
 from test_output_from_producers import (
     IMPL, analysed, auto, body, consumer, fortran, producers, table,
 )
@@ -469,3 +469,261 @@ class TestWhatNothingSupplies:
         assert error.message == ("'work_size' is computed from 'scaled_size', but its input(s) "
                                  "factor have no argument of the same name in 'scaled_impl'")
         assert error.location.line == 7
+
+
+def method_doc(module_name, *names):
+    rows = [f"| {n.lower()} | [[{module_name}(module):METHOD_{n}(variable)]] |" for n in names]
+    return ["How.", "| Method | Value |", "|--------|-------|", *rows]
+
+
+def kinded_producers(two_is=2):
+    """`tox_prod_impl`: producers whose inputs are of several kinds, a mode among them."""
+    return module(
+        "tox_prod_impl",
+        procedure("method_size_impl",
+                  integer("n_items", doc="items"),
+                  integer("method", doc=method_doc("tox_prod_impl", "ONE", "TWO", "THREE")),
+                  integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+        procedure("factor_size_impl",
+                  integer("n_items", doc="items"),
+                  integer("factor", doc="a factor"),
+                  integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+        procedure("ratio_size_impl",
+                  integer("n_items", doc="items"),
+                  real("ratio", doc="a ratio"),
+                  integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+        procedure("flag_size_impl",
+                  integer("n_items", doc="items"),
+                  logical("flag", kind="c_bool", doc="a flag"),
+                  integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+        procedure("label_size_impl",
+                  integer("n_items", doc="items"),
+                  character("label", length="8", doc="a label"),
+                  integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+        procedure("extent_size_impl",
+                  integer("n", doc="values"),
+                  real("x", Intent.IN, "(n)", doc="the values"),
+                  integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True),
+        parameters=(parameter("METHOD_ONE", "1_int32"), parameter("METHOD_TWO", f"{two_is}_int32"),
+                    parameter("METHOD_THREE", "3_int32")),
+    )
+
+
+def kind_consumer(producer, *own, rows=(), fortran=True, parameters=()):
+    """A consumer of `producer`'s `sized`: through `foo` (a work array) or the bindings (a result)."""
+    work = integer("work_size", doc="the size", directives=Directives(output_from=OutputFrom(
+        "sized", producer, "tox_prod", OutputFromMode.AUTO, 9)))
+    if rows:
+        work.doc = Doc.parse(table(*rows))
+    sized = (real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch") if fortran else
+             real("filled", Intent.OUT, "(work_size)", doc="the result"))
+    return module("tox_cons_impl", procedure(
+        "use_impl", integer("n_items", doc="items"), *own, work, sized, meta=IMPL, is_pure=True,
+    ), parameters=parameters)
+
+
+def refusals(*modules):
+    _, bag = analysed(*modules)
+    return [(e.message, e.note, e.location.line) for e in bag.errors]
+
+
+class TestAModeMeetsOnlyAMode:
+    """Rule T 1: a mode and a non-mode never meet; tables agree; a constant names a parameter."""
+
+    def test_a_mode_into_a_non_mode_input(self):
+        [(message, note, line)] = refusals(kinded_producers(), kind_consumer(
+            "factor_size", integer("method", doc=method_doc("tox_cons_impl", "ONE")),
+            rows=[("factor", "method")],
+            parameters=(parameter("METHOD_ONE", "1_int32"),)))
+
+        assert message == ("'work_size' is computed from 'factor_size', whose input 'factor' would "
+                           "be the mode 'method', which Python and R pass as its string and Fortran "
+                           "as its code")
+        assert note.startswith("a mode is a choice, not a number (Section 5.10)")
+        assert line == 9
+
+    def test_a_non_mode_into_a_mode_input(self):
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer(
+            "method_size", integer("k", doc="a number"), rows=[("method", "k")]))
+
+        assert message == ("'work_size' is computed from 'method_size', whose input 'method' is a "
+                           "mode, but would be 'k', which is not")
+        assert "(METHOD_ONE, METHOD_TWO, METHOD_THREE)" in note
+
+    def test_a_constant_value_into_a_mode_input(self):
+        # Q8: by parameter, not by value -- `2_int32` is METHOD_TWO's code, and still refused
+        [(message, _, _)] = refusals(kinded_producers(), kind_consumer(
+            "method_size", rows=[("method", "2_int32")]))
+
+        assert message == ("'work_size' is computed from 'method_size', whose input 'method' is a "
+                           "mode, but would be '2_int32', which is not")
+
+    @pytest.mark.parametrize("fortran", [True, False])
+    def test_a_mode_parameter_into_a_mode_input(self, fortran):
+        synthesis, bag = analysed(kinded_producers(), kind_consumer(
+            "method_size", rows=[("method", "METHOD_TWO")], fortran=fortran))
+
+        assert errors(bag) == []
+        tier = "use_expert" if fortran else "use"
+        [supply] = [s for s in synthesis.project.procedure("tox_cons", tier).argument(
+            "work_size").roles.computed_from.inputs if s.name == "method"]
+        assert (supply.constant, supply.mode.string) == (2, "two")
+
+    @pytest.mark.parametrize("fortran", [True, False])
+    def test_the_producer_may_accept_more_modes(self, fortran):
+        assert refusals(kinded_producers(), kind_consumer(
+            "method_size", integer("method", doc=method_doc("tox_cons_impl", "ONE", "TWO")),
+            fortran=fortran, parameters=(parameter("METHOD_ONE", "1_int32"),
+                                         parameter("METHOD_TWO", "2_int32")))) == []
+
+    def test_a_mode_the_producer_does_not_accept(self):
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer(
+            "method_size", integer("method", doc=method_doc("tox_cons_impl", "ONE", "FOUR")),
+            parameters=(parameter("METHOD_ONE", "1_int32"), parameter("METHOD_FOUR", "4_int32"))))
+
+        assert message == ("'work_size' is computed from 'method_size', whose mode input 'method' "
+                           "accepts 'one', 'two', 'three', but would be the mode 'method', which "
+                           "also accepts 'four'")
+        assert note.startswith("a mode passes through as its string in Python and R")
+
+    @pytest.mark.parametrize("fortran", [True, False])
+    def test_a_mode_with_another_value_is_refused_by_its_own_module(self, fortran):
+        # q_collide: METHOD_TWO is 5 in the producer's module, 2 in the consumer's. The project's
+        # flat table of constants has one METHOD_TWO, so only evaluating each in its own module
+        # sees that the two disagree
+        [(message, _, _)] = refusals(kinded_producers(two_is=5), kind_consumer(
+            "method_size", integer("method", doc=method_doc("tox_cons_impl", "ONE", "TWO")),
+            fortran=fortran, parameters=(parameter("METHOD_ONE", "1_int32"),
+                                         parameter("METHOD_TWO", "2_int32"))))
+
+        assert message.endswith("but would be the mode 'method', which gives 'two' another value")
+
+    def test_a_mode_is_not_computed(self):
+        cons = module("tox_cons_impl", procedure(
+            "use_impl", integer("n_items", doc="items"),
+            integer("method", doc=method_doc("tox_cons_impl", "ONE"), directives=Directives(
+                output_from=OutputFrom("sized", "factor_size", "tox_prod", OutputFromMode.AUTO,
+                                       9))),
+            integer("factor", doc="a factor"),
+            real("total", Intent.OUT, doc="the total"), meta=IMPL, is_pure=True,
+        ), parameters=(parameter("METHOD_ONE", "1_int32"),))
+        [(message, note, line)] = refusals(kinded_producers(), cons)
+
+        assert message == "'method' is a mode, so it cannot be computed with 'factor_size'"
+        assert note.startswith("a mode is a choice the caller makes")
+        assert line == 9
+
+    def test_a_mode_table_on_an_output_is_refused(self):
+        from codegen.ir.validate import validate_project
+
+        cons = module("tox_cons_impl", procedure(
+            "use_impl", integer("n_items", doc="items"),
+            integer("method", Intent.OUT, doc=method_doc("tox_cons_impl", "ONE")),
+            meta=IMPL, is_pure=True,
+        ), parameters=(parameter("METHOD_ONE", "1_int32"),))
+        synthesis, bag = analysed(cons)
+        validate_project(synthesis.project, bag)
+
+        assert [(e.message, e.note) for e in bag.errors
+                if "mode table" in e.message] == [(
+            "'method' is an output, but has a mode table, whose values the wrapper checks before "
+            "the implementation sets it", "drop the table, and document the codes in prose")]
+
+
+class TestAnArgumentOfItsKind:
+    """Rule T 2: base type and rank on every route; kind, length and extents where Fortran calls."""
+
+    def test_rank_and_type(self):
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer(
+            "factor_size", real("x", Intent.IN, "(n_items)", doc="values"),
+            rows=[("factor", "x")], fortran=False))
+
+        assert message == ("'work_size' is computed from 'factor_size', whose input 'factor' is "
+                           "integer(int32), a scalar, but would be 'x', real(real64), rank 1")
+        assert note == ("supply it by an argument of its type, kind and rank, or a constant in "
+                        "the table")
+
+    def test_a_logical_kind_on_the_fortran_route_only(self):
+        flag = logical("flag", doc="a default logical")
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer("flag_size", flag))
+
+        assert message == ("'work_size' is computed from 'flag_size', whose input 'flag' is "
+                           "logical(c_bool), a scalar, but would be 'flag', logical, a scalar")
+        assert note.endswith("so the caller passes it")  # the JUST_INFO way out
+        assert refusals(kinded_producers(), kind_consumer(
+            "flag_size", logical("flag", doc="a default logical"), fortran=False)) == []
+
+    def test_a_length(self):
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer(
+            "label_size", character("label", length="4", doc="a label")))
+
+        assert message == ("'work_size' is computed from 'label_size', whose input 'label' is "
+                           "character(len=8), but would be 'label', character(len=4)")
+        assert note.startswith("a fixed-length input takes a value of that length")
+        assert refusals(kinded_producers(), kind_consumer(
+            "label_size", character("label", length="8", doc="a label"))) == []
+        # a binding reads the length off the value
+        assert refusals(kinded_producers(), kind_consumer(
+            "label_size", character("label", length="4", doc="a label"), fortran=False)) == []
+
+    def test_extents_on_the_fortran_route_only(self):
+        # q_extent: `n = k` beside `x = y(m)` reads past `y` for k > m
+        own = (integer("m", doc="values"), integer("k", doc="a count"),
+               real("y", Intent.IN, "(m)", doc="the values"))
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer(
+            "extent_size", *own, rows=[("n", "k"), ("x", "y")]))
+
+        assert message == ("'work_size' is computed from 'extent_size', whose input 'x' has shape "
+                           "(n), with 'n' given 'k', but would be 'y', of shape (m)")
+        assert note.startswith("the generated wrapper passes 'n = k' beside 'x = y', so a "
+                               "different 'm' reads past 'y': supply 'n' by what sizes 'y'")
+        assert refusals(kinded_producers(), kind_consumer(
+            "extent_size", *own, rows=[("n", "k"), ("x", "y")], fortran=False)) == []
+        assert refusals(kinded_producers(), kind_consumer(
+            "extent_size", *own, rows=[("n", "m"), ("x", "y")])) == []
+
+    def test_one_error_per_failing_input(self):
+        two = module("tox_prod_impl", procedure(
+            "two_size_impl", integer("a", doc="a"), integer("b", doc="b"),
+            integer("sized", Intent.OUT, doc="the size"), meta=IMPL, is_pure=True))
+        cons = kind_consumer("two_size", real("p", doc="p"), real("q", doc="q"),
+                             rows=[("a", "p"), ("b", "q")])
+
+        assert len(refusals(two, cons)) == 2
+
+
+class TestAConstantOfItsType:
+    """Rule T 3: a constant supplies a scalar input of its own type, and fits its kind."""
+
+    @pytest.mark.parametrize("producer, row, why", [
+        ("ratio_size", ("ratio", "3"), "but the table gives it the constant 3, an integer"),
+        ("factor_size", ("factor", ".true."), "but the table gives it the constant .true., a logical"),
+        ("factor_size", ("factor", "3000000000_int64"),
+         "but the table gives it the constant 3000000000_int64, which does not fit"),
+        ("label_size", ("label", "'abcdefghij'"),
+         "but the table gives it the constant 'abcdefghij', which is longer than 8"),
+        ("extent_size", ("x", "1.0_real64"),
+         "rank 1, but the table gives it the constant 1.0_real64, a scalar"),
+    ])
+    @pytest.mark.parametrize("fortran", [True, False])
+    def test_refused_on_either_route(self, producer, row, why, fortran):
+        rows = [row] + ([("n", "n_items")] if producer == "extent_size" else [])
+        [(message, note, _)] = refusals(kinded_producers(), kind_consumer(
+            producer, rows=rows, fortran=fortran))
+
+        assert message.endswith(why)
+        assert note == ("a constant supplies a scalar input of its own type, written as Fortran "
+                        "writes it (3.0_real64, .false., 'abc')")
+
+    def test_a_string_is_quoted_in_fortran(self):
+        synthesis, bag = analysed(kinded_producers(), kind_consumer(
+            "label_size", rows=[("label", "'abc'")]))
+
+        assert errors(bag) == []
+        assert "label = 'abc'" in fortran(synthesis)
+
+    def test_a_real_and_a_logical_of_their_own_type(self):
+        assert refusals(kinded_producers(), kind_consumer(
+            "ratio_size", rows=[("ratio", "3.0_real64")])) == []
+        assert refusals(kinded_producers(), kind_consumer(
+            "flag_size", rows=[("flag", ".false.")])) == []

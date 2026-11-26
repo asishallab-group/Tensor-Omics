@@ -805,7 +805,10 @@ class PythonEmitter:
 
     @staticmethod
     def _producer_value(supply, stashes: dict[str, str]) -> str:
-        """What to pass for one producer input: an argument, or a constant outright."""
+        """What to pass for one producer input: an argument, or a constant outright -- a mode
+        as its string, which the producer's binding maps to its code (rule T)."""
+        if supply.mode is not None:
+            return python_literal(supply.mode.string)
         if supply.is_constant:
             return python_literal(supply.constant)
         return stashes.get(supply.argument, supply.argument)

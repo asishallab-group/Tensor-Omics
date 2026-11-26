@@ -566,6 +566,7 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
         if not procedure.is_exported:
             _check_function_result(procedure, diagnostics, conventions)
         _check_taken_over_is_not_an_output(procedure, diagnostics, conventions)
+        _check_no_mode_table_on_an_output(procedure, diagnostics)
         _check_prologue(procedure, diagnostics, conventions)
 
 
@@ -800,6 +801,31 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
                 "result for what it is (`order`, `ranks`) or drop the directive, or make it "
                 "intent(in) or intent(inout) if the implementation really is handed it"
             ),
+        )
+
+
+def _check_no_mode_table_on_an_output(impl: Procedure, diagnostics: DiagnosticBag) -> None:
+    """An `intent(out)` argument has no mode table (rule T, the output side).
+
+    The generated wrapper checks a mode argument's membership in its table at the top, before the
+    implementation has set an output, so every call failed with "invalid input arguments" -- and
+    every consumer of it with it. An output's codes are documented in prose. Once per
+    implementation, at the table's line.
+    """
+    for argument in impl.arguments:
+        mode = argument.roles.mode if argument.roles is not None else None
+        if mode is None or argument.intent is not Intent.OUT:
+            continue
+        location = argument.location
+        line = mode.source.line_number if mode.source is not None else None
+        if location is not None and line is not None:
+            location = SourceLocation(location.file, line)
+        diagnostics.error(
+            f"'{argument.name}' is an output, but has a mode table, whose values the wrapper "
+            "checks before the implementation sets it",
+            entity=argument,
+            location=location,
+            note="drop the table, and document the codes in prose",
         )
 
 

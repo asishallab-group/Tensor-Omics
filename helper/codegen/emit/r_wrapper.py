@@ -129,7 +129,10 @@ class RWrapperEmitter:
                 f"{CONSUMER_ERROR}(e, c({positions}), {names}))")
 
     def _producer_value(self, supply, wrapper: CWrapper) -> str:
-        """What to pass for one producer input: an argument, or a constant outright."""
+        """What to pass for one producer input: an argument, or a constant outright -- a mode
+        as its string, which the producer's binding maps to its code (rule T)."""
+        if supply.mode is not None:
+            return r_literal(supply.mode.string)
         if supply.is_constant:
             return r_literal(supply.constant)
         return self._r_value_of(supply.argument, wrapper)
