@@ -240,6 +240,14 @@ test_linkage_clustering_of_no_points_is_the_librarys_empty_input <- function() {
   .assert_error_naming(linkage_clustering(matrix(0, 0, 0), "average"), "no points", ERR_EMPTY_INPUT, "distances")
 }
 
+test_linkage_clustering_reports_a_ward_merge_past_huge <- function() {
+  # two coincident pairs 1.5*2^1023 apart: Ward's last merge, sqrt(2) times that, passes huge,
+  # which the library reports naming no argument
+  d <- 1.5 * 2^1023
+  distances <- matrix(c(0, 0, d, d, 0, 0, d, d, d, d, 0, 0, d, d, 0, 0), nrow = 4L)
+  assert_error(linkage_clustering(distances, "ward"), "a Ward merge past huge", ERR_NAN_INF)
+}
+
 test_linkage_clustering_rejects_an_unknown_method <- function() {
   .assert_error_naming(linkage_clustering(.wikipedia_distances(), "single"), "method 'single'", NULL, "method")
 }

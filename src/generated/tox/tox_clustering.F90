@@ -14,8 +14,8 @@ module tox_clustering
     use tox_clustering_impl, only: k_means_clustering_impl, linkage_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
-    use tox_errors, only: set_err, set_err_once, validate_all_in_range_real, validate_dimension_size
-    use tox_errors, only: validate_distance_matrix, validate_in_range_int
+    use tox_errors, only: clear_err_arg_pos, get_err_arg_pos, set_err, set_err_once
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_distance_matrix, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
@@ -307,7 +307,9 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code: `ERR_NAN_INF` when a merge distance passes `huge`, which only Ward's can
+            !! for finite input, as it grows with the clusters' sizes. The merges before it are
+            !! written, the later ones are not, and the matrix still comes back unchanged.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -325,8 +327,18 @@ contains
             merge_j = merge_j,&
             heights = heights,&
             cluster_sizes = cluster_sizes,&
-            method = method&
+            method = method,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) then
+            select case (get_err_arg_pos(ierr))
+            case (1_int32:7_int32)
+                ! the same position here
+            case default
+                call clear_err_arg_pos(ierr)
+            end select
+            return
+        end if
     end subroutine linkage_clustering
 
 end module tox_clustering

@@ -330,7 +330,9 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code: `ERR_NAN_INF` when a merge distance passes `huge`, which only Ward's can
+            !! for finite input, as it grows with the clusters' sizes. The merges before it are
+            !! written, the later ones are not, and the matrix still comes back unchanged.
         integer(int32) :: method_mode_f
 
         M_CHECK_IERR_NON_NULL

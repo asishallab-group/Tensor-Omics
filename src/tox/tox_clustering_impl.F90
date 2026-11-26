@@ -13,6 +13,7 @@ module tox_clustering_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
     use f42_math_impl, only: scaling_exponent_for_largest
+    use tox_errors, only: set_ok, set_err, ERR_NAN_INF
     M_IMPLICIT_NONE
 
     integer(int32), parameter :: METHOD_AVERAGE = 0_int32
@@ -270,7 +271,7 @@ contains
     !| returning, on success or on error, so the matrix comes back unchanged. There is no
     !| need to copy it before calling.
     !| @endnote
-    pure subroutine linkage_clustering_impl(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
+    pure subroutine linkage_clustering_impl(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -302,9 +303,14 @@ contains
             !! | Average / UPGMA | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]] |
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward | [[tox_clustering_impl(module):METHOD_WARD(variable)]] |
+        integer(int32), intent(out) :: ierr
+            !! Error code: `ERR_NAN_INF` when a merge distance passes `huge`, which only Ward's can
+            !! for finite input, as it grows with the clusters' sizes. The merges before it are
+            !! written, the later ones are not, and the matrix still comes back unchanged.
 
         integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label, ward_exponent
         real(real64) :: dist_AB
+        logical(c_bool) :: found
 
         !TODO optimize: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
         !               one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
@@ -315,8 +321,15 @@ contains
         ! overflows or underflows. Ordinary distances get the exponent 0.
         ward_exponent = scaling_exponent_for_largest(maxval(distances))
 
+        call set_ok(ierr)
         do i = 1, n_points - 1
-            call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB)
+            call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB, found)
+            ! +Inf marks a retired entry, so a merge distance that passed huge cannot be told from
+            ! one; with no entry below it the merge is not found
+            if (.not. found) then
+                call set_err(ierr, ERR_NAN_INF)
+                exit
+            end if
 
             heights(i) = dist_AB
 
@@ -555,7 +568,7 @@ contains
     !| - Ignores columns with self-distance (i,i)<0
     !| - Searches in bottom triangle (excluding self-distance (i, i))
     !| - bottom triangle -> `row_idx > col_idx`
-    pure subroutine get_min_distance_indices_helper(distances, n, row_idx, col_idx, min_dist)
+    pure subroutine get_min_distance_indices_helper(distances, n, row_idx, col_idx, min_dist, found)
         integer(int32), intent(in) :: n
             !! number of rows and columns of square matrix `distances`
         real(real64), dimension(n, n), intent(in) :: distances
@@ -566,10 +579,14 @@ contains
             !! column index of min distance in `distances`
         real(real64), intent(out) :: min_dist
             !! min distance
+        logical(c_bool), intent(out) :: found
+            !! whether an entry below +Inf was found; if not, `row_idx` and `col_idx` are 0
 
         integer(int32) :: i_row, i_col
 
         min_dist = ieee_value(1.0_real64, ieee_positive_inf)
+        row_idx = 0_int32
+        col_idx = 0_int32
 
         do i_col = 1, n - 1
             if (distances(i_col, i_col) >= 0.0_real64) then
@@ -582,5 +599,6 @@ contains
                 end do
             end if
         end do
+        found = row_idx /= 0_int32
     end subroutine get_min_distance_indices_helper
 end module tox_clustering_impl
