@@ -103,16 +103,23 @@ class Supplier:
     """What one `Supplied by` cell resolves to: the key a producer call is made of (rule K).
 
     `kind` is `argument` (`value` the consumer's argument, lower-cased), `constant` (`value` the
-    evaluated constant with its Python type, so `.true.` is not `1`), or `unresolved` (`value`
-    the text, which `_resolve_output_from` reports).
+    evaluated constant with its Python type, so `.true.` is not `1`), `omitted` (rule O: no call
+    passes the input), or `unresolved` (`value` the text, which `_resolve_output_from` reports).
     """
 
     kind: str
     value: object
 
 
+#: The `Supplied by` cell that leaves a producer input out of the call (rule O), written bare and
+#: in capitals as `AUTO` is
+OMITTED = "OMITTED"
+
+
 def resolve_cell(text: str, has_argument, evaluator: ConstantEvaluator | None) -> Supplier:
-    """Resolve one `Supplied by` cell: the consumer's argument of that name, else a constant.
+    """Resolve one `Supplied by` cell: `OMITTED`, the consumer's argument of that name, else a
+    constant. `OMITTED` is its own kind of supplier (`omitted`), so a call omitting an input is
+    another call than one supplying it.
 
     The one resolution of a cell. `roles` builds the plans with it, and synthesis keys a producer
     call with it (`producer_call_key`) before any plan exists, with the project's one evaluator
@@ -120,6 +127,8 @@ def resolve_cell(text: str, has_argument, evaluator: ConstantEvaluator | None) -
     consumer has an argument of that name.
     """
     cell = text.strip()
+    if cell == OMITTED:
+        return Supplier("omitted", None)
     if has_argument(cell):
         return Supplier("argument", cell.lower())
     if evaluator is not None:
@@ -516,6 +525,11 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                                diagnostics):
             continue
 
+        renames = _producer_input_table(argument, consumer, producer,
+                                        diagnostics, conventions, once, evaluator, project)
+        if renames is None:
+            continue
+
         if not directive.is_automatic:
             # JUST_INFO is documentation only: the caller still supplies the argument, and
             # nothing calls the producer. So the consumer need not be able to feed the
@@ -523,18 +537,19 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
             # filter that needs data the consumer never sees) is exactly what JUST_INFO is
             # for. Record the relation, resolving no inputs; the producer existing, being
             # exported, and owning the named output (checked above) is all that must hold.
+            # Its table is still checked by the row rules above: Ford publishes it.
             argument.roles.computed_from = OutputFromPlan(
                 producer=producer, output=output, inputs=(), is_automatic=False,
             )
             continue
 
-        renames = _producer_input_table(argument, consumer, producer,
-                                        diagnostics, conventions, once)
-        if renames is None:
-            continue
-
         inputs = []
         unmatched = []
+        # (producer input, cell): a row naming neither an argument nor a constant (4a)
+        unresolved = []
+        # producer inputs a mode the implementation splits would supply (T, 4b)
+        split_supplied = []
+        split = _split_mode_of(consumer, project, conventions)
         # (producer input, supplier) where the supplier is an argument of `foo` alone: the
         # prologue's own, which the implementation never has
         prologue_only = []
@@ -575,21 +590,23 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
                 inputs.append(ProducerInput(producer_input.name, constant=resolved.value[1],
                                             derived=derived))
                 continue
+            if resolved.kind == "omitted":
+                continue  # rule O: no call passes it, in any tier
             if derived and not fortran_calls:
                 continue  # nothing that calls the producer here passes it
             if plain is not None and plain.argument(supplier) is not None:
                 prologue_only.append((producer_input.name, plain.argument(supplier).name))
                 continue
-            unmatched.append(producer_input.name)
+            if split is not None and supplier.lower() == split.lower():
+                split_supplied.append(producer_input.name)
+            elif cell is not None:
+                unresolved.append((producer_input.name, cell))
+            else:
+                unmatched.append(producer_input.name)
 
-        if unmatched:
-            diagnostics.error(
-                f"'{argument.name}' is computed from '{producer.name}', but its "
-                f"input(s) {', '.join(sorted(unmatched))} have no argument of the same "
-                f"name in '{consumer.name}'",
-                entity=argument,
-                note=_producer_input_table_example(conventions),
-            )
+        if _refuses_what_nothing_supplies(argument, directive, consumer, producer, split,
+                                          split_supplied, unresolved, unmatched, renames,
+                                          fortran_calls, project, conventions, once):
             continue
 
         if _refuses_an_axis(argument, directive, consumer, producer, output, inputs,
@@ -1357,22 +1374,43 @@ def _looks_like_a_producer_input_table(table: DocTable, conventions: Conventions
             and header[1] == conventions.producer_supplied_by_header)
 
 
+class _ProducerInputTable(dict):
+    """A producer-input table: producer input (lower-cased) -> its `Supplied by` cell, as written.
+
+    `lines` gives each row's line, where a diagnostic about the row points.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.lines: dict[str, int | None] = {}
+
+
 def _producer_input_table(argument: Argument, consumer: Procedure, producer: Procedure,
                           diagnostics: DiagnosticBag, conventions: Conventions,
-                          once: _OncePerImplementation | None = None) -> dict[str, str] | None:
+                          once: _OncePerImplementation | None = None,
+                          evaluator: ConstantEvaluator | None = None,
+                          project=None) -> _ProducerInputTable | None:
     """The producer-input -> consumer-argument overrides this argument documents.
 
     An empty mapping when there is no table. `None` when the table is there but wrong, so
-    the caller stops rather than reporting a pile of consequential name mismatches. A row
-    names an input of the producer (N1): one naming an output or `ierr` would be ignored by
-    the plans while synthesis keys the call by it (rule K), so it is refused at its line, once
-    per implementation.
+    the caller stops rather than reporting a pile of consequential name mismatches. The rows
+    are checked by one grammar, on a `JUST_INFO` table too, which Ford publishes. Each refusal
+    below is at the row's line, once per implementation, one error per cell:
+
+    - a row names an input of the producer (N1): one naming an output or `ierr` would be ignored
+      by the plans while synthesis keys the call by it (rule K);
+    - one row per input: of two, the last won silently;
+    - `OMITTED` (rule O) is the keyword only bare and in capitals, as `AUTO` is; it leaves out
+      only an input the producer may be called without -- an optional one, not one it requires
+      in a mode chosen at run time -- and it is refused where the consumer has an argument, or
+      the evaluator a constant, of that name, which the cell would otherwise mean.
     """
     once = once or _OncePerImplementation(diagnostics, set(), id(consumer))
     tables = [t for t in argument.doc.tables
               if _looks_like_a_producer_input_table(t, conventions)]
+    mapping = _ProducerInputTable()
     if not tables:
-        return {}
+        return mapping
     if len(tables) > 1:
         diagnostics.error(
             f"'{argument.name}' has {len(tables)} tables mapping the inputs of "
@@ -1382,10 +1420,18 @@ def _producer_input_table(argument: Argument, consumer: Procedure, producer: Pro
         )
         return None
 
-    mapping: dict[str, str] = {}
+    implementation = _implementation_name(consumer, project, conventions)
+    table_of = f"the producer-input table of '{argument.name}'"
+    rows: dict[str, int] = {}
+    refused = False
     for row_index, (producer_input, supplied_by) in enumerate(tables[0].rows, start=1):
         wanted = producer_input.text.strip()
         given = supplied_by.text.strip()
+        location = _location_of(argument, producer_input.line_number)
+
+        def refuse(message: str, note: str) -> None:
+            once.error(message, entity=argument, location=location, note=note)
+
         if not wanted or not given:
             diagnostics.error(
                 f"row {row_index} of the producer-input table of '{argument.name}' "
@@ -1404,17 +1450,148 @@ def _producer_input_table(argument: Argument, consumer: Procedure, producer: Pro
             return None
         if (dummy.intent is None or not dummy.intent.is_input
                 or dummy.name.lower() == conventions.error_arg.lower()):
-            once.error(
-                f"the producer-input table of '{argument.name}' maps '{wanted}', which is an "
-                f"output of '{producer.name}', not an input",
-                entity=argument,
-                location=_location_of(argument, producer_input.line_number),
-                note=("a row supplies an input the producer reads; DM_OUTPUT_FROM names the "
-                      "output it takes"),
-            )
-            return None
+            refuse(f"{table_of} maps '{wanted}', which is an output of '{producer.name}', not "
+                   f"an input",
+                   "a row supplies an input the producer reads; DM_OUTPUT_FROM names the output "
+                   "it takes")
+            refused = True
+            continue
+        first = rows.setdefault(wanted.lower(), row_index)
+        if first != row_index:
+            refuse(f"{table_of} has two rows for '{wanted}' (rows {first} and {row_index})",
+                   "a producer input is supplied once: keep the row you mean")
+            refused = True
+            continue
+        if given != OMITTED and given.strip("'\"`").strip().lower() == OMITTED.lower():
+            refuse(f"{table_of} supplies '{wanted}' by '{given}', which is not the keyword "
+                   f"{OMITTED}",
+                   f"the keyword is written bare and in capitals, as AUTO is: {OMITTED}")
+            refused = True
+            continue
+        if given == OMITTED:
+            why = _refuses_to_omit(dummy, producer, consumer, evaluator, implementation)
+            if why is not None:
+                refuse(f"{table_of} {why[0]}", why[1])
+                refused = True
+                continue
         mapping[wanted.lower()] = given
-    return mapping
+        mapping.lines[wanted.lower()] = producer_input.line_number
+    return None if refused else mapping
+
+
+def _refuses_to_omit(dummy: Argument, producer: Procedure, consumer: Procedure,
+                     evaluator: ConstantEvaluator | None,
+                     implementation: str) -> tuple[str, str] | None:
+    """Why an `OMITTED` row may not leave the producer input `dummy` out, as (message, note)."""
+    name = dummy.name
+    if consumer.argument(OMITTED) is not None:
+        return (f"supplies '{name}' by '{OMITTED}', which is the keyword, but "
+                f"'{consumer.argument(OMITTED).name}' is also an argument of '{implementation}'",
+                f"rename the argument, so the cell means one thing")
+    if evaluator is not None:
+        try:
+            evaluator.evaluate(OMITTED)
+        except ConstantError:
+            pass
+        else:
+            return (f"supplies '{name}' by '{OMITTED}', which is the keyword, but "
+                    f"'{OMITTED.lower()}' is also a constant",
+                    "rename the constant, so the cell means one thing")
+    if not dummy.optional:
+        return (f"omits '{name}', which '{producer.name}' requires",
+                f"only an optional input may be left out; supply '{name}' by an argument the "
+                "caller passes, or a constant")
+    required = dummy.directives.required_if_mode
+    if required is not None:
+        mode = required.mode_param
+        selector = producer.argument(required.mode_arg)
+        table = selector.roles.mode if selector is not None and selector.roles else None
+        value = next((v for v in table.values if v.parameter.lower() == mode.lower()),
+                     None) if table is not None else None
+        return (f"omits '{name}', which '{producer.name}' requires in mode "
+                f"'{value.string if value is not None else mode}'",
+                f"the mode is chosen at run time, so the input may be needed: supply '{name}'")
+    return None
+
+
+def _implementation_name(consumer: Procedure, project, conventions: Conventions) -> str:
+    """What a diagnostic calls the consumer: the implementation the author wrote, where the
+    consumer is a generated wrapper (4c), rather than a wrapper the author never sees."""
+    implementation = (_implementation_of(consumer, project, conventions)
+                      if project is not None else None)
+    return implementation.name if implementation is not None else consumer.name
+
+
+def _split_mode_of(consumer: Procedure, project, conventions: Conventions) -> str | None:
+    """The mode argument the implementation of `consumer` splits into per-mode wrappers, where
+    `consumer` is one of them -- which has no such argument, its mode fixed there."""
+    implementation = _implementation_of(consumer, project, conventions)
+    if implementation is None:
+        return None
+    for dummy in implementation.arguments:
+        mode = dummy.roles.mode if dummy.roles is not None else None
+        if mode is not None and mode.is_split and consumer.argument(dummy.name) is None:
+            return dummy.name
+    return None
+
+
+def _refuses_what_nothing_supplies(argument: Argument, directive, consumer: Procedure,
+                                   producer: Procedure, split: str | None, split_supplied,
+                                   unresolved, unmatched, renames, fortran_calls: bool,
+                                   project, conventions: Conventions,
+                                   once: _OncePerImplementation) -> bool:
+    """Refuse a producer input that resolves to nothing, each cause with its own message.
+
+    Once per implementation, one error per input or cell:
+
+    - a mode the implementation splits (T, Q1 -- 4b): each per-mode wrapper fixes it, and
+      it is no argument there;
+    - a `Supplied by` cell that is neither an argument nor a constant (4a), at its row;
+    - an input with no row and no argument of its name, at the directive's line; where it is
+      optional, the note offers the `OMITTED` row.
+
+    The messages name the implementation, not the generated wrapper (4c). True when something
+    was refused.
+    """
+    from .validate import _nearly  # local: validate is imported here at the top, by name
+
+    location = _location_of(argument, directive.line_number)
+    implementation = _implementation_name(consumer, project, conventions)
+    computed = f"'{argument.name}' is computed from '{producer.name}'"
+    for name in split_supplied:
+        once.error(
+            f"{computed}, whose input '{name}' would be '{split}', the mode "
+            f"'{implementation}' splits into one wrapper per mode",
+            entity=argument, location=location,
+            note=(f"each per-mode wrapper fixes the mode, and passes it to no producer: supply "
+                  f"'{name}' by an argument the caller passes, or a constant in the table"
+                  + _way_out(fortran_calls)),
+        )
+    arguments = {dummy.name.lower() for dummy in consumer.arguments}
+    for name, cell in unresolved:
+        near = _nearly(cell.strip().lower(), arguments)
+        once.error(
+            f"the producer-input table of '{argument.name}' supplies '{name}' by '{cell}', "
+            f"which is neither an argument of '{implementation}' nor a constant",
+            entity=argument,
+            location=_location_of(argument, renames.lines.get(name.lower())),
+            note=("a cell is an argument the caller passes, or a constant the generator can "
+                  "evaluate (1_int32, .false., a named parameter); an expression is not "
+                  "computed: give the implementation an argument the caller passes for the value"
+                  + (f"; did you mean '{near}'?" if near is not None else "")),
+        )
+    if unmatched:
+        optional = [name for name in sorted(unmatched) if producer.argument(name).optional]
+        offer = "".join(
+            f"'{name}' is optional, so the row `| {name} | {OMITTED} |` leaves it out of the "
+            "call; " for name in optional)
+        once.error(
+            f"{computed}, but its input(s) {', '.join(sorted(unmatched))} have no argument of "
+            f"the same name in '{implementation}'",
+            entity=argument, location=location,
+            note=offer + _producer_input_table_example(conventions),
+        )
+    return bool(split_supplied or unresolved or unmatched)
 
 
 def _producer_input_table_example(conventions: Conventions) -> str:
@@ -1423,11 +1600,13 @@ def _producer_input_table_example(conventions: Conventions) -> str:
     return (
         "name-matching is tried first; where the names differ, or where the consumer has\n"
         "no argument for an input at all, map it in a table -- the right-hand cell is an\n"
-        "argument of the implementation that the caller passes, or a Fortran constant:\n"
+        "argument of the implementation that the caller passes, a Fortran constant, or\n"
+        f"{OMITTED}, which leaves an optional input out of the call:\n"
         f"!! | {left} | {right} |\n"
         f"!! |----------------|-------------|\n"
         f"!! | n_elements     | n_genes     |\n"
-        f"!! | n_dim          | 1_int32     |"
+        f"!! | n_dim          | 1_int32     |\n"
+        f"!! | padding        | {OMITTED}     |"
     )
 
 class _Analyser:

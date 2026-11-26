@@ -18,6 +18,8 @@ module fx_sized_impl
     public :: fx_default_scale_impl, fx_padded_total_impl, fx_large_first_impl
     public :: fx_bounded_total_impl, fx_rounded_total_impl
     public :: fx_picked_norms_impl, fx_weighted_norms_impl
+    public :: fx_unpadded_total_impl, fx_unpadded_impl, fx_unstrided_total_impl, fx_unstrided_impl
+    public :: fx_omitted_once_impl
 
 contains
 
@@ -495,4 +497,122 @@ contains
             !! the sum of `norms`, plus the sum of `w`
         total = sum(norms) + sum(w) + 0.0_real64*sum(x)
     end subroutine fx_weighted_norms_impl
+
+    !> summary: The sum of some values, plus one for each slot of a work array sized without padding
+    !| author: A Developer
+    !| `OMITTED` leaves the optional `padding` out of the producer call (rule O), so the producer
+    !| does what it does when a caller leaves it out: it adds none.
+    pure subroutine fx_unpadded_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(padded_size, fx_padded_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | padding        | OMITTED     |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_unpadded_total_impl
+
+    !> summary: A result as long as the values, sized by a producer whose padding is left out
+    !| author: A Developer
+    pure subroutine fx_unpadded_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(padded_size, fx_padded_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | padding        | OMITTED     |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_unpadded_impl
+
+    !> summary: The sum of some values, plus a slot each at the producer's own stride
+    !| author: A Developer
+    !| `OMITTED` leaves the defaulted `stride` out of the producer call, so its default applies.
+    pure subroutine fx_unstrided_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | OMITTED     |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_unstrided_total_impl
+
+    !> summary: A result sized by the producer's own stride, which the bindings leave out
+    !| author: A Developer
+    pure subroutine fx_unstrided_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | OMITTED     |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_unstrided_impl
+
+    !> summary: Two work arrays from one producer, its stride left out of one call only
+    !| author: A Developer
+    !| Omitting an input and supplying it are two calls (rule K's key carries the row).
+    pure subroutine fx_omitted_once_impl(n_items, x, a_size, tmp_a, b_size, tmp_b, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: a_size
+            !! size of the first work array, at the producer's own stride
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | OMITTED     |
+        real(real64), dimension(a_size), intent(out) :: tmp_a
+            !! scratch
+        integer(int32), intent(in) :: b_size
+            !! size of the second work array, at a stride of two
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | 2_int32     |
+        real(real64), dimension(b_size), intent(out) :: tmp_b
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the slots of both
+        tmp_a = 1.0_real64
+        tmp_b = 1.0_real64
+        total = sum(x) + sum(tmp_a) + sum(tmp_b)
+    end subroutine fx_omitted_once_impl
 end module fx_sized_impl

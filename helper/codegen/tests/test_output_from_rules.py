@@ -10,7 +10,7 @@ import pytest
 
 from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
-from codegen.ir.directives import Directives
+from codegen.ir.directives import Default, Directives, OutputFrom, OutputFromMode, RequiredIfMode
 from codegen.ir.doc import Doc
 from codegen.ir.types import Intent
 from codegen.synthesize import binding_computes, synthesize_wrappers, taken_over_arguments
@@ -235,3 +235,237 @@ class TestARowNamesAnInput:
         assert [e.message for e in bag.errors] == [
             "the producer-input table of 'norms' maps 'n_large', which is an output of "
             "'large_norms', not an input"]
+
+
+def optional_producers():
+    """`tox_prod_impl` with producers whose inputs are optional: one without a default, one with,
+    and one required in a mode chosen at run time."""
+    modes = [
+        "Which way.",
+        "| Mode | Value |",
+        "|------|-------|",
+        "| plain | [[tox_prod_impl(module):MODE_PLAIN(variable)]] |",
+        "| gained | [[tox_prod_impl(module):MODE_GAINED(variable)]] |",
+    ]
+    return module(
+        "tox_prod_impl",
+        procedure(
+            "padded_size_impl",
+            integer("n_items", doc="items"),
+            integer("padding", doc="extra slots", optional=True),
+            integer("padded", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        ),
+        procedure(
+            "strided_size_impl",
+            integer("n_items", doc="items"),
+            integer("stride", doc="slots per item", optional=True,
+                    directives=Directives(default=Default("3_int32"))),
+            integer("strided", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        ),
+        procedure(
+            "gained_size_impl",
+            integer("n_items", doc="items"),
+            integer("mode", doc=modes),
+            integer("gain", doc="the gain", optional=True, directives=Directives(
+                required_if_mode=RequiredIfMode("mode", "tox_prod_impl", "MODE_GAINED"))),
+            integer("gained", Intent.OUT, doc="the size"),
+            meta=IMPL, is_pure=True,
+        ),
+        parameters=(parameter("MODE_PLAIN", "1_int32"), parameter("MODE_GAINED", "2_int32")),
+    )
+
+
+def omitting(rows, producer="padded_size", output="padded", *extra, name="omit_impl",
+             sized="tmp_buf", leading=(), parameters=(), mode_dm="AUTO"):
+    """A consumer whose `work_size` is computed from `producer` with the table `rows`, located."""
+    mode = OutputFromMode.AUTO if mode_dm == "AUTO" else OutputFromMode.JUST_INFO
+    work = integer("work_size", doc="the size", directives=Directives(
+        output_from=OutputFrom(output, producer, "tox_prod", mode)))
+    located(work, table(*rows))
+    last = (real(sized, Intent.OUT, "(work_size)", doc="scratch") if sized else
+            real("total", Intent.OUT, doc="the total"))
+    return module("tox_cons_impl", procedure(
+        name, *leading, integer("n_items", doc="items"), *extra, work, last,
+        meta=IMPL, is_pure=True,
+    ), parameters=parameters)
+
+
+class TestOmitted:
+    """Rule O: a cell `OMITTED` leaves the producer input out of the call, in every tier."""
+
+    def test_no_call_passes_it(self):
+        synthesis, bag = analysed(optional_producers(), omitting([("padding", "OMITTED")]))
+
+        assert errors(bag) == []
+        plan = synthesis.project.procedure("tox_cons", "omit_expert").argument(
+            "work_size").roles.computed_from
+        assert [supply.name for supply in plan.inputs] == ["n_items"]
+        call = body(fortran(synthesis), "omit").split("call padded_size(", 1)[1].split(")", 1)[0]
+        assert "padding" not in call and "n_items = n_items" in call
+
+    def test_a_row_overrides_name_matching(self):
+        # the consumer has a `padding` of its own; the row still leaves the producer's out
+        synthesis, bag = analysed(optional_producers(), omitting(
+            [("padding", "OMITTED")], "padded_size", "padded", integer("padding", doc="its own")))
+
+        assert errors(bag) == []
+        plan = synthesis.project.procedure("tox_cons", "omit_expert").argument(
+            "work_size").roles.computed_from
+        assert [supply.name for supply in plan.inputs] == ["n_items"]
+
+    def test_a_defaulted_optional_may_be_omitted(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("stride", "OMITTED")], "strided_size", "strided"))
+
+        assert errors(bag) == []
+
+    def test_omitting_and_supplying_are_two_calls(self):
+        cons = module("tox_cons_impl", procedure(
+            "twice_impl",
+            integer("n_items", doc="items"),
+            located(integer("a_size", doc="a", directives=auto("strided", "strided_size",
+                                                                 "tox_prod")),
+                    table(("stride", "OMITTED"))),
+            real("tmp_a", Intent.OUT, "(a_size)", doc="scratch"),
+            located(integer("b_size", doc="b", directives=auto("strided", "strided_size",
+                                                                 "tox_prod")),
+                    table(("stride", "2_int32"))),
+            real("tmp_b", Intent.OUT, "(b_size)", doc="scratch"),
+            meta=IMPL, is_pure=True,
+        ))
+        synthesis, bag = analysed(optional_producers(), cons)
+
+        assert errors(bag) == []
+        assert body(fortran(synthesis), "twice").count("call strided_size(") == 2
+
+    def test_a_required_input_is_refused_at_its_row(self):
+        _, bag = analysed(optional_producers(), omitting([("n_items", "OMITTED")]))
+
+        [error] = bag.errors
+        assert error.message == ("the producer-input table of 'work_size' omits 'n_items', "
+                                 "which 'padded_size' requires")
+        assert error.note == ("only an optional input may be left out; supply 'n_items' by an "
+                              "argument the caller passes, or a constant")
+        assert error.location.line == 103
+
+    def test_an_input_a_runtime_mode_requires_is_refused(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("gain", "OMITTED")], "gained_size", "gained", integer("mode", doc=[
+                "Which way.", "| Mode | Value |", "|------|-------|",
+                "| plain | [[tox_cons_impl(module):MODE_PLAIN(variable)]] |",
+                "| gained | [[tox_cons_impl(module):MODE_GAINED(variable)]] |"]),
+            parameters=(parameter("MODE_PLAIN", "1_int32"), parameter("MODE_GAINED", "2_int32"))))
+
+        assert [(e.message, e.note) for e in bag.errors] == [(
+            "the producer-input table of 'work_size' omits 'gain', which 'gained_size' requires "
+            "in mode 'gained'",
+            "the mode is chosen at run time, so the input may be needed: supply 'gain'")]
+
+    @pytest.mark.parametrize("cell", ["Omitted", "omitted", "'OMITTED'", '"OMITTED"', "`OMITTED`"])
+    def test_any_other_spelling_is_refused(self, cell):
+        _, bag = analysed(optional_producers(), omitting([("padding", cell)]))
+
+        [error] = bag.errors
+        assert error.message == (f"the producer-input table of 'work_size' supplies 'padding' by "
+                                 f"'{cell}', which is not the keyword OMITTED")
+        assert error.note.startswith("the keyword is written bare and in capitals, as AUTO is")
+        assert error.location.line == 103
+
+    def test_an_argument_of_that_name_is_refused(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("padding", "OMITTED")], "padded_size", "padded", integer("omitted", doc="a count")))
+
+        [error] = bag.errors
+        assert error.message == (
+            "the producer-input table of 'work_size' supplies 'padding' by 'OMITTED', which is the "
+            "keyword, but 'omitted' is also an argument of 'omit_impl'")
+        assert error.note.startswith("rename")
+
+    def test_a_constant_of_that_name_is_refused(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("padding", "OMITTED")], parameters=(parameter("OMITTED", "0_int32"),)))
+
+        [error] = bag.errors
+        assert error.message == (
+            "the producer-input table of 'work_size' supplies 'padding' by 'OMITTED', which is the "
+            "keyword, but 'omitted' is also a constant")
+
+    def test_an_optional_nothing_supplies_is_still_an_error_whose_note_offers_the_row(self):
+        cons = omitting([], name="omit_impl")
+        synthesis, bag = analysed(optional_producers(), cons)
+
+        [error] = bag.errors
+        assert error.message == ("'work_size' is computed from 'padded_size', but its input(s) "
+                                 "padding have no argument of the same name in 'omit_impl'")
+        assert error.note.startswith(
+            "'padding' is optional, so the row `| padding | OMITTED |` leaves it out of the call")
+        assert "| padding        | OMITTED     |" in error.note
+
+
+class TestTheTableGrammar:
+    """One row per input, an input in each, the same rules on a JUST_INFO table."""
+
+    def test_two_rows_for_one_input_are_refused_at_the_second(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("padding", "n_items"), ("padding", "1_int32")]))
+
+        [error] = bag.errors
+        assert error.message == ("the producer-input table of 'work_size' has two rows for "
+                                 "'padding' (rows 1 and 2)")
+        assert error.location.line == 104
+        assert error.note
+
+    def test_a_just_info_table_is_checked_too(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("n_items", "OMITTED")], sized="", mode_dm="JUST_INFO"))
+
+        assert [e.message for e in bag.errors] == [
+            "the producer-input table of 'work_size' omits 'n_items', which 'padded_size' requires"]
+
+    def test_one_error_per_cell(self):
+        _, bag = analysed(optional_producers(), omitting(
+            [("padding", "Omitted"), ("padded", "1_int32")]))
+
+        assert len(bag.errors) == 2
+
+
+class TestWhatNothingSupplies:
+    """The unmatched input at the directive's line; a cell naming nothing at its row (4a); a
+    split mode as a supplier (4b, T); each naming the implementation, not the wrapper (4c)."""
+
+    def split(self, row=None):
+        modes = [
+            "Which way.",
+            "| Mode | Value | Procedure |",
+            "|------|-------|-----------|",
+            "| one | [[tox_cons_impl(module):MODE_ONE(variable)]] | scaled_one |",
+            "| two | [[tox_cons_impl(module):MODE_TWO(variable)]] | scaled_two |",
+        ]
+        work = integer("work_size", doc="the size", directives=Directives(
+            output_from=OutputFrom("scaled", "scaled_size", "tox_prod", OutputFromMode.AUTO, 7)))
+        located(work, table(row or ("factor", "mode")))
+        return module("tox_cons_impl", procedure(
+            "scaled_impl", integer("mode", doc=modes), integer("n_items", doc="items"), work,
+            real("tmp_buf", Intent.OUT, "(work_size)", doc="scratch"),
+            meta=IMPL, is_pure=True,
+        ), parameters=(parameter("MODE_ONE", "1_int32"), parameter("MODE_TWO", "2_int32")))
+
+    def test_a_split_mode_is_refused_once_per_implementation(self):
+        _, bag = analysed(producers(), self.split())
+
+        [error] = bag.errors
+        assert error.message == ("'work_size' is computed from 'scaled_size', whose input 'factor' "
+                                 "would be 'mode', the mode 'scaled_impl' splits into one wrapper "
+                                 "per mode")
+        assert error.location.line == 7  # the directive's
+        assert "each per-mode wrapper fixes the mode" in error.note
+
+    def test_an_unmatched_input_is_at_the_directive_once_naming_the_implementation(self):
+        _, bag = analysed(producers(), self.split(("n_items", "n_items")))
+
+        [error] = bag.errors
+        assert error.message == ("'work_size' is computed from 'scaled_size', but its input(s) "
+                                 "factor have no argument of the same name in 'scaled_impl'")
+        assert error.location.line == 7

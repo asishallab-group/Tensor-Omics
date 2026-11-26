@@ -1040,6 +1040,47 @@ class TestACallKeptWhole:
         assert out == [["x", "w"], False, False]
 
 
+class TestAnOmittedProducerInput:
+    """Rule O: `| padding | OMITTED |` leaves the input out of every call, so the producer does
+    what it does for a caller who leaves it out -- `fx_padded_size` adds nothing, and
+    `fx_strided_size` takes its stride of three. On the Fortran route (a work array, through `foo`)
+    and the binding route (a result) alike; omitting in one table and supplying in another are
+    two calls."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([tox.fx_unpadded_total(x), len(tox.fx_unpadded(x)),
+                              tox.fx_unstrided_total(x), len(tox.fx_unstrided(x)),
+                              tox.fx_omitted_once(x)]))
+        """)
+
+        assert out == [6 + 3, 3, 6 + 9, 9, 6 + 9 + 6]
+
+    def test_r(self, built):
+        out = run_r(built, """
+            x <- c(1, 2, 3)
+            cat(fx_unpadded_total(x), length(fx_unpadded(x)), fx_unstrided_total(x),
+                length(fx_unstrided(x)), fx_omitted_once(x))
+        """)
+
+        assert out == ["9", "3", "15", "9", "21"]
+
+    def test_no_call_passes_it(self, built):
+        python = (built / "py" / "fx_impl" / "fx_sized.py").read_text()
+        r = (built / "r" / "fx_sized.R").read_text()
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        assert "padding" not in function_body(python, "def fx_unpadded(", "\ndef ").split(
+            "fx_padded_size(", 1)[1].split(")", 1)[0]
+        assert "stride" not in function_body(r, "fx_unstrided <- function(", "\n}").split(
+            "fx_strided_size(", 1)[1].split(")", 1)[0]
+        assert "stride =" not in function_body(
+            fortran, "subroutine fx_unstrided_total(", "end subroutine fx_unstrided_total")
+        # the negative control: a consumer that supplies it passes it
+        assert "padding = padding" in function_body(
+            fortran, "subroutine fx_padded_total(", "end subroutine fx_padded_total")
+
+
 FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
 
 

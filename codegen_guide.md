@@ -753,6 +753,30 @@ integer(int32), intent(out) :: tmp_int_workspace(int_workspace_size)
     !! Integer workspace array
 ```
 
+**A row overrides name-matching**, so a row applies even where you have an argument of the
+input's name, and **each input has one row**. A cell is an argument of the implementation the
+caller passes, a constant the generator can evaluate (`1_int32`, `.false.`, a named parameter --
+not an expression, which is not computed), or **`OMITTED`**, which leaves an optional input out
+of the call in every tier: Fortran passes no keyword for it, and Python and R leave it out of the
+call rather than passing `None` or `NULL`. The producer then does what it does when a caller
+leaves that argument out -- its bindings apply its `DM_DEFAULT`, its Fortran body decides
+(`fx_unpadded_total` in `helper/codegen/tests/fixtures/impl/fx_sized_impl.F90`):
+
+```fortran
+    !! | Producer input | Supplied by |
+    !! |----------------|-------------|
+    !! | padding        | OMITTED     |
+```
+
+`OMITTED` is a keyword, written bare and in capitals as `AUTO` is; any other spelling of it, or a
+quoted one, is refused, and so is the keyword where you have an argument or a constant named
+`omitted`, which the cell would otherwise mean. Only an optional input may be omitted, and not
+one the producer requires in a mode chosen at run time (`DM_REQUIRED_IF_MODE` on a producer that
+does not split). An optional input nothing supplies is still an error, whose note offers the row:
+leaving it out silently would hand the producer its own default where you meant your own value,
+and for a size that is a buffer too small. The rows of a `JUST_INFO` table are checked the same
+way, since the generated documentation publishes it.
+
 **You get** the producer called for you in `foo`, before the allocation that needs it:
 
 ```fortran
@@ -1734,9 +1758,13 @@ it are an example's.
 | a mode-table row that does not link a parameter, links the module itself, or links a parameter without the argument's prefix (`row 1 of the mode table of 'mode' does not name a parameter`, `row 1 of the mode table of 'mode' links to module 'pr_m_impl' rather than to a parameter in it`, `'METHOD_A' is not a valid mode parameter`) | the mode string a caller passes is the parameter's name without its prefix (Section 5.10) |
 | a split mode table whose third column does not name a procedure, or names one twice, and a mode table that maps one mode string twice (`row 2 of the mode table of 'mode' has no valid procedure name in its third column`, `the mode table of 'mode' names procedure(s) pr_twice more than once`, `the mode table of 'mode' maps a more than once`) | each row is one mode and, in a split, one generated procedure (Section 5.11) |
 | a defaulted mode whose default is not in its table (`the default of 'mode' (3) matches no value in its mode table`) | the binding passes the default as its mode string, which must be one the table names |
-| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table (`'work_size' is computed from 'fx_padded_size', but its input(s) padding have no argument of the same name in 'fy_no_pad_impl'`) | the generator will not guess what to pass; where the input is optional, the note offers the `OMITTED` row. An input the producer's binding derives (an extent) only where `foo` calls the producer, which has to pass it (Section 5.9) |
 | a `DM_OUTPUT_FROM` naming a producer that does not exist, or an output the producer does not have (`'work_size' is computed from 'pr_nothing' in 'pr_p_impl', which does not exist`, `'n' is not an output of 'pr_size_of'`) | the first parameter names the producer's output, the next two the producer and its module (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer-input table row naming an output of the producer or its `ierr` (`the producer-input table of 'norms' maps 'n_large', which is an output of 'fx_large_norms', not an input`) | a row supplies an input the producer reads; the directive names the output it takes (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer-input table with two rows for one input (`the producer-input table of 'work_size' has two rows for 'padding' (rows 2 and 3)`) | one row supplies an input; of two, the last won silently (Section 5.9) |
+| a `Supplied by` cell that is neither an argument of the implementation nor a constant (`the producer-input table of 'work_size' supplies 'factor' by '2*scale', which is neither an argument of 'fy_expr_impl' nor a constant`), at its row; one edit from an argument, the note asks if that was meant | an expression is not computed: give the implementation an argument the caller passes for the value (Section 5.9) |
+| `OMITTED` on an input the producer requires, or requires in a mode chosen at run time; another spelling of it (`Omitted`, `'OMITTED'`); or the keyword where the implementation has an argument, or the project a constant, named `omitted` (`the producer-input table of 'work_size' omits 'n_items', which 'fx_padded_size' requires`) | only an optional input may be left out; the keyword is written bare and in capitals, and means one thing (Section 5.9) |
+| a `DM_OUTPUT_FROM` producer input supplied by a mode the implementation splits (Section 5.11) (`'work_size' is computed from 'fx_scaled_size', whose input 'factor' would be 'mode', the mode 'fy_split_impl' splits into one wrapper per mode`) | each per-mode wrapper fixes the mode, and has no argument to pass (Section 5.10) |
 | a `DM_OUTPUT_FROM` producer-input table that is one of two, has an empty cell, or maps a name the producer does not have (`'work_size' has 2 tables mapping the inputs of 'pr_size_of'`, `row 1 of the producer-input table of 'work_size' has an empty cell`, `the producer-input table of 'work_size' maps 'm', which is not an argument of 'pr_size_of'`) | the table says what each producer input is supplied by, and the generator will not guess (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that is not exported — an implementation `foo_impl` among them | there is no published entry point to call; name `foo` in the generated module, or for a mode split the per-mode wrapper (Section 5.9) |
 | a `DM_OUTPUT_FROM` producer that, through its own producers, comes back to its consumer (`a -> b -> a`, or `a -> a`) | every call would make the next until the stack runs out (Section 5.9) |
@@ -1773,9 +1801,11 @@ it are an example's.
 | a procedure or module named, ignoring case, like an export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), a submodule of the Python package (`library`, `error_handling`), or another module | `tensor_omics` binds all of them at its top level, so one would hide the other; a module called `error_handling` would overwrite the error module's file (Section 7) |
 | a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
 
-Every refusal about what a `DM_OUTPUT_FROM` may take or be given points at the directive's line
-and is reported once for a generated pair; where `foo` calls the producer and the caller could
-supply the value instead, its note offers `JUST_INFO`.
+Every refusal about what a `DM_OUTPUT_FROM` may take or be given points at the directive's line --
+or, where one row of its table is the cause, at that row -- and is reported once for a generated
+pair, and once for an implementation where its cause is in the implementation's own source (a
+table row, a supplier it names), however many per-mode wrappers it splits into. Where `foo` calls
+the producer and the caller could supply the value instead, its note offers `JUST_INFO`.
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:

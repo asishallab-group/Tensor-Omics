@@ -752,8 +752,23 @@ class TestOutputFrom:
 
         analyse_project(project, bag)
 
-        assert any("factor" in e.message and "no argument of the same name" in e.message
-                   for e in bag.errors)
+        [error] = bag.errors
+        assert error.message == (
+            "the producer-input table of 'n_work' supplies 'factor' by 'not_a_thing', which is "
+            "neither an argument of 'uses_work' nor a constant")
+        assert error.note.startswith("a cell is an argument the caller passes, or a constant")
+        assert "did you mean" not in error.note
+
+    def test_a_cell_one_edit_from_an_argument_asks_if_it_was_meant(self, bag):
+        project = self._consumer(
+            producer_inputs=("n", "factor"),
+            doc=producer_input_doc(("factor", "m")),
+        )
+
+        analyse_project(project, bag)
+
+        [error] = bag.errors
+        assert error.note.endswith("; did you mean 'n'?")
 
     def test_a_table_naming_an_input_the_producer_lacks_is_reported(self, bag):
         project = self._consumer(

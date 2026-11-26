@@ -15,6 +15,7 @@ module fx_producers_impl
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
     public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl, fx_rounded_impl
+    public :: fx_strided_size_impl
 
 contains
 
@@ -153,6 +154,22 @@ contains
         padded_size = n_items
         if (present(padding)) padded_size = padded_size + padding
     end subroutine fx_padded_size_impl
+
+    !> summary: A size of a number of items, times a stride of three unless one is given
+    !| author: A Developer
+    pure subroutine fx_strided_size_impl(n_items, stride, strided_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in), optional :: stride
+            !! slots per item
+            !! DM_DEFAULT(3_int32)
+            !! DM_MIN(1_int32)
+        integer(int32), intent(out) :: strided_size
+            !! `n_items` times `stride`
+        integer(int32) :: slots
+        M_DEFAULT_VAL(stride, slots, 3_int32)
+        strided_size = n_items*slots
+    end subroutine fx_strided_size_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer

@@ -985,6 +985,37 @@ directive and the table" because the plan is the truth; that concerned a rule ev
 plans exist, and K keys not by the raw text but by the resolver the plans are built with, checked
 against them on every run.
 
+### `OMITTED`: an optional producer input left out of the call (rule O, 2026-11-26)
+
+An optional producer input the consumer had no argument for had no way out: a constant row
+`| stride | 3_int32 |` restated the producer's default, and for an optional without one
+(`padding`) no constant means "absent". A `Supplied by` cell **`OMITTED`** leaves the input out of
+every call: the Fortran call has no keyword for it, and Python and R leave it out of the binding
+call, never passing `None` or `NULL`, which a defaulted optional's binding refuses. The producer
+does what it does when a caller leaves the argument out -- its bindings apply its `DM_DEFAULT`,
+its Fortran body decides; the two can differ, which is not new. It is in no `plan.inputs`, so P1,
+chaining, the refined-input and prologue rules never meet it, and it is its own kind of supplier
+in K's key, so omitting in one table and supplying in another are two calls. A row overrides
+name-matching, as a constant row does.
+
+Refused, once per implementation at the row's line, one error per cell: `OMITTED` on an input the
+producer requires, or one `DM_REQUIRED_IF_MODE` makes required in a runtime mode; another spelling
+of it (`Omitted`, quoted, backticked -- a quoted one generated `padding = OMITTED` before, an
+implicit-type error); and the keyword where the consumer has an argument or the project a constant
+named `omitted`. **The table's grammar**, which `OMITTED` makes riskier, is checked in the same
+pass, a `JUST_INFO` table's included (Ford publishes it): a row names an input of the producer
+(N1), and each input has one row (of two, the last won silently). Nothing in the tree is refused.
+The unmatched-input error moved to the directive's line, names the implementation rather than the
+generated wrapper, and offers the `OMITTED` row where the input is optional; a cell naming
+nothing gets its own message at its row, with "did you mean" one edit from an argument.
+
+**Rejected -- implicit omission** (leaving out an optional input nothing supplies). An author who
+has the quantity under another name and forgot the row would silently get the producer's default,
+and for a size that is a buffer too small; the error is what stops that, and the explicit row
+keeps it. **Rejected -- `DEFAULT` as the keyword**: it is wrong for an optional with no default,
+and for the Fortran route, where the body's default applies; `OMITTED` reads right to a Fortran or
+C caller reading the published table, too: leave it out of your call.
+
 ### The prologue is the allocating tier's sugar, and has no scope
 
 `DM_PROLOGUE(PROCEDURE, MODULE)` names a routine `foo` runs after the work arrays are prepared
