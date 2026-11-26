@@ -31,7 +31,8 @@ contains
     !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
     !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
     !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
-    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question. The
+    !| distances and means are scaled as that procedure documents, with the same limits.
     subroutine cluster_factor_trajectories_k_means_c(&
             n_clusters,&
             trajectories,&
@@ -120,7 +121,8 @@ contains
     !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
     !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
     !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
-    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question. The
+    !| distances and means are scaled as that procedure documents, with the same limits.
     subroutine cluster_factor_trajectories_k_means_expert_c(&
             n_clusters,&
             trajectories,&
@@ -225,7 +227,17 @@ contains
     !|
     !| Each point's squared distances are compared scaled by a power of two picked for that point,
     !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
-    !| centroid in that measure; ordinary data is not scaled at all.
+    !| centroid in that measure, and each coordinate of a centroid is the mean of its cluster's
+    !| values in that dimension, summed scaled by the power of two picked for that set. So for
+    !| finite input the squared distances that decide a label neither overflow nor vanish beside
+    !| larger values, and no centroid's sum overflows; only the distances to centroids far from a
+    !| point may overflow, and those centroids lose. One limit stays: where the build or the host
+    !| flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
+    !|
+    !| Ordinary data needs no scaling and gets the arithmetic of the plain formulas: its results
+    !| are bit-identical to those of the code before this scaling in builds that do not contract a
+    !| multiplication and an addition into one fused operation (FMA); where a build does, a near
+    !| tie can fall the other way.
     subroutine k_means_clustering_c(&
             n_clusters,&
             data_points,&
@@ -305,7 +317,17 @@ contains
     !|
     !| Each point's squared distances are compared scaled by a power of two picked for that point,
     !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
-    !| centroid in that measure; ordinary data is not scaled at all.
+    !| centroid in that measure, and each coordinate of a centroid is the mean of its cluster's
+    !| values in that dimension, summed scaled by the power of two picked for that set. So for
+    !| finite input the squared distances that decide a label neither overflow nor vanish beside
+    !| larger values, and no centroid's sum overflows; only the distances to centroids far from a
+    !| point may overflow, and those centroids lose. One limit stays: where the build or the host
+    !| flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
+    !|
+    !| Ordinary data needs no scaling and gets the arithmetic of the plain formulas: its results
+    !| are bit-identical to those of the code before this scaling in builds that do not contract a
+    !| multiplication and an addition into one fused operation (FMA); where a build does, a near
+    !| tie can fall the other way.
     subroutine k_means_clustering_expert_c(&
             n_clusters,&
             data_points,&
@@ -387,6 +409,22 @@ contains
     !| returning, on success or on error, so the matrix comes back unchanged. There is no
     !| need to copy it before calling.
     !| @endnote
+    !|
+    !| UPGMA and WPGMA average each pair of distances scaled by the power of two f42's rule picks
+    !| for the larger, and Ward combines its three distances scaled for the largest of them, so for
+    !| finite input no update overflows, and small distances beside large ones keep their value.
+    !| Ward's distances can still exceed every input distance, as they grow with the clusters'
+    !| sizes: a merge whose true height passes `huge` stops the run with `ERR_NAN_INF`. When an
+    !| input exceeds `2**1007`, Ward keeps its scratch distances scaled by `2**-16`, so that one
+    !| passing `huge` on the way is still compared right; inputs below `2**-1006` are then
+    !| subnormal in that scratch, and read as 0 where subnormals are flushed.
+    !|
+    !| Every update is clamped where rounding can leave the range it lies in mathematically: an
+    !| average into the pair it averages, a Ward update to at least the merge's height. So the
+    !| heights never decrease, and equal distances average to themselves. Distances that need no
+    !| scaling get the plain formulas: their results are bit-identical to those of the code before
+    !| this scaling in builds that do not contract a multiplication and an addition into one fused
+    !| operation (FMA), except where the clamps apply.
     subroutine linkage_clustering_c(&
             distances,&
             n_points,&
@@ -441,9 +479,10 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
-            !! Error code: `ERR_NAN_INF` when a merge distance passes `huge`, which only Ward's can
-            !! for finite input, as it grows with the clusters' sizes. The merges before it are
-            !! written, the later ones are not, and the matrix still comes back unchanged.
+            !! Error code; zero on success, non-zero on failure: `ERR_NAN_INF` when a merge's true
+            !! height passes `huge`, which only Ward's can for finite input, as its distances grow
+            !! with the clusters' sizes. The merges before it are written and right, the later ones
+            !! are not written, and the matrix still comes back unchanged.
         integer(int32) :: method_mode_f
 
         M_CHECK_IERR_NON_NULL
