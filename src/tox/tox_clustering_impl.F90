@@ -415,9 +415,9 @@ contains
 
             select case (method)
             case (METHOD_AVERAGE)
-                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, dist_AB)
+                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i)
             case (METHOD_WEIGHTED)
-                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i, dist_AB)
+                call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i)
             case (METHOD_WARD)
                 call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, &
                                                          dist_AB)
@@ -478,7 +478,7 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper for *PGMA algorithms for updating the distance matrix on merge of two clusters
-    pure subroutine merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, dist_AB)
+    pure subroutine merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -493,20 +493,13 @@ contains
             !! cluster size of cluster at `idx_B`
         integer(int32), intent(in) :: iteration_k
             !! iteration of current merge
-        real(real64), intent(in) :: dist_AB
-            !! distance between cluster A and B, the merge's height; no updated distance is below it
 
         integer(int32) :: i_node
-        real(real64) :: new_dist, weight_A, weight_B, new_dist_part_AC, new_dist_part_BC
 
         ! Merge distances
         ! Update merged nodes with arithmetic mean distances
         ! Use column index for merged distances -> fill idx_A with infinity values
         ! update bottom triangle
-        ! Each distance is weighted before the two are added, so the sum is an average of finite
-        ! distances and cannot overflow; forming size_A*d(A,C) + size_B*d(B,C) first could.
-        weight_A = real(size_A, real64)/real(size_A + size_B, real64)
-        weight_B = real(size_B, real64)/real(size_A + size_B, real64)
         ! Lance-Williams update formula for UPGMA/WPGMA: new d(AB,C) = (size_A*d(A,C) + size_B*d(B,C)) / (size_A+size_B).
         ! For WPGMA (METHOD_WEIGHTED) the caller passes size_A=size_B=1 instead of the true cluster
         ! sizes, which reduces this to the unweighted average (d(A,C)+d(B,C))/2, giving every
@@ -515,30 +508,15 @@ contains
             if (distances(i_node, i_node) >= 0.0_real64) then
                 ! i_node < idx_B < idx_A -> fill rows in both
                 if (i_node < idx_B) then
-                    new_dist_part_AC = distances(idx_A, i_node)*weight_A
-                    new_dist_part_BC = distances(idx_B, i_node)*weight_B
-                    ! an average of distances that are all at least dist_AB is too, but rounding can
-                    ! land it an ulp below; that would make a later height lower than this one
-                    new_dist = max(new_dist_part_AC + new_dist_part_BC, dist_AB)
-                    distances(idx_B, i_node) = new_dist
+                    distances(idx_B, i_node) = average_linkage_update_helper(distances(idx_A, i_node), distances(idx_B, i_node), size_A, size_B)
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
-                    new_dist_part_AC = distances(idx_A, i_node)*weight_A
-                    new_dist_part_BC = distances(i_node, idx_B)*weight_B
-                    ! an average of distances that are all at least dist_AB is too, but rounding can
-                    ! land it an ulp below; that would make a later height lower than this one
-                    new_dist = max(new_dist_part_AC + new_dist_part_BC, dist_AB)
-                    distances(i_node, idx_B) = new_dist
+                    distances(i_node, idx_B) = average_linkage_update_helper(distances(idx_A, i_node), distances(i_node, idx_B), size_A, size_B)
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
-                    new_dist_part_AC = distances(i_node, idx_A)*weight_A
-                    new_dist_part_BC = distances(i_node, idx_B)*weight_B
-                    ! an average of distances that are all at least dist_AB is too, but rounding can
-                    ! land it an ulp below; that would make a later height lower than this one
-                    new_dist = max(new_dist_part_AC + new_dist_part_BC, dist_AB)
-                    distances(i_node, idx_B) = new_dist
+                    distances(i_node, idx_B) = average_linkage_update_helper(distances(i_node, idx_A), distances(i_node, idx_B), size_A, size_B)
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
             end if
@@ -546,6 +524,33 @@ contains
 
         call post_merge_distances_helper(distances, n_points, idx_A, idx_B, iteration_k)
     end subroutine merge_distances_xPGMA_linkage_helper
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Helper for the *PGMA algorithms: the Lance-Williams update of one distance,
+    !| `(size_A*d(A,C) + size_B*d(B,C))/(size_A + size_B)`. The two distances are scaled by the
+    !| power of two f42's rule picks for the larger of them before they are weighted, so the sum
+    !| cannot overflow, and the result is scaled back. The weighted mean lies between the two
+    !| distances, and is clamped there, as rounding can land it just outside: so two equal distances
+    !| average to themselves, and, as both are at least the merge's height, no later height is
+    !| lower than this merge's. Distances that need no scaling get the exponent 0 and the
+    !| multiply-first formula as it always was.
+    pure real(real64) function average_linkage_update_helper(dist_AC, dist_BC, size_A, size_B) result(new_dist)
+        real(real64), intent(in) :: dist_AC
+            !! distance from cluster A to the other cluster C
+        real(real64), intent(in) :: dist_BC
+            !! distance from cluster B to C
+        integer(int32), intent(in) :: size_A
+            !! weight of A: its size for UPGMA, 1 for WPGMA
+        integer(int32), intent(in) :: size_B
+            !! weight of B: its size for UPGMA, 1 for WPGMA
+
+        integer(int32) :: exponent
+
+        exponent = scaling_exponent_for_largest(max(dist_AC, dist_BC))
+        new_dist = scale((real(size_A, real64)*scale(dist_AC, exponent) + real(size_B, real64)*scale(dist_BC, exponent)) &
+                         /real(size_A + size_B, real64), -exponent)
+        new_dist = min(max(new_dist, min(dist_AC, dist_BC)), max(dist_AC, dist_BC))
+    end function average_linkage_update_helper
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper for ward algorithm for updating the distance matrix on merge of two clusters

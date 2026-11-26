@@ -495,7 +495,7 @@ contains
     !| merge it follows -- but the rounded update can land an ulp or two below it, so a height comes
     !| out below the one before. R's `cutree(h = ...)` refuses such a tree. Points all at the same
     !| distance d merge at d every time; found by search among d = 0.1, 0.2, ..., 9.9:
-    !| - UPGMA, four points at 0.9, 1.8, 2.1, 2.9: the third height 1 ulp below d;
+    !| - UPGMA, four points at 0.7, 1.4, 1.9, 2.8: the third height, (2d + d)/3, 1 ulp below d;
     !| - Ward, three points at 3.9 and 7.8, four at 3.3: the last height 1 ulp below d.
     !| The heights must not decrease and must equal d to within rounding (a few ulps: the update
     !| rounds, and an optimizer may contract it into a fused multiply-add).
@@ -504,7 +504,7 @@ contains
         integer(int32), parameter :: CASE_METHODS(n_cases) = [METHOD_AVERAGE, METHOD_AVERAGE, METHOD_AVERAGE, &
                                                               METHOD_AVERAGE, METHOD_WARD, METHOD_WARD, METHOD_WARD]
         integer(int32), parameter :: CASE_POINTS(n_cases) = [4, 4, 4, 4, 3, 3, 4]
-        real(real64), parameter :: CASE_DISTANCES(n_cases) = [0.9_real64, 1.8_real64, 2.1_real64, 2.9_real64, &
+        real(real64), parameter :: CASE_DISTANCES(n_cases) = [0.7_real64, 1.4_real64, 1.9_real64, 2.8_real64, &
                                                               3.9_real64, 7.8_real64, 3.3_real64]
         real(real64) :: distances(4, 4), heights(3), expected(3)
         integer(int32) :: merge_i(3), merge_j(3), cluster_sizes(3), ierr, i_case, n_points
@@ -723,7 +723,7 @@ contains
     !| six points: {4, 5} at 0.5; point 3 at 1 from both, so {-1, 3} at 1; points 1 and 2 at 7, and
     !| point 6 at 7 from 3, 4 and 5, so {1, 2} and {-2, 6} tie at 7; all other distances 100. The
     !| documented order merges {1, 2} first (lowest point index 1 against 3), then {-2, 6}, then
-    !| the two clusters at 100. merge_i [5, 3, 2, 6, -4], merge_j [4, -1, 1, -2, -3]. Divide-first
+    !| the two clusters at 100. merge_i [5, -1, 2, 6, -4], merge_j [4, 3, 1, -2, -3]. Divide-first
     !| rounded d(-2, 6) to 6.999999999999999 and merged it first.
     subroutine test_linkage_clustering_tie_after_averaging()
         real(real64) :: distances(6, 6), passed(6, 6), heights(5)
@@ -742,8 +742,8 @@ contains
         passed = distances
         call linkage_clustering(passed, 6_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_AVERAGE, ierr)
         call assert_err(ierr, ERR_OK, msg//"ierr")
-        call assert_equal_array_int(merge_i, [5, 3, 2, 6, -4], 5_int32, msg//"merge_i")
-        call assert_equal_array_int(merge_j, [4, -1, 1, -2, -3], 5_int32, msg//"merge_j")
+        call assert_equal_array_int(merge_i, [5, -1, 2, 6, -4], 5_int32, msg//"merge_i")
+        call assert_equal_array_int(merge_j, [4, 3, 1, -2, -3], 5_int32, msg//"merge_j")
         call assert_equal_array_real(heights, [0.5_real64, 1.0_real64, 7.0_real64, 7.0_real64, 100.0_real64], 5_int32, &
                                      0.0_real64, msg//"heights")
     end subroutine test_linkage_clustering_tie_after_averaging
