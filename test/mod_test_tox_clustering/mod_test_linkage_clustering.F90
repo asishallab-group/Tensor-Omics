@@ -5,11 +5,10 @@
 !| The matrix must come back unchanged every time, as the documentation promises.
 !|
 !| A merge is checked as the pair {smaller label, larger label}: positive labels are points,
-!| `-k` the cluster made by merge `k`. Which of the two goes into `merge_i` and which into
-!| `merge_j` is not documented, so it is not pinned. The documentation does not say how a tie
-!| between two equally close pairs is broken either; where a case has ties, the merges pin the
-!| rule the code has -- the pair with the lowest column, then the lowest row, of the lower
-!| triangle, where a cluster sits at the lowest index of its points.
+!| `-k` the cluster made by merge `k`. Which of the two goes into `merge_i` -- the cluster whose
+!| lowest point index is the higher -- is checked once, in `test_linkage_clustering_merge_order`.
+!| Where a case has ties, the merges check the documented tie rule: tied pairs merge in the order
+!| of the lower cluster's lowest point index, then the higher cluster's.
 !|
 !| UPGMA and WPGMA average distances that are integers or halves, so their heights are exact and
 !| compared with tolerance 0. Ward's update takes square roots, so its heights are compared within
@@ -59,7 +58,7 @@ contains
     function get_all_tests_linkage_clustering() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(18))
+        allocate (all_tests(19))
         all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
         all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
         all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
@@ -82,6 +81,7 @@ contains
         all_tests(17) = test_case("test_linkage_clustering_ward_height_past_huge", test_linkage_clustering_ward_height_past_huge)
         all_tests(18) = test_case("test_linkage_clustering_heights_never_decrease", &
                                   test_linkage_clustering_heights_never_decrease)
+        all_tests(19) = test_case("test_linkage_clustering_merge_order", test_linkage_clustering_merge_order)
     end function get_all_tests_linkage_clustering
 
     !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
@@ -515,4 +515,35 @@ contains
                                             trim(msg)//": heights equal d")
         end do
     end subroutine test_linkage_clustering_heights_never_decrease
+
+    !> The documented order within a merge: `merge_i` holds the cluster whose lowest point index is
+    !| the higher, `merge_j` the other, for every method.
+    !| - Wikipedia example: {1, 2}: 2 and 1; {-1 = {1, 2}, 5}: 5 and -1; {3, 4}: 4 and 3;
+    !|   {-2 = {1, 2, 5}, -3 = {3, 4}}: -3 and -2.
+    !| - Six points on a line: {2, 4}: 4 and 2; {5, 6}: 6 and 5; {-1 = {2, 4}, 1}: -1 and 1;
+    !|   {-2 = {5, 6}, 3}: -2 and 3; {-3 = {1, 2, 4}, -4 = {3, 5, 6}}: -4 and -3.
+    subroutine test_linkage_clustering_merge_order()
+        real(real64) :: wiki(WIKI_N, WIKI_N), line(LINE_N, LINE_N), heights(LINE_N - 1)
+        integer(int32) :: merge_i(LINE_N - 1), merge_j(LINE_N - 1), cluster_sizes(LINE_N - 1), ierr, i_method
+        integer(int32) :: i_row, i_col
+        character(len=60) :: msg
+
+        do i_col = 1, LINE_N
+            do i_row = 1, LINE_N
+                line(i_row, i_col) = abs(LINE_POSITIONS(i_row) - LINE_POSITIONS(i_col))
+            end do
+        end do
+        do i_method = 1, N_METHODS
+            msg = "test_linkage_clustering_merge_order: "//trim(METHOD_NAMES(i_method))
+            wiki = WIKI_DISTANCES
+            call linkage_clustering(wiki, WIKI_N, merge_i, merge_j, heights, cluster_sizes, METHODS(i_method), ierr)
+            call assert_err(ierr, ERR_OK, trim(msg)//": Wikipedia, ierr")
+            call assert_equal_array_int(merge_i, [2, 5, 4, -3], WIKI_N - 1_int32, trim(msg)//": Wikipedia, merge_i")
+            call assert_equal_array_int(merge_j, [1, -1, 3, -2], WIKI_N - 1_int32, trim(msg)//": Wikipedia, merge_j")
+            call linkage_clustering(line, LINE_N, merge_i, merge_j, heights, cluster_sizes, METHODS(i_method), ierr)
+            call assert_err(ierr, ERR_OK, trim(msg)//": line, ierr")
+            call assert_equal_array_int(merge_i, [4, 6, -1, -2, -4], LINE_N - 1_int32, trim(msg)//": line, merge_i")
+            call assert_equal_array_int(merge_j, [2, 5, 1, 3, -3], LINE_N - 1_int32, trim(msg)//": line, merge_j")
+        end do
+    end subroutine test_linkage_clustering_merge_order
 end module mod_test_linkage_clustering
