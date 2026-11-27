@@ -10,20 +10,23 @@ from __future__ import annotations
 from ..abi.model import CArgument, CWrapper
 from ..ir.entities import Procedure
 from ..ir.roles import OutputFromPlan
+from ..synthesize import automatic_plan, binding_computes
 
 
 def auto_plans(wrapper: CWrapper) -> list[tuple[CArgument, OutputFromPlan]]:
     """Each argument the binding computes by calling a producer, with its plan, in argument order.
 
-    No producer is given another's output (`roles._refuses_chaining`), so the order is free.
+    Only what this tier's binding computes (`synthesize.binding_computes`): in a generated
+    pair's expert a data array is the caller's, and calling its producer anyway would overwrite
+    what they passed. Python's and R's producer calls, Python's stashes and producer imports
+    and R's error tables all follow from this one list. No producer is given another's output
+    (`roles._refuses_chaining`), so the order is free.
     """
-    found = []
-    for argument in wrapper:
-        roles = argument.source.roles if argument.source else None
-        plan = roles.computed_from if roles is not None else None
-        if plan is not None and plan.is_automatic:
-            found.append((argument, plan))
-    return found
+    return [
+        (argument, automatic_plan(argument))
+        for argument in wrapper
+        if binding_computes(argument, wrapper)
+    ]
 
 
 def supplied_by(plan: OutputFromPlan, wrapper: CWrapper) -> list[tuple[str, int]]:

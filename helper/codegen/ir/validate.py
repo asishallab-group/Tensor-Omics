@@ -372,7 +372,12 @@ def _required_default_note(argument: Argument) -> str:
     # an implementation is analysed without the project, so its producer is not resolved
     # onto its roles: the directive says the same
     computed = output_from is not None and output_from.is_automatic
-    if computed or (roles is not None and roles.is_derived):
+    if computed:
+        # not "never taken": the Python and R expert of a pair takes data a producer fills,
+        # as Fortran's and C's take every such value -- as a required argument either way
+        return (f"'{argument.name}' is computed by its producer, or passed as a required "
+                "argument where the caller supplies it, so the default is never used; drop it")
+    if roles is not None and roles.is_derived:
         return (f"Python and R derive '{argument.name}' and never take it, so the default is "
                 "never used; drop it")
     if roles is not None and roles.is_extent:
@@ -561,7 +566,10 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
         if not procedure.is_exported:
             _check_function_result(procedure, diagnostics, conventions)
         _check_taken_over_is_not_an_output(procedure, diagnostics, conventions)
+        _check_no_mode_table_on_an_output(procedure, diagnostics)
+        _check_no_computed_length_of_a_passed_string(procedure, diagnostics, conventions)
         _check_prologue(procedure, diagnostics, conventions)
+        _check_bounds_name_what_is_set(procedure, diagnostics, conventions)
 
 
 def _check_module_is_named_for_its_file(module: Module, diagnostics: DiagnosticBag) -> None:
@@ -741,6 +749,7 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
         is_computed,
         is_permutation,
         is_temporary,
+        project_evaluator,
         published_arguments,
         taken_over_arguments,
     )
@@ -748,7 +757,29 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
     project = impl.module.project if impl.module is not None else None
     prologue = _prologue_of(impl, project) if project is not None else None
     arguments = published_arguments(impl, conventions)
-    for argument in taken_over_arguments(arguments, conventions, prologue):
+    for argument in arguments:
+        # an intent(inout) value a producer computes, on either route: what the implementation
+        # writes back is dropped where `foo` computed it, and asked of nobody where a binding did
+        directive = argument.directives.output_from
+        if not is_computed(argument) or argument.intent is not Intent.INOUT:
+            continue
+        location = argument.location
+        if location is not None and directive.line_number is not None:
+            location = SourceLocation(location.file, directive.line_number)
+        diagnostics.error(
+            f"'{argument.name}' is intent(inout), but it is computed with "
+            f"'{directive.procedure}', so what the implementation writes back is discarded",
+            entity=argument,
+            location=location,
+            note=(
+                "a value a producer computes is intent(in); scratch the implementation reuses "
+                f"is a '{conventions.temporary_prefix}' work array. Where the caller can supply "
+                "the value, name the producer with JUST_INFO instead of AUTO, so the caller "
+                "passes it"
+            ),
+        )
+    for argument in taken_over_arguments(arguments, conventions, prologue,
+                                         project_evaluator(impl)):
         if argument.intent is not Intent.OUT or is_temporary(argument, conventions):
             continue
         if is_permutation(argument, conventions):
@@ -772,6 +803,169 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
                 "result for what it is (`order`, `ranks`) or drop the directive, or make it "
                 "intent(in) or intent(inout) if the implementation really is handed it"
             ),
+        )
+
+
+def _directive_location(argument: Argument, directive) -> SourceLocation | None:
+    """Where a diagnostic about `directive` on `argument` points: the directive's own line."""
+    location = argument.location
+    line = directive.line_number if directive is not None else None
+    if location is not None and line is not None:
+        return SourceLocation(location.file, line)
+    return location
+
+
+def _check_no_computed_length_of_a_passed_string(impl: Procedure, diagnostics: DiagnosticBag,
+                                                 conventions: Conventions) -> None:
+    """A value a producer computes is not the length of a string the caller passes (3b, Q3).
+
+    Python's plain tier converted such a string to the computed length before the producer had
+    computed it, and raised `UnboundLocalError`; reordering it is circular where the strings'
+    count feeds the producer. The strings carry their own length, which `len=*` says. A computed
+    length of a string the wrapper allocates -- an output, a work array -- stays. Once per
+    implementation, at the directive's line.
+    """
+    from ..synthesize import is_computed, published_arguments, size_names_in
+
+    arguments = published_arguments(impl, conventions)
+    for argument in arguments:
+        if not is_computed(argument):
+            continue
+        directive = argument.directives.output_from
+        for other in arguments:
+            length = other.type.length if other.type is not None else None
+            if (length is None or length.expr is None or other.intent is None
+                    or not other.intent.is_input):
+                continue
+            if not any(named.name.lower() == argument.name.lower()
+                       for named in size_names_in(length.expr)):
+                continue
+            diagnostics.error(
+                f"'{argument.name}' is computed with '{directive.procedure}', but it is the length "
+                f"of '{other.name}', which the caller passes: the strings carry their own length",
+                entity=argument,
+                location=_directive_location(argument, directive),
+                note=(
+                    "a computed length is for strings the wrapper allocates (an output or a work "
+                    "array); for strings the caller passes, declare them character(len=*), whose "
+                    "length the bindings read off them, or name the producer with JUST_INFO so the "
+                    "caller passes the length"
+                ),
+            )
+            break
+
+
+#: What a bound may name, the note of every refusal of one (rule V)
+_WHAT_A_BOUND_NAMES = (
+    "a bound names an argument the caller passes, a value a DM_OUTPUT_FROM producer computes, a "
+    "value the prologue writes, or a constant"
+)
+
+
+def _check_bounds_name_what_is_set(impl: Procedure, diagnostics: DiagnosticBag,
+                                   conventions: Conventions) -> None:
+    """A `DM_MIN`, `DM_MAX`, `DM_SENTINEL` or `DM_EQUALS` names only what is set when it is checked.
+
+    Rule V checks a bound in the allocating `foo` once every value it names is set: at the top, after
+    the producers, or after the prologue (`fortran_wrapper`). A name set at none of those points is
+    refused, each class with its own message, at the bound's line, once per implementation and one
+    error per directive -- a name of `size_names_in`, a `size()` operand included:
+
+    - a `tmp_` work array or a `<base>_perm` that `foo` takes over: `foo` builds it itself, and a
+      bound reads it before it does (for a work array's size, name its extent);
+    - an `intent(out)` argument as a value (a `size()` operand of one `foo` keeps is its shape),
+      in every wrapper, a lone one included, where nothing else here applies;
+    - an argument only the prologue has, which `foo_expert` does not;
+    - in a `DM_SENTINEL`, a value a producer or the prologue sets: a sentinel is a fixed marker;
+    - a bound checked after the prologue on an argument the prologue writes itself: its error
+      would blame the caller for the prologue's value, the caller's already overwritten.
+    """
+    from ..synthesize import (
+        _prologue_of, is_computed, is_permutation, is_temporary, project_evaluator,
+        prologue_only_arguments, published_arguments, size_names_in, taken_over_arguments,
+    )
+
+    project = impl.module.project if impl.module is not None else None
+    prologue = _prologue_of(impl, project) if project is not None else None
+    arguments = published_arguments(impl, conventions)
+    taken = taken_over_arguments(arguments, conventions, prologue, project_evaluator(impl))
+    only_prologue = {a.name.lower() for a in prologue_only_arguments(prologue, arguments,
+                                                                     conventions)}
+    # in a lone wrapper nothing is taken over and there is no prologue, so only the classes
+    # that hold in every tier apply: an output named as a value is set in none
+    built = {a.name.lower() for a in taken
+             if is_temporary(a, conventions) or is_permutation(a, conventions)}
+    produced = {a.name.lower() for a in taken if is_computed(a)}
+    reserved = {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    written = ({d.name.lower() for d in prologue.arguments
+                if d.intent is not None and d.intent.is_output} - reserved
+               if prologue is not None else set())
+    by_name = {a.name.lower(): a for a in arguments}
+    base = impl.name[: -len(conventions.impl_suffix)]
+    foo, expert = f"'{base}'", f"'{base}{conventions.expert_suffix}'"
+
+    for argument in arguments:
+        directives = argument.directives
+        for kind, directive in (("DM_MIN", directives.minimum), ("DM_MAX", directives.maximum),
+                                ("DM_SENTINEL", directives.sentinel),
+                                ("DM_EQUALS", directives.equals)):
+            if directive is None:
+                continue
+            checked = f"'{argument.name}' is checked against"
+            cause = None
+            for named in size_names_in(directive.expression):
+                name = named.name.lower()
+                other = by_name.get(name)
+                if name in built:
+                    work = is_temporary(other, conventions) if other is not None else False
+                    cause = (f"{checked} '{named.name}', which {foo} builds itself",
+                             "; for a work array's size, name its extent" if work else "")
+                elif name in only_prologue:
+                    cause = (f"{checked} '{named.name}', which only the prologue takes, so "
+                             f"{expert} has no '{named.name}'", "")
+                elif (other is not None and other.intent is Intent.OUT
+                      and not (named.is_size_operand and other not in taken)):
+                    cause = (f"{checked} '{named.name}', an output, which has no value until the "
+                             "implementation sets it", "")
+                elif kind == "DM_SENTINEL" and (name in produced or name in written):
+                    who = f"{foo} computes" if name in produced else "the prologue writes"
+                    cause = (f"'{argument.name}' has a DM_SENTINEL naming '{named.name}', which "
+                             f"{who}", "; a sentinel is a fixed marker")
+                elif name in written and argument.name.lower() in written:
+                    cause = (f"{checked} '{named.name}' once the prologue has run, but the prologue "
+                             f"writes '{argument.name}' too, so its error would blame the caller "
+                             "for the prologue's value", "")
+                if cause is not None:
+                    break
+            if cause is None:
+                continue
+            diagnostics.error(cause[0], entity=argument,
+                              location=_directive_location(argument, directive),
+                              note=_WHAT_A_BOUND_NAMES + cause[1])
+
+
+def _check_no_mode_table_on_an_output(impl: Procedure, diagnostics: DiagnosticBag) -> None:
+    """An `intent(out)` argument has no mode table (rule T, the output side).
+
+    The generated wrapper checks a mode argument's membership in its table at the top, before the
+    implementation has set an output, so every call failed with "invalid input arguments" -- and
+    every consumer of it with it. An output's codes are documented in prose. Once per
+    implementation, at the table's line.
+    """
+    for argument in impl.arguments:
+        mode = argument.roles.mode if argument.roles is not None else None
+        if mode is None or argument.intent is not Intent.OUT:
+            continue
+        location = argument.location
+        line = mode.source.line_number if mode.source is not None else None
+        if location is not None and line is not None:
+            location = SourceLocation(location.file, line)
+        diagnostics.error(
+            f"'{argument.name}' is an output, but has a mode table, whose values the wrapper "
+            "checks before the implementation sets it",
+            entity=argument,
+            location=location,
+            note="drop the table, and document the codes in prose",
         )
 
 
@@ -1434,10 +1628,52 @@ def _check_prologue(impl: Procedure, diagnostics: DiagnosticBag,
         return
 
     _check_prologue_reports_handled(impl, prologue, diagnostics, conventions)
+    _check_prologue_keeps_what_a_producer_computes(impl, prologue, diagnostics, conventions)
     _check_prologue_runs_somewhere(impl, prologue, diagnostics, conventions)
     _check_prologue_arguments_resolve(impl, prologue, diagnostics, conventions)
     _check_prologue_writes_what_it_may(impl, prologue, diagnostics, conventions)
     _check_prologue_outputs_are_not_read_first(impl, prologue, diagnostics, conventions)
+
+
+def _prologue_discards(impl: Procedure, prologue: Procedure, conventions: Conventions) -> set[str]:
+    """The AUTO values the prologue writes `intent(out)`: what item 5 refuses, lower-cased."""
+    from ..synthesize import is_computed, published_arguments
+
+    computed = {a.name.lower() for a in published_arguments(impl, conventions) if is_computed(a)}
+    return {d.name.lower() for d in prologue.arguments
+            if d.intent is Intent.OUT and d.name.lower() in computed}
+
+
+def _check_prologue_keeps_what_a_producer_computes(impl: Procedure, prologue: Procedure,
+                                                   diagnostics: DiagnosticBag,
+                                                   conventions: Conventions) -> None:
+    """A prologue does not write over a value a producer computes (item 5).
+
+    `foo` calls the producers above the prologue, so an `intent(out)` prologue dummy matching a
+    `DM_OUTPUT_FROM(..., AUTO)` value discards what the producer computed, silently, whichever
+    tier calls the producer. An `intent(inout)` one refines it, reading what the producer made,
+    and stays allowed (FES, Q4). This rule owns those values: the two rules below leave them out,
+    so one cause is one error. Once per implementation, at the directive's line.
+    """
+    from ..synthesize import published_arguments
+
+    base = impl.name[: -len(conventions.impl_suffix)]
+    by_name = {a.name.lower(): a for a in published_arguments(impl, conventions)}
+    for name in sorted(_prologue_discards(impl, prologue, conventions)):
+        argument = by_name[name]
+        directive = argument.directives.output_from
+        diagnostics.error(
+            f"the prologue '{prologue.name}' writes '{argument.name}' (intent(out)), which "
+            f"'{base}' computes with '{directive.procedure}' first, so the producer's value is "
+            "discarded",
+            entity=argument,
+            location=_directive_location(argument, directive),
+            note=(
+                "a value has one source: drop the DM_OUTPUT_FROM if the prologue derives it, make "
+                "the prologue's dummy intent(in) if it only reads it, or intent(inout) if it "
+                "refines what the producer made"
+            ),
+        )
 
 
 def _check_prologue_runs_somewhere(impl: Procedure, prologue: Procedure,
@@ -1450,10 +1686,12 @@ def _check_prologue_runs_somewhere(impl: Procedure, prologue: Procedure,
     its own. A prologue with neither is attached to a procedure that is never generated: no
     call is emitted anywhere, and nothing said so.
     """
-    from ..synthesize import prologue_only_arguments, published_arguments, taken_over_arguments
+    from ..synthesize import (
+        project_evaluator, prologue_only_arguments, published_arguments, taken_over_arguments,
+    )
 
     arguments = published_arguments(impl, conventions)
-    if taken_over_arguments(arguments, conventions, prologue):
+    if taken_over_arguments(arguments, conventions, prologue, project_evaluator(impl)):
         return
     if prologue_only_arguments(prologue, arguments, conventions):
         return  # the wrapper exists to carry those, whether or not anything is allocated
@@ -1658,11 +1896,13 @@ def _check_prologue_writes_what_it_may(impl: Procedure, prologue: Procedure,
     prologue then refines.
     """
     # local: synthesize imports this module
-    from ..synthesize import published_arguments, taken_over_arguments
+    from ..synthesize import project_evaluator, published_arguments, taken_over_arguments
 
     arguments = published_arguments(impl, conventions)
-    taken = {a.name.lower() for a in taken_over_arguments(arguments, conventions, prologue)}
+    taken = {a.name.lower() for a in taken_over_arguments(arguments, conventions, prologue,
+                                                          project_evaluator(impl))}
     by_name = {a.name.lower(): a for a in arguments}
+    discarded = _prologue_discards(impl, prologue, conventions)
     for dummy in prologue.arguments:
         if dummy.intent is None or not dummy.intent.is_output:
             continue
@@ -1671,6 +1911,8 @@ def _check_prologue_writes_what_it_may(impl: Procedure, prologue: Procedure,
             continue
         if argument.name.lower() in taken:
             continue  # dropped from the signature and made a local, which is the point
+        if argument.name.lower() in discarded:
+            continue  # item 5's: `_check_prologue_keeps_what_a_producer_computes`
         diagnostics.error(
             f"prologue writes '{dummy.name}', which '{impl.name}' reads and the wrapper "
             f"cannot make a local",
@@ -1695,7 +1937,9 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     rubbish rather than failing.
     """
     # local imports: synthesize imports this module
-    from ..synthesize import published_arguments, sorted_permutations, taken_over_arguments
+    from ..synthesize import (
+        project_evaluator, published_arguments, sorted_permutations, taken_over_arguments,
+    )
 
     written = {
         dummy.name.lower()
@@ -1703,18 +1947,24 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
         if dummy.intent is not None and dummy.intent.is_output
     }
     written -= {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    # an AUTO value the prologue overwrites is item 5's, one error for one cause
+    written -= _prologue_discards(impl, prologue, conventions)
     if not written:
         return
 
     taken = taken_over_arguments(published_arguments(impl, conventions), conventions,
-                                 prologue)
+                                 prologue, project_evaluator(impl))
 
-    # `M_ALLOCATE(tmp_x(<extent>))`
+    # `M_ALLOCATE(tmp_x(<extent>))` -- an array a producer fills included, which is allocated
+    # with its extents right above the producer call that is also passed them: one cause, so
+    # one error, which the producer half below then leaves out
+    sized_by: set[tuple[str, str]] = set()
     for argument in taken:
         for extent in argument.dimension.extents:
             for identifier in _IDENTIFIER_RE.findall(extent):
                 if identifier.lower() not in written:
                     continue
+                sized_by.add((argument.name.lower(), identifier.lower()))
                 diagnostics.error(
                     f"'{argument.name}' is sized by '{identifier}', which the prologue "
                     f"only fills afterwards",
@@ -1740,16 +1990,22 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     # The plan is resolved on the generated wrapper rather than here: `analyse` runs on a
     # impl without a project, so it can never look a producer up, and an implementation argument's
     # `computed_from` is always None. Reading it here would have made this half dead code.
+    # Its note is the producer-input rule's: a work array is no way out for a producer input,
+    # which nothing has filled before the producer runs either.
+    from .roles import PRODUCER_INPUT_NOTE  # local: roles imports this module
+
     for argument in _wrapper_arguments_with_plans(impl, conventions):
         plan = argument.roles.computed_from
         for supply in plan.inputs:
             if supply.argument is None or supply.argument.lower() not in written:
                 continue
+            if (argument.name.lower(), supply.argument.lower()) in sized_by:
+                continue
             diagnostics.error(
                 f"'{plan.producer.name}' is passed '{supply.argument}', which the prologue "
                 f"only fills afterwards",
                 argument,
-                note=_READ_FIRST_NOTE,
+                note=PRODUCER_INPUT_NOTE,
             )
 
 
