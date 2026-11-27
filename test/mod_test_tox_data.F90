@@ -5,7 +5,6 @@ module mod_test_tox_data
     use iso_c_binding, only: c_bool
     use tox_data_tools
     use tox_data_validation
-    use tox_data_accessors
     use tox_data_read_write
     use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
     use tox_gene_centroids
@@ -31,7 +30,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
-        allocate (all_tests(20))
+        allocate (all_tests(19))
 
         call setup_global_data()
 
@@ -44,17 +43,16 @@ contains
         all_tests(7) = test_case("test_read_write_gene_to_fam", test_read_write_gene_to_fam)
         all_tests(8) = test_case("test_read_write_family_ids", test_read_write_family_ids)
         all_tests(9) = test_case("test_read_write_family_centroids", test_read_write_centroids)
-        all_tests(10) = test_case("test_data_accessors", test_data_accessors)
-        all_tests(11) = test_case("test_archive", test_archive)
-        all_tests(12) = test_case("test_hashing", test_hashing)
-        all_tests(13) = test_case("test_validate_duplicate_gene_ids", test_validate_duplicate_gene_ids)
-        all_tests(14) = test_case("test_validate_nan_direct", test_validate_nan_direct)
-        all_tests(15) = test_case("test_validate_inf_direct", test_validate_inf_direct)
-        all_tests(16) = test_case("test_validate_negative_expression", test_validate_negative_expression)
-        all_tests(17) = test_case("test_validate_invalid_gene_to_fam", test_validate_invalid_gene_to_fam)
-        all_tests(18) = test_case("test_validate_empty_strings", test_validate_empty_strings)
-        all_tests(19) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
-        all_tests(20) = test_case("test_manual_archive", test_manual_archive)
+        all_tests(10) = test_case("test_archive", test_archive)
+        all_tests(11) = test_case("test_hashing", test_hashing)
+        all_tests(12) = test_case("test_validate_duplicate_gene_ids", test_validate_duplicate_gene_ids)
+        all_tests(13) = test_case("test_validate_nan_direct", test_validate_nan_direct)
+        all_tests(14) = test_case("test_validate_inf_direct", test_validate_inf_direct)
+        all_tests(15) = test_case("test_validate_negative_expression", test_validate_negative_expression)
+        all_tests(16) = test_case("test_validate_invalid_gene_to_fam", test_validate_invalid_gene_to_fam)
+        all_tests(17) = test_case("test_validate_empty_strings", test_validate_empty_strings)
+        all_tests(18) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
+        all_tests(19) = test_case("test_manual_archive", test_manual_archive)
     end function get_all_tests_tox_data
 
     !> Setup global test data
@@ -362,30 +360,6 @@ contains
                                      size(family_centroids), 1e-12_real64, &
                                      "Loaded family centroids should match original")
     end subroutine test_read_write_centroids
-
-    subroutine test_data_accessors()
-        real(real64), allocatable :: returned_centroid(:)
-        integer(int32) :: family_idx, ierr, gene_idx
-
-        allocate (returned_centroid(total_samples))
-
-        gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
-        call assert_equal_int(gene_idx, 2, "Gene index for NP_001000001.1 should be 2")
-        call get_family_for_gene_index(gene_idx, gene_to_fam, family_idx, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting family index should succeed")
-        call assert_equal_int(family_idx, 48, "Family index for gene index 2")
-        call assert_string_equal(gene_family_ids(family_idx), 'OG0000047', &
-                                 "Family ID for family index 48 should be OG0000047")
-
-        family_idx = get_family_index(gene_family_ids, 'OG0000001')
-        call assert_equal_int(family_idx, 2, "Family index for OG0000001 should be 2")
-        call get_family_centroid(family_idx, family_centroids, returned_centroid, ierr)
-
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting family centroid should succeed")
-        call assert_equal_array_real(returned_centroid, family_centroids(:, family_idx), &
-                                     size(family_centroids, 1), 1e-12_real64, &
-                                     "Retrieved centroid should match original")
-    end subroutine test_data_accessors
 
     subroutine test_archive()
         use iso_fortran_env, only: real64, int32

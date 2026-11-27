@@ -29,6 +29,7 @@ program main
     use mod_test_f42_bit_masks, only: get_all_tests_f42_bit_masks
     use mod_test_f42_reductions, only: get_all_tests_f42_reductions
     use mod_test_tox_data_tools, only: get_all_tests_tox_data_tools
+    use mod_test_tox_data_accessors, only: get_all_tests_tox_data_accessors
     implicit none
 
     integer :: nargs
@@ -63,6 +64,7 @@ program main
     call add_suite("f42_bit_masks", get_all_tests_f42_bit_masks)
     call add_suite("f42_reductions", get_all_tests_f42_reductions)
     call add_suite("tox_data_tools", get_all_tests_tox_data_tools)
+    call add_suite("tox_data_accessors", get_all_tests_tox_data_accessors)
 
     nargs = command_argument_count()
 
