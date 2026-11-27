@@ -175,8 +175,8 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_trajectory_normalization_impl.html'>tox_trajectory_normalization_impl</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='tox_trajectory_normalization_impl.html'>tox_trajectory_normalization_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -215,7 +215,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v~2"></span>
+              <span class="anchor" id="variable-v"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -230,7 +230,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v_norm~2"></span>
+              <span class="anchor" id="variable-v_norm"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -245,7 +245,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~46"></span>
+              <span class="anchor" id="variable-n_points~61"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -260,7 +260,7 @@ of very different magnitudes can be compared by shape. <code>normalize_single_tr
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~4"></span>
+              <span class="anchor" id="variable-status"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -277,7 +277,7 @@ as a pipeline can reach a constant series from valid input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~165"></span>
+              <span class="anchor" id="variable-ierr~245"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -317,7 +317,7 @@ as a pipeline can reach a constant series from valid input.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory~5"></span>
+              <span class="anchor" id="variable-trajectory~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -332,7 +332,7 @@ as a pipeline can reach a constant series from valid input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory_norm~2"></span>
+              <span class="anchor" id="variable-trajectory_norm"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -347,7 +347,7 @@ as a pipeline can reach a constant series from valid input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~22"></span>
+              <span class="anchor" id="variable-n_factors~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -362,7 +362,7 @@ as a pipeline can reach a constant series from valid input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~31"></span>
+              <span class="anchor" id="variable-n_timepoints~28"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -377,7 +377,7 @@ as a pipeline can reach a constant series from valid input.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~5"></span>
+              <span class="anchor" id="variable-status~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -394,7 +394,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~166"></span>
+              <span class="anchor" id="variable-ierr~246"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -420,6 +420,138 @@ sets it</p>
     <div class="card-body">
           
   <p>Validates its inputs, prepares what <a href="../proc/normalize_all_trajectories_impl.html">normalize_all_trajectories_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/normalize_all_trajectories_expert.html">normalize_all_trajectories_expert</a> to prepare it yourself.</p><a href="../proc/normalize_all_trajectories.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~18"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>Original trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories_norm"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories_norm</strong></td>
+            <td>
+<p>Normalized trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~21"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>Number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~27"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>Number of samples/entities</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~29"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>Number of time points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-status~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>status</strong></td>
+            <td>
+<p>One status per factor and sample, as
+<a href="../proc/normalize_variable_timeseries_impl.html">normalize_variable_timeseries_impl</a>
+sets it</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~247"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_expert"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories_expert.html'>normalize_all_trajectories_expert</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, tmp_series, tmp_series_norm, status, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/normalize_all_trajectories_impl.html">normalize_all_trajectories_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/normalize_all_trajectories.html">normalize_all_trajectories</a> does both.</p><a href="../proc/normalize_all_trajectories_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -464,139 +596,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~23"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_factors</strong></td>
-            <td>
-<p>Number of factors</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_samples~27"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_samples</strong></td>
-            <td>
-<p>Number of samples/entities</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_timepoints~32"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_timepoints</strong></td>
-            <td>
-<p>Number of time points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-status~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_factors, n_samples)
-            </td>
-            <td>::</td>
-            <td><strong>status</strong></td>
-            <td>
-<p>One status per factor and sample, as
-<a href="../proc/normalize_variable_timeseries_impl.html">normalize_variable_timeseries_impl</a>
-sets it</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~167"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_expert"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories_expert.html'>normalize_all_trajectories_expert</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, tmp_series, tmp_series_norm, status, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, then calls <a href="../proc/normalize_all_trajectories_impl.html">normalize_all_trajectories_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/normalize_all_trajectories.html">normalize_all_trajectories</a> does both.</p><a href="../proc/normalize_all_trajectories_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-trajectories~20"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_factors, n_samples, n_timepoints)
-            </td>
-            <td>::</td>
-            <td><strong>trajectories</strong></td>
-            <td>
-<p>Original trajectories</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-trajectories_norm~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_factors, n_samples, n_timepoints)
-            </td>
-            <td>::</td>
-            <td><strong>trajectories_norm</strong></td>
-            <td>
-<p>Normalized trajectories</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_factors~24"></span>
+              <span class="anchor" id="variable-n_factors~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -626,7 +626,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~33"></span>
+              <span class="anchor" id="variable-n_timepoints~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -641,7 +641,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_series~3"></span>
+              <span class="anchor" id="variable-tmp_series~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -656,7 +656,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_series_norm~3"></span>
+              <span class="anchor" id="variable-tmp_series_norm~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -671,7 +671,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-status~7"></span>
+              <span class="anchor" id="variable-status~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -688,7 +688,7 @@ sets it</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~168"></span>
+              <span class="anchor" id="variable-ierr~248"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -731,7 +731,7 @@ sets it</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-11-25 16:32 +0000             </p>
+ on 2026-11-27 08:06 +0000             </p>
           </div>
         </div>
         <br>
