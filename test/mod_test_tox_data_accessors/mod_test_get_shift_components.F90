@@ -1,10 +1,9 @@
 !> The `get_shift_components` cases: of gene j's shift vector, column j of `shift_vectors`,
 !| rows 1..d are the start (its family's centroid) and rows d+1..2d the shift. Refused: a gene
-!| index outside 1..n_genes (ERR_INVALID_INPUT), fewer than 2d rows, and an `out_start` or an
+!| index outside 1..n_genes (ERR_INVALID_INPUT), other than 2d rows, and an `out_start` or an
 !| `out_shift` of another length than d (ERR_SIZE_MISMATCH), the gene index first.
 !|
-!| A `shift_vectors` with more than 2d rows is accepted today (the rows past 2d are ignored); the
-!| documentation does not say whether it should be, so that is pinned as an open question.
+!| `shift_vectors` must have exactly 2d rows.
 module mod_test_get_shift_components
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -121,21 +120,16 @@ contains
         call assert_err(ierr, ERR_OK, "test_get_shift_components_no_sample")
     end subroutine test_get_shift_components_no_sample
 
-    !> Pins today's behaviour, an open question for the maintainer: `shift_vectors` with more than
-    !| 2d rows is accepted; the start is rows 1..d and the shift rows d+1..2d, the rows past 2d
-    !| are ignored. The documentation does not say whether it should be refused.
+    !> `shift_vectors` has exactly 2d rows: one more is refused with ERR_SIZE_MISMATCH as one fewer
+    !| is. (A taller one used to be accepted, its rows past 2d ignored.)
     subroutine test_get_shift_components_more_rows()
-        real(real64) :: shifts(2*N_SAMPLES + 1, N_GENES), start(N_SAMPLES), shift(N_SAMPLES), expected(N_SAMPLES)
+        real(real64) :: shifts(2*N_SAMPLES + 1, N_GENES), start(N_SAMPLES), shift(N_SAMPLES)
         integer(int32) :: ierr
 
         shifts(1:2*N_SAMPLES, :) = shift_vectors()
         shifts(2*N_SAMPLES + 1, :) = 999.0_real64
         call get_shift_components(1, shifts, N_SAMPLES, start, shift, ierr)
-        call assert_err(ierr, ERR_OK, "test_get_shift_components_more_rows: ierr")
-        expected = [201.0_real64, 202.0_real64]
-        call assert_equal_array_real(start, expected, N_SAMPLES, 0.0_real64, "test_get_shift_components_more_rows: start")
-        expected = [-13.0_real64, -14.0_real64]
-        call assert_equal_array_real(shift, expected, N_SAMPLES, 0.0_real64, "test_get_shift_components_more_rows: shift")
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_get_shift_components_more_rows")
     end subroutine test_get_shift_components_more_rows
 
     !> Pins today's behaviour, an open question for the maintainer: the accessors copy what is

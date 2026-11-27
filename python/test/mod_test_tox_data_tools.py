@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (read_gene_ids_from_tsv_file, read_expression_vectors_tsv, read_orthofinder_file,
                           get_unassigned_mask)
 from test_helpers import run_all_tests, assert_error, assert_refused_by_name
-from tensor_omics.error_handling import ERR_FILE_OPEN, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_FILE_OPEN, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
 
 #: the gene_to_fam of a gene in no family
 UNASSIGNED = 0
@@ -69,11 +69,13 @@ def test_read_gene_ids_from_tsv_file():
     assert result == ["g1", "g22"], f"got {result!r}"
 
 
-def test_read_gene_ids_from_tsv_file_reads_a_file_of_no_gene():
-    # moved from mod_test_tox_data.py's test_an_array_of_no_strings (#221 B3)
+def test_read_gene_ids_from_tsv_file_refuses_a_file_of_no_gene():
+    # moved from mod_test_tox_data.py's test_an_array_of_no_strings (#221 B3): no id reaches the
+    # library, which refuses a file of no data row, naming it
     with tempfile.TemporaryDirectory() as directory:
         tsv = _write(directory, "no_genes.tsv", "id\tv1\n")
-        assert read_gene_ids_from_tsv_file(tsv, 8, 0, 1, 1) == []
+        assert_error(lambda: read_gene_ids_from_tsv_file(tsv, 8, 0, 1, 1), "a file of no gene",
+                     ERR_EMPTY_INPUT, argument="filename")
 
 
 def test_read_gene_ids_from_tsv_file_refuses_more_rows_than_ids():

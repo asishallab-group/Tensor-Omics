@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(28))
+        allocate (all_tests(27))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -63,21 +63,19 @@ contains
         all_tests(19) = test_case("test_read_expression_vectors_tsv_row_count", test_read_expression_vectors_tsv_row_count)
         all_tests(20) = test_case("test_read_expression_vectors_tsv_trailing_empty_line", &
                                   test_read_expression_vectors_tsv_trailing_empty_line)
-        all_tests(21) = test_case("test_read_expression_vectors_tsv_refusal_keeps_earlier_rows", &
-                                  test_read_expression_vectors_tsv_refusal_keeps_earlier_rows)
-        all_tests(22) = test_case("test_read_expression_vectors_tsv_later_duplicate_overwrites", &
-                                  test_read_expression_vectors_tsv_later_duplicate_overwrites)
-        all_tests(23) = test_case("test_read_expression_vectors_tsv_refuses_an_empty_cell", &
+        all_tests(21) = test_case("test_read_expression_vectors_tsv_refuses_duplicate_rows", &
+                                  test_read_expression_vectors_tsv_refuses_duplicate_rows)
+        all_tests(22) = test_case("test_read_expression_vectors_tsv_refuses_an_empty_cell", &
                                   test_read_expression_vectors_tsv_refuses_an_empty_cell)
-        all_tests(24) = test_case("test_read_expression_vectors_tsv_refuses_a_partial_number", &
+        all_tests(23) = test_case("test_read_expression_vectors_tsv_refuses_a_partial_number", &
                                   test_read_expression_vectors_tsv_refuses_a_partial_number)
-        all_tests(25) = test_case("test_read_expression_vectors_tsv_matches_whole_ids", &
+        all_tests(24) = test_case("test_read_expression_vectors_tsv_matches_whole_ids", &
                                   test_read_expression_vectors_tsv_matches_whole_ids)
-        all_tests(26) = test_case("test_read_expression_vectors_tsv_reads_a_long_line_whole", &
+        all_tests(25) = test_case("test_read_expression_vectors_tsv_reads_a_long_line_whole", &
                                   test_read_expression_vectors_tsv_reads_a_long_line_whole)
-        all_tests(27) = test_case("test_read_expression_vectors_tsv_missing_file", &
+        all_tests(26) = test_case("test_read_expression_vectors_tsv_missing_file", &
                                   test_read_expression_vectors_tsv_missing_file)
-        all_tests(28) = test_case("test_read_expression_vectors_tsv_checks_the_positions", &
+        all_tests(27) = test_case("test_read_expression_vectors_tsv_checks_the_positions", &
                                   test_read_expression_vectors_tsv_checks_the_positions)
     end function get_all_tests_read_expression_vectors_tsv
 
@@ -398,18 +396,25 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_missing_header
 
-    !> Pins today's behaviour: a file of nothing but its header is refused with ERR_READ_DATA
-    !| (the reader looks at the first data row to count the file's columns). The gene-id reader
-    !| reads the same file as no gene, without an error; which of the two is right is open.
+    !> A file of no data row is refused with ERR_EMPTY_INPUT naming file_list (argument 1): one of
+    !| nothing but its header, one of its header and blank lines, and an empty one read without a
+    !| header. (The first used to be ERR_READ_DATA, while the gene-id reader read it as no gene.)
     subroutine test_read_expression_vectors_tsv_no_data_row()
         type(scratch_directory_type) :: scratch
+        character(len=1024) :: file_list(1)
         real(real64) :: expression_vectors(1, 3)
-        integer(int32) :: value_cols(1)
+        integer(int32) :: value_cols(1), ierr
 
         call create_scratch_directory(scratch, "expression_no_data_row")
         value_cols = [2]
         call read_one_file(scratch, "header_only.tsv", "id"//TAB//"a"//LF, THREE_GENE_IDS, value_cols, expression_vectors, &
-                           ERR_READ_DATA, "test_read_expression_vectors_tsv_no_data_row")
+                           ERR_EMPTY_INPUT, "test_read_expression_vectors_tsv_no_data_row: header only")
+        call read_one_file(scratch, "header_and_blanks.tsv", "id"//TAB//"a"//LF//LF//"  "//LF, THREE_GENE_IDS, value_cols, &
+                           expression_vectors, ERR_EMPTY_INPUT, "test_read_expression_vectors_tsv_no_data_row: header, blanks")
+        file_list(1) = scratch_file(scratch, "empty.tsv")
+        call write_scratch_file(trim(file_list(1)), "")
+        call read_expression_vectors_tsv(file_list, THREE_GENE_IDS, expression_vectors, 0, 1, value_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_expression_vectors_tsv_no_data_row: empty, no header", 1)
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_no_data_row
@@ -521,23 +526,22 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_refuses_nan_and_inf
 
-    !> A file may not have more data rows than there are genes: three rows for three genes are
-    !| read, four (one gene twice) are refused with ERR_INVALID_INPUT.
+    !> Rows naming genes not in `gene_ids` are skipped however many there are: five rows for three
+    !| genes, two of them unknown, are read. (More rows than genes used to be refused.)
     subroutine test_read_expression_vectors_tsv_row_count()
         type(scratch_directory_type) :: scratch
-        real(real64) :: expression_vectors(1, 3)
+        real(real64) :: expression_vectors(1, 3), expected(1, 3)
         integer(int32) :: value_cols(1)
 
         call create_scratch_directory(scratch, "expression_row_count")
         value_cols = [2]
-        call read_one_file(scratch, "three_rows.tsv", "id"//TAB//"a"//LF// &
-                           "g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"g3"//TAB//"3"//LF, &
+        call read_one_file(scratch, "five_rows.tsv", "id"//TAB//"a"//LF//"gX"//TAB//"9"//LF// &
+                           "g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"gY"//TAB//"9"//LF//"g3"//TAB//"3"//LF, &
                            THREE_GENE_IDS, value_cols, expression_vectors, ERR_OK, &
-                           "test_read_expression_vectors_tsv_row_count: as many rows as genes")
-        call read_one_file(scratch, "four_rows.tsv", "id"//TAB//"a"//LF// &
-                           "g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"g3"//TAB//"3"//LF//"g1"//TAB//"4"//LF, &
-                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_INVALID_INPUT, &
-                           "test_read_expression_vectors_tsv_row_count: a row more than genes")
+                           "test_read_expression_vectors_tsv_row_count: five rows for three genes")
+        expected = reshape([1.0_real64, 2.0_real64, 3.0_real64], [1, 3])
+        call assert_equal_array_real(expression_vectors, expected, 3, 0.0_real64, &
+                                     "test_read_expression_vectors_tsv_row_count: five rows for three genes")
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_row_count
@@ -581,46 +585,27 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_trailing_empty_line
 
-    !> Pins today's behaviour, an open question for the maintainer: a refusal part-way through a
-    !| file leaves the rows before it written. Here the third row is short (ERR_INVALID_INPUT), and
-    !| the first two rows' values are in their columns; the third gene's column is left alone.
-    subroutine test_read_expression_vectors_tsv_refusal_keeps_earlier_rows()
+    !> A gene named by two rows of one file is refused with ERR_INVALID_INPUT naming file_list
+    !| (argument 1), with fewer rows than genes and with more. (The later row used to overwrite the
+    !| earlier one.) In two files a gene has a row each.
+    subroutine test_read_expression_vectors_tsv_refuses_duplicate_rows()
         type(scratch_directory_type) :: scratch
-        real(real64) :: expression_vectors(2, 3), expected(2, 3)
-        integer(int32) :: value_cols(2)
-
-        call create_scratch_directory(scratch, "expression_refusal_keeps_earlier_rows")
-        value_cols = [2, 3]
-        call read_one_file(scratch, "expression.tsv", "id"//TAB//"a"//TAB//"b"//LF// &
-                           "g1"//TAB//"1"//TAB//"2"//LF//"g2"//TAB//"3"//TAB//"4"//LF//"g3"//TAB//"5"//LF, &
-                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_INVALID_INPUT, &
-                           "test_read_expression_vectors_tsv_refusal_keeps_earlier_rows")
-        expected = reshape([1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, UNWRITTEN, UNWRITTEN], [2, 3])
-        call assert_equal_array_real(expression_vectors, expected, 6, 0.0_real64, &
-                                     "test_read_expression_vectors_tsv_refusal_keeps_earlier_rows", 2)
-
-        call remove_scratch_directory(scratch)
-    end subroutine test_read_expression_vectors_tsv_refusal_keeps_earlier_rows
-
-    !> Pins today's behaviour, an open question for the maintainer: a gene named by two rows (as
-    !| many rows as genes, so the row count is no refusal) gets the later row's values, with ERR_OK.
-    subroutine test_read_expression_vectors_tsv_later_duplicate_overwrites()
-        type(scratch_directory_type) :: scratch
-        real(real64) :: expression_vectors(1, 3), expected(1, 3)
+        real(real64) :: expression_vectors(1, 3)
         integer(int32) :: value_cols(1)
 
-        call create_scratch_directory(scratch, "expression_later_duplicate")
+        call create_scratch_directory(scratch, "expression_duplicate_rows")
         value_cols = [2]
         call read_one_file(scratch, "expression.tsv", "id"//TAB//"a"//LF// &
                            "g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"g1"//TAB//"7"//LF, &
-                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_OK, &
-                           "test_read_expression_vectors_tsv_later_duplicate_overwrites")
-        expected = reshape([7.0_real64, 2.0_real64, UNWRITTEN], [1, 3])
-        call assert_equal_array_real(expression_vectors, expected, 3, 0.0_real64, &
-                                     "test_read_expression_vectors_tsv_later_duplicate_overwrites")
+                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_INVALID_INPUT, &
+                           "test_read_expression_vectors_tsv_refuses_duplicate_rows: three rows")
+        call read_one_file(scratch, "expression.tsv", "id"//TAB//"a"//LF// &
+                           "g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"g3"//TAB//"3"//LF//"g1"//TAB//"4"//LF, &
+                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_INVALID_INPUT, &
+                           "test_read_expression_vectors_tsv_refuses_duplicate_rows: four rows")
 
         call remove_scratch_directory(scratch)
-    end subroutine test_read_expression_vectors_tsv_later_duplicate_overwrites
+    end subroutine test_read_expression_vectors_tsv_refuses_duplicate_rows
 
     !> An empty cell is refused with ERR_INVALID_INPUT naming file_list (argument 1), wherever it
     !| is read: of "g1, 1, (empty), 3" the value column 3, and an empty id. An empty cell of a column

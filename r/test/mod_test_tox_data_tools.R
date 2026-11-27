@@ -66,13 +66,14 @@ test_read_gene_ids_from_tsv_file <- function() {
   assert_true(identical(result, c("g1", "g22")), paste("got", toString(result)))
 }
 
-test_read_gene_ids_from_tsv_file_reads_a_file_of_no_gene <- function() {
-  # moved from mod_test_tox_data.R's test_an_array_of_no_strings (#221 B3)
+test_read_gene_ids_from_tsv_file_refuses_a_file_of_no_gene <- function() {
+  # moved from mod_test_tox_data.R's test_an_array_of_no_strings (#221 B3): no id reaches the
+  # library, which refuses a file of no data row, naming it
   directory <- .scratch()
   on.exit(unlink(directory, recursive = TRUE), add = TRUE)
   tsv <- .write(directory, "no_genes.tsv", "id\tv1\n")
-  ids <- read_gene_ids_from_tsv_file(tsv, 8L, 0L, n_header_rows = 1L, gene_col = 1L)
-  assert_true(is.character(ids) && length(ids) == 0, "a file of no genes reads as none")
+  .assert_error_naming(read_gene_ids_from_tsv_file(tsv, 8L, 0L, n_header_rows = 1L, gene_col = 1L),
+                       "a file of no gene", ERR_EMPTY_INPUT, "filename")
 }
 
 test_read_gene_ids_from_tsv_file_refuses_more_rows_than_ids <- function() {

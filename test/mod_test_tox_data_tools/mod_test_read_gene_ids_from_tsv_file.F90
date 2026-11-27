@@ -144,26 +144,31 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_row_count
 
-    !> A file of nothing but its header has no gene: read without an error, into no id or into
-    !| some. So has an empty file when no header is expected.
+    !> A file of no data row is refused with ERR_EMPTY_INPUT naming filename (argument 1): one of
+    !| nothing but its header, into no id or into some, one of its header and blank lines, and an
+    !| empty one read without a header. (They used to be read as no gene.)
     subroutine test_read_gene_ids_from_tsv_file_no_data_row()
         type(scratch_directory_type) :: scratch
-        character(len=:), allocatable :: header_only, empty
+        character(len=:), allocatable :: header_only, header_and_blanks, empty
         character(len=8) :: no_ids(0), two_ids(2)
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, "gene_ids_no_data_row")
         header_only = scratch_file(scratch, "header_only.tsv")
         call write_scratch_file(header_only, "id"//TAB//"a"//LF)
+        header_and_blanks = scratch_file(scratch, "header_and_blanks.tsv")
+        call write_scratch_file(header_and_blanks, "id"//TAB//"a"//LF//LF//" "//LF)
         empty = scratch_file(scratch, "empty.tsv")
         call write_scratch_file(empty, "")
 
         call read_gene_ids_from_tsv_file(header_only, no_ids, 1, 1, ierr)
-        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_no_data_row: header only, no id")
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_gene_ids_from_tsv_file_no_data_row: header only, no id", 1)
         call read_gene_ids_from_tsv_file(header_only, two_ids, 1, 1, ierr)
-        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_no_data_row: header only, two ids")
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_gene_ids_from_tsv_file_no_data_row: header only, two ids", 1)
+        call read_gene_ids_from_tsv_file(header_and_blanks, two_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_gene_ids_from_tsv_file_no_data_row: header and blanks", 1)
         call read_gene_ids_from_tsv_file(empty, no_ids, 0, 1, ierr)
-        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_no_data_row: empty file, no header")
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_gene_ids_from_tsv_file_no_data_row: empty file, no header", 1)
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_no_data_row
