@@ -52,9 +52,10 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 #' Each tab-separated row after the header gives one id, from its `gene_col`, in file order.
 #' A row without that column, or with it empty, is refused, and so is an id longer than the
 #' strings of `gene_ids`. Blank lines at the end of the file are ignored; a file of no data row
-#' is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
-#' are left undefined, and the number of rows read is not returned: size `gene_ids` to the
-#' file. After an error, `gene_ids` is undefined.
+#' is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than
+#' `gene_ids` has elements, the ones past the last row are left undefined, and the number of
+#' rows read is not returned: size `gene_ids` to the file. After an error, `gene_ids` is
+#' undefined.
 #'
 #' Generated from the Fortran procedure \code{tox_data_tools::read_gene_ids_from_tsv_file}, whose argument names
 #' are the ones an error message reports.

@@ -62,20 +62,30 @@ contains
     end subroutine open_text_file
 
     !> AUTHOR_AARON_SCHROEDER
-    !| Skips `n_lines` lines, of any length; a file with fewer is ERR_READ_DATA.
+    !| Skips `n_lines` lines, of any length; a file with fewer is ERR_READ_DATA. A last line without
+    !| a line ending counts (an advancing read reports the end of the file for it on gfortran).
     subroutine skip_lines(unit, n_lines, arg_pos, ierr)
         integer(int32), intent(in) :: unit, n_lines, arg_pos
             !! The unit, how many lines, the position of the file argument
         integer(int32), intent(inout) :: ierr
             !! Error code
-        integer(int32) :: i_line, ios
+        integer(int32) :: i_line, ios, n_read
+        character(len=256) :: chunk
+        logical :: any_read
 
         do i_line = 1, n_lines
-            read (unit, '(A)', iostat=ios)
-            if (ios /= 0) then
-                call set_err_once(ierr, ERR_READ_DATA, arg_pos)
-                return
-            end if
+            any_read = .false.
+            ! in chunks, without advancing, until the end of the line: so a line of any length is
+            ! skipped, and one that has characters counts even where the file ends right after it
+            do
+                n_read = 0
+                read (unit, '(A)', advance='no', size=n_read, iostat=ios) chunk
+                if (n_read > 0) any_read = .true.
+                if (ios /= 0) exit
+            end do
+            if (ios == iostat_eor .or. (ios == iostat_end .and. any_read)) cycle
+            call set_err_once(ierr, ERR_READ_DATA, arg_pos)
+            return
         end do
     end subroutine skip_lines
 
@@ -114,6 +124,8 @@ contains
             call set_err_once(ierr, ERR_READ_DATA, arg_pos)
             return
         end if
+        ! gfortran and ifx drop the carriage return of a CR LF line ending themselves; another
+        ! compiler may not, and a CR ending the file's last line, without LF, is kept by them too
         if (line_length > 0) then
             if (line(line_length:line_length) == CARRIAGE_RETURN) line_length = line_length - 1
         end if
@@ -147,7 +159,8 @@ contains
             call read_line(unit, line, line_length, at_end, arg_pos, ierr)
             if (is_err(ierr) .or. at_end) return
             line_number = line_number + 1
-            if (len_trim(line(1:line_length)) > 0) exit
+            ! a line of blanks and tabs is blank too, as spreadsheets write them
+            if (verify(line(1:line_length), ' '//TAB) > 0) exit
             if (first_blank == 0) first_blank = line_number
         end do
         if (first_blank > 0 .and. .not. skip_blank) then
@@ -208,7 +221,9 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Reads `text` as one complete real number: refused (`ios` not 0) when it holds a character
     !| at which a list-directed read would stop early or that it reads specially -- a blank, tab,
-    !| comma, semicolon, slash or asterisk -- or when the read fails.
+    !| comma, semicolon, slash or asterisk --, a sign other than at the start or right after an
+    !| exponent letter (a list-directed read takes 2-3 for 2e-3), an exponent letter not followed
+    !| by a digit or a sign and a digit (ifx reads 1e as 1), or when the read fails.
     subroutine read_number(text, value, ios)
         character(len=*), intent(in) :: text
             !! The field
@@ -216,12 +231,24 @@ contains
             !! Its value
         integer(int32), intent(out) :: ios
             !! 0 if it was read
+        character(len=*), parameter :: EXPONENT_LETTERS = 'eEdD', SIGNS = '+-', DIGITS = '0123456789'
+        integer(int32) :: i, digit_at
 
         value = 0
-        if (len(text) == 0 .or. scan(text, ' ,;/*'//TAB) > 0) then
-            ios = 1
-            return
-        end if
+        ios = 1
+        if (len(text) == 0 .or. scan(text, ' ,;/*'//TAB) > 0) return
+        do i = 2, len(text)
+            if (index(SIGNS, text(i:i)) > 0 .and. index(EXPONENT_LETTERS, text(i - 1:i - 1)) == 0) return
+        end do
+        do i = 1, len(text)
+            if (index(EXPONENT_LETTERS, text(i:i)) == 0) cycle
+            digit_at = i + 1
+            if (digit_at <= len(text)) then
+                if (index(SIGNS, text(digit_at:digit_at)) > 0) digit_at = digit_at + 1
+            end if
+            if (digit_at > len(text)) return
+            if (index(DIGITS, text(digit_at:digit_at)) == 0) return
+        end do
         read (text, *, iostat=ios) value
     end subroutine read_number
 
@@ -392,9 +419,10 @@ contains
     !| Each tab-separated row after the header gives one id, from its `gene_col`, in file order.
     !| A row without that column, or with it empty, is refused, and so is an id longer than the
     !| strings of `gene_ids`. Blank lines at the end of the file are ignored; a file of no data row
-    !| is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
-    !| are left undefined, and the number of rows read is not returned: size `gene_ids` to the
-    !| file. After an error, `gene_ids` is undefined.
+    !| is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than
+    !| `gene_ids` has elements, the ones past the last row are left undefined, and the number of
+    !| rows read is not returned: size `gene_ids` to the file. After an error, `gene_ids` is
+    !| undefined.
     subroutine read_gene_ids_from_tsv_file(filename, gene_ids, n_header_rows, gene_col, ierr)
         character(len=*), intent(in) :: filename
         !! Name of the file
