@@ -21,9 +21,11 @@ contains
         all_tests(2) = test_case("test_save_gene_ids_replaces_a_file", test_save_gene_ids_replaces_a_file)
     end function get_all_tests_save_gene_ids
 
-    !> In place of the old `test_read_write_gene_ids`, which round-tripped the shipped gene ids and
-    !| compared only the first 128 characters of each 256: gene ids are written in the published
-    !| layout, byte for byte.
+    !> In place of the old `test_read_write_gene_ids`, which round-tripped the shipped gene ids but
+    !| compared only the first half of the array: it passed the character(len=256) ids to
+    !| assert_equal_array_char's character(len=128) a(n), which reads the storage as n strings of 128,
+    !| so ids n/2+1..n were never compared. Here: gene ids are written in the published layout, byte
+    !| for byte.
     subroutine test_save_gene_ids_layout()
         call check_saves_strings(save_gene_ids, "test_save_gene_ids_layout")
     end subroutine test_save_gene_ids_layout

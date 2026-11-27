@@ -25,9 +25,11 @@ contains
         all_tests(3) = test_case("test_load_family_ids_round_trip", test_load_family_ids_round_trip)
     end function get_all_tests_load_family_ids
 
-    !> In place of the old `test_read_write_family_ids`, which round-tripped the shipped family ids
-    !| and compared only the first 128 characters of each 256: family ids are read from a file
-    !| written byte for byte in the published layout.
+    !> In place of the old `test_read_write_family_ids`, which round-tripped the shipped family ids but
+    !| compared only the first half of the array: it passed the character(len=256) ids to
+    !| assert_equal_array_char's character(len=128) a(n), which reads the storage as n strings of 128,
+    !| so ids n/2+1..n were never compared. Here: family ids are read from a file written byte for byte
+    !| in the published layout.
     subroutine test_load_family_ids_layout()
         call check_loads_strings(load_family_ids, "test_load_family_ids_layout")
     end subroutine test_load_family_ids_layout

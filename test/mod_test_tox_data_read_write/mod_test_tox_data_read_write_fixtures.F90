@@ -1,12 +1,17 @@
 !> What the children of the `tox_data_read_write` suite share: the published file layout, written
 !| out by hand, and the checks every `save_*` and `load_*` procedure gets, once per kind of array.
 !|
-!| A file is an unformatted stream: the magic number 1178677808 (`'FA20'`, hex 46413230), the
-!| type code (-1 integer, -2 real, a string length for strings), the number of dimensions, the
-!| extents, then the elements in column-major order (f42_serde_arrays_utils documents it). Each
-!| `save_*` case compares a written file byte for byte with that layout, and each `load_*` case
-!| reads a file written byte for byte by the case, so neither direction is tested only through
-!| the other.
+!| A file is an unformatted stream of int32 words and elements: the magic number 1178677808 (hex
+!| 46413230, 'FA20' read as one word), the type code (-1 integer, -2 real, a string length for
+!| strings), the number of dimensions, the extents, then the elements in column-major order
+!| (f42_serde_arrays_utils documents it). The words are in the machine's byte order -- on a
+!| little-endian machine the magic number's bytes read "02AF" -- and so is every file this suite
+!| writes or expects: the layout as pinned here is the native one, not a portable one.
+!|
+!| `write_*_file` write that layout from the I/O list alone, independently of the serde code.
+!| Each `save_*` case compares a written file byte for byte with the file `write_*_file` makes of
+!| the same array, and each `load_*` case reads a file `write_*_file` made, so neither direction
+!| is tested only through the other.
 !|
 !| The procedures of one kind take the same arguments, so each check takes the procedure under
 !| test as an argument: `tox_data_read_write`'s three real matrices share one set of checks, its
@@ -36,8 +41,6 @@ module mod_test_tox_data_read_write_fixtures
     !> The magic number every array file starts with, 'FA20' read as an int32.
     integer(int32), parameter :: MAGIC = 1178677808
     integer(int32), parameter :: INTEGER_CODE = -1, REAL_CODE = -2
-    !> The MOLD of a `transfer` to bytes.
-    integer(int8), parameter :: BYTE_MOLD(1) = 0_int8
 
     !> The broken files every `load_*` procedure refuses, how each is broken, and its code.
     integer(int32), parameter :: N_BAD_FILES = 12
@@ -96,171 +99,168 @@ module mod_test_tox_data_read_write_fixtures
 
 contains
 
-    ! ---- the layout ----
+    ! ---- the layout, written from the I/O list ----
 
-    !> The bytes of a header: magic number, type code, number of dimensions, extents.
-    function header_bytes(type_code, extents) result(bytes)
-        integer(int32), intent(in) :: type_code, extents(:)
-        integer(int8), allocatable :: bytes(:)
-        integer(int32) :: words(3 + size(extents))
-
-        words(1:3) = [MAGIC, type_code, size(extents)]
-        words(4:) = extents
-        bytes = transfer(words, BYTE_MOLD)
-    end function header_bytes
-
-    !> The bytes of `file_path`, all of them; none for a file that cannot be read.
-    function file_bytes(file_path) result(bytes)
+    !> Opens `file_path` for a stream to replace it, failing an assertion if it cannot.
+    subroutine open_for_writing(file_path, unit, status)
         character(*), intent(in) :: file_path
-        integer(int8), allocatable :: bytes(:)
-        integer(int32) :: unit, status, file_size
-
-        allocate (bytes(0))
-        open (newunit=unit, file=file_path, access='stream', form='unformatted', status='old', action='read', &
-              iostat=status)
-        if (status /= 0) return
-        inquire (unit=unit, size=file_size)
-        deallocate (bytes)
-        allocate (bytes(file_size))
-        if (file_size > 0) read (unit, iostat=status) bytes
-        close (unit)
-    end function file_bytes
-
-    !> Writes exactly `bytes` to `file_path`.
-    subroutine write_bytes(file_path, bytes)
-        character(*), intent(in) :: file_path
-        integer(int8), intent(in) :: bytes(:)
-        integer(int32) :: unit, status
+        integer(int32), intent(out) :: unit, status
 
         open (newunit=unit, file=file_path, access='stream', form='unformatted', status='replace', action='write', &
               iostat=status)
-        call assert_equal_int(status, 0_int32, "write_bytes: open "//file_path)
+        call assert_equal_int(status, 0_int32, "open_for_writing: "//file_path)
+    end subroutine open_for_writing
+
+    !> The layout of a 1-d array of strings: the type code is their length.
+    subroutine write_strings_file(file_path, strings)
+        character(*), intent(in) :: file_path
+        character(len=*), intent(in) :: strings(:)
+        integer(int32) :: unit, status
+
+        call open_for_writing(file_path, unit, status)
         if (status /= 0) return
-        if (size(bytes) > 0) write (unit) bytes
+        write (unit) MAGIC, len(strings, kind=int32), 1_int32, size(strings, kind=int32)
+        write (unit) strings
         close (unit)
-    end subroutine write_bytes
+    end subroutine write_strings_file
 
-    !> 100 bytes, more than any file a case saves, to be replaced by one.
-    function longer_file() result(bytes)
-        integer(int8), allocatable :: bytes(:)
+    !> The layout of a 1-d int32 array.
+    subroutine write_integers_file(file_path, integers)
+        character(*), intent(in) :: file_path
+        integer(int32), intent(in) :: integers(:)
+        integer(int32) :: unit, status
 
-        bytes = transfer(repeat("x", 100), BYTE_MOLD)
-    end function longer_file
+        call open_for_writing(file_path, unit, status)
+        if (status /= 0) return
+        write (unit) MAGIC, INTEGER_CODE, 1_int32, size(integers, kind=int32)
+        write (unit) integers
+        close (unit)
+    end subroutine write_integers_file
 
-    !> Fails unless `file_path` holds exactly `expected`.
-    subroutine check_file_holds(file_path, expected, msg)
-        character(*), intent(in) :: file_path, msg
-        integer(int8), intent(in) :: expected(:)
-        integer(int8), allocatable :: actual(:)
-        integer(int32), allocatable :: actual_words(:), expected_words(:)
+    !> The layout of a 2-d real64 array.
+    subroutine write_reals_file(file_path, reals)
+        character(*), intent(in) :: file_path
+        real(real64), intent(in), contiguous :: reals(:, :)
+        integer(int32) :: unit, status
 
-        actual = file_bytes(file_path)
-        call assert_equal_int(size(actual), size(expected), msg//": file size in bytes")
+        call open_for_writing(file_path, unit, status)
+        if (status /= 0) return
+        write (unit) MAGIC, REAL_CODE, 2_int32, size(reals, 1, kind=int32), size(reals, 2, kind=int32)
+        write (unit) reals
+        close (unit)
+    end subroutine write_reals_file
+
+    !> All bytes of `file_path`; none for a file that cannot be read.
+    subroutine read_file_bytes(file_path, bytes)
+        character(*), intent(in) :: file_path
+        integer(int8), allocatable, intent(out) :: bytes(:)
+        integer(int32) :: unit, status, file_size
+
+        open (newunit=unit, file=file_path, access='stream', form='unformatted', status='old', action='read', &
+              iostat=status)
+        if (status /= 0) then
+            allocate (bytes(0))
+            return
+        end if
+        inquire (unit=unit, size=file_size)
+        allocate (bytes(file_size))
+        if (file_size > 0) read (unit, iostat=status) bytes
+        close (unit)
+    end subroutine read_file_bytes
+
+    !> Fails unless `actual_path` holds exactly the bytes of `expected_path`.
+    subroutine check_same_file(actual_path, expected_path, msg)
+        character(*), intent(in) :: actual_path, expected_path, msg
+        integer(int8), allocatable :: actual(:), expected(:)
+        integer(int32) :: i_byte
+
+        call read_file_bytes(actual_path, actual)
+        call read_file_bytes(expected_path, expected)
+        call assert_equal_int(size(actual, kind=int32), size(expected, kind=int32), msg//": file size in bytes")
         if (size(actual) /= size(expected)) return
-        actual_words = int(actual, int32)
-        expected_words = int(expected, int32)
-        call assert_equal_array_int(actual_words, expected_words, size(expected), msg//": bytes")
-    end subroutine check_file_holds
+        do i_byte = 1, size(expected, kind=int32)
+            if (actual(i_byte) /= expected(i_byte)) then
+                call assert_equal_int(int(actual(i_byte), int32), int(expected(i_byte), int32), msg//": byte "//i_byte)
+                return
+            end if
+        end do
+    end subroutine check_same_file
 
-    !> The `i_bad`-th broken file of BAD_FILE_NAMES, made from a valid file's `type_code`,
-    !| `extents` and `payload`; `other_type_code` is a type code the loader does not take.
-    function bad_file(i_bad, type_code, other_type_code, extents, payload) result(bytes)
-        integer(int32), intent(in) :: i_bad, type_code, other_type_code, extents(:)
-        integer(int8), intent(in) :: payload(:)
-        integer(int8), allocatable :: bytes(:), valid_header(:)
-        integer(int32) :: wrong_extents(size(extents)), extra_rank(size(extents) + 1)
+    !> Writes the `i_bad`-th broken file of BAD_FILE_NAMES to `broken_path`, made from the valid
+    !| file at `valid_path`, whose header has `n_extents` extents, the first `first_extent`;
+    !| `other_type_code` is a type code the loader does not take.
+    subroutine write_broken_file(i_bad, broken_path, valid_path, other_type_code, n_extents, first_extent)
+        integer(int32), intent(in) :: i_bad, other_type_code, n_extents, first_extent
+        character(*), intent(in) :: broken_path, valid_path
+        integer(int8), allocatable :: valid(:)
+        integer(int32) :: unit, status, header_size
 
-        valid_header = header_bytes(type_code, extents)
+        call read_file_bytes(valid_path, valid)
+        header_size = 12 + 4*n_extents
+        call open_for_writing(broken_path, unit, status)
+        if (status /= 0) return
         select case (i_bad)
         case (1)
-            allocate (bytes(0))
+            ! nothing
         case (2)
-            bytes = valid_header(1:3)
+            write (unit) valid(1:3)
         case (3)
-            bytes = [transfer(MAGIC + 1_int32, BYTE_MOLD), valid_header(5:), payload]
+            write (unit) MAGIC + 1_int32, valid(5:)
         case (4)
-            bytes = valid_header(1:4)
+            write (unit) valid(1:4)
         case (5)
-            bytes = valid_header(1:8)
+            write (unit) valid(1:8)
         case (6)
-            bytes = [valid_header(1:8), transfer(16_int32, BYTE_MOLD), valid_header(13:), payload]
+            write (unit) valid(1:8), 16_int32, valid(13:)
         case (7)
-            bytes = [valid_header(1:8), transfer(-1_int32, BYTE_MOLD), valid_header(13:), payload]
+            write (unit) valid(1:8), -1_int32, valid(13:)
         case (8)
-            bytes = valid_header(1:size(valid_header) - 4)
+            write (unit) valid(1:header_size - 4)
         case (9)
-            bytes = [header_bytes(other_type_code, extents), payload]
+            write (unit) valid(1:4), other_type_code, valid(9:)
         case (10)
-            extra_rank(1:size(extents)) = extents
-            extra_rank(size(extents) + 1) = 1
-            bytes = [header_bytes(type_code, extra_rank), payload]
+            write (unit) valid(1:8), n_extents + 1_int32, valid(13:header_size), 1_int32, valid(header_size + 1:)
         case (11)
-            wrong_extents = extents
-            wrong_extents(1) = wrong_extents(1) + 1
-            bytes = [header_bytes(type_code, wrong_extents), payload, payload]
+            write (unit) valid(1:12), first_extent + 1_int32, valid(17:), valid(header_size + 1:)
         case default
-            bytes = [valid_header, payload(1:size(payload) - 1)]
+            write (unit) valid(1:size(valid) - 1)
         end select
-    end function bad_file
+        close (unit)
+    end subroutine write_broken_file
 
     ! ---- the data, one set per kind ----
 
     !> Three ids in strings of 6: gene22 fills its string, the others are padded with blanks.
-    subroutine three_strings(strings, payload)
+    subroutine three_strings(strings)
         character(len=6), intent(out) :: strings(3)
-        integer(int8), allocatable, intent(out) :: payload(:)
-        character(len=18) :: written
 
         strings = ["g1    ", "gene22", "x     "]
-        written = "g1    gene22x     "
-        payload = transfer(written, BYTE_MOLD)
     end subroutine three_strings
 
     !> Four family indices, the sentinel 0 and the largest and smallest of the symmetric int32
     !| range among them.
-    subroutine four_integers(integers, payload)
+    subroutine four_integers(integers)
         integer(int32), intent(out) :: integers(4)
-        integer(int8), allocatable, intent(out) :: payload(:)
 
         integers = [7_int32, 0_int32, huge(1_int32), -huge(1_int32)]
-        payload = transfer(integers, BYTE_MOLD)
     end subroutine four_integers
 
     !> A 2 x 3 matrix whose values are exact in binary, the ends of the finite range and a
     !| negative zero among them.
-    subroutine two_by_three_reals(reals, payload)
+    subroutine two_by_three_reals(reals)
         real(real64), intent(out) :: reals(2, 3)
-        integer(int8), allocatable, intent(out) :: payload(:)
 
         reals = reshape([1.5_real64, -2.0_real64, 0.25_real64, huge(1.0_real64), -tiny(1.0_real64), -0.0_real64], [2, 3])
-        payload = transfer(reals, BYTE_MOLD)
     end subroutine two_by_three_reals
 
     !> NaN, +Inf and -Inf in a 1 x 3 matrix.
-    subroutine non_finite_reals(reals, payload)
+    subroutine non_finite_reals(reals)
         real(real64), intent(out) :: reals(1, 3)
-        integer(int8), allocatable, intent(out) :: payload(:)
 
         reals(1, 1) = ieee_value(1.0_real64, ieee_quiet_nan)
         reals(1, 2) = ieee_value(1.0_real64, ieee_positive_inf)
         reals(1, 3) = ieee_value(1.0_real64, ieee_negative_inf)
-        payload = transfer(reals, BYTE_MOLD)
     end subroutine non_finite_reals
-
-    !> Fails unless the bytes of `reals` are `expected`: compared as bytes, so the sign of a zero
-    !| and the bits of a NaN count.
-    subroutine check_real_bytes(reals, expected, msg)
-        real(real64), intent(in) :: reals(:, :)
-        integer(int8), intent(in) :: expected(:)
-        character(*), intent(in) :: msg
-        integer(int32), allocatable :: actual_words(:), expected_words(:)
-
-        actual_words = int(transfer(reals, BYTE_MOLD), int32)
-        expected_words = int(expected, int32)
-        call assert_equal_int(size(actual_words), size(expected_words), msg//": size in bytes")
-        if (size(actual_words) /= size(expected_words)) return
-        call assert_equal_array_int(actual_words, expected_words, size(expected_words), msg)
-    end subroutine check_real_bytes
 
     ! ---- strings: gene_ids, family_ids ----
 
@@ -270,22 +270,22 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         character(len=6) :: strings(3), no_strings(0)
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "strings.bin")
-        call three_strings(strings, payload)
-        call save(strings, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call three_strings(strings)
+        call save(strings, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": three strings, ierr")
-        expected = [header_bytes(6_int32, [3_int32]), payload]
-        call check_file_holds(file_path, expected, case_name//": three strings")
+        call write_strings_file(expected, strings)
+        call check_same_file(saved, expected, case_name//": three strings")
 
-        call save(no_strings, file_path, ierr)
+        call save(no_strings, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": no string, ierr")
-        expected = header_bytes(6_int32, [0_int32])
-        call check_file_holds(file_path, expected, case_name//": no string")
+        call write_strings_file(expected, no_strings)
+        call check_same_file(saved, expected, case_name//": no string")
         call remove_scratch_directory(scratch)
     end subroutine check_saves_strings
 
@@ -295,43 +295,41 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         character(len=6) :: strings(3)
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "strings.bin")
-        call write_bytes(file_path, longer_file())
-        call three_strings(strings, payload)
-        call save(strings, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call write_scratch_file(saved, repeat("x", 100))
+        call three_strings(strings)
+        call save(strings, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": ierr")
-        expected = [header_bytes(6_int32, [3_int32]), payload]
-        call check_file_holds(file_path, expected, case_name)
+        call write_strings_file(expected, strings)
+        call check_same_file(saved, expected, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_save_replaces_strings
 
-    !> Three strings and none, read by `load` from files written byte for byte.
+    !> Three strings and none, read by `load` from files in the layout.
     subroutine check_loads_strings(load, case_name)
         procedure(load_strings_interface) :: load
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         character(len=6) :: strings(3), loaded(3), no_strings(0)
-        integer(int8), allocatable :: payload(:), written(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: input
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "strings.bin")
-        call three_strings(strings, payload)
-        written = [header_bytes(6_int32, [3_int32]), payload]
-        call write_bytes(file_path, written)
+        input = scratch_file(scratch, "input.bin")
+        call three_strings(strings)
+        call write_strings_file(input, strings)
         loaded = "unset"
-        call load(loaded, file_path, ierr)
+        call load(loaded, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": three strings, ierr")
         call assert_equal_array_char(loaded, strings, 6, 3, case_name//": three strings")
 
-        call write_bytes(file_path, header_bytes(6_int32, [0_int32]))
-        call load(no_strings, file_path, ierr)
+        call write_strings_file(input, no_strings)
+        call load(no_strings, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": no string")
         call remove_scratch_directory(scratch)
     end subroutine check_loads_strings
@@ -343,16 +341,17 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         character(len=6) :: strings(3), loaded(3)
-        integer(int8), allocatable :: payload(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: valid, broken
         integer(int32) :: ierr, i_bad
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "strings.bin")
-        call three_strings(strings, payload)
+        valid = scratch_file(scratch, "valid.bin")
+        broken = scratch_file(scratch, "broken.bin")
+        call three_strings(strings)
+        call write_strings_file(valid, strings)
         do i_bad = 1, N_BAD_FILES
-            call write_bytes(file_path, bad_file(i_bad, 6_int32, 5_int32, [3_int32], payload))
-            call load(loaded, file_path, ierr)
+            call write_broken_file(i_bad, broken, valid, 5_int32, 1_int32, 3_int32)
+            call load(loaded, broken, ierr)
             call assert_err(ierr, BAD_FILE_CODES(i_bad), case_name//": "//trim(BAD_FILE_NAMES(i_bad)))
         end do
         call remove_scratch_directory(scratch)
@@ -365,13 +364,12 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         character(len=6) :: strings(3), loaded(3)
-        integer(int8), allocatable :: payload(:)
         character(len=:), allocatable :: file_path
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
         file_path = scratch_file(scratch, "strings.bin")
-        call three_strings(strings, payload)
+        call three_strings(strings)
         call save(strings, file_path, ierr)
         call assert_err(ierr, ERR_OK, case_name//": save")
         loaded = "unset"
@@ -389,21 +387,21 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         integer(int32) :: integers(4), no_integers(0), ierr
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "integers.bin")
-        call four_integers(integers, payload)
-        call save(integers, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call four_integers(integers)
+        call save(integers, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": four integers, ierr")
-        expected = [header_bytes(INTEGER_CODE, [4_int32]), payload]
-        call check_file_holds(file_path, expected, case_name//": four integers")
+        call write_integers_file(expected, integers)
+        call check_same_file(saved, expected, case_name//": four integers")
 
-        call save(no_integers, file_path, ierr)
+        call save(no_integers, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": no integer, ierr")
-        expected = header_bytes(INTEGER_CODE, [0_int32])
-        call check_file_holds(file_path, expected, case_name//": no integer")
+        call write_integers_file(expected, no_integers)
+        call check_same_file(saved, expected, case_name//": no integer")
         call remove_scratch_directory(scratch)
     end subroutine check_saves_integers
 
@@ -413,41 +411,39 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         integer(int32) :: integers(4), ierr
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "integers.bin")
-        call write_bytes(file_path, longer_file())
-        call four_integers(integers, payload)
-        call save(integers, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call write_scratch_file(saved, repeat("x", 100))
+        call four_integers(integers)
+        call save(integers, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": ierr")
-        expected = [header_bytes(INTEGER_CODE, [4_int32]), payload]
-        call check_file_holds(file_path, expected, case_name)
+        call write_integers_file(expected, integers)
+        call check_same_file(saved, expected, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_save_replaces_integers
 
-    !> Four integers and none, read by `load` from files written byte for byte.
+    !> Four integers and none, read by `load` from files in the layout.
     subroutine check_loads_integers(load, case_name)
         procedure(load_integers_interface) :: load
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         integer(int32) :: integers(4), loaded(4), no_integers(0), ierr
-        integer(int8), allocatable :: payload(:), written(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: input
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "integers.bin")
-        call four_integers(integers, payload)
-        written = [header_bytes(INTEGER_CODE, [4_int32]), payload]
-        call write_bytes(file_path, written)
+        input = scratch_file(scratch, "input.bin")
+        call four_integers(integers)
+        call write_integers_file(input, integers)
         loaded = -5
-        call load(loaded, file_path, ierr)
+        call load(loaded, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": four integers, ierr")
         call assert_equal_array_int(loaded, integers, 4, case_name//": four integers")
 
-        call write_bytes(file_path, header_bytes(INTEGER_CODE, [0_int32]))
-        call load(no_integers, file_path, ierr)
+        call write_integers_file(input, no_integers)
+        call load(no_integers, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": no integer")
         call remove_scratch_directory(scratch)
     end subroutine check_loads_integers
@@ -459,15 +455,16 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         integer(int32) :: integers(4), loaded(4), ierr, i_bad
-        integer(int8), allocatable :: payload(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: valid, broken
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "integers.bin")
-        call four_integers(integers, payload)
+        valid = scratch_file(scratch, "valid.bin")
+        broken = scratch_file(scratch, "broken.bin")
+        call four_integers(integers)
+        call write_integers_file(valid, integers)
         do i_bad = 1, N_BAD_FILES
-            call write_bytes(file_path, bad_file(i_bad, INTEGER_CODE, REAL_CODE, [4_int32], payload))
-            call load(loaded, file_path, ierr)
+            call write_broken_file(i_bad, broken, valid, REAL_CODE, 1_int32, 4_int32)
+            call load(loaded, broken, ierr)
             call assert_err(ierr, BAD_FILE_CODES(i_bad), case_name//": "//trim(BAD_FILE_NAMES(i_bad)))
         end do
         call remove_scratch_directory(scratch)
@@ -480,12 +477,11 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         integer(int32) :: integers(4), loaded(4), ierr
-        integer(int8), allocatable :: payload(:)
         character(len=:), allocatable :: file_path
 
         call create_scratch_directory(scratch, case_name)
         file_path = scratch_file(scratch, "integers.bin")
-        call four_integers(integers, payload)
+        call four_integers(integers)
         call save(integers, file_path, ierr)
         call assert_err(ierr, ERR_OK, case_name//": save")
         loaded = -5
@@ -496,6 +492,8 @@ contains
     end subroutine check_round_trip_integers
 
     ! ---- reals: expression_vectors, family_centroids, shift_vectors ----
+    ! Loaded reals are compared as bytes, by writing them in the layout and comparing that file
+    ! with the one they came from, so the sign of a zero and the bits of a NaN count.
 
     !> The layout of a 2 x 3 matrix and of a 0 x 3 one, written by `save`.
     subroutine check_saves_reals(save, case_name)
@@ -503,22 +501,22 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(2, 3), no_rows(0, 3)
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call two_by_three_reals(reals, payload)
-        call save(reals, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call two_by_three_reals(reals)
+        call save(reals, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": 2 x 3, ierr")
-        expected = [header_bytes(REAL_CODE, [2_int32, 3_int32]), payload]
-        call check_file_holds(file_path, expected, case_name//": 2 x 3")
+        call write_reals_file(expected, reals)
+        call check_same_file(saved, expected, case_name//": 2 x 3")
 
-        call save(no_rows, file_path, ierr)
+        call save(no_rows, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": 0 x 3, ierr")
-        expected = header_bytes(REAL_CODE, [0_int32, 3_int32])
-        call check_file_holds(file_path, expected, case_name//": 0 x 3")
+        call write_reals_file(expected, no_rows)
+        call check_same_file(saved, expected, case_name//": 0 x 3")
         call remove_scratch_directory(scratch)
     end subroutine check_saves_reals
 
@@ -528,43 +526,43 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(2, 3)
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call write_bytes(file_path, longer_file())
-        call two_by_three_reals(reals, payload)
-        call save(reals, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call write_scratch_file(saved, repeat("x", 100))
+        call two_by_three_reals(reals)
+        call save(reals, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": ierr")
-        expected = [header_bytes(REAL_CODE, [2_int32, 3_int32]), payload]
-        call check_file_holds(file_path, expected, case_name)
+        call write_reals_file(expected, reals)
+        call check_same_file(saved, expected, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_save_replaces_reals
 
-    !> A 2 x 3 matrix and a 0 x 3 one, read by `load` from files written byte for byte.
+    !> A 2 x 3 matrix and a 0 x 3 one, read by `load` from files in the layout.
     subroutine check_loads_reals(load, case_name)
         procedure(load_reals_interface) :: load
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(2, 3), loaded(2, 3), no_rows(0, 3)
-        integer(int8), allocatable :: payload(:), written(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: input, read_back
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call two_by_three_reals(reals, payload)
-        written = [header_bytes(REAL_CODE, [2_int32, 3_int32]), payload]
-        call write_bytes(file_path, written)
+        input = scratch_file(scratch, "input.bin")
+        read_back = scratch_file(scratch, "read_back.bin")
+        call two_by_three_reals(reals)
+        call write_reals_file(input, reals)
         loaded = -5.0_real64
-        call load(loaded, file_path, ierr)
+        call load(loaded, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": 2 x 3, ierr")
-        call check_real_bytes(loaded, payload, case_name//": 2 x 3")
+        call write_reals_file(read_back, loaded)
+        call check_same_file(read_back, input, case_name//": 2 x 3")
 
-        call write_bytes(file_path, header_bytes(REAL_CODE, [0_int32, 3_int32]))
-        call load(no_rows, file_path, ierr)
+        call write_reals_file(input, no_rows)
+        call load(no_rows, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": 0 x 3")
         call remove_scratch_directory(scratch)
     end subroutine check_loads_reals
@@ -576,16 +574,17 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(2, 3), loaded(2, 3)
-        integer(int8), allocatable :: payload(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: valid, broken
         integer(int32) :: ierr, i_bad
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call two_by_three_reals(reals, payload)
+        valid = scratch_file(scratch, "valid.bin")
+        broken = scratch_file(scratch, "broken.bin")
+        call two_by_three_reals(reals)
+        call write_reals_file(valid, reals)
         do i_bad = 1, N_BAD_FILES
-            call write_bytes(file_path, bad_file(i_bad, REAL_CODE, INTEGER_CODE, [2_int32, 3_int32], payload))
-            call load(loaded, file_path, ierr)
+            call write_broken_file(i_bad, broken, valid, INTEGER_CODE, 2_int32, 2_int32)
+            call load(loaded, broken, ierr)
             call assert_err(ierr, BAD_FILE_CODES(i_bad), case_name//": "//trim(BAD_FILE_NAMES(i_bad)))
         end do
         call remove_scratch_directory(scratch)
@@ -598,41 +597,44 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(2, 3), loaded(2, 3)
-        integer(int8), allocatable :: payload(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, read_back, expected
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call two_by_three_reals(reals, payload)
-        call save(reals, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        read_back = scratch_file(scratch, "read_back.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call two_by_three_reals(reals)
+        call save(reals, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": save")
         loaded = -5.0_real64
-        call load(loaded, file_path, ierr)
+        call load(loaded, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": load")
-        call check_real_bytes(loaded, payload, case_name)
+        call write_reals_file(read_back, loaded)
+        call write_reals_file(expected, reals)
+        call check_same_file(read_back, expected, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_round_trip_reals
 
     !> Pins today's behaviour: `save` writes NaN, +Inf and -Inf bit for bit, without an error.
-    !| The procedures do not document whether a stored matrix may hold them (the batch's report
-    !| asks).
+    !| The procedures do not document whether a stored matrix may hold them; an open question for
+    !| the maintainer.
     subroutine check_saves_non_finite_reals(save, case_name)
         procedure(save_reals_interface) :: save
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(1, 3)
-        integer(int8), allocatable :: payload(:), expected(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: saved, expected
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call non_finite_reals(reals, payload)
-        call save(reals, file_path, ierr)
+        saved = scratch_file(scratch, "saved.bin")
+        expected = scratch_file(scratch, "expected.bin")
+        call non_finite_reals(reals)
+        call save(reals, saved, ierr)
         call assert_err(ierr, ERR_OK, case_name//": ierr")
-        expected = [header_bytes(REAL_CODE, [1_int32, 3_int32]), payload]
-        call check_file_holds(file_path, expected, case_name)
+        call write_reals_file(expected, reals)
+        call check_same_file(saved, expected, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_saves_non_finite_reals
 
@@ -643,18 +645,18 @@ contains
         character(*), intent(in) :: case_name
         type(scratch_directory_type) :: scratch
         real(real64) :: reals(1, 3), loaded(1, 3)
-        integer(int8), allocatable :: payload(:), written(:)
-        character(len=:), allocatable :: file_path
+        character(len=:), allocatable :: input, read_back
         integer(int32) :: ierr
 
         call create_scratch_directory(scratch, case_name)
-        file_path = scratch_file(scratch, "reals.bin")
-        call non_finite_reals(reals, payload)
-        written = [header_bytes(REAL_CODE, [1_int32, 3_int32]), payload]
-        call write_bytes(file_path, written)
-        call load(loaded, file_path, ierr)
+        input = scratch_file(scratch, "input.bin")
+        read_back = scratch_file(scratch, "read_back.bin")
+        call non_finite_reals(reals)
+        call write_reals_file(input, reals)
+        call load(loaded, input, ierr)
         call assert_err(ierr, ERR_OK, case_name//": ierr")
-        call check_real_bytes(loaded, payload, case_name)
+        call write_reals_file(read_back, loaded)
+        call check_same_file(read_back, input, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_loads_non_finite_reals
 end module mod_test_tox_data_read_write_fixtures
