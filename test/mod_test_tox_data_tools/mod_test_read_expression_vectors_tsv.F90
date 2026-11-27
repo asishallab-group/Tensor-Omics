@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(19))
+        allocate (all_tests(20))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -61,6 +61,8 @@ contains
         all_tests(18) = test_case("test_read_expression_vectors_tsv_refuses_nan_and_inf", &
                                   test_read_expression_vectors_tsv_refuses_nan_and_inf)
         all_tests(19) = test_case("test_read_expression_vectors_tsv_row_count", test_read_expression_vectors_tsv_row_count)
+        all_tests(20) = test_case("test_read_expression_vectors_tsv_refuses_an_empty_cell", &
+                                  test_read_expression_vectors_tsv_refuses_an_empty_cell)
     end function get_all_tests_read_expression_vectors_tsv
 
     !> Writes `content` to `name` in `scratch`, reads it as the one file with one header row and
@@ -523,4 +525,30 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_row_count
+
+    !> BUG (fails today): an empty cell does not count as a field, so the values right of it move
+    !| one column left. Of a row "g1, 1, (empty), 3", columns 2 and 3 come back as 1 and 3; the
+    !| 3 belongs to column 4. The reader has to refuse the row (the cell has no value, and TOX
+    !| takes no NaN); reading the neighbour's value with ERR_OK is wrong.
+    subroutine test_read_expression_vectors_tsv_refuses_an_empty_cell()
+        type(scratch_directory_type) :: scratch
+        character(len=4) :: one_gene(1)
+        real(real64) :: expression_vectors(2, 1)
+        integer(int32) :: value_cols(2)
+        character(len=1024) :: file_list(1)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "expression_empty_cell")
+        file_list(1) = scratch_file(scratch, "expression.tsv")
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//TAB//"c"//LF//"g1"//TAB//"1"//TAB//TAB//"3"//LF)
+        one_gene = ["g1"]
+        value_cols = [2, 3]
+        expression_vectors = UNWRITTEN
+
+        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 3.0_real64, &
+                          "test_read_expression_vectors_tsv_refuses_an_empty_cell: column 4's value read as column 3's")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_refuses_an_empty_cell
 end module mod_test_read_expression_vectors_tsv
