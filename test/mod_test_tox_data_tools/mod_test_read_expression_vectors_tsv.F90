@@ -542,23 +542,41 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_row_count
 
-    !> Pins today's behaviour, an open question for the maintainer: a file that ends in an empty
-    !| line (two line endings) is refused with ERR_INVALID_INPUT, as the empty line is a row of no
-    !| field -- after every value of the rows before it was written.
+    !> Blank lines at the end of a file are no rows: an empty line, several, and one of blanks are
+    !| read without an error. A blank line between two rows is a row without its fields and is
+    !| refused with ERR_INVALID_INPUT naming file_list (argument 1).
     subroutine test_read_expression_vectors_tsv_trailing_empty_line()
         type(scratch_directory_type) :: scratch
         real(real64) :: expression_vectors(1, 3), expected(1, 3)
-        integer(int32) :: value_cols(1)
+        integer(int32) :: value_cols(1), i_ending
+        character(len=:), allocatable :: rows
+        character(len=8), parameter :: ENDINGS(3) = ["one     ", "three   ", "blanks  "]
 
         call create_scratch_directory(scratch, "expression_trailing_empty_line")
         value_cols = [2]
-        call read_one_file(scratch, "expression.tsv", "id"//TAB//"a"//LF// &
-                           "g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"g3"//TAB//"3"//LF//LF, &
-                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_INVALID_INPUT, &
-                           "test_read_expression_vectors_tsv_trailing_empty_line")
+        rows = "id"//TAB//"a"//LF//"g1"//TAB//"1"//LF//"g2"//TAB//"2"//LF//"g3"//TAB//"3"//LF
         expected = reshape([1.0_real64, 2.0_real64, 3.0_real64], [1, 3])
-        call assert_equal_array_real(expression_vectors, expected, 3, 0.0_real64, &
-                                     "test_read_expression_vectors_tsv_trailing_empty_line: the values written")
+        do i_ending = 1, size(ENDINGS)
+            select case (i_ending)
+            case (1)
+                call read_one_file(scratch, "expression.tsv", rows//LF, THREE_GENE_IDS, value_cols, expression_vectors, &
+                                   ERR_OK, "test_read_expression_vectors_tsv_trailing_empty_line: "//trim(ENDINGS(i_ending)))
+            case (2)
+                call read_one_file(scratch, "expression.tsv", rows//LF//LF//LF, THREE_GENE_IDS, value_cols, &
+                                   expression_vectors, ERR_OK, &
+                                   "test_read_expression_vectors_tsv_trailing_empty_line: "//trim(ENDINGS(i_ending)))
+            case default
+                call read_one_file(scratch, "expression.tsv", rows//"   "//LF, THREE_GENE_IDS, value_cols, &
+                                   expression_vectors, ERR_OK, &
+                                   "test_read_expression_vectors_tsv_trailing_empty_line: "//trim(ENDINGS(i_ending)))
+            end select
+            call assert_equal_array_real(expression_vectors, expected, 3, 0.0_real64, &
+                                         "test_read_expression_vectors_tsv_trailing_empty_line: "//trim(ENDINGS(i_ending)))
+        end do
+
+        call read_one_file(scratch, "expression.tsv", "id"//TAB//"a"//LF//"g1"//TAB//"1"//LF//LF//"g3"//TAB//"3"//LF, &
+                           THREE_GENE_IDS, value_cols, expression_vectors, ERR_INVALID_INPUT, &
+                           "test_read_expression_vectors_tsv_trailing_empty_line: a blank line between rows")
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_trailing_empty_line
@@ -604,72 +622,71 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_later_duplicate_overwrites
 
-    !> BUG (fails today): an empty cell does not count as a field, so the values right of it move
-    !| one column left. Of a row "g1, 1, (empty), 3", columns 2 and 3 come back as 1 and 3; the
-    !| 3 belongs to column 4. The reader has to refuse the row (the cell has no value, and TOX
-    !| takes no NaN); reading the neighbour's value, or leaving the element alone, with ERR_OK is
-    !| wrong.
+    !> An empty cell is refused with ERR_INVALID_INPUT naming file_list (argument 1), wherever it
+    !| is read: of "g1, 1, (empty), 3" the value column 3, and an empty id. An empty cell of a column
+    !| that is not read is no error. (The cells used to be split with empty ones dropped, so the
+    !| values right of an empty cell moved one column left.)
     subroutine test_read_expression_vectors_tsv_refuses_an_empty_cell()
         type(scratch_directory_type) :: scratch
         character(len=4) :: one_gene(1)
-        real(real64) :: expression_vectors(2, 1)
-        integer(int32) :: value_cols(2)
+        real(real64) :: expression_vectors(2, 1), expected(2, 1)
+        integer(int32) :: value_cols(2), ierr
         character(len=1024) :: file_list(1)
-        integer(int32) :: ierr
 
         call create_scratch_directory(scratch, "expression_empty_cell")
         file_list(1) = scratch_file(scratch, "expression.tsv")
-        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//TAB//"c"//LF//"g1"//TAB//"1"//TAB//TAB//"3"//LF)
         one_gene = ["g1"]
         value_cols = [2, 3]
-        expression_vectors = UNWRITTEN
 
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//TAB//"c"//LF//"g1"//TAB//"1"//TAB//TAB//"3"//LF)
         call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
-        ! a refusal only: the cell has no value, so leaving its element alone with ERR_OK is wrong too
-        call assert_true(is_err(ierr), "test_read_expression_vectors_tsv_refuses_an_empty_cell: accepted with ERR_OK")
-        call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 3.0_real64, &
-                          "test_read_expression_vectors_tsv_refuses_an_empty_cell: column 4's value read as column 3's")
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_expression_vectors_tsv_refuses_an_empty_cell: a value", 1)
+
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//TAB//"1"//TAB//"2"//LF)
+        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_expression_vectors_tsv_refuses_an_empty_cell: the id", 1)
+
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//TAB//"c"//LF//"g1"//TAB//"1"//TAB//"2"//TAB//LF)
+        expression_vectors = UNWRITTEN
+        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_read_expression_vectors_tsv_refuses_an_empty_cell: an unread one, ierr")
+        expected = reshape([1.0_real64, 2.0_real64], [2, 1])
+        call assert_equal_array_real(expression_vectors, expected, 2, 0.0_real64, &
+                                     "test_read_expression_vectors_tsv_refuses_an_empty_cell: an unread one")
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_refuses_an_empty_cell
 
-    !> BUG (fails today): a value is read list-directed, which stops at a comma or a blank and
-    !| takes a slash for "no value". So "0,25" (a decimal comma) reads as 0, and "/" leaves
-    !| whatever the previous value was: here column 2's 1.5. The reader has to refuse a field it
-    !| does not read whole; any ERR_OK is wrong.
+    !> A cell that is not one complete number is refused with ERR_READ_DATA naming file_list
+    !| (argument 1): a decimal comma (0,25), a slash, two numbers (1 2, 1;2) and a repeat count
+    !| (2*3). They used to be read list-directed, which stops at a comma or a blank and takes a slash
+    !| for "no value": 0,25 read as 0, and a slash left the previous value.
     subroutine test_read_expression_vectors_tsv_refuses_a_partial_number()
         type(scratch_directory_type) :: scratch
         character(len=4) :: one_gene(1)
         real(real64) :: expression_vectors(2, 1)
-        integer(int32) :: value_cols(2), ierr
+        integer(int32) :: value_cols(2), ierr, i_cell
         character(len=1024) :: file_list(1)
+        character(len=4), parameter :: CELLS(5) = ["0,25", "/   ", "1 2 ", "1;2 ", "2*3 "]
 
         call create_scratch_directory(scratch, "expression_partial_number")
         file_list(1) = scratch_file(scratch, "expression.tsv")
         one_gene = ["g1"]
         value_cols = [2, 3]
-
-        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB//"0,25"//LF)
-        expression_vectors = UNWRITTEN
-        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
-        call assert_true(is_err(ierr), "test_read_expression_vectors_tsv_refuses_a_partial_number: 0,25 accepted with ERR_OK")
-        call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 0.0_real64, &
-                          "test_read_expression_vectors_tsv_refuses_a_partial_number: 0,25 read as 0")
-
-        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB//"/"//LF)
-        expression_vectors = UNWRITTEN
-        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
-        call assert_true(is_err(ierr), "test_read_expression_vectors_tsv_refuses_a_partial_number: / accepted with ERR_OK")
-        call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 1.5_real64, &
-                          "test_read_expression_vectors_tsv_refuses_a_partial_number: / read as the previous value, 1.5")
+        do i_cell = 1, size(CELLS)
+            call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB// &
+                                    trim(CELLS(i_cell))//LF)
+            call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+            call assert_err(ierr, ERR_READ_DATA, "test_read_expression_vectors_tsv_refuses_a_partial_number: " &
+                            //trim(CELLS(i_cell)), 1)
+        end do
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_refuses_a_partial_number
 
-    !> BUG (fails today): a row's id is cut to the length of the strings of `gene_ids` before it
-    !| is looked up, so a longer id is taken for a shorter one: with ids of 8 characters,
-    !| NP_001.10's row is read as NP_001.1's. The row names no gene of the list; it has to be
-    !| skipped (or refused), not read into NP_001.1's column.
+    !> A row's id is looked up whole: with ids of 8 characters, a row of NP_001.10 names no gene of
+    !| the list and is skipped, without an error, and NP_001.1's column is left alone. (The id used
+    !| to be cut to 8 characters first, and the row read into NP_001.1's column.)
     subroutine test_read_expression_vectors_tsv_matches_whole_ids()
         type(scratch_directory_type) :: scratch
         character(len=8) :: gene_ids(1)
@@ -685,34 +702,45 @@ contains
         expression_vectors = UNWRITTEN
 
         call read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
-        call assert_false(is_ok(ierr) .and. expression_vectors(1, 1) == 5.0_real64, &
-                          "test_read_expression_vectors_tsv_matches_whole_ids: NP_001.10's value read for NP_001.1")
+        call assert_err(ierr, ERR_OK, "test_read_expression_vectors_tsv_matches_whole_ids: ierr")
+        call assert_equal_real(expression_vectors(1, 1), UNWRITTEN, 0.0_real64, &
+                               "test_read_expression_vectors_tsv_matches_whole_ids: NP_001.1's column")
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_matches_whole_ids
 
-    !> BUG (fails today): a line is read into a buffer of 2048 characters, and what is past it is
-    !| dropped without a word. Here the value 9.75 sits at characters 2047 to 2050 and comes back
-    !| as 9 (the "9." that fits). The reader has to read the whole line or refuse it; a cut value
-    !| with ERR_OK is wrong.
+    !> A line is read whole up to 4096 characters (the readers' limit) and refused with
+    !| ERR_STRING_TOO_LONG naming file_list (argument 1) past it: 9.75 at characters 2047-2050
+    !| (past the 2048 characters this reader used to cut lines at, silently), and at 4093-4096, is
+    !| read; one character more is refused.
     subroutine test_read_expression_vectors_tsv_reads_a_long_line_whole()
         type(scratch_directory_type) :: scratch
-        character(len=2048) :: gene_ids(1)
+        character(len=4096) :: gene_ids(1)
         real(real64) :: expression_vectors(1, 1)
-        integer(int32) :: value_cols(1), ierr
+        integer(int32) :: value_cols(1), ierr, i_length
         character(len=1024) :: file_list(1)
+        integer(int32), parameter :: ID_LENGTHS(3) = [2045, 4091, 4092]
 
         call create_scratch_directory(scratch, "expression_long_line")
         file_list(1) = scratch_file(scratch, "expression.tsv")
-        ! an id of 2045 characters, the tab at 2046, the value at 2047..2050
-        gene_ids(1) = repeat("x", 2045)
-        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//LF//trim(gene_ids(1))//TAB//"9.75"//LF)
         value_cols = [2]
-        expression_vectors = UNWRITTEN
-
-        call read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
-        call assert_false(is_ok(ierr) .and. expression_vectors(1, 1) /= 9.75_real64, &
-                          "test_read_expression_vectors_tsv_reads_a_long_line_whole: 9.75 past character 2048 read cut")
+        do i_length = 1, size(ID_LENGTHS)
+            ! the id, a tab, and 9.75: a line of the id's length + 5
+            gene_ids(1) = repeat("x", ID_LENGTHS(i_length))
+            call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//LF//trim(gene_ids(1))//TAB//"9.75"//LF)
+            expression_vectors = UNWRITTEN
+            call read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+            if (ID_LENGTHS(i_length) + 5 <= 4096) then
+                call assert_err(ierr, ERR_OK, "test_read_expression_vectors_tsv_reads_a_long_line_whole: line of " &
+                                //(ID_LENGTHS(i_length) + 5)//", ierr")
+                call assert_equal_real(expression_vectors(1, 1), 9.75_real64, 0.0_real64, &
+                                       "test_read_expression_vectors_tsv_reads_a_long_line_whole: line of " &
+                                       //(ID_LENGTHS(i_length) + 5))
+            else
+                call assert_err(ierr, ERR_STRING_TOO_LONG, "test_read_expression_vectors_tsv_reads_a_long_line_whole: line of " &
+                                //(ID_LENGTHS(i_length) + 5), 1)
+            end if
+        end do
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_reads_a_long_line_whole

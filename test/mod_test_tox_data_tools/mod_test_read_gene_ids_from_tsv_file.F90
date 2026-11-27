@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(13))
+        allocate (all_tests(14))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -49,6 +49,8 @@ contains
                                   test_read_gene_ids_from_tsv_file_missing_file)
         all_tests(13) = test_case("test_read_gene_ids_from_tsv_file_gene_col_bound", &
                                   test_read_gene_ids_from_tsv_file_gene_col_bound)
+        all_tests(14) = test_case("test_read_gene_ids_from_tsv_file_trailing_blank_lines", &
+                                  test_read_gene_ids_from_tsv_file_trailing_blank_lines)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -254,10 +256,9 @@ contains
         call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_gene_ids_from_tsv_file_shipped_material: one id too few")
     end subroutine test_read_gene_ids_from_tsv_file_shipped_material
 
-    !> BUG (fails today): an id longer than the strings of `gene_ids` is cut to fit, without a
-    !| word. With versioned ids that is another gene's id: NP_001.10 cut to 8 characters is
-    !| NP_001.1. The reader has to either keep the id or refuse it (ERR_STRING_TOO_LONG would say
-    !| why); returning the cut id with ERR_OK is wrong.
+    !> An id longer than the strings of `gene_ids` is refused with ERR_STRING_TOO_LONG naming
+    !| gene_ids (argument 2): with versioned ids a cut one is another gene's, NP_001.10 cut to 8
+    !| characters is NP_001.1 (which the reader used to return). An id of exactly 8 is read.
     subroutine test_read_gene_ids_from_tsv_file_refuses_an_id_too_long()
         type(scratch_directory_type) :: scratch
         character(len=:), allocatable :: tsv
@@ -267,18 +268,20 @@ contains
         call create_scratch_directory(scratch, "gene_ids_too_long")
         tsv = scratch_file(scratch, "genes.tsv")
         call write_scratch_file(tsv, "id"//LF//"NP_001.10"//LF)
-
         call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
-        call assert_false(is_ok(ierr) .and. gene_ids(1) == "NP_001.1", &
-                          "test_read_gene_ids_from_tsv_file_refuses_an_id_too_long: NP_001.10 came back as NP_001.1 with ERR_OK")
+        call assert_err(ierr, ERR_STRING_TOO_LONG, "test_read_gene_ids_from_tsv_file_refuses_an_id_too_long: 9 for 8", 2)
+
+        call write_scratch_file(tsv, "id"//LF//"NP_001.1"//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_refuses_an_id_too_long: 8 for 8")
+        call assert_string_equal(gene_ids(1), "NP_001.1", "test_read_gene_ids_from_tsv_file_refuses_an_id_too_long: 8 for 8")
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_refuses_an_id_too_long
 
-    !> BUG (fails today): a line is read into a buffer of 2048 characters, and what is past it is
-    !| dropped without a word. Here the id is in the second column and runs from character 2041 to
-    !| 2052: it comes back cut after its eighth character. The reader has to read the whole line
-    !| or refuse it; returning the cut id with ERR_OK is wrong.
+    !> A line is read whole up to 4096 characters and refused with ERR_STRING_TOO_LONG naming
+    !| filename (argument 1) past it: the id at 2041-2052 (past the 2048 characters this reader
+    !| used to cut lines at, silently), and at 4085-4096, is read; one character more is refused.
     subroutine test_read_gene_ids_from_tsv_file_reads_a_long_line_whole()
         type(scratch_directory_type) :: scratch
         character(len=:), allocatable :: tsv
@@ -287,25 +290,30 @@ contains
 
         call create_scratch_directory(scratch, "gene_ids_long_line")
         tsv = scratch_file(scratch, "genes.tsv")
-        ! 2039 characters of padding, the tab at 2040, the id at 2041..2052
+        ! padding, a tab, and the id of 12 characters: a line of the padding's length + 13
         call write_scratch_file(tsv, "h"//TAB//"id"//LF//repeat("x", 2039)//TAB//"GENE00000042"//LF)
-
         call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 2, ierr)
-        call assert_false(is_ok(ierr) .and. gene_ids(1) /= "GENE00000042", &
-                          "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: the id past character 2048 came back as '" &
-                          //trim(gene_ids(1))//"' with ERR_OK")
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: 2052, ierr")
+        call assert_string_equal(gene_ids(1), "GENE00000042", "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: 2052")
+
+        call write_scratch_file(tsv, "h"//TAB//"id"//LF//repeat("x", 4083)//TAB//"GENE00000042"//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 2, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: 4096, ierr")
+        call assert_string_equal(gene_ids(1), "GENE00000042", "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: 4096")
+
+        call write_scratch_file(tsv, "h"//TAB//"id"//LF//repeat("x", 4084)//TAB//"GENE00000042"//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 2, ierr)
+        call assert_err(ierr, ERR_STRING_TOO_LONG, "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: 4097", 1)
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_reads_a_long_line_whole
 
-    !> BUG (fails today): a row with fewer fields than `gene_col` is skipped, but counted, so its
-    !| element of `gene_ids` is left unwritten and the next row's id lands after the hole, with
-    !| ERR_OK: rows "x, g1", "y", "z, g3" with gene_col 2 give [g1, (unwritten), g3]; so does an
-    !| empty line between g1 and g3 with gene_col 1. The reader has to refuse such a row, or give
-    !| it a value; a hole with ERR_OK is wrong. (`gene_ids` starts at UNSET, so the hole shows.)
+    !> A row without the id is refused with ERR_INVALID_INPUT naming filename (argument 1): rows
+    !| "x, g1", "y", "z, g3" with gene_col 2, an empty line between g1 and g3 with gene_col 1, and an
+    !| empty id cell. (The reader used to skip such a row but count it, leaving a hole in gene_ids.)
     subroutine test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id()
         type(scratch_directory_type) :: scratch
-        character(len=:), allocatable :: short_row, empty_line
+        character(len=:), allocatable :: short_row, empty_line, empty_cell
         character(len=8) :: gene_ids(3)
         integer(int32) :: ierr
 
@@ -314,15 +322,15 @@ contains
         call write_scratch_file(short_row, "h"//TAB//"id"//LF//"x"//TAB//"g1"//LF//"y"//LF//"z"//TAB//"g3"//LF)
         empty_line = scratch_file(scratch, "empty_line.tsv")
         call write_scratch_file(empty_line, "id"//LF//"g1"//LF//LF//"g3"//LF)
+        empty_cell = scratch_file(scratch, "empty_cell.tsv")
+        call write_scratch_file(empty_cell, "h"//TAB//"id"//LF//"x"//TAB//"g1"//LF//"y"//TAB//LF//"z"//TAB//"g3"//LF)
 
-        gene_ids = "UNSET"
         call read_gene_ids_from_tsv_file(short_row, gene_ids, 1, 2, ierr)
-        call assert_false(is_ok(ierr) .and. gene_ids(2) == "UNSET" .and. gene_ids(3) == "g3", &
-                          "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: a short row left a hole")
-        gene_ids = "UNSET"
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: short", 1)
         call read_gene_ids_from_tsv_file(empty_line, gene_ids, 1, 1, ierr)
-        call assert_false(is_ok(ierr) .and. gene_ids(2) == "UNSET" .and. gene_ids(3) == "g3", &
-                          "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: an empty line left a hole")
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: empty line", 1)
+        call read_gene_ids_from_tsv_file(empty_cell, gene_ids, 1, 2, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: empty cell", 1)
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id
@@ -367,4 +375,27 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_gene_col_bound
+
+    !> Blank lines at the end of a file are no rows: one, several, and one of blanks after the
+    !| last id are read without an error.
+    subroutine test_read_gene_ids_from_tsv_file_trailing_blank_lines()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: tsv
+        character(len=8) :: gene_ids(2), expected(2)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "gene_ids_trailing_blank_lines")
+        tsv = scratch_file(scratch, "genes.tsv")
+        expected = ["g1", "g2"]
+        call write_scratch_file(tsv, "id"//LF//"g1"//LF//"g2"//LF//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_trailing_blank_lines: one")
+        call assert_equal_array_char(gene_ids, expected, 8, 2, "test_read_gene_ids_from_tsv_file_trailing_blank_lines: one")
+        call write_scratch_file(tsv, "id"//LF//"g1"//LF//"g2"//LF//LF//LF//"  "//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_trailing_blank_lines: several")
+        call assert_equal_array_char(gene_ids, expected, 8, 2, "test_read_gene_ids_from_tsv_file_trailing_blank_lines: several")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_trailing_blank_lines
 end module mod_test_read_gene_ids_from_tsv_file
