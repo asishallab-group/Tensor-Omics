@@ -65,6 +65,12 @@
 #define M_GENE_TO_FAM_SENTINEL 0_int32
 #define M_GENE_TO_FAM_DOC(GENES_TARGET_ARG) Index mapping -> each index `i` holds the family index for the corresponding gene in `GENES_TARGET_ARG`, using `M_GENE_TO_FAM_SENTINEL` for unassigned genes
 
+! Extents of a k-d tree traversal stack, `tmp_stack(M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH)`:
+! each entry holds a subtree's index range and depth. Shared by f42_kd_tree_impl and every
+! implementation that hands a traversal stack to it, so the two cannot disagree on its shape.
+#define M_KD_STACK_ENTRY_SIZE 3
+#define M_KD_TRAVERSAL_STACK_DEPTH 64
+
 ! Bit masks (f42_bit_masks_impl): flag `i` of a mask is bit `mod(i - 1, 32)` of int32 word
 ! `(i - 1)/32 + 1`. Macros rather than procedures, because they also size the masks of other
 ! modules in their DM_ markers, and because a hot loop can test or set a single flag with them

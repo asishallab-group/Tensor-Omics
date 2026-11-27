@@ -11,7 +11,11 @@ module f42_kd_tree_impl
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, validate_in_range_int, is_err
+    use tox_euclidean_distance_impl, only: euclidean_distance_impl
     M_IMPLICIT_NONE
+
+    integer(int32), parameter :: KD_STACK_ENTRY_SIZE = M_KD_STACK_ENTRY_SIZE
+    integer(int32), parameter :: KD_TRAVERSAL_STACK_DEPTH = M_KD_TRAVERSAL_STACK_DEPTH
 
 contains
 
@@ -755,5 +759,225 @@ contains
             end if
         end do
     end subroutine kd_range_query_count_impl
+
+    !> summary: Find reference points within a radius around a query point.
+    !| AUTHOR_SALIH_ALBAYRAK
+    pure subroutine vicinity_vectors_impl(query_point, points, n_dimensions, n_points, r, &
+                                          dimension_order, kd_indices, tmp_stack, vicinity_mask)
+
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_points
+            !! Total number of points organized in the k-d tree
+        real(real64), intent(in) :: query_point(n_dimensions)
+            !! Coordinate vector used as the center of the search
+        real(real64), intent(in) :: points(n_dimensions, n_points)
+            !! Ambient point matrix
+        real(real64), intent(in) :: r
+            !! Search radius
+            !! DM_MIN(0.0_real64)
+        integer(int32), intent(in) :: dimension_order(n_dimensions)
+            !! Sequence of k-d tree split dimensions
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_dimensions)
+        integer(int32), intent(in) :: kd_indices(n_points)
+            !! K-d tree index sequence
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_points)
+        integer(int32), intent(inout) :: tmp_stack( &
+                                         M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH)
+            !! Preallocated k-d tree traversal stack
+        logical(c_bool), intent(out) :: vicinity_mask(n_points)
+            !! Mask indicating points within the search radius
+
+        call vicinity_vectors_helper(query_point, points, n_dimensions, n_points, r, &
+                                     dimension_order, kd_indices, tmp_stack, vicinity_mask)
+
+    end subroutine vicinity_vectors_impl
+
+    !> summary: Count reference points within a radius around a query point.
+    !| AUTHOR_SALIH_ALBAYRAK
+    pure subroutine vicinity_vectors_count_impl(query_point, points, n_dimensions, n_points, r, &
+                                                dimension_order, kd_indices, tmp_stack, n_neighbors)
+
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: n_points
+            !! Total number of points organized in the k-d tree
+        real(real64), intent(in) :: query_point(n_dimensions)
+            !! Coordinate vector used as the center of the search
+        real(real64), intent(in) :: points(n_dimensions, n_points)
+            !! Ambient point matrix
+        real(real64), intent(in) :: r
+            !! Search radius
+            !! DM_MIN(0.0_real64)
+        integer(int32), intent(in) :: dimension_order(n_dimensions)
+            !! Sequence of k-d tree split dimensions
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_dimensions)
+        integer(int32), intent(in) :: kd_indices(n_points)
+            !! K-d tree index sequence
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_points)
+        integer(int32), intent(inout) :: tmp_stack( &
+                                         M_KD_STACK_ENTRY_SIZE, M_KD_TRAVERSAL_STACK_DEPTH)
+            !! Preallocated k-d tree traversal stack
+        integer(int32), intent(out) :: n_neighbors
+            !! Number of points within the search radius
+
+        call vicinity_vectors_count_helper(query_point, points, n_dimensions, n_points, r, &
+                                           dimension_order, kd_indices, tmp_stack, n_neighbors)
+
+    end subroutine vicinity_vectors_count_impl
+
+    !> AUTHOR_SALIH_ALBAYRAK
+    !| Find reference points within a radius around a query point.
+    pure subroutine vicinity_vectors_helper(query_point, points, n_dimensions, n_points, r, &
+                                            dimension_order, kd_indices, tmp_stack, vicinity_mask)
+
+        integer(int32), intent(in) :: n_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: n_points
+        !! Total number of points organized in the k-d tree
+        real(real64), intent(in) :: query_point(n_dimensions)
+        !! Coordinate vector used as the center of the search
+        real(real64), intent(in) :: points(n_dimensions, n_points)
+        !! Ambient point matrix
+        real(real64), intent(in) :: r
+        !! Search radius
+        integer(int32), intent(in) :: dimension_order(n_dimensions)
+        !! Sequence of k-d tree split dimensions
+        integer(int32), intent(in) :: kd_indices(n_points)
+        !! K-d tree index sequence
+        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, &
+                                                   M_KD_TRAVERSAL_STACK_DEPTH)
+        !! Preallocated k-d tree traversal stack
+        logical(c_bool), intent(out) :: vicinity_mask(n_points)
+        !! Mask indicating points within the search radius
+
+        integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx
+        real(real64) :: distance, axis_delta
+
+        vicinity_mask = .false.
+        stack_top = 1_int32
+
+        tmp_stack(1, 1) = 1_int32
+        tmp_stack(2, 1) = n_points
+        tmp_stack(3, 1) = 0_int32
+
+        do while (stack_top > 0_int32)
+            left_idx = tmp_stack(1, stack_top)
+            right_idx = tmp_stack(2, stack_top)
+            current_depth = tmp_stack(3, stack_top)
+            stack_top = stack_top - 1_int32
+
+            if (right_idx < left_idx) cycle
+
+            current_dim = dimension_order(mod(current_depth, n_dimensions) + 1_int32)
+            mid_idx = left_idx + (right_idx - left_idx)/2_int32
+            point_idx = kd_indices(mid_idx)
+
+            call euclidean_distance_impl(query_point, points(:, point_idx), &
+                                          n_dimensions, distance)
+
+            if (distance <= r) vicinity_mask(point_idx) = .true.
+
+            axis_delta = query_point(current_dim) - points(current_dim, point_idx)
+
+            if (axis_delta - r <= 0.0_real64) then
+                if (left_idx <= mid_idx - 1_int32) then
+                    stack_top = stack_top + 1_int32
+                    tmp_stack(1, stack_top) = left_idx
+                    tmp_stack(2, stack_top) = mid_idx - 1_int32
+                    tmp_stack(3, stack_top) = current_depth + 1_int32
+                end if
+            end if
+
+            if (axis_delta + r >= 0.0_real64) then
+                if (mid_idx + 1_int32 <= right_idx) then
+                    stack_top = stack_top + 1_int32
+                    tmp_stack(1, stack_top) = mid_idx + 1_int32
+                    tmp_stack(2, stack_top) = right_idx
+                    tmp_stack(3, stack_top) = current_depth + 1_int32
+                end if
+            end if
+        end do
+
+    end subroutine vicinity_vectors_helper
+
+    !> AUTHOR_SALIH_ALBAYRAK
+    !| Count reference points within a radius around a query point.
+    pure subroutine vicinity_vectors_count_helper(query_point, points, n_dimensions, n_points, r, &
+                                                  dimension_order, kd_indices, tmp_stack, n_neighbors)
+
+        integer(int32), intent(in) :: n_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: n_points
+        !! Total number of points organized in the k-d tree
+        real(real64), intent(in) :: query_point(n_dimensions)
+        !! Coordinate vector used as the center of the search
+        real(real64), intent(in) :: points(n_dimensions, n_points)
+        !! Ambient point matrix
+        real(real64), intent(in) :: r
+        !! Search radius
+        integer(int32), intent(in) :: dimension_order(n_dimensions)
+        !! Sequence of k-d tree split dimensions
+        integer(int32), intent(in) :: kd_indices(n_points)
+        !! K-d tree index sequence
+        integer(int32), intent(inout) :: tmp_stack(M_KD_STACK_ENTRY_SIZE, &
+                                                   M_KD_TRAVERSAL_STACK_DEPTH)
+        !! Preallocated k-d tree traversal stack
+        integer(int32), intent(out) :: n_neighbors
+        !! Number of points within the search radius
+
+        integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx
+        real(real64) :: distance, axis_delta
+
+        n_neighbors = 0_int32
+        stack_top = 1_int32
+
+        tmp_stack(1, 1) = 1_int32
+        tmp_stack(2, 1) = n_points
+        tmp_stack(3, 1) = 0_int32
+
+        do while (stack_top > 0_int32)
+            left_idx = tmp_stack(1, stack_top)
+            right_idx = tmp_stack(2, stack_top)
+            current_depth = tmp_stack(3, stack_top)
+            stack_top = stack_top - 1_int32
+
+            if (right_idx < left_idx) cycle
+
+            current_dim = dimension_order(mod(current_depth, n_dimensions) + 1_int32)
+            mid_idx = left_idx + (right_idx - left_idx)/2_int32
+            point_idx = kd_indices(mid_idx)
+
+            call euclidean_distance_impl(query_point, points(:, point_idx), &
+                                          n_dimensions, distance)
+
+            if (distance <= r) n_neighbors = n_neighbors + 1_int32
+
+            axis_delta = query_point(current_dim) - points(current_dim, point_idx)
+
+            if (axis_delta - r <= 0.0_real64) then
+                if (left_idx <= mid_idx - 1_int32) then
+                    stack_top = stack_top + 1_int32
+                    tmp_stack(1, stack_top) = left_idx
+                    tmp_stack(2, stack_top) = mid_idx - 1_int32
+                    tmp_stack(3, stack_top) = current_depth + 1_int32
+                end if
+            end if
+
+            if (axis_delta + r >= 0.0_real64) then
+                if (mid_idx + 1_int32 <= right_idx) then
+                    stack_top = stack_top + 1_int32
+                    tmp_stack(1, stack_top) = mid_idx + 1_int32
+                    tmp_stack(2, stack_top) = right_idx
+                    tmp_stack(3, stack_top) = current_depth + 1_int32
+                end if
+            end if
+        end do
+
+    end subroutine vicinity_vectors_count_helper
 
 end module f42_kd_tree_impl

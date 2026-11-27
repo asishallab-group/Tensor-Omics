@@ -42,3 +42,6 @@
 *.so
 *.dll
 *.dylib
+
+# Local STC experiment outputs (data and plots), never tracked.
+STC-experiments/
