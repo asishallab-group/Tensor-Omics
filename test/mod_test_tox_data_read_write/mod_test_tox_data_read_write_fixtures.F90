@@ -116,7 +116,7 @@ contains
     !> The layout of a 1-d array of strings: the type code is their length.
     subroutine write_strings_file(file_path, strings)
         character(*), intent(in) :: file_path
-        character(len=*), intent(in) :: strings(:)
+        character(len=*), intent(in), contiguous :: strings(:)
         integer(int32) :: unit, status
 
         call open_for_writing(file_path, unit, status)
@@ -129,7 +129,7 @@ contains
     !> The layout of a 1-d int32 array.
     subroutine write_integers_file(file_path, integers)
         character(*), intent(in) :: file_path
-        integer(int32), intent(in) :: integers(:)
+        integer(int32), intent(in), contiguous :: integers(:)
         integer(int32) :: unit, status
 
         call open_for_writing(file_path, unit, status)
