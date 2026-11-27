@@ -30,6 +30,7 @@ import hashlib
 from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
+from ..synthesize import binding_computes, is_derived, read_off_a_carrier, readable_owners
 from ..ir.errors import ErrorCatalogue
 from ..names import (
     BUFFER,
@@ -178,15 +179,19 @@ def _checks_integer_array(argument: CArgument) -> bool:
     numbers is an integer array to the contract, and its elements are checked here, in the
     one pass that converts them, rather than in R (`tox_int_in`). Not a single value, which R
     checks and converts itself, since it uses it; not an output or a work array; and not what
-    the binding works out or a producer computes, which are integers already -- nor a shape,
-    which the shim uses as an R vector, as the dim of what it allocates.
+    the binding works out or a producer computes in this tier, which are integers already --
+    an array the caller passes in place of a producer's, as a pair's expert takes its data
+    (E2), is checked like any -- nor a shape, which the shim uses as an R vector, as the dim of
+    what it allocates.
     """
     if argument.type.base is not BaseType.INTEGER or argument.intent is not Intent.IN:
         return False
     if not argument.is_array or argument.is_temporary:
         return False
-    roles = argument.source.roles if argument.source else None
-    return roles is None or not (roles.is_derived or roles.is_computed or roles.is_shape_arg)
+    source = argument.source
+    if source is None or source.roles is None:
+        return True
+    return not (is_derived(source, source.parent) or source.roles.is_shape_arg)
 
 
 
@@ -347,7 +352,7 @@ class CCallEmitter:
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived(argument)
+            and not self._is_derived(argument, wrapper)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -358,15 +363,15 @@ class CCallEmitter:
         return self._derived_value(argument, wrapper) is None
 
     @staticmethod
-    def _is_derived(argument: CArgument) -> bool:
-        """Whether C works this out itself, so it is not a parameter of the .Call entry."""
-        roles = argument.source.roles if argument.source else None
-        if roles is None:
+    def _is_derived(argument: CArgument, wrapper: CWrapper) -> bool:
+        """Whether C works this out itself, so it is not a parameter of the .Call entry.
+
+        What the binding derives in this tier (`synthesize.is_derived`) but does not compute
+        through a producer: R computes that and passes it in.
+        """
+        if argument.source is None:
             return False
-        if roles.is_computed:
-            return False
-        return (roles.is_inferable_extent or roles.is_inferable_shape_arg
-                or roles.is_mask_count)
+        return is_derived(argument, wrapper) and not binding_computes(argument, wrapper)
 
     # -- deriving extents, shapes, counts ---------------------------------------
 
@@ -423,7 +428,11 @@ class CCallEmitter:
             return f"tox_shape_of({roles.shape_of.name})"
 
         if roles.is_extent:
-            for owner in roles.extent_of:
+            if not read_off_a_carrier(argument, wrapper):
+                return None  # computed through its producer, and passed in by R (3a)
+            # off the carriers the binding reads it off, in its order (R4)
+            owners = readable_owners(argument, wrapper)
+            for owner in owners:
                 c_owner = wrapper.argument(owner.name)
                 if c_owner is None or c_owner.shape_arg is None:
                     continue
@@ -432,7 +441,7 @@ class CCallEmitter:
                     return f"(int) Rf_length({owner.name})"
                 return f'tox_int_extent("{owner.name}", tox_prod({c_owner.shape_arg}))'
             best = None
-            for owner in roles.extent_of:
+            for owner in owners:
                 c_owner = wrapper.argument(owner.name)
                 if c_owner is None or not c_owner.intent.is_input:
                     continue
@@ -683,7 +692,7 @@ class CCallEmitter:
         for argument in wrapper:
             if argument.intent.is_input and not argument.is_temporary:
                 continue
-            if self._is_derived(argument) and argument.intent.is_input:
+            if self._is_derived(argument, wrapper) and argument.intent.is_input:
                 continue
             for line in self._new_value(argument):
                 lines.line(line)

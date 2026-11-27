@@ -382,15 +382,31 @@ class Project(Entity):
 
     entity_kind: ClassVar[str] = "project"
 
-    def __init__(self, modules: Sequence[Module] = (), name: str = ""):
+    def __init__(self, modules: Sequence[Module] = (), name: str = "",
+                 evaluator: ConstantEvaluator | None = None):
         self.name = name
         # sorted, so generated output does not depend on filesystem order
         self.modules = tuple(sorted(modules, key=lambda m: m.name.lower()))
         self.doc = Doc()
         self.location = SourceLocation()
         self.parent = None
+        #: the project's one constant evaluator (`evaluator`), handed on by synthesis to the
+        #: project it builds, whose constants are the same
+        self._evaluator = evaluator
 
         self._adopt(self.modules)
+
+    def evaluator(self) -> ConstantEvaluator:
+        """The one `ConstantEvaluator` of this project, over `constant_values`, built once.
+
+        Everything that resolves a `DM_OUTPUT_FROM` producer-input cell asks this one: synthesis
+        keying a producer call (rule K), `roles` building the plans, `validate` and the emitters
+        recomputing what `foo` takes over. With two evaluators `foo`'s body could disagree with
+        its signature.
+        """
+        if self._evaluator is None:
+            self._evaluator = ConstantEvaluator(self.constant_values())
+        return self._evaluator
 
     def module(self, name: str) -> Module | None:
         lowered = name.lower()
