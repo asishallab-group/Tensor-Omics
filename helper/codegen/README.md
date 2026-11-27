@@ -307,7 +307,8 @@ The parts a source author does not need, and a generator maintainer does:
   `DM_OUTPUT_FROM(..., AUTO)` value — or where its prologue asks for an argument of its own,
   two wrappers are generated: `foo`, which prepares all of that and calls the implementation,
   and `foo_expert`, which validates and calls it with exactly what you supply, preparing
-  nothing. Where there is nothing to take over there is **one** wrapper and it is called `foo`,
+  nothing in Fortran and C (the Python and R expert still compute the sizes they allocate by,
+  `synthesize.binding_computes`). Where there is nothing to take over there is **one** wrapper and it is called `foo`,
   there being no second tier for an `_expert` name to distinguish it from — nearly half the
   wrappers in the tree today. Naming the lone one `foo_expert` unconditionally would generate,
   compile and bind perfectly well, and quietly rename every entry point that has no work arrays.
@@ -486,9 +487,12 @@ The parts a source author does not need, and a generator maintainer does:
   indistinguishable to a reader. The parts are stored with identifiers in backticks and
   rendered per language: Python keeps them, R turns them into `\code{}`. Where `foo` only
   validates and allocates, `foo_expert` does not reach a language at all
-  (`SynthesisResult.expert_only_in_fortran`, applied once in `generate`): the binding allocates
-  the work arrays and computes the `DM_OUTPUT_FROM` sizes for both tiers, so the two would be
-  the same call under a name promising control over it. Fortran and C keep both, because there
+  (`SynthesisResult.expert_only_in_fortran`, applied once in `generate`, after the semantic
+  pass): the binding allocates the work arrays and computes the `DM_OUTPUT_FROM` sizes for both
+  tiers, and in the plain tier data too where `foo` keeps it (where `foo` takes it over, its
+  Fortran computes it), so the two would be the same call under a name
+  promising control over it. An expert whose plain tier computes data the expert takes from the
+  caller -- an array a producer fills -- is published (`synthesize.alloc_does_more`). Fortran and C keep both, because there
   the expert tier really does hand the buffers over.
 - **The package's top level is the whole Python API** (#221 C). `tensor_omics/__init__.py`
   re-exports every procedure and everything the error module defines: each `ERR_*` and `STAT_*`

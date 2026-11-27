@@ -438,3 +438,133 @@ class TestTheTargetsTrimTheSameAxis:
         else:
             leading = ", " * (rank - 1)
             assert r == f".result$found[{leading}seq_len(.result$n_found), drop = FALSE]"
+
+
+FIXTURE_IMPL = Path("helper/codegen/tests/fixtures/impl")
+
+
+@pytest.fixture(scope="module")
+def impl_published():
+    """The implementation fixtures' binding as Python and R publish it, the empty experts gone.
+
+    These are where the producers that fill an array live, and with them every AUTO value a
+    generated expert computes in one tier and takes as a parameter in another (E2).
+    """
+    from codegen.generate import _published_to_the_languages
+
+    bag = DiagnosticBag()
+    parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=FIXTURE_IMPL), bag).parse()
+    synthesis = synthesize_wrappers(parsed.project, CONVENTIONS, bag)
+    analyse_project(synthesis.project, bag)
+    validate_project(synthesis.project, bag)
+    built = build_project(synthesis.project, bag)
+    assert bag.errors == (), bag.render()
+    return _published_to_the_languages(built, synthesis)
+
+
+def _call_arity(r_function: str) -> tuple[str, int]:
+    """The `.Call` an R function makes: the entry point's name, and how many arguments it passes."""
+    import re
+
+    match = re.search(r'\.Call\("(\w+)"((?:, [\w.]+)*)\)', r_function)
+    assert match, r_function
+    return match.group(1), len([a for a in match.group(2).split(", ") if a])
+
+
+class TestEveryPublishedBindingAgrees:
+    """For every published binding of every fixture: what R passes is what the shim registers,
+    nothing a caller passes is computed or derived over, and nothing is both asked and derived.
+
+    The E2 attack's prototype broke every one of these with the sites it did not route: R took
+    `norms` and then overwrote it with the producer's, and called a `.Call` registered with two
+    arguments with three. `test_parameters_reach_the_call.py` runs them, a sentinel for every
+    parameter.
+    """
+
+    @pytest.fixture(params=["src", "impl"])
+    def published(self, request, binding, impl_published):
+        return binding if request.param == "src" else impl_published
+
+    def test_r_passes_what_the_shim_registers(self, published):
+        import re
+
+        r, c = RWrapperEmitter(), CCallEmitter()
+        registered = dict(re.findall(r'\{"(\w+)", \(DL_FUNC\) &\w+, (\d+)\}',
+                                     c.registration(list(published))))
+        divergent = {}
+        for wrapper in _wrappers(published):
+            name, passed = _call_arity(r.function(wrapper.with_constant_sizes_evaluated()))
+            if int(registered[name]) != passed:
+                divergent[name] = (passed, registered[name])
+
+        assert not divergent, f"R passes, the shim registers: {divergent}"
+
+    def test_no_parameter_is_computed_or_derived_over(self, published):
+        from codegen.emit.producer_calls import auto_plans
+
+        python, r = PythonEmitter(), RWrapperEmitter()
+        overwritten = {}
+        for wrapper in _wrappers(published):
+            computed = {argument.name for argument, _ in auto_plans(wrapper)}
+            derived = {a.name for a in wrapper if python._extent_expression(a, wrapper)}
+            for language, emitter in (("python", python), ("r", r)):
+                asked = set(_names(emitter._inputs(wrapper)))
+                if asked & (computed | derived):
+                    overwritten[(language, wrapper.stripped_name)] = sorted(
+                        asked & (computed | derived))
+
+        assert not overwritten, f"asked for and then overwritten: {overwritten}"
+
+    def test_python_and_r_ask_for_the_same_arguments(self, published):
+        python, r = PythonEmitter(), RWrapperEmitter()
+
+        divergent = {
+            wrapper.stripped_name: (_names(python._inputs(wrapper)), _names(r._inputs(wrapper)))
+            for wrapper in _wrappers(published)
+            if _names(python._inputs(wrapper)) != _names(r._inputs(wrapper))
+        }
+
+        assert not divergent, divergent
+
+    def test_the_premise_a_published_expert_takes_an_array_a_producer_fills(self, impl_published):
+        python = PythonEmitter()
+        expert = next(w for w in _wrappers(impl_published)
+                      if w.stripped_name == "fx_norm_rank_expert")
+
+        assert "norms" in _names(python._inputs(expert))
+
+
+class TestTierNotesListWhatTheLanguagePublishes:
+    """R5: the Python and R note names the parameters that language's expert takes and its plain
+    tier does not -- not the C arguments, whose work arrays and sizes both tiers of a binding
+    prepare themselves -- and says a value a producer computes before the permutation sorted by
+    it."""
+
+    def notes(self, impl_published):
+        from codegen.emit.doc_tiers import build
+        from codegen.frontend.ford_frontend import FordFrontend
+
+        bag = DiagnosticBag()
+        parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=FIXTURE_IMPL), bag).parse()
+        specs = synthesize_wrappers(parsed.project, CONVENTIONS, bag).specs
+        return build(impl_published, specs, CONVENTIONS)
+
+    def test_a_computed_value_comes_before_the_permutation(self, impl_published):
+        lines = self.notes(impl_published)["fx_norm_rank_expert"].lines("`{}`")
+
+        assert lines == [
+            "The expert entry point: you supply `norms` and `norms_perm` yourself.",
+            "`fx_norm_rank` computes `norms` with `fx_column_norms` and seeds `norms_perm` and "
+            "sorts it by `norms`.",
+        ]
+
+    def test_work_arrays_and_sizes_are_not_listed(self, impl_published):
+        notes = self.notes(impl_published)
+
+        assert notes["fx_pos_sum_expert"].lines("`{}`")[0] == \
+            "The expert entry point: you supply `values_perm` yourself."
+        assert notes["fx_clip_expert"].lines("`{}`") == [
+            "The expert entry point: you supply `level` yourself.",
+            "`fx_clip` computes `level` for you and runs `fx_clip_guard` first, which may answer "
+            "the call outright.",
+        ]

@@ -492,14 +492,16 @@ def _is_supplied_by_the_caller(argument, wrapper) -> bool:
     """Whether the bindings ask the caller for this scalar integer, rather than working it out.
 
     The rule each emitter's signature applies: an input that is no work array, not derived
-    from another argument or a producer (`roles.is_derived`), and, where only C has it (an
-    extent or a length the C wrapper adds), one that sizes no input it could be read off.
+    from another argument or a producer in this tier (`synthesize.is_derived`), and, where only
+    C has it (an extent or a length the C wrapper adds), one that sizes no input it could be
+    read off.
     """
+    from ..synthesize import is_derived  # local: synthesize sits above the ABI
+
     if (argument.is_error or argument.is_array or argument.is_temporary
             or argument.intent is not Intent.IN or argument.type.base is not BaseType.INTEGER):
         return False
-    roles = argument.source.roles if argument.source else None
-    if roles is not None and roles.is_derived:
+    if argument.source is not None and is_derived(argument, wrapper):
         return False
     if argument.is_synthesised:
         owner = wrapper.argument(argument.sizes)
