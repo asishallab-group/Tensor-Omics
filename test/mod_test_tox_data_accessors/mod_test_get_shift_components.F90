@@ -3,11 +3,12 @@
 !| index outside 1..n_genes (ERR_INVALID_INPUT), fewer than 2d rows, and an `out_start` or an
 !| `out_shift` of another length than d (ERR_SIZE_MISMATCH), the gene index first.
 !|
-!| A `shift_vectors` with more than 2d rows is accepted today (the rows past 2d are ignored);
-!| the documentation does not say whether it should be, so that is not pinned here.
+!| A `shift_vectors` with more than 2d rows is accepted today (the rows past 2d are ignored); the
+!| documentation does not say whether it should be, so that is pinned as an open question.
 module mod_test_get_shift_components
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_negative_inf, ieee_is_nan
     use tox_data_accessors, only: get_shift_components
     use tox_errors
     use test_suite, only: test_case
@@ -22,12 +23,15 @@ contains
     function get_all_tests_get_shift_components() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(5))
+        allocate (all_tests(7))
         all_tests(1) = test_case("test_get_shift_components_values", test_get_shift_components_values)
         all_tests(2) = test_case("test_get_shift_components_gene_bound", test_get_shift_components_gene_bound)
         all_tests(3) = test_case("test_get_shift_components_rows", test_get_shift_components_rows)
         all_tests(4) = test_case("test_get_shift_components_lengths", test_get_shift_components_lengths)
         all_tests(5) = test_case("test_get_shift_components_no_sample", test_get_shift_components_no_sample)
+        all_tests(6) = test_case("test_get_shift_components_more_rows", test_get_shift_components_more_rows)
+        all_tests(7) = test_case("test_get_shift_components_copies_non_finite", &
+                                 test_get_shift_components_copies_non_finite)
     end function get_all_tests_get_shift_components
 
     !> Each gene's start and shift, as the fixture writes them: g1 starts at family 2's
@@ -116,4 +120,38 @@ contains
         call get_shift_components(1, shifts, 0, start, shift, ierr)
         call assert_err(ierr, ERR_OK, "test_get_shift_components_no_sample")
     end subroutine test_get_shift_components_no_sample
+
+    !> Pins today's behaviour, an open question for the maintainer: `shift_vectors` with more than
+    !| 2d rows is accepted; the start is rows 1..d and the shift rows d+1..2d, the rows past 2d
+    !| are ignored. The documentation does not say whether it should be refused.
+    subroutine test_get_shift_components_more_rows()
+        real(real64) :: shifts(2*N_SAMPLES + 1, N_GENES), start(N_SAMPLES), shift(N_SAMPLES), expected(N_SAMPLES)
+        integer(int32) :: ierr
+
+        shifts(1:2*N_SAMPLES, :) = shift_vectors()
+        shifts(2*N_SAMPLES + 1, :) = 999.0_real64
+        call get_shift_components(1, shifts, N_SAMPLES, start, shift, ierr)
+        call assert_err(ierr, ERR_OK, "test_get_shift_components_more_rows: ierr")
+        expected = [201.0_real64, 202.0_real64]
+        call assert_equal_array_real(start, expected, N_SAMPLES, 0.0_real64, "test_get_shift_components_more_rows: start")
+        expected = [-13.0_real64, -14.0_real64]
+        call assert_equal_array_real(shift, expected, N_SAMPLES, 0.0_real64, "test_get_shift_components_more_rows: shift")
+    end subroutine test_get_shift_components_more_rows
+
+    !> Pins today's behaviour, an open question for the maintainer: the accessors copy what is
+    !| stored, NaN and Inf included, with ERR_OK (TOX refuses NaN and Inf as analysis input; the
+    !| accessors do not look).
+    subroutine test_get_shift_components_copies_non_finite()
+        real(real64) :: shifts(2*N_SAMPLES, N_GENES), start(N_SAMPLES), shift(N_SAMPLES)
+        integer(int32) :: ierr
+
+        shifts = shift_vectors()
+        shifts(1, 1) = ieee_value(1.0_real64, ieee_quiet_nan)
+        shifts(4, 1) = ieee_value(1.0_real64, ieee_negative_inf)
+        call get_shift_components(1, shifts, N_SAMPLES, start, shift, ierr)
+        call assert_err(ierr, ERR_OK, "test_get_shift_components_copies_non_finite: ierr")
+        call assert_true(ieee_is_nan(start(1)), "test_get_shift_components_copies_non_finite: the NaN")
+        call assert_true(shift(2) == ieee_value(1.0_real64, ieee_negative_inf), &
+                         "test_get_shift_components_copies_non_finite: the -Inf")
+    end subroutine test_get_shift_components_copies_non_finite
 end module mod_test_get_shift_components

@@ -5,6 +5,7 @@
 module mod_test_get_family_centroid
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_negative_inf, ieee_is_nan
     use tox_data_accessors, only: get_family_centroid
     use tox_errors
     use test_suite, only: test_case
@@ -19,11 +20,13 @@ contains
     function get_all_tests_get_family_centroid() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(4))
+        allocate (all_tests(5))
         all_tests(1) = test_case("test_get_family_centroid_values", test_get_family_centroid_values)
         all_tests(2) = test_case("test_get_family_centroid_family_bound", test_get_family_centroid_family_bound)
         all_tests(3) = test_case("test_get_family_centroid_length", test_get_family_centroid_length)
         all_tests(4) = test_case("test_get_family_centroid_no_sample", test_get_family_centroid_no_sample)
+        all_tests(5) = test_case("test_get_family_centroid_copies_non_finite", &
+                                 test_get_family_centroid_copies_non_finite)
     end function get_all_tests_get_family_centroid
 
     !> Kept from the old `test_data_accessors` (family 2's centroid of the shipped data, compared
@@ -86,4 +89,21 @@ contains
         call get_family_centroid(1, centroids, centroid, ierr)
         call assert_err(ierr, ERR_OK, "test_get_family_centroid_no_sample")
     end subroutine test_get_family_centroid_no_sample
+
+    !> Pins today's behaviour, an open question for the maintainer: the accessors copy what is
+    !| stored, NaN and Inf included, with ERR_OK (TOX refuses NaN and Inf as analysis input; the
+    !| accessors do not look).
+    subroutine test_get_family_centroid_copies_non_finite()
+        real(real64) :: centroids(N_SAMPLES, N_FAMILIES), centroid(N_SAMPLES)
+        integer(int32) :: ierr
+
+        centroids = family_centroids()
+        centroids(1, 1) = ieee_value(1.0_real64, ieee_negative_inf)
+        centroids(2, 1) = ieee_value(1.0_real64, ieee_quiet_nan)
+        call get_family_centroid(1, centroids, centroid, ierr)
+        call assert_err(ierr, ERR_OK, "test_get_family_centroid_copies_non_finite: ierr")
+        call assert_true(centroid(1) == ieee_value(1.0_real64, ieee_negative_inf), &
+                         "test_get_family_centroid_copies_non_finite: the -Inf")
+        call assert_true(ieee_is_nan(centroid(2)), "test_get_family_centroid_copies_non_finite: the NaN")
+    end subroutine test_get_family_centroid_copies_non_finite
 end module mod_test_get_family_centroid

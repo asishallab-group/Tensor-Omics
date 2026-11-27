@@ -4,6 +4,7 @@
 module mod_test_get_expression_vector
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_is_nan
     use tox_data_accessors, only: get_expression_vector
     use tox_errors
     use test_suite, only: test_case
@@ -18,11 +19,13 @@ contains
     function get_all_tests_get_expression_vector() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(4))
+        allocate (all_tests(5))
         all_tests(1) = test_case("test_get_expression_vector_values", test_get_expression_vector_values)
         all_tests(2) = test_case("test_get_expression_vector_gene_bound", test_get_expression_vector_gene_bound)
         all_tests(3) = test_case("test_get_expression_vector_length", test_get_expression_vector_length)
         all_tests(4) = test_case("test_get_expression_vector_no_sample", test_get_expression_vector_no_sample)
+        all_tests(5) = test_case("test_get_expression_vector_copies_non_finite", &
+                                 test_get_expression_vector_copies_non_finite)
     end function get_all_tests_get_expression_vector
 
     !> Each gene's column, [10*j + 1, 10*j + 2]: [11, 12], [21, 22], [31, 32].
@@ -82,4 +85,21 @@ contains
         call get_expression_vector(1, expression, vector, ierr)
         call assert_err(ierr, ERR_OK, "test_get_expression_vector_no_sample")
     end subroutine test_get_expression_vector_no_sample
+
+    !> Pins today's behaviour, an open question for the maintainer: the accessors copy what is
+    !| stored, NaN and Inf included, with ERR_OK (TOX refuses NaN and Inf as analysis input; the
+    !| accessors do not look).
+    subroutine test_get_expression_vector_copies_non_finite()
+        real(real64) :: expression(N_SAMPLES, N_GENES), vector(N_SAMPLES)
+        integer(int32) :: ierr
+
+        expression = expression_vectors()
+        expression(1, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
+        expression(2, 2) = ieee_value(1.0_real64, ieee_positive_inf)
+        call get_expression_vector(2, expression, vector, ierr)
+        call assert_err(ierr, ERR_OK, "test_get_expression_vector_copies_non_finite: ierr")
+        call assert_true(ieee_is_nan(vector(1)), "test_get_expression_vector_copies_non_finite: the NaN")
+        call assert_true(vector(2) == ieee_value(1.0_real64, ieee_positive_inf), &
+                         "test_get_expression_vector_copies_non_finite: the +Inf")
+    end subroutine test_get_expression_vector_copies_non_finite
 end module mod_test_get_expression_vector
