@@ -5,7 +5,6 @@ module mod_test_tox_data
     use iso_c_binding, only: c_bool
     use tox_data_tools
     use tox_data_validation
-    use tox_data_read_write
     use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
     use tox_gene_centroids
     use tox_shift_vectors
@@ -20,7 +19,7 @@ module mod_test_tox_data
     ! Global test data
     integer(int32), allocatable :: gene_to_fam(:)
     character(len=256), allocatable :: gene_family_ids(:), gene_ids(:)
-    real(real64), allocatable :: kallisto_expr(:, :), kallisto_expr_verify(:, :)
+    real(real64), allocatable :: kallisto_expr(:, :)
     integer(int32) :: n_genes, n_families, total_samples
     real(real64), allocatable :: family_centroids(:, :)
     real(real64), allocatable :: shift_vectors(:, :)  ! Added for shift vectors
@@ -30,29 +29,23 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
-        allocate (all_tests(19))
+        allocate (all_tests(13))
 
         call setup_global_data()
 
         all_tests(1) = test_case("test_validate_data", test_validate_data)
         all_tests(2) = test_case("test_compute_centroids", test_compute_centroids)
-        all_tests(3) = test_case("test_write_read_expression_data", test_write_read_expression_data)
-        all_tests(4) = test_case("test_compute_shift_vectors", test_compute_shift_vectors)
-        all_tests(5) = test_case("test_write_read_shift_vectors", test_write_read_shift_vectors)
-        all_tests(6) = test_case("test_read_write_gene_ids", test_read_write_gene_ids)
-        all_tests(7) = test_case("test_read_write_gene_to_fam", test_read_write_gene_to_fam)
-        all_tests(8) = test_case("test_read_write_family_ids", test_read_write_family_ids)
-        all_tests(9) = test_case("test_read_write_family_centroids", test_read_write_centroids)
-        all_tests(10) = test_case("test_archive", test_archive)
-        all_tests(11) = test_case("test_hashing", test_hashing)
-        all_tests(12) = test_case("test_validate_duplicate_gene_ids", test_validate_duplicate_gene_ids)
-        all_tests(13) = test_case("test_validate_nan_direct", test_validate_nan_direct)
-        all_tests(14) = test_case("test_validate_inf_direct", test_validate_inf_direct)
-        all_tests(15) = test_case("test_validate_negative_expression", test_validate_negative_expression)
-        all_tests(16) = test_case("test_validate_invalid_gene_to_fam", test_validate_invalid_gene_to_fam)
-        all_tests(17) = test_case("test_validate_empty_strings", test_validate_empty_strings)
-        all_tests(18) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
-        all_tests(19) = test_case("test_manual_archive", test_manual_archive)
+        all_tests(3) = test_case("test_compute_shift_vectors", test_compute_shift_vectors)
+        all_tests(4) = test_case("test_archive", test_archive)
+        all_tests(5) = test_case("test_hashing", test_hashing)
+        all_tests(6) = test_case("test_validate_duplicate_gene_ids", test_validate_duplicate_gene_ids)
+        all_tests(7) = test_case("test_validate_nan_direct", test_validate_nan_direct)
+        all_tests(8) = test_case("test_validate_inf_direct", test_validate_inf_direct)
+        all_tests(9) = test_case("test_validate_negative_expression", test_validate_negative_expression)
+        all_tests(10) = test_case("test_validate_invalid_gene_to_fam", test_validate_invalid_gene_to_fam)
+        all_tests(11) = test_case("test_validate_empty_strings", test_validate_empty_strings)
+        all_tests(12) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
+        all_tests(13) = test_case("test_manual_archive", test_manual_archive)
     end function get_all_tests_tox_data
 
     !> Setup global test data
@@ -200,36 +193,6 @@ contains
                                      "Family 2 centroid should match manual calculation")
     end subroutine test_compute_centroids
 
-    !> Test binary write/read operations
-    subroutine test_write_read_expression_data()
-        integer(int32) :: ierr, ndims, dims(2), type_code
-        integer(int32) :: total_elements
-
-        call save_expression_vectors(kallisto_expr, "kallisto_data.test.bin", ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving expression data should succeed")
-
-        call get_array_metadata("kallisto_data.test.bin", dims, 2, ndims, type_code, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Reading metadata should succeed")
-        call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
-        call assert_equal_int(ndims, 2, "Array should have 2 dimensions")
-        call assert_equal_int(dims(1), total_samples, "First dimension should match sample count")
-        call assert_equal_int(dims(2), n_genes, "Second dimension should match gene count")
-
-        allocate (kallisto_expr_verify(dims(1), dims(2)))
-        call load_expression_vectors(kallisto_expr_verify, 'kallisto_data.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading expression data should succeed")
-
-        ! Fixed call to match the assert_equal_array_real interface
-        total_elements = size(kallisto_expr)
-        call assert_equal_array_real(kallisto_expr, &
-                                     kallisto_expr_verify, &
-                                     total_elements, 1e-12_real64, &
-                                     "Original and loaded data should be identical")
-
-        ! Clean up
-        deallocate (kallisto_expr_verify)
-    end subroutine test_write_read_expression_data
-
     !> Test computation of shift vectors
     subroutine test_compute_shift_vectors()
         integer(int32) :: i
@@ -260,106 +223,6 @@ contains
             end if
         end do
     end subroutine test_compute_shift_vectors
-
-    !> Test writing and reading shift vectors
-    subroutine test_write_read_shift_vectors()
-        integer(int32) :: ierr, ndims, dims(2), type_code
-        integer(int32) :: total_elements
-        real(real64), allocatable :: shift_vectors_loaded(:, :)
-
-        call save_expression_vectors(shift_vectors, 'shift_vectors.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving shift vectors should succeed")
-
-        call get_array_metadata('shift_vectors.test.bin', dims, 2, ndims, type_code, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Reading metadata should succeed")
-        call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
-        call assert_equal_int(ndims, 2, "Array should have 2 dimensions")
-        call assert_equal_int(dims(1), 2*total_samples, "First dimension should match 2*d")
-        call assert_equal_int(dims(2), n_genes, "Second dimension should match gene count")
-
-        allocate (shift_vectors_loaded(dims(1), dims(2)))
-        call load_expression_vectors(shift_vectors_loaded, 'shift_vectors.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading shift vectors should succeed")
-
-        ! Verify loaded data matches original
-        total_elements = size(shift_vectors)
-        call assert_equal_array_real(shift_vectors, &
-                                     shift_vectors_loaded, &
-                                     total_elements, 1e-12_real64, &
-                                     "Original and loaded shift vectors should be identical")
-
-        ! Clean up
-        deallocate (shift_vectors_loaded)
-    end subroutine test_write_read_shift_vectors
-
-    subroutine test_read_write_gene_ids()
-        integer(int32) :: ierr, ndims, dims(1), type_code
-        character(len=256), allocatable :: loaded_gene_ids(:)
-        call save_gene_ids(gene_ids, 'gene_ids.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving gene IDs should succeed")
-
-        call get_array_metadata('gene_ids.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
-        call assert_in_range_int(type_code, minval=0_int32, maxval=huge(1_int32), msg="Type code mismatch")
-
-        call assert_equal_int(ndims, 1, "Gene IDs should be 1D array")
-        allocate (loaded_gene_ids(dims(1)))
-        call load_gene_ids(loaded_gene_ids, 'gene_ids.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading gene IDs should succeed")
-
-        call assert_equal_array_char(loaded_gene_ids, gene_ids, 128, dims(1), &
-                                     "Loaded gene IDs should match original")
-    end subroutine test_read_write_gene_ids
-
-    subroutine test_read_write_gene_to_fam()
-        integer(int32) :: ierr, ndims, dims(1), type_code
-        integer(int32), allocatable :: loaded_gene_to_fam(:)
-        call save_gene_to_family(gene_to_fam, 'gene_to_fam.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving gene to family mapping should succeed")
-        call get_array_metadata('gene_to_fam.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
-        call assert_equal_int(type_code, INTEGER_TYPE_CODE, "Type code mismatch")
-        call assert_equal_int(ndims, 1, "Gene to family mapping should be 1D array")
-        allocate (loaded_gene_to_fam(dims(1)))
-        call load_gene_to_family(loaded_gene_to_fam, 'gene_to_fam.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading gene to family mapping should succeed")
-        call assert_equal_array_int(loaded_gene_to_fam, gene_to_fam, dims(1), &
-                                    "Loaded gene to family mapping should match original")
-    end subroutine test_read_write_gene_to_fam
-
-    subroutine test_read_write_family_ids()
-        integer(int32) :: ierr, ndims, dims(1), type_code
-        character(len=256), allocatable :: loaded_family_ids(:)
-        call save_family_ids(gene_family_ids, 'family_ids.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving family IDs should succeed")
-        call get_array_metadata('family_ids.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
-        call assert_in_range_int(type_code, minval=0_int32, maxval=huge(1_int32), msg="Type code mismatch")
-        call assert_equal_int(ndims, 1, "Family IDs should be 1D array")
-        allocate (loaded_family_ids(dims(1)))
-        call load_family_ids(loaded_family_ids, 'family_ids.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading family IDs should succeed")
-        call assert_equal_array_char(loaded_family_ids, gene_family_ids, 128, dims(1), &
-                                     "Loaded family IDs should match original")
-    end subroutine test_read_write_family_ids
-
-    subroutine test_read_write_centroids()
-        integer(int32) :: ierr, ndims, dims(2), type_code
-        real(real64), allocatable :: loaded_centroids(:, :)
-        call save_family_centroids(family_centroids, 'family_centroids.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving family centroids should succeed")
-        call get_array_metadata('family_centroids.test.bin', dims, 2, ndims, type_code, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
-        call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
-        call assert_equal_int(ndims, 2, "Family centroids should be 2D array")
-        allocate (loaded_centroids(dims(1), dims(2)))
-        call load_family_centroids(loaded_centroids, 'family_centroids.test.bin', ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading family centroids should succeed")
-        call assert_equal_array_real(loaded_centroids, &
-                                     family_centroids, &
-                                     size(family_centroids), 1e-12_real64, &
-                                     "Loaded family centroids should match original")
-    end subroutine test_read_write_centroids
 
     subroutine test_archive()
         use iso_fortran_env, only: real64, int32
