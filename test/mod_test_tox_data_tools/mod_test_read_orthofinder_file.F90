@@ -27,7 +27,7 @@ contains
     function get_all_tests_read_orthofinder_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(7))
+        allocate (all_tests(8))
         all_tests(1) = test_case("test_read_orthofinder_file_families", test_read_orthofinder_file_families)
         all_tests(2) = test_case("test_read_orthofinder_file_skips_the_header", test_read_orthofinder_file_skips_the_header)
         all_tests(3) = test_case("test_read_orthofinder_file_empty_species_columns", &
@@ -38,6 +38,8 @@ contains
         all_tests(6) = test_case("test_read_orthofinder_file_shipped_material", test_read_orthofinder_file_shipped_material)
         all_tests(7) = test_case("test_read_orthofinder_file_reads_a_long_line_whole", &
                                  test_read_orthofinder_file_reads_a_long_line_whole)
+        all_tests(8) = test_case("test_read_orthofinder_file_skips_a_blank_line", &
+                                 test_read_orthofinder_file_skips_a_blank_line)
     end function get_all_tests_read_orthofinder_file
 
     !> Three families over two species. A gene's index is its family's line (OG7 is family 1,
@@ -225,4 +227,30 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_orthofinder_file_reads_a_long_line_whole
+
+    !> BUG (fails today): a line with fewer than two fields is skipped, but counted as a family
+    !| first, so a blank line between OG1 and OG2 leaves family_ids(2) unwritten and puts OG2's
+    !| genes in family 3, with ERR_OK. (family_ids has room for three here; with exactly two the
+    !| same file writes past its end and aborts a bounds-checked run, which is evidence of this
+    !| batch, not a case.) The reader has to refuse the line, or skip it without counting it.
+    subroutine test_read_orthofinder_file_skips_a_blank_line()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: family_ids(3)
+        integer(int32) :: gene_to_fam(2), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_blank_line")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//LF//"OG2"//TAB//"g2"//LF)
+        gene_ids = ["g1", "g2"]
+        family_ids = "UNSET"
+
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_true(is_err(ierr) .or. (gene_to_fam(2) == 2 .and. family_ids(2) == "OG2"), &
+                         "test_read_orthofinder_file_skips_a_blank_line: g2 in family "//gene_to_fam(2)// &
+                         ", family 2 '"//trim(family_ids(2))//"', with ERR_OK")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_skips_a_blank_line
 end module mod_test_read_orthofinder_file
