@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(14))
+        allocate (all_tests(15))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -51,6 +51,8 @@ contains
                                   test_read_gene_ids_from_tsv_file_gene_col_bound)
         all_tests(14) = test_case("test_read_gene_ids_from_tsv_file_trailing_blank_lines", &
                                   test_read_gene_ids_from_tsv_file_trailing_blank_lines)
+        all_tests(15) = test_case("test_read_gene_ids_from_tsv_file_line_endings", &
+                                  test_read_gene_ids_from_tsv_file_line_endings)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -404,4 +406,35 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_trailing_blank_lines
+
+    !> Line endings: ids of CR LF lines carry no CR, and neither does a last id ended by a lone CR;
+    !| a line of blanks and tabs at the end is no row; a header-only file without a final line
+    !| ending is a file of no data row (ERR_EMPTY_INPUT naming filename, argument 1).
+    subroutine test_read_gene_ids_from_tsv_file_line_endings()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: tsv
+        character(len=8) :: gene_ids(2), expected(2)
+        integer(int32) :: ierr
+        character(len=1), parameter :: CR = char(13)
+
+        call create_scratch_directory(scratch, "gene_ids_line_endings")
+        tsv = scratch_file(scratch, "genes.tsv")
+        expected = ["g1", "g2"]
+        call write_scratch_file(tsv, "id"//CR//LF//"g1"//CR//LF//"g2"//CR//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_line_endings: CR LF")
+        call assert_equal_array_char(gene_ids, expected, 8, 2, "test_read_gene_ids_from_tsv_file_line_endings: CR LF")
+        call write_scratch_file(tsv, "id"//LF//"g1"//LF//"g2"//CR)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_line_endings: CR at the end")
+        call assert_equal_array_char(gene_ids, expected, 8, 2, "test_read_gene_ids_from_tsv_file_line_endings: CR at the end")
+        call write_scratch_file(tsv, "id"//LF//"g1"//LF//"g2"//LF//TAB//LF//" "//TAB//" "//LF)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_line_endings: blanks and tabs")
+        call write_scratch_file(tsv, "id"//TAB//"a")
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_gene_ids_from_tsv_file_line_endings: header only, no line ending", 1)
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_line_endings
 end module mod_test_read_gene_ids_from_tsv_file

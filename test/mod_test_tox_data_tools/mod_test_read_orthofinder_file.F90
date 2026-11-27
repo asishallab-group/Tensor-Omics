@@ -27,7 +27,7 @@ contains
     function get_all_tests_read_orthofinder_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(10))
+        allocate (all_tests(11))
         all_tests(1) = test_case("test_read_orthofinder_file_families", test_read_orthofinder_file_families)
         all_tests(2) = test_case("test_read_orthofinder_file_skips_the_header", test_read_orthofinder_file_skips_the_header)
         all_tests(3) = test_case("test_read_orthofinder_file_empty_species_columns", &
@@ -44,6 +44,8 @@ contains
                                  test_read_orthofinder_file_checks_the_sizes)
         all_tests(10) = test_case("test_read_orthofinder_file_family_lines", &
                                   test_read_orthofinder_file_family_lines)
+        all_tests(11) = test_case("test_read_orthofinder_file_line_endings", &
+                                  test_read_orthofinder_file_line_endings)
     end function get_all_tests_read_orthofinder_file
 
     !> Three families over two species. A gene's index is its family's line (OG7 is family 1,
@@ -338,4 +340,37 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_orthofinder_file_family_lines
+
+    !> Line endings and blank lines of blanks and tabs: of CR LF lines, and with a lone CR ending the
+    !| file, the last gene of a line carries no CR; a line of blanks and tabs is skipped like an
+    !| empty one, between families and at the end.
+    subroutine test_read_orthofinder_file_line_endings()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: family_ids(2)
+        integer(int32) :: gene_to_fam(2), expected(2), ierr
+        character(len=1), parameter :: CR = char(13)
+
+        call create_scratch_directory(scratch, "orthofinder_line_endings")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        gene_ids = ["g1", "g2"]
+        expected = [1, 2]
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//CR//LF//"OG1"//TAB//"g1"//CR//LF// &
+                                "OG2"//TAB//"g2"//CR//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_line_endings: CR LF")
+        call assert_equal_array_int(gene_to_fam, expected, 2, "test_read_orthofinder_file_line_endings: CR LF")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//"OG2"//TAB//"g2"//CR)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_line_endings: CR at the end")
+        call assert_equal_array_int(gene_to_fam, expected, 2, "test_read_orthofinder_file_line_endings: CR at the end")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//TAB//" "//LF// &
+                                "OG2"//TAB//"g2"//LF//TAB//TAB//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_line_endings: blanks and tabs")
+        call assert_equal_array_int(gene_to_fam, expected, 2, "test_read_orthofinder_file_line_endings: blanks and tabs")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_line_endings
 end module mod_test_read_orthofinder_file

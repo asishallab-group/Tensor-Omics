@@ -11,7 +11,7 @@
 !| shows.
 module mod_test_read_expression_vectors_tsv
     use asserts
-    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_fortran_env, only: real64, int32, int64
     use tox_data_tools, only: read_expression_vectors_tsv
     use tox_errors
     use test_suite, only: test_case
@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(27))
+        allocate (all_tests(29))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -77,6 +77,10 @@ contains
                                   test_read_expression_vectors_tsv_missing_file)
         all_tests(27) = test_case("test_read_expression_vectors_tsv_checks_the_positions", &
                                   test_read_expression_vectors_tsv_checks_the_positions)
+        all_tests(28) = test_case("test_read_expression_vectors_tsv_number_forms", &
+                                  test_read_expression_vectors_tsv_number_forms)
+        all_tests(29) = test_case("test_read_expression_vectors_tsv_line_endings", &
+                                  test_read_expression_vectors_tsv_line_endings)
     end function get_all_tests_read_expression_vectors_tsv
 
     !> Writes `content` to `name` in `scratch`, reads it as the one file with one header row and
@@ -801,4 +805,80 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_checks_the_positions
+
+    !> The forms of a number a value cell may take, each read exactly: 1e5, -1.5E-3, +2, .5, 5.,
+    !| 1E+05, 1.5d0, 1.5e+0300 and 4.9e-324 (the smallest subnormal, compared by its bits), blanks
+    !| around them included. And what is refused with ERR_READ_DATA naming file_list (argument 1),
+    !| though a list-directed read would take it: a sign that is neither at the start nor right
+    !| after an exponent letter (2-3 reads as 0.002, 1+5 as 1e5, 1.5-2 as 0.015), and an exponent
+    !| letter without a digit after it, signed or not (ifx reads 1e and 1.0E as 1).
+    subroutine test_read_expression_vectors_tsv_number_forms()
+        type(scratch_directory_type) :: scratch
+        character(len=4) :: one_gene(1)
+        real(real64) :: expression_vectors(1, 1), expected(9)
+        integer(int32) :: value_cols(1), ierr, i_cell
+        character(len=1024) :: file_list(1)
+        character(len=11), parameter :: ACCEPTED(9) = ["1e5        ", "-1.5E-3    ", "  +2       ", ".5         ", &
+                                                       "5.         ", "1E+05      ", "1.5d0      ", "1.5e+0300  ", &
+                                                       "4.9e-324   "]
+        character(len=6), parameter :: REFUSED(7) = ["2-3   ", "1+5   ", "1.5-2 ", "1e    ", "1.0E  ", "1e+   ", "1d-   "]
+
+        call create_scratch_directory(scratch, "expression_number_forms")
+        file_list(1) = scratch_file(scratch, "expression.tsv")
+        one_gene = ["g1"]
+        value_cols = [2]
+        expected = [1.0e5_real64, -1.5e-3_real64, 2.0_real64, 0.5_real64, 5.0_real64, 1.0e5_real64, 1.5_real64, &
+                    1.5e300_real64, 0.0_real64]
+        do i_cell = 1, size(ACCEPTED)
+            call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//LF//"g1"//TAB//ACCEPTED(i_cell)//LF)
+            expression_vectors = UNWRITTEN
+            call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+            call assert_err(ierr, ERR_OK, "test_read_expression_vectors_tsv_number_forms: "//trim(ACCEPTED(i_cell)))
+            if (i_cell < size(ACCEPTED)) then
+                call assert_equal_real(expression_vectors(1, 1), expected(i_cell), 0.0_real64, &
+                                       "test_read_expression_vectors_tsv_number_forms: "//trim(ACCEPTED(i_cell)))
+            else
+                call assert_true(transfer(expression_vectors(1, 1), 1_int64) == 1_int64, &
+                                 "test_read_expression_vectors_tsv_number_forms: 4.9e-324 is the smallest subnormal")
+            end if
+        end do
+        do i_cell = 1, size(REFUSED)
+            call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//LF//"g1"//TAB//trim(REFUSED(i_cell))//LF)
+            call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+            call assert_err(ierr, ERR_READ_DATA, "test_read_expression_vectors_tsv_number_forms: "//trim(REFUSED(i_cell)), 1)
+        end do
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_number_forms
+
+    !> Line endings: a file of CR LF lines reads as one of LF lines, and so does one whose last
+    !| line ends in a lone CR; a line of blanks and tabs at the end is no row, and a header-only
+    !| file without a final line ending is a file of no data row (ERR_EMPTY_INPUT).
+    subroutine test_read_expression_vectors_tsv_line_endings()
+        type(scratch_directory_type) :: scratch
+        real(real64) :: expression_vectors(1, 3), expected(1, 3)
+        integer(int32) :: value_cols(1)
+        character(len=1), parameter :: CR = char(13)
+
+        call create_scratch_directory(scratch, "expression_line_endings")
+        value_cols = [2]
+        expected = reshape([1.5_real64, 2.5_real64, 3.5_real64], [1, 3])
+        call read_one_file(scratch, "crlf.tsv", "id"//TAB//"a"//CR//LF//"g1"//TAB//"1.5"//CR//LF// &
+                           "g2"//TAB//"2.5"//CR//LF//"g3"//TAB//"3.5"//CR//LF, THREE_GENE_IDS, value_cols, &
+                           expression_vectors, ERR_OK, "test_read_expression_vectors_tsv_line_endings: CR LF")
+        call assert_equal_array_real(expression_vectors, expected, 3, 0.0_real64, &
+                                     "test_read_expression_vectors_tsv_line_endings: CR LF")
+        call read_one_file(scratch, "cr_at_end.tsv", "id"//TAB//"a"//LF//"g1"//TAB//"1.5"//LF// &
+                           "g2"//TAB//"2.5"//LF//"g3"//TAB//"3.5"//CR, THREE_GENE_IDS, value_cols, &
+                           expression_vectors, ERR_OK, "test_read_expression_vectors_tsv_line_endings: CR at the end")
+        call assert_equal_array_real(expression_vectors, expected, 3, 0.0_real64, &
+                                     "test_read_expression_vectors_tsv_line_endings: CR at the end")
+        call read_one_file(scratch, "tabs_at_end.tsv", "id"//TAB//"a"//LF//"g1"//TAB//"1.5"//LF// &
+                           "g2"//TAB//"2.5"//LF//"g3"//TAB//"3.5"//LF//TAB//" "//TAB//LF, THREE_GENE_IDS, value_cols, &
+                           expression_vectors, ERR_OK, "test_read_expression_vectors_tsv_line_endings: blanks and tabs")
+        call read_one_file(scratch, "header_only.tsv", "id"//TAB//"a", THREE_GENE_IDS, value_cols, expression_vectors, &
+                           ERR_EMPTY_INPUT, "test_read_expression_vectors_tsv_line_endings: header only, no line ending")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_line_endings
 end module mod_test_read_expression_vectors_tsv
