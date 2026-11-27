@@ -92,7 +92,7 @@ static inline double tox_dmin(double a, double b) { return a < b ? a : b; }
 // aside. The outputs are converted back only when it does not: on an error R discards them.
 static inline int tox_failed(int ierr) {
     int code = ierr % 10000;
-    return code != 0;
+    return code != 0 && code != 401 && code != 402 && code != 403 && code != 404 && code != 405;
 }
 
 // Refuse an argument: signal the condition the R wrapper's own refusals are
