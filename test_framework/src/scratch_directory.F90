@@ -12,8 +12,8 @@
 !| operations of its own.
 !|
 !| `check_error_unit_connected` is for a case where a procedure under test fails to open a file:
-!| it fails unless Fortran's error unit is still connected afterwards, and connects it again if
-!| not, so the rest of the run still reports. `clear_stack` before such a call makes an undefined
+!| it fails unless Fortran's error unit is still connected afterwards (the asserts report on
+!| standard output while it is not, so the rest of the run still reports). `clear_stack` before such a call makes an undefined
 !| local unit number read as 0, the error unit, in an unoptimized build, so that closing a unit
 !| never opened shows instead of depending on whatever the stack held.
 module scratch_directory
@@ -141,16 +141,15 @@ contains
         filler = 0
     end subroutine clear_stack
 
-    !> Fails unless the error unit is connected; connects it to /dev/stderr again (appending) if it
-    !| is not, before the failure is reported.
+    !> Fails unless the error unit is connected.
     subroutine check_error_unit_connected(msg)
         character(*), intent(in) :: msg
         logical :: connected
 
         inquire (unit=error_unit, opened=connected)
-        ! connect it again before reporting, or the report goes to ./fort.0; at the end of what
-        ! is there, so a log stderr is redirected to keeps every line before
-        if (.not. connected) open (unit=error_unit, file="/dev/stderr", action="write", position="append")
+        ! not reconnected: opening /dev/stderr again gives the unit a file offset of its own, which
+        ! overwrites a log stdout and stderr share (`> log 2>&1`). While it is closed, the asserts
+        ! report on standard output.
         call assert_true(connected, msg//": the error unit was closed")
     end subroutine check_error_unit_connected
 end module scratch_directory
