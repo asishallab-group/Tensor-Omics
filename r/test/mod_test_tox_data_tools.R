@@ -8,9 +8,7 @@
 #
 # Every file is written into a temporary directory that the case removes again.
 #
-# Not called here: `read_gene_ids_from_tsv_file` and `read_expression_vectors_tsv` on a missing
-# file. Both close a Fortran unit they never opened, which can close the process's stderr or abort
-# it (see the batch's report).
+# Errors about a file's content name the file argument, and the others the argument at fault.
 
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
@@ -80,7 +78,8 @@ test_read_gene_ids_from_tsv_file_refuses_more_rows_than_ids <- function() {
   directory <- .scratch()
   on.exit(unlink(directory, recursive = TRUE), add = TRUE)
   tsv <- .write(directory, "genes.tsv", "id\ng1\ng2\ng3\n")
-  assert_error(read_gene_ids_from_tsv_file(tsv, 8L, 2L, 1L, 1L), "three rows for two ids", ERR_SIZE_MISMATCH)
+  .assert_error_naming(read_gene_ids_from_tsv_file(tsv, 8L, 2L, 1L, 1L), "three rows for two ids", ERR_SIZE_MISMATCH,
+                       "gene_ids")
 }
 
 test_read_gene_ids_from_tsv_file_refuses_a_negative_length_or_count_by_name <- function() {
@@ -99,6 +98,18 @@ test_read_gene_ids_from_tsv_file_refuses_wrong_types_by_name <- function() {
                        NULL, "n_header_rows")
   .assert_error_naming(read_gene_ids_from_tsv_file("absent.test.tsv", 8L, 3L, 1L, 1.5), "a fraction for gene_col",
                        NULL, "gene_col")
+}
+
+test_read_gene_ids_from_tsv_file_refuses_a_missing_file <- function() {
+  directory <- .scratch()
+  on.exit(unlink(directory, recursive = TRUE), add = TRUE)
+  .assert_error_naming(read_gene_ids_from_tsv_file(file.path(directory, "missing.tsv"), 8L, 1L, 1L, 1L),
+                       "a missing file", ERR_FILE_OPEN, "filename")
+}
+
+test_read_gene_ids_from_tsv_file_refuses_a_gene_col_below_1 <- function() {
+  .assert_error_naming(read_gene_ids_from_tsv_file("absent.test.tsv", 8L, 1L, 1L, 0L), "gene_col 0",
+                       ERR_INVALID_INPUT, "gene_col")
 }
 
 # =====================
@@ -149,21 +160,36 @@ test_read_expression_vectors_tsv_refuses_wrong_types_by_name <- function() {
 }
 
 test_read_expression_vectors_tsv_refuses_no_value_column <- function() {
-  assert_error(read_expression_vectors_tsv(character(0), character(0), matrix(1, 1, 0), 1L, 1L, integer(0), 1L),
-               "no value column", ERR_INVALID_INPUT)
+  .assert_error_naming(read_expression_vectors_tsv(character(0), character(0), matrix(1, 1, 0), 1L, 1L, integer(0), 1L),
+                       "no value column", ERR_INVALID_INPUT, "value_cols")
 }
 
 test_read_expression_vectors_tsv_refuses_a_column_per_gene_too_few <- function() {
-  assert_error(read_expression_vectors_tsv(character(0), c("g1", "g2"), matrix(1, 1, 1), 1L, 1L, 2L, 1L),
-               "one column for two genes", ERR_SIZE_MISMATCH)
+  .assert_error_naming(read_expression_vectors_tsv(character(0), c("g1", "g2"), matrix(1, 1, 1), 1L, 1L, 2L, 1L),
+                       "one column for two genes", ERR_SIZE_MISMATCH, "expression_vectors")
 }
 
 test_read_expression_vectors_tsv_refuses_nan <- function() {
   directory <- .scratch()
   on.exit(unlink(directory, recursive = TRUE), add = TRUE)
   tsv <- .write(directory, "expression.tsv", "id\ta\ng1\tNaN\n")
-  assert_error(read_expression_vectors_tsv(tsv, "g1", matrix(0, 1, 1), 1L, 1L, 2L, 1L),
-               "a NaN in the file", ERR_INVALID_INPUT)
+  .assert_error_naming(read_expression_vectors_tsv(tsv, "g1", matrix(0, 1, 1), 1L, 1L, 2L, 1L),
+                       "a NaN in the file", ERR_INVALID_INPUT, "file_list")
+}
+
+test_read_expression_vectors_tsv_refuses_a_missing_file <- function() {
+  directory <- .scratch()
+  on.exit(unlink(directory, recursive = TRUE), add = TRUE)
+  .assert_error_naming(read_expression_vectors_tsv(file.path(directory, "missing.tsv"), "g1", matrix(0, 1, 1),
+                                                   1L, 1L, 2L, 1L),
+                       "a missing file", ERR_FILE_OPEN, "file_list")
+}
+
+test_read_expression_vectors_tsv_refuses_too_few_rows <- function() {
+  .assert_error_naming(read_expression_vectors_tsv(character(0), character(0), matrix(1, 1, 0), 1L, 1L, 2:3, 0L),
+                       "start_row 0", ERR_INVALID_INPUT, "start_row")
+  .assert_error_naming(read_expression_vectors_tsv("a.tsv", character(0), matrix(1, 1, 0), 1L, 1L, 2:3, 1L),
+                       "two value columns into one row", ERR_SIZE_MISMATCH, "expression_vectors")
 }
 
 # =====================
@@ -197,8 +223,8 @@ test_read_orthofinder_file_reads_a_file_of_no_family <- function() {
 test_read_orthofinder_file_refuses_a_missing_file <- function() {
   directory <- .scratch()
   on.exit(unlink(directory, recursive = TRUE), add = TRUE)
-  assert_error(read_orthofinder_file(file.path(directory, "missing.tsv"), "g1", 8L, 1L, 1L),
-               "a missing file", ERR_FILE_OPEN)
+  .assert_error_naming(read_orthofinder_file(file.path(directory, "missing.tsv"), "g1", 8L, 1L, 1L),
+                       "a missing file", ERR_FILE_OPEN, "filename")
 }
 
 test_read_orthofinder_file_refuses_a_negative_length_or_count_by_name <- function() {
@@ -214,6 +240,12 @@ test_read_orthofinder_file_refuses_wrong_types_by_name <- function() {
   .assert_error_naming(read_orthofinder_file("absent.test.tsv", 1:2, 8L, 1L, 1L), "numbers for gene_ids", NULL,
                        "gene_ids")
   .assert_error_naming(read_orthofinder_file(NULL, "g1", 8L, 1L, 1L), "NULL for a filename", NULL, "filename")
+}
+
+test_read_orthofinder_file_refuses_a_gene_to_fam_of_another_size <- function() {
+  # n_gene_to_fam_elements used to be taken as it came, and the library wrote past its end
+  .assert_error_naming(read_orthofinder_file("absent.test.tsv", c("g1", "g2"), 8L, 2L, 1L),
+                       "gene_to_fam shorter than gene_ids", ERR_SIZE_MISMATCH, "gene_to_fam")
 }
 
 # =====================

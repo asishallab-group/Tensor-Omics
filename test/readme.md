@@ -160,7 +160,9 @@ unique within the suite.
 - **Files in a scratch directory.** A case that reads or writes files creates a directory of its
   own with `create_scratch_directory`, names its files with `scratch_file`, writes their exact
   bytes with `write_scratch_file`, and ends with `remove_scratch_directory`, which fails if
-  anything unexpected is left (`test_framework/src/scratch_directory.F90`). The content of a file
+  anything unexpected is left (`test_framework/src/scratch_directory.F90`). A case where the
+  procedure fails to open a file calls `clear_stack` before and `check_error_unit_connected`
+  after, which catches a close of a unit that was never opened. The content of a file
   a case reads is spelled out in the case, so its expected values can be read off it.
 
 ### Assertions

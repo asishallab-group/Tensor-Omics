@@ -9,9 +9,7 @@ the binding hands over the column, header and value-column arguments as they wer
 
 Every file is written into a temporary directory that the case removes again.
 
-Not called here: `read_gene_ids_from_tsv_file` and `read_expression_vectors_tsv` on a missing
-file. Both close a Fortran unit they never opened, which can close the process's stderr or abort
-it (see the batch's report).
+Errors about a file's content name the file argument, and the others the argument at fault.
 """
 
 import os
@@ -82,7 +80,7 @@ def test_read_gene_ids_from_tsv_file_refuses_more_rows_than_ids():
     with tempfile.TemporaryDirectory() as directory:
         tsv = _write(directory, "genes.tsv", "id\ng1\ng2\ng3\n")
         assert_error(lambda: read_gene_ids_from_tsv_file(tsv, 8, 2, 1, 1),
-                     "three rows for two ids", ERR_SIZE_MISMATCH)
+                     "three rows for two ids", ERR_SIZE_MISMATCH, argument="gene_ids")
 
 
 def test_read_gene_ids_from_tsv_file_refuses_a_negative_length_or_count_by_name():
@@ -101,6 +99,18 @@ def test_read_gene_ids_from_tsv_file_refuses_wrong_types_by_name():
                            "a str for n_header_rows", "n_header_rows")
     assert_refused_by_name(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", 8, 3, 1, 1.5),
                            "a fraction for gene_col", "gene_col")
+
+
+def test_read_gene_ids_from_tsv_file_refuses_a_missing_file():
+    with tempfile.TemporaryDirectory() as directory:
+        missing = os.path.join(directory, "missing.tsv")
+        assert_error(lambda: read_gene_ids_from_tsv_file(missing, 8, 1, 1, 1), "a missing file", ERR_FILE_OPEN,
+                     argument="filename")
+
+
+def test_read_gene_ids_from_tsv_file_refuses_a_gene_col_below_1():
+    assert_error(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", 8, 1, 1, 0), "gene_col 0",
+                 ERR_INVALID_INPUT, argument="gene_col")
 
 
 # =====================
@@ -159,13 +169,13 @@ def test_read_expression_vectors_tsv_refuses_wrong_types_by_name():
 def test_read_expression_vectors_tsv_refuses_no_value_column():
     assert_error(lambda: read_expression_vectors_tsv([], [], np.ones((1, 0), order='F'), 1, 1,
                                                      np.array([], np.int32), 1),
-                 "no value column", ERR_INVALID_INPUT)
+                 "no value column", ERR_INVALID_INPUT, argument="value_cols")
 
 
 def test_read_expression_vectors_tsv_refuses_a_column_per_gene_too_few():
     assert_error(lambda: read_expression_vectors_tsv([], ["g1", "g2"], np.ones((1, 1), order='F'), 1, 1,
                                                      np.array([2], np.int32), 1),
-                 "one column for two genes", ERR_SIZE_MISMATCH)
+                 "one column for two genes", ERR_SIZE_MISMATCH, argument="expression_vectors")
 
 
 def test_read_expression_vectors_tsv_refuses_nan():
@@ -173,7 +183,24 @@ def test_read_expression_vectors_tsv_refuses_nan():
     with tempfile.TemporaryDirectory() as directory:
         tsv = _write(directory, "expression.tsv", "id\ta\ng1\tNaN\n")
         assert_error(lambda: read_expression_vectors_tsv([tsv], ["g1"], expression, 1, 1, np.array([2], np.int32), 1),
-                     "a NaN in the file", ERR_INVALID_INPUT)
+                     "a NaN in the file", ERR_INVALID_INPUT, argument="file_list")
+
+
+def test_read_expression_vectors_tsv_refuses_a_missing_file():
+    with tempfile.TemporaryDirectory() as directory:
+        missing = os.path.join(directory, "missing.tsv")
+        assert_error(lambda: read_expression_vectors_tsv([missing], ["g1"], np.zeros((1, 1), order='F'), 1, 1,
+                                                         np.array([2], np.int32), 1),
+                     "a missing file", ERR_FILE_OPEN, argument="file_list")
+
+
+def test_read_expression_vectors_tsv_refuses_too_few_rows():
+    assert_error(lambda: read_expression_vectors_tsv([], [], np.ones((1, 0), order='F'), 1, 1,
+                                                     np.array([2, 3], np.int32), 0),
+                 "start_row 0", ERR_INVALID_INPUT, argument="start_row")
+    assert_error(lambda: read_expression_vectors_tsv(["a.tsv"], [], np.ones((1, 0), order='F'), 1, 1,
+                                                     np.array([2, 3], np.int32), 1),
+                 "two value columns into one row", ERR_SIZE_MISMATCH, argument="expression_vectors")
 
 
 # =====================
@@ -207,7 +234,8 @@ def test_read_orthofinder_file_reads_a_file_of_no_family():
 def test_read_orthofinder_file_refuses_a_missing_file():
     with tempfile.TemporaryDirectory() as directory:
         missing = os.path.join(directory, "missing.tsv")
-        assert_error(lambda: read_orthofinder_file(missing, ["g1"], 8, 1, 1), "a missing file", ERR_FILE_OPEN)
+        assert_error(lambda: read_orthofinder_file(missing, ["g1"], 8, 1, 1), "a missing file", ERR_FILE_OPEN,
+                     argument="filename")
 
 
 def test_read_orthofinder_file_refuses_a_negative_length_or_count_by_name():
@@ -221,6 +249,12 @@ def test_read_orthofinder_file_refuses_wrong_types_by_name():
     assert_refused_by_name(lambda: read_orthofinder_file("absent.test.tsv", "g1", 8, 1, 1),
                            "a single str for gene_ids", "gene_ids")
     assert_refused_by_name(lambda: read_orthofinder_file(None, ["g1"], 8, 1, 1), "None for a filename", "filename")
+
+
+def test_read_orthofinder_file_refuses_a_gene_to_fam_of_another_size():
+    # n_gene_to_fam_elements used to be taken as it came, and the library wrote past its end
+    assert_error(lambda: read_orthofinder_file("absent.test.tsv", ["g1", "g2"], 8, 2, 1),
+                 "gene_to_fam shorter than gene_ids", ERR_SIZE_MISMATCH, argument="gene_to_fam")
 
 
 # =====================
