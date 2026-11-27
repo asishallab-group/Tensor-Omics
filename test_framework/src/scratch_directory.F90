@@ -141,13 +141,16 @@ contains
         filler = 0
     end subroutine clear_stack
 
-    !> Fails unless the error unit is connected; connects it to /dev/stderr again if it is not.
+    !> Fails unless the error unit is connected; connects it to /dev/stderr again (appending) if it
+    !| is not, before the failure is reported.
     subroutine check_error_unit_connected(msg)
         character(*), intent(in) :: msg
         logical :: connected
 
         inquire (unit=error_unit, opened=connected)
+        ! connect it again before reporting, or the report goes to ./fort.0; at the end of what
+        ! is there, so a log stderr is redirected to keeps every line before
+        if (.not. connected) open (unit=error_unit, file="/dev/stderr", action="write", position="append")
         call assert_true(connected, msg//": the error unit was closed")
-        if (.not. connected) open (unit=error_unit, file="/dev/stderr", action="write")
     end subroutine check_error_unit_connected
 end module scratch_directory
