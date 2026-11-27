@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(20))
+        allocate (all_tests(21))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -63,6 +63,8 @@ contains
         all_tests(19) = test_case("test_read_expression_vectors_tsv_row_count", test_read_expression_vectors_tsv_row_count)
         all_tests(20) = test_case("test_read_expression_vectors_tsv_refuses_an_empty_cell", &
                                   test_read_expression_vectors_tsv_refuses_an_empty_cell)
+        all_tests(21) = test_case("test_read_expression_vectors_tsv_refuses_a_partial_number", &
+                                  test_read_expression_vectors_tsv_refuses_a_partial_number)
     end function get_all_tests_read_expression_vectors_tsv
 
     !> Writes `content` to `name` in `scratch`, reads it as the one file with one header row and
@@ -551,4 +553,35 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_refuses_an_empty_cell
+
+    !> BUG (fails today): a value is read list-directed, which stops at a comma or a blank and
+    !| takes a slash for "no value". So "0,25" (a decimal comma) reads as 0, and "/" leaves
+    !| whatever the previous value was: here column 2's 1.5. The reader has to refuse a field it
+    !| does not read whole; returning 0 or 1.5 with ERR_OK is wrong.
+    subroutine test_read_expression_vectors_tsv_refuses_a_partial_number()
+        type(scratch_directory_type) :: scratch
+        character(len=4) :: one_gene(1)
+        real(real64) :: expression_vectors(2, 1)
+        integer(int32) :: value_cols(2), ierr
+        character(len=1024) :: file_list(1)
+
+        call create_scratch_directory(scratch, "expression_partial_number")
+        file_list(1) = scratch_file(scratch, "expression.tsv")
+        one_gene = ["g1"]
+        value_cols = [2, 3]
+
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB//"0,25"//LF)
+        expression_vectors = UNWRITTEN
+        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 0.0_real64, &
+                          "test_read_expression_vectors_tsv_refuses_a_partial_number: 0,25 read as 0")
+
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB//"/"//LF)
+        expression_vectors = UNWRITTEN
+        call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 1.5_real64, &
+                          "test_read_expression_vectors_tsv_refuses_a_partial_number: / read as the previous value, 1.5")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_refuses_a_partial_number
 end module mod_test_read_expression_vectors_tsv
