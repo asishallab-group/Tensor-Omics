@@ -51,7 +51,10 @@ cannot disagree — **never re-derive any of it in an emitter**:
 | `.sizes` / `.axis` | for an `EXTENT`: which argument and which 0-based axis it measures |
 | `.shape_arg` | for an array whose extents travel separately, the argument carrying them |
 | `.size_extents` | the extents to multiply for the element count |
-| `.source.roles` | the IR roles: the `is_*` predicates (`is_extent`, `is_shape_arg`, `is_mask_count`, `is_temporary`, `is_bitmask`, `is_computed`, `is_derived`, `is_mode`) and the links between arguments (`extent_of`, `shape_of`, `shape_arg`, `mask_count_of`, `count_arg`, `result_size_arg`, `computed_from`) |
+| `.source.roles` | the IR roles: the `is_*` predicates (`is_extent`, `is_shape_arg`, `is_mask_count`, `is_temporary`, `is_bitmask`, `is_mode`) and the links between arguments (`extent_of`, `shape_of`, `shape_arg`, `mask_count_of`, `count_arg`, `result_size_arg`). `is_computed`, `is_derived` and `computed_from` are what the Fortran `foo` does: never decide a binding by them |
+| `synthesize.binding_computes(argument, wrapper)` | whether this tier's binding computes an AUTO value through its producer -- in a generated pair's expert only what sizes a buffer you allocate, and whatever one call fills with it (E2); everywhere else every AUTO value |
+| `synthesize.is_derived(argument, wrapper)` / `readable_owners` | whether this tier's binding works an argument out itself (computes it, reads it off a carrier, a shape, a mask's count) rather than asking for it; and the arrays an extent is read off, in the order to read them (R4). `automatic_plan` gives a producer call's content |
+| `synthesize.read_off_a_carrier(argument, wrapper)` | whether the binding reads an extent off an array that carries it: only where it does not compute it through its producer. Emit a derivation from a carrier only where this holds -- a value is computed or read, never both (a computed one is passed in, and the carriers are checked against it) |
 | `CWrapper.validation_order` | the order in which pointers may safely be null-checked |
 | `.doc` | the parsed documentation, links and all |
 
@@ -110,7 +113,12 @@ Two ordering traps worth stating outright:
 
 - **Producers bracket extent derivation.** An extent a producer *reads* must be settled before
   the producer is called; an extent read off what a producer *makes* can only be settled after.
-  So step 4 runs in two halves, around step 3. (`python_ctypes.py:363`)
+  So step 4 runs in two halves, around step 3. Which carrier an extent is read off is
+  `synthesize.readable_owners`'s to say (R4): a required array the caller passes, whenever one
+  carries it, before the producers; else one the binding computes, after them, where no producer
+  is passed the extent; else the caller is asked for it. Never spell a value before it is
+  assigned: R sources the modules globally, so a name read too early silently resolves to a
+  user's global of that name.
 - **Null checks have a forced order** — error code, then every scalar, then arrays, and an array
   whose shape travels separately comes last. `c_loc` may not be taken of a zero-size target, so
   an array cannot be checked before the extents sizing it are readable. `validation_order` hands
@@ -152,7 +160,7 @@ both *asked for* and *derived* is silently overwritten. There is a parity test f
 | **shape arguments** (`<arg>_shape`) | the input's shape; for an *output* sized by a shape, the caller supplies the shape because it is what they want produced |
 | **mask counts** (`n_selected_x`) | `sum()` / `count()` of the mask |
 | **work arrays** (`tmp_`) | allocated by you, never returned, never asked for |
-| **`DM_OUTPUT_FROM(AUTO)`** | call the producer's **own generated wrapper**, not its C symbol — validation and error handling come free, and the value you pass is already prepared, so the producer's conversions are no-ops |
+| **`DM_OUTPUT_FROM(AUTO)`** | call the producer's **own generated wrapper**, not its C symbol — validation and error handling come free, and the value you pass is already prepared, so the producer's conversions are no-ops. Only what `producer_calls.auto_plans` lists, which follows `binding_computes`: in a generated pair's expert, data the producer fills is a parameter |
 | **the error code** | you allocate it, you decode it, the caller never sees it |
 | **shape checks** | every input axis against what it must be: `emit/shape_checks.py` decides which, by one rule, and you write the comparisons out -- the value read off another input (name **both** arguments), a mask's count, a variable or a constant; an optional array only when given. Fortran cannot check it, and a mismatch is a wrong answer or a read past the buffer. An axis the declaration computes arrives as a passed extent (`checked_against`): derive it off the array like any extent, and the C wrapper compares it |
 
@@ -160,9 +168,15 @@ Two producer subtleties: match producer inputs to consumer arguments **by name**
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);
 and if the producer refines a value you handed it — capping it, say — adopt what it returned.
 Pass `plan.binding_inputs`, not `plan.inputs`: the derived ones are the producer binding's own to
-work out. And raise the producer's error again in the consumer's words — its argument is the
-producer's, which your caller never wrote: re-decode its code at the position of the consumer
-argument that supplied it (none for a constant), as `_consumer_error` does in Python.
+work out, and an input a table row leaves out (`OMITTED`) is in neither. Pass a constant that is a
+mode (`supply.mode` set) as its string, `supply.mode.string`, which the producer's binding maps to
+its code -- never `supply.constant`, the code itself. And leave out of the call an input whose
+supplier is an optional of the caller's without a default, where the caller left it out: passing
+your host's null (`None`, `NULL`) is refused by a producer's binding that has a default, while
+leaving it out keeps it absent, as it is in Fortran. And raise the producer's error again in the
+consumer's words — its argument is the producer's, which your caller never wrote: re-decode its
+code at the position of the consumer argument that supplied it (none for a constant), as
+`_consumer_error` does in Python.
 In Python the producer import goes *inside* the function, because two modules may size each
 other's outputs and a module-level import would be circular.
 

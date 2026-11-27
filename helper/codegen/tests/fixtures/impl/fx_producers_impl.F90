@@ -14,6 +14,17 @@ module fx_producers_impl
 
     public :: fx_scaled_size_impl, fx_capped_size_impl, fx_extent_size_impl, fx_two_sizes_impl
     public :: fx_vector_count_impl, fx_local_total_impl, fx_flagged_size_impl
+    public :: fx_column_norms_impl, fx_large_norms_impl, fx_padded_size_impl, fx_rounded_impl
+    public :: fx_strided_size_impl, fx_method_size_impl, fx_any_method_size_impl
+    public :: fx_label_size_impl
+    public :: METHOD_ONE, METHOD_TWO, METHOD_THREE
+
+    !> the first method: one slot per item
+    integer(int32), parameter :: METHOD_ONE = 1_int32
+    !> the second method: two slots per item
+    integer(int32), parameter :: METHOD_TWO = 2_int32
+    !> the third method: three slots per item
+    integer(int32), parameter :: METHOD_THREE = 3_int32
 
 contains
 
@@ -84,6 +95,141 @@ contains
         second_size = 0.5_real64*n_items
         flag = n_items > 0
     end subroutine fx_flagged_size_impl
+
+    !> summary: The Euclidean norm of each column of a matrix of at most three rows
+    !| author: A Developer
+    !| An array producer. Its bound on `n_dims` is one its consumers leave out, so its own error
+    !| reaches their callers.
+    pure subroutine fx_column_norms_impl(n_dims, n_items, x, norms)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+            !! DM_MIN(1_int32)
+            !! DM_MAX(3_int32)
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(out) :: norms
+            !! the norm of each column
+        norms = sqrt(sum(x**2, dim=1))
+    end subroutine fx_column_norms_impl
+
+    !> summary: The norm of each column of a matrix, and how many of them exceed one
+    !| author: A Developer
+    !| One call gives an array and a size that depends on its values.
+    pure subroutine fx_large_norms_impl(n_dims, n_items, x, norms, n_large)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+            !! DM_MIN(1_int32)
+            !! DM_MAX(3_int32)
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(out) :: norms
+            !! the norm of each column
+        integer(int32), intent(out) :: n_large
+            !! how many of `norms` exceed one
+        norms = sqrt(sum(x**2, dim=1))
+        n_large = count(norms > 1.0_real64)
+    end subroutine fx_large_norms_impl
+
+    !> summary: Each value rounded to the nearest integer
+    !| author: A Developer
+    pure subroutine fx_rounded_impl(n_items, x, rounded)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+            !! DM_MIN(-1000.0_real64)
+            !! DM_MAX(1000.0_real64)
+        integer(int32), dimension(n_items), intent(out) :: rounded
+            !! `x`, rounded
+        rounded = nint(x, int32)
+    end subroutine fx_rounded_impl
+
+    !> summary: A size of a number of items, plus a padding when one is given
+    !| author: A Developer
+    pure subroutine fx_padded_size_impl(n_items, padding, padded_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in), optional :: padding
+            !! extra slots, none when it is left out
+            !! DM_MIN(0_int32)
+        integer(int32), intent(out) :: padded_size
+            !! `n_items`, plus `padding`
+        padded_size = n_items
+        if (present(padding)) padded_size = padded_size + padding
+    end subroutine fx_padded_size_impl
+
+    !> summary: A size of a number of items, times a stride of three unless one is given
+    !| author: A Developer
+    pure subroutine fx_strided_size_impl(n_items, stride, strided_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in), optional :: stride
+            !! slots per item
+            !! DM_DEFAULT(3_int32)
+            !! DM_MIN(1_int32)
+        integer(int32), intent(out) :: strided_size
+            !! `n_items` times `stride`
+        integer(int32) :: slots
+        M_DEFAULT_VAL(stride, slots, 3_int32)
+        strided_size = n_items*slots
+    end subroutine fx_strided_size_impl
+
+    !> summary: A size of a number of items, times the code of a method
+    !| author: A Developer
+    pure subroutine fx_method_size_impl(n_items, method, method_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in) :: method
+            !! how many slots per item
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_producers_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_producers_impl(module):METHOD_TWO(variable)]] |
+            !! | three slots | [[fx_producers_impl(module):METHOD_THREE(variable)]] |
+        integer(int32), intent(out) :: method_size
+            !! `n_items` times the method's code
+        method_size = n_items*method
+    end subroutine fx_method_size_impl
+
+    !> summary: A size of a number of items, times the code of a method, the second unless given
+    !| author: A Developer
+    pure subroutine fx_any_method_size_impl(n_items, method, method_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        integer(int32), intent(in), optional :: method
+            !! how many slots per item
+            !! DM_DEFAULT(METHOD_TWO)
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_producers_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_producers_impl(module):METHOD_TWO(variable)]] |
+            !! | three slots | [[fx_producers_impl(module):METHOD_THREE(variable)]] |
+        integer(int32), intent(out) :: method_size
+            !! `n_items` times the method's code
+        integer(int32) :: code
+        M_DEFAULT_VAL(method, code, METHOD_TWO)
+        method_size = n_items*code
+    end subroutine fx_any_method_size_impl
+
+    !> summary: A size of a number of items, plus the trimmed length of a six-character label
+    !| author: A Developer
+    pure subroutine fx_label_size_impl(n_items, label, label_size)
+        integer(int32), intent(in) :: n_items
+            !! number of items
+        character(len=6), intent(in) :: label
+            !! a label
+        integer(int32), intent(out) :: label_size
+            !! `n_items`, plus the length of `label` without its trailing blanks
+        label_size = n_items + len_trim(label, kind=int32)
+    end subroutine fx_label_size_impl
 
     !> summary: The number of vectors in an array of a given shape: every extent but the first
     !| author: A Developer

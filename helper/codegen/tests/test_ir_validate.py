@@ -996,7 +996,9 @@ class TestAPrologueFeedingARecommendRoutine:
 
     def test_a_derived_producer_input_the_prologue_writes_is_rejected_too(self, bag):
         # extent_size(n, x(n)) derives `n` in its own binding, but the Fortran wrapper calls it
-        # directly, above the prologue, and passes the `budget` the table maps `n` to
+        # directly, above the prologue, and passes the `budget` the table maps `n` to. `x` is
+        # declared `x(budget)`, as the producer's `x(n)` with `n` given `budget` (rule T); that
+        # an extent is intent(inout) is refused too, by a rule of its own
         from codegen.ir.directives import Directives, OutputFrom, OutputFromMode, Prologue
         from codegen.ir.entities import Meta
         from codegen.ir.roles import analyse_project
@@ -1023,8 +1025,8 @@ class TestAPrologueFeedingARecommendRoutine:
             b.procedure(
                 "crunch_impl",
                 b.integer("m", Intent.IN, doc="length"),
-                b.real("x", Intent.IN, "(m)", doc="the data"),
                 b.integer("budget", Intent.INOUT, doc="how much room to plan for"),
+                b.real("x", Intent.IN, "(budget)", doc="the data"),
                 b.integer("wsize", Intent.IN, doc=[
                     "Work size.", "| Producer input | Supplied by |", "|---|---|",
                     "| n | budget |"],

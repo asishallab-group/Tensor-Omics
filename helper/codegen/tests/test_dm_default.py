@@ -28,6 +28,8 @@ IMPL_META = Meta(summary="Scale the values", author="AUTHOR")
 REFUSED = "argument '{}' has a DM_DEFAULT but is not optional"
 
 DERIVED_NOTE = "Python and R derive '{}' and never take it, so the default is never used; drop it"
+COMPUTED_NOTE = ("'{}' is computed by its producer, or passed as a required argument where the "
+                 "caller supplies it, so the default is never used; drop it")
 OUTPUT_NOTE = "an output takes no value from its caller, so there is nothing to default; drop it"
 EXTENT_NOTE = "an extent cannot be optional; drop the DM_DEFAULT"
 INOUT_NOTE = ("an in-out argument cannot be optional, so it cannot have a default either; drop "
@@ -137,7 +139,7 @@ class TestTheNote:
         ))
         arguments = scaled(work_size, b.real("tmp_work", Intent.OUT, "(work_size)", doc="work"))
         assert refusals(impl_project(*arguments)) == [
-            (REFUSED.format("work_size"), DERIVED_NOTE.format("work_size")),
+            (REFUSED.format("work_size"), COMPUTED_NOTE.format("work_size")),
         ]
 
     def test_an_extent_only_an_output_carries(self):
