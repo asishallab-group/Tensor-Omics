@@ -90,9 +90,8 @@ contains
         call assert_err(ierr, ERR_OK, "test_get_family_centroid_no_sample")
     end subroutine test_get_family_centroid_no_sample
 
-    !> Pins today's behaviour, an open question for the maintainer: the accessors copy what is
-    !| stored, NaN and Inf included, with ERR_OK (TOX refuses NaN and Inf as analysis input; the
-    !| accessors do not look).
+    !> The accessors copy what is stored as it is, NaN and Inf included, with ERR_OK, as the
+    !| module documents: they check indices and shapes, not values.
     subroutine test_get_family_centroid_copies_non_finite()
         real(real64) :: centroids(N_SAMPLES, N_FAMILIES), centroid(N_SAMPLES)
         integer(int32) :: ierr

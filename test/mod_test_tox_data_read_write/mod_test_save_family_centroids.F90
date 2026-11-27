@@ -39,7 +39,7 @@ contains
         call check_save_replaces_reals(save_family_centroids, "test_save_family_centroids_replaces_a_file")
     end subroutine test_save_family_centroids_replaces_a_file
 
-    !> Pins today's behaviour: NaN and Inf are written bit for bit, without an error.
+    !> NaN and Inf are written bit for bit, without an error, as documented.
     subroutine test_save_family_centroids_non_finite()
         call check_saves_non_finite_reals(save_family_centroids, "test_save_family_centroids_non_finite")
     end subroutine test_save_family_centroids_non_finite

@@ -53,7 +53,7 @@ contains
                                     "test_load_family_centroids_round_trip")
     end subroutine test_load_family_centroids_round_trip
 
-    !> Pins today's behaviour: NaN and Inf are read bit for bit, without an error.
+    !> NaN and Inf are read bit for bit, without an error, as documented.
     subroutine test_load_family_centroids_non_finite()
         call check_loads_non_finite_reals(load_family_centroids, "test_load_family_centroids_non_finite")
     end subroutine test_load_family_centroids_non_finite

@@ -53,7 +53,7 @@ contains
                                     "test_load_expression_vectors_round_trip")
     end subroutine test_load_expression_vectors_round_trip
 
-    !> Pins today's behaviour: NaN and Inf are read bit for bit, without an error.
+    !> NaN and Inf are read bit for bit, without an error, as documented.
     subroutine test_load_expression_vectors_non_finite()
         call check_loads_non_finite_reals(load_expression_vectors, "test_load_expression_vectors_non_finite")
     end subroutine test_load_expression_vectors_non_finite

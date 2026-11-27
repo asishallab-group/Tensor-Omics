@@ -132,9 +132,8 @@ contains
         call assert_err(ierr, ERR_SIZE_MISMATCH, "test_get_shift_components_more_rows")
     end subroutine test_get_shift_components_more_rows
 
-    !> Pins today's behaviour, an open question for the maintainer: the accessors copy what is
-    !| stored, NaN and Inf included, with ERR_OK (TOX refuses NaN and Inf as analysis input; the
-    !| accessors do not look).
+    !> The accessors copy what is stored as it is, NaN and Inf included, with ERR_OK, as the
+    !| module documents: they check indices and shapes, not values.
     subroutine test_get_shift_components_copies_non_finite()
         real(real64) :: shifts(2*N_SAMPLES, N_GENES), start(N_SAMPLES), shift(N_SAMPLES)
         integer(int32) :: ierr

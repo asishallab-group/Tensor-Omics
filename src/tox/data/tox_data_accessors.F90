@@ -5,10 +5,14 @@
 !| Thin accessors over the raw gene/family arrays produced and consumed elsewhere in `tox_data_*`
 !| (e.g. [[tox_data_archive(module):read_tox_data(subroutine)]]): given an index, return the
 !| corresponding row/column/slice with bounds and shape checks; given an ID string, find its index.
+!|
+!| The accessors copy what is stored as it is, NaN and Inf included: they check indices and
+!| shapes, not values. After an error, an output is undefined.
 module tox_data_accessors
     use iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err_once, ERR_SIZE_MISMATCH, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
+    private
 
     public :: get_gene_index, get_family_index
     public :: get_family_for_gene_index, get_expression_vector
@@ -98,7 +102,8 @@ contains
         integer(int32), intent(in) :: gene_idx
             !! gene index to look for
         real(real64), intent(in) :: shift_vectors(:, :)
-            !! shift vectors
+            !! shift vectors: per gene, its family's centroid in rows 1..d and its shift in rows
+            !! d+1..2d; exactly 2d rows
         integer(int32), intent(in) :: d
             !! number of tissues
         real(real64), intent(out) :: out_start(:)

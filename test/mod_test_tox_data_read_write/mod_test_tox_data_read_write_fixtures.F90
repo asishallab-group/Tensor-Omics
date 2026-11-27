@@ -618,9 +618,7 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine check_round_trip_reals
 
-    !> Pins today's behaviour: `save` writes NaN, +Inf and -Inf bit for bit, without an error.
-    !| The procedures do not document whether a stored matrix may hold them; an open question for
-    !| the maintainer.
+    !> `save` writes NaN, +Inf and -Inf bit for bit, without an error, as the module documents.
     subroutine check_saves_non_finite_reals(save, case_name)
         procedure(save_reals_interface) :: save
         character(*), intent(in) :: case_name
@@ -640,8 +638,7 @@ contains
         call remove_scratch_directory(scratch)
     end subroutine check_saves_non_finite_reals
 
-    !> Pins today's behaviour: `load` reads NaN, +Inf and -Inf bit for bit, without an error (see
-    !| `check_saves_non_finite_reals`).
+    !> `load` reads NaN, +Inf and -Inf bit for bit, without an error, as the module documents.
     subroutine check_loads_non_finite_reals(load, case_name)
         procedure(load_reals_interface) :: load
         character(*), intent(in) :: case_name
