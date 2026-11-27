@@ -22,12 +22,14 @@ It reads the implementation's full picture -- every argument, its extents, and i
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import IntEnum
 
 from ..config import CONVENTIONS, Conventions
 from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.roles import fixed_length, unused_outputs
 from ..ir.types import BaseType
+from ..ir.validate import is_omp_root
 from ..names import DEFAULT_VALUE, UNUSED_OUTPUT, local_name
 from ..render import Writer
 from ..synthesize import (
@@ -85,6 +87,20 @@ def wrapper_info(synthesis) -> dict[str, dict[str, WrapperInfo]]:
             if wrapper is not None:
                 module_info[wrapper.name.lower()] = WrapperInfo(spec.impl.name, spec.mode_fix)
     return info
+
+
+class Purity(IntEnum):
+    """How pure a generated wrapper can be declared, weakest first, so that `min` picks the weakest.
+
+    `OMP_PURE` is an OpenMP root's `M_OMP_PURE`: pure without OpenMP, impure with it. A wrapper
+    is as pure as the least pure thing it calls, so one that calls a root -- its implementation,
+    or a `DM_OUTPUT_FROM` producer that is a root's wrapper or calls one -- is `M_OMP_PURE` too:
+    a plain `pure` would not compile with OpenMP. Impure beats both.
+    """
+
+    IMPURE = 0
+    OMP_PURE = 1
+    PURE = 2
 
 
 class FortranWrapperEmitter:
@@ -576,11 +592,12 @@ class FortranWrapperEmitter:
                 actuals.append((dummy.name, dummy.name))
         return actuals
 
-    def _is_pure(self, procedure: Procedure, module: Module, visiting: frozenset = frozenset()) -> bool:
-        """Whether this wrapper can be `pure`: everything it calls has to be.
+    def _purity(self, procedure: Procedure, module: Module,
+                visiting: frozenset = frozenset()) -> Purity:
+        """How pure this wrapper can be: as pure as the least pure thing it calls.
 
-        A caller who wants a `pure` procedure -- to call it from `do concurrent`, or from
-        their own pure code -- should not have to reach past the wrapper to the
+        A caller who wants a `pure` procedure -- to call it from their own pure code, which
+        may call only pure procedures -- should not have to reach past the wrapper to the
         implementation to get one. The wrapper is pure exactly when the implementation is
         and so is everything the wrapper adds, so the property is derived rather than
         declared: `tox_errors`' validators and `set_ok`/`is_err` are pure, and so are
@@ -588,8 +605,13 @@ class FortranWrapperEmitter:
         implementation itself, the `DM_OUTPUT_FROM` producers and the prologue.
 
         A producer that is itself a generated wrapper is pure by this same rule, so it is
-        asked in turn (`_calls_pure`); `visiting` holds the wrappers already being asked, so
+        asked in turn (`_purity_of_call`); `visiting` holds the wrappers already being asked, so
         a chain that comes back to one of them ends instead of recursing forever.
+
+        An OpenMP root is pure only without OpenMP (`Purity.OMP_PURE`), and so is everything that
+        calls one: a root's own wrappers, and a consumer whose producer is a root's wrapper or
+        reaches one, however far down. Such a consumer is `M_OMP_PURE` even where all else it
+        calls is plain `pure`, since `pure` would not compile with OpenMP.
 
         (`allocate(..., stat=)` is permitted in a pure procedure, so the allocating tier is
         no less eligible than the expert one.)
@@ -598,9 +620,12 @@ class FortranWrapperEmitter:
         compile error in generated code; guessing it away only costs the caller.
         """
         if self.project is None:
-            return False
+            return Purity.IMPURE
+        impl = self._impl(procedure, module)
+        if impl is None:
+            return Purity.IMPURE
         visiting = visiting | {self._key(procedure, module)}
-        called = [self._impl(procedure, module)]
+        called = [impl]
         foo = self._sibling(module, procedure) or procedure
         called.append(self._prologue_for(foo, module))
         for argument in foo.arguments:
@@ -608,25 +633,25 @@ class FortranWrapperEmitter:
             plan = roles.computed_from if roles is not None else None
             if plan is not None:
                 called.append(plan.producer)
-        return called[0] is not None and all(
-            self._calls_pure(p, visiting) for p in called if p is not None
-        )
+        return min(self._purity_of_call(p, visiting) for p in called if p is not None)
 
-    def _calls_pure(self, called: Procedure, visiting: frozenset) -> bool:
-        """Whether a procedure the wrapper calls is pure: as declared, or as generated.
+    def _purity_of_call(self, called: Procedure, visiting: frozenset) -> Purity:
+        """How pure a procedure the wrapper calls is: as declared, or as generated.
 
-        A generated wrapper is built impure (`synthesize`) and emitted `pure` only by
-        `_is_pure`, so its declaration says nothing; it is asked the same question instead.
-        One already being asked is a cycle, which nothing proves pure.
+        Declared pure, it is plain pure unless it is an OpenMP root, which is declared
+        `M_OMP_PURE` (`validate._check_omp_root_purity`). A generated wrapper is built impure
+        (`synthesize`) and emitted pure only by `_purity`, so its declaration says nothing; it is
+        asked the same question instead. One already being asked is a cycle, which nothing
+        proves pure.
         """
         if called.is_pure:
-            return True
+            return Purity.OMP_PURE if is_omp_root(called, self.conventions) else Purity.PURE
         owner = called.module
         if owner is None or self.project.module(self._impl_module(owner)) is None:
-            return False  # hand-written, and not declared pure
+            return Purity.IMPURE  # hand-written, and not declared pure
         if self._key(called, owner) in visiting:
-            return False
-        return self._is_pure(called, owner, visiting)
+            return Purity.IMPURE
+        return self._purity(called, owner, visiting)
 
     @staticmethod
     def _key(procedure: Procedure, module: Module) -> tuple[str, str]:
@@ -716,7 +741,13 @@ class FortranWrapperEmitter:
     # -- declarations -----------------------------------------------------------
 
     def _signature(self, writer: Writer, procedure: Procedure, module: Module) -> None:
-        prefix = "pure " if self._is_pure(procedure, module) else ""
+        # `M_OMP_PURE` says `pure` or `impure` per build, for a wrapper that calls an OpenMP
+        # root, whose purity is the build's too: a plain `pure` would not compile with OpenMP
+        prefix = {
+            Purity.IMPURE: "",
+            Purity.OMP_PURE: f"{self.conventions.omp_pure_macro} ",
+            Purity.PURE: "pure ",
+        }[self._purity(procedure, module)]
         writer.line(f"{prefix}subroutine {procedure.name}(&")
         names = [a.name for a in procedure.arguments]
         with writer.indent(2):
@@ -1346,8 +1377,22 @@ class FortranWrapperEmitter:
         """
         for argument in taken:
             if argument.is_array and is_computed(argument) is produced:
-                extents = ", ".join(argument.dimension.extents)
-                writer.line(f"M_ALLOCATE({argument.name}({extents}))")
+                extents = list(argument.dimension.extents)
+                # a per-thread work array: as many columns as the count the implementation is
+                # handed (`_impl_call`), which is one without OpenMP
+                if self.conventions.is_omp_threads_arg(extents[-1]):
+                    extents[-1] = self._omp_n_threads(extents[-1])
+                writer.line(f"M_ALLOCATE({argument.name}({', '.join(extents)}))")
+
+    def _omp_n_threads(self, name: str) -> str:
+        """The thread count the allocating wrapper sizes and passes: `M_OMP_N_THREADS(name)`."""
+        return f"{self.conventions.omp_n_threads_macro}({name})"
+
+    def _is_omp_threads(self, argument: Argument) -> bool:
+        roles = argument.roles
+        if roles is not None:
+            return roles.is_omp_threads
+        return self.conventions.is_omp_threads_arg(argument.name)
 
     def _permutations(self, writer: Writer, taken, prologue) -> None:
         for argument in sorted_permutations(taken, prologue, self.conventions):
@@ -1365,7 +1410,7 @@ class FortranWrapperEmitter:
         body); `wrapper` is the procedure being emitted, whose dummy list the caller numbers.
         """
         impl = self._impl_name(foo, module)
-        actuals = self._impl_actuals(foo, module)
+        actuals = self._impl_actuals(foo, module, wrapper)
         # A function is called for its value, which goes to the argument its result is
         # published as (`synthesize.published_result`): of the same name, on both tiers.
         implementation = self._impl(foo, module)
@@ -1375,8 +1420,16 @@ class FortranWrapperEmitter:
         if self._impl_declares_error(foo, module):
             self._error_return(writer, self._impl_positions(foo, module, wrapper))
 
-    def _impl_actuals(self, foo: Procedure, module: Module) -> list[tuple[str, str]]:
-        """The implementation call's `(dummy, actual)` pairs."""
+    def _impl_actuals(self, foo: Procedure, module: Module,
+                      wrapper: Procedure) -> list[tuple[str, str]]:
+        """The implementation call's `(dummy, actual)` pairs, as `wrapper` makes the call.
+
+        The allocating body (`wrapper` is not `foo`, its expert sibling) hands an OpenMP root
+        the thread count it sized the work arrays with rather than the caller's
+        (`_allocations`); that actual is no dummy of `wrapper`, so its position does not map.
+        Every other tier passes the caller's on: its caller sized the arrays, or there are none.
+        """
+        allocating = wrapper is not foo
         arguments = self._impl_call_arguments(foo, module)
         mode_fix = self._mode_fix(foo)
         # the validating wrapper carries exactly the implementation arguments this variant
@@ -1390,14 +1443,19 @@ class FortranWrapperEmitter:
             if mode_fix is not None and lowered == mode_fix.argument.lower():
                 actuals.append((argument.name, mode_fix.parameter))
             elif lowered in present:
-                actuals.append((argument.name, argument.name))
+                value = argument.name
+                if allocating and self._is_omp_threads(argument):
+                    value = self._omp_n_threads(argument.name)
+                actuals.append((argument.name, value))
         return actuals
 
     def _impl_positions(self, foo: Procedure, module: Module,
                         wrapper: Procedure) -> list[tuple[int, int]]:
         """`_call_positions` for the implementation call `_impl_call` makes."""
         return self._call_positions(
-            self._impl_call_arguments(foo, module), self._impl_actuals(foo, module), wrapper
+            self._impl_call_arguments(foo, module),
+            self._impl_actuals(foo, module, wrapper),
+            wrapper,
         )
 
     def _call(self, writer: Writer, name: str, actuals, result: str | None = None) -> None:

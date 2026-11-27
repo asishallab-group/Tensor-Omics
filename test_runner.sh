@@ -3,6 +3,7 @@
 source build_utils.sh
 
 init "$@"
+export_expect_openmp
 
 generate_code
 

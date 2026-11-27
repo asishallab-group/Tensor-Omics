@@ -65,6 +65,35 @@
 #define M_GENE_TO_FAM_SENTINEL 0_int32
 #define M_GENE_TO_FAM_DOC(GENES_TARGET_ARG) Index mapping -> each index `i` holds the family index for the corresponding gene in `GENES_TARGET_ARG`, using `M_GENE_TO_FAM_SENTINEL` for unassigned genes
 
+! OpenMP (#218). `_OPENMP` is defined by the compiler, not here: `./build.sh --openmp` passes
+! the OpenMP flag, which defines it, and that is the one switch. Nothing else enables OpenMP.
+!
+! The purity of a procedure that holds a parallel loop: an OpenMP directive is not allowed in
+! a pure procedure, so it is pure without OpenMP and impure with it. Written where `pure` would
+! be, in the procedure and in every wrapper that calls it.
+!
+! The thread count the allocating wrapper sizes the per-thread work arrays with and passes on:
+! the caller's `N` with OpenMP, and one without, where a single thread runs the loop.
+#ifdef _OPENMP
+#define M_OMP_PURE impure
+#define M_OMP_N_THREADS(N) N
+#else
+#define M_OMP_PURE pure
+#define M_OMP_N_THREADS(N) 1_int32
+#endif
+
+! The parallel loop of a root procedure, so no clause every root needs is forgotten. Written as a
+! comment line directly above the `do`, with the `!` in the source and the loop's own clauses, its
+! `schedule` and its locality, after it on the same line, e.g.
+! `!M_OMP_PARALLEL(n_items > 1) schedule(static) shared(values, sums) private(i_thread)`.
+! It expands to an OpenMP directive, which a build without OpenMP reads as a comment. Threads
+! run only when the caller allows more than one (`n_omp_threads`, an argument of the root) and
+! the loop has enough to share (`CONDITION`); `default(none)` makes every variable the loop
+! touches need a clause. The schedule is not here because the right one depends on the loop's
+! items. The `!` cannot move into the body: ifx's preprocessor reads it as the start of a comment,
+! and the macro expands to nothing.
+#define M_OMP_PARALLEL(CONDITION) $omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION))
+
 ! Bit masks (f42_bit_masks_impl): flag `i` of a mask is bit `mod(i - 1, 32)` of int32 word
 ! `(i - 1)/32 + 1`. Macros rather than procedures, because they also size the masks of other
 ! modules in their DM_ markers, and because a hot loop can test or set a single flag with them

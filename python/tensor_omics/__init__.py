@@ -68,6 +68,9 @@ from .f42_kd_tree import (
     kd_range_query_list,
     kd_range_query_count,
 )
+from .f42_openmp import (
+    max_omp_threads,
+)
 from .f42_serde_arrays_deserialize_char import (
     deserialize_char_helper,
 )
@@ -358,6 +361,7 @@ __all__ = [
     "loess_fit_robust",
     "loess_smooth_2d",
     "log2_transformation",
+    "max_omp_threads",
     "mean_vector",
     "normalization_pipeline",
     "normalize_all_trajectories",

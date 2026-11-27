@@ -1,0 +1,836 @@
+"""The `n_omp_threads` convention (#218): an OpenMP root, its wrappers, and what is refused.
+
+A root is an implementation that takes `n_omp_threads` and holds the parallel loop. Its wrappers
+carry `M_OMP_PURE` where they would carry `pure`, check that the count is at least 1, document it
+with the generator's one text, and -- the allocating one -- size the per-thread work arrays and the
+count it hands the implementation with `M_OMP_N_THREADS`, one without OpenMP. The argument and
+the two macros are refused everywhere the wrappers could not do that.
+
+Text-level checks on hand-built IR; the fixture `fx_omp_impl` is compiled and run, with and
+without OpenMP, by the end-to-end tests.
+"""
+
+import re
+from pathlib import Path
+
+import pytest
+
+import builders as b
+from codegen.abi.c_abi import build_project
+from codegen.config import CONVENTIONS, Paths
+from codegen.diagnostics import DiagnosticBag, SourceLocation
+from codegen.emit.fortran_c import FortranCEmitter
+from codegen.emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+from codegen.emit.python_ctypes import PythonEmitter
+from codegen.emit.r_wrapper import RWrapperEmitter
+from codegen.frontend.ford_frontend import FordFrontend
+from codegen.frontend.macros import MacroTable, build_directive_patterns
+from codegen.ir.directives import (
+    DirectiveParser,
+    Directives,
+    Minimum,
+    Prologue,
+    RequiredIfMode,
+)
+from codegen.ir.doc import Doc
+from codegen.ir.entities import MacroUse, Meta
+from codegen.ir.roles import analyse_project
+from codegen.ir.types import Intent
+from codegen.ir.validate import validate_project
+from codegen.synthesize import _OMP_THREADS_DOC, synthesize_wrappers
+from conftest import REPO_ROOT
+
+IMPL_META = Meta(summary="Sum the values", author="AUTHOR")
+
+#: The per-thread work array's declaration, and the root's own lines in the "source"
+_STATEMENT_LINE = 10
+
+
+def omp_threads(**kwargs):
+    """The argument as a root declares it: undocumented, the generator documents it."""
+    return b.integer("n_omp_threads", kwargs.pop("intent", Intent.IN), **kwargs)
+
+
+def root(*arguments, name="sums_impl", prefix="M_OMP_PURE", is_pure=True, **kwargs):
+    """A root implementation. `arguments` replaces the default signature."""
+    if not arguments:
+        arguments = (
+            b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.real("tmp_w", Intent.OUT, "(n, n_omp_threads)", doc="scratch per thread"),
+            b.real("total", Intent.OUT, doc="their sum"),
+            omp_threads(),
+        )
+    return b.procedure(
+        name, *arguments, meta=IMPL_META, is_pure=is_pure, statement_prefix=prefix,
+        location=SourceLocation(Path("src/tox/tox_demo_impl.F90"), _STATEMENT_LINE), **kwargs,
+    )
+
+
+def lone_root(threads=None, **kwargs):
+    """A root without work arrays: one wrapper, which takes nothing over. `threads` replaces
+    its `n_omp_threads`."""
+    return root(
+        b.integer("n", Intent.IN, doc="rows"),
+        b.real("values", Intent.IN, "(n)", doc="the data"),
+        b.real("total", Intent.OUT, doc="their sum"),
+        threads if threads is not None else omp_threads(),
+        **kwargs,
+    )
+
+
+def impl_module(*procedures, **kwargs):
+    return b.module("tox_demo_impl", *(procedures or (root(),)), doc="Demo roots.", **kwargs)
+
+
+def pipeline(*modules):
+    """Synthesise, analyse and validate, as a real run does; the synthesis and the diagnostics."""
+    bag = DiagnosticBag()
+    synthesis = synthesize_wrappers(b.project(*modules), CONVENTIONS, bag)
+    analyse_project(synthesis.project, bag)
+    validate_project(synthesis.project, bag)
+    return synthesis, bag
+
+
+def errors(*modules):
+    _, bag = pipeline(*modules)
+    return [d.message for d in bag.errors]
+
+
+def notes(*modules):
+    """Each error's note, where `errors` gives its message."""
+    _, bag = pipeline(*modules)
+    return [d.note for d in bag.errors]
+
+
+def emitted(*modules, generated="tox_demo"):
+    synthesis, bag = pipeline(*modules)
+    assert bag.errors == (), bag.render()
+    info = {}
+    for spec in synthesis.specs:
+        for wrapper in (spec.validating, spec.allocating):
+            if wrapper is not None:
+                info[wrapper.name.lower()] = WrapperInfo(spec.impl.name, spec.mode_fix)
+    return FortranWrapperEmitter(project=synthesis.project).module(
+        synthesis.project.module(generated), info
+    )
+
+
+def subroutine(text, name):
+    """One subroutine of an emitted module, from its statement to its end."""
+    start = text.index(f"subroutine {name}(")
+    return text[text.rindex("\n", 0, start) + 1: text.index(f"end subroutine {name}\n", start)]
+
+
+def bound(*modules):
+    synthesis, bag = pipeline(*modules)
+    binding = build_project(synthesis.project, bag)
+    assert bag.errors == (), bag.render()
+    return next(module for module in binding if module.stripped_name == "tox_demo")
+
+
+# -- what the wrappers make of it --------------------------------------------------------
+
+
+class TestThePrefix:
+    def test_both_tiers_of_a_pure_root_carry_the_macro(self):
+        text = emitted(impl_module())
+
+        assert "M_OMP_PURE subroutine sums(" in text
+        assert "M_OMP_PURE subroutine sums_expert(" in text
+        assert "pure subroutine" not in text.replace("M_OMP_PURE subroutine", "")
+
+    def test_a_pure_implementation_without_the_argument_keeps_plain_pure(self):
+        text = emitted(impl_module(b.procedure(
+            "sums_impl", b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.real("total", Intent.OUT, doc="their sum"), meta=IMPL_META, is_pure=True,
+        )))
+
+        assert "pure subroutine sums(" in text
+        assert "M_OMP_PURE" not in text
+
+    def test_an_impure_root_gets_no_prefix(self):
+        text = emitted(impl_module(root(prefix="", is_pure=False)))
+
+        assert re.search(r"^    subroutine sums\(", text, re.MULTILINE)
+        assert re.search(r"^    subroutine sums_expert\(", text, re.MULTILINE)
+        assert "M_OMP_PURE" not in text
+
+    def test_the_c_wrapper_stays_impure(self):
+        text = FortranCEmitter().module(bound(impl_module()))
+
+        assert "M_OMP_PURE" not in text
+        assert "pure subroutine" not in text
+
+
+class TestTheImpliedMinimum:
+    """At least 1 in both tiers, as an injected `DM_MIN(1_int32)`, inside the validation guard."""
+
+    def test_both_tiers_check_it_at_their_own_position(self):
+        text = emitted(impl_module())
+
+        # foo drops tmp_w, which comes before it: 4th there, 5th in the expert tier
+        assert ("call validate_in_range_int(n_omp_threads, ierr, arg_pos=4_int32, min=1_int32)"
+                in subroutine(text, "sums"))
+        assert ("call validate_in_range_int(n_omp_threads, ierr, arg_pos=5_int32, min=1_int32)"
+                in subroutine(text, "sums_expert"))
+
+    def test_the_range_replaces_the_extent_check_in_the_expert_tier(self):
+        # it is an extent there (of tmp_w), and a documented range wins over the dimension
+        # check, which would report 0 as ERR_EMPTY_INPUT rather than ERR_INVALID_INPUT
+        assert "validate_dimension_size(n_omp_threads" not in emitted(impl_module())
+
+    def test_it_sits_inside_the_validation_guard(self):
+        # FES 2026-10-30 (Q8): like every check of a value the caller knows
+        for name in ("sums", "sums_expert"):
+            body = subroutine(emitted(impl_module()), name)
+            guard = body.index("#ifndef NO_INPUT_VALIDATION")
+            check = body.index("validate_in_range_int(n_omp_threads")
+            assert guard < check < body.index("#endif")
+
+    def test_the_lone_wrapper_checks_it_too(self):
+        assert ("call validate_in_range_int(n_omp_threads, ierr, arg_pos=4_int32, min=1_int32)"
+                in emitted(impl_module(lone_root())))
+
+
+class TestTheThreadCount:
+    def test_the_allocating_wrapper_sizes_the_thread_axis_with_the_macro(self):
+        body = subroutine(emitted(impl_module()), "sums")
+
+        assert "M_ALLOCATE(tmp_w(n, M_OMP_N_THREADS(n_omp_threads)))" in body
+
+    def test_and_hands_the_implementation_the_same_count(self):
+        body = subroutine(emitted(impl_module()), "sums")
+
+        assert "n_omp_threads = M_OMP_N_THREADS(n_omp_threads)" in body
+
+    def test_the_expert_tier_passes_the_caller_s_count_on(self):
+        body = subroutine(emitted(impl_module()), "sums_expert")
+
+        assert "n_omp_threads = n_omp_threads" in body
+        assert "M_OMP_N_THREADS" not in body
+
+    def test_a_lone_wrapper_passes_it_on(self):
+        text = emitted(impl_module(lone_root()))
+
+        assert "subroutine sums_expert(" not in text
+        assert "n_omp_threads = n_omp_threads&" in subroutine(text, "sums")
+        assert "M_OMP_N_THREADS" not in text
+        assert "M_OMP_PURE subroutine sums(" in text
+
+    def test_an_array_whose_last_extent_is_another_keeps_it(self):
+        text = emitted(impl_module(root(
+            b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.real("tmp_w", Intent.OUT, "(n, n_omp_threads)", doc="scratch per thread"),
+            b.real("tmp_shared", Intent.OUT, "(n)", doc="shared scratch"),
+            b.real("total", Intent.OUT, doc="their sum"),
+            omp_threads(),
+        )))
+
+        assert "M_ALLOCATE(tmp_shared(n))" in text
+
+
+class TestAModeSplitRoot:
+    """`group_centroid` is one: two modes, each with both tiers, four wrappers."""
+
+    def module(self):
+        mode_table = [
+            "Which statistic.",
+            "| Mode | Value | Procedure |",
+            "|------|-------|-----------|",
+            "| the mean | [[tox_demo_impl(module):MODE_MEAN(variable)]] | sums_mean |",
+            "| the median | [[tox_demo_impl(module):MODE_MEDIAN(variable)]] | sums_median |",
+        ]
+        return impl_module(root(
+            b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.integer("stat_mode", Intent.IN, doc=mode_table),
+            b.real("weight", Intent.IN, optional=True, doc="median weight", directives=Directives(
+                required_if_mode=RequiredIfMode("stat_mode", "tox_demo_impl", "MODE_MEDIAN"))),
+            b.real("tmp_w", Intent.OUT, "(n, n_omp_threads)", doc="scratch per thread"),
+            b.real("total", Intent.OUT, doc="their sum"),
+            omp_threads(),
+        ), parameters=(b.parameter("MODE_MEAN", "1"), b.parameter("MODE_MEDIAN", "2")))
+
+    def test_four_wrappers_each_with_the_prefix(self):
+        text = emitted(self.module())
+
+        for name in ("sums_mean", "sums_mean_expert", "sums_median", "sums_median_expert"):
+            assert f"M_OMP_PURE subroutine {name}(" in text
+
+    def test_each_allocating_one_sizes_and_passes_with_the_macro(self):
+        text = emitted(self.module())
+
+        for name in ("sums_mean", "sums_median"):
+            body = subroutine(text, name)
+            assert "M_ALLOCATE(tmp_w(n, M_OMP_N_THREADS(n_omp_threads)))" in body
+            assert "n_omp_threads = M_OMP_N_THREADS(n_omp_threads)" in body
+            assert "validate_in_range_int(n_omp_threads" in body
+        for name in ("sums_mean_expert", "sums_median_expert"):
+            assert "n_omp_threads = n_omp_threads" in subroutine(text, name)
+
+
+class TestTheBindings:
+    """Required in every language, in the implementation's order, with no default (DECIDED 3)."""
+
+    def test_python_takes_it_after_the_data(self):
+        text = PythonEmitter().module(bound(impl_module()))
+
+        assert re.search(r"def sums\(\s*values,\s*n_omp_threads,?\s*\)", text)
+
+    def test_r_takes_it_after_the_data(self):
+        text = RWrapperEmitter().module(bound(impl_module()))
+
+        assert re.search(r"sums <- function\(values, n_omp_threads\)", text)
+
+    def test_neither_sees_the_work_array_or_an_expert_tier(self):
+        synthesis, _ = pipeline(impl_module())
+
+        assert "sums_expert" in synthesis.expert_only_in_fortran
+
+
+class TestTheDocumentation:
+    """One text, the generator's, reaching every language with the minimum it checks."""
+
+    def test_it_reaches_the_fortran_wrappers(self):
+        text = emitted(impl_module())
+
+        for line in _OMP_THREADS_DOC:
+            assert text.count(f"!! {line}") == 2  # foo and foo_expert
+
+    def test_it_reaches_c_python_and_r(self):
+        module = bound(impl_module())
+        texts = {
+            "C": FortranCEmitter().module(module),
+            "Python": PythonEmitter().module(module),
+            "R": RWrapperEmitter().module(module),
+        }
+        prose, minimum = _OMP_THREADS_DOC[:-1], _OMP_THREADS_DOC[-1]
+        for language, text in texts.items():
+            for line in prose:
+                assert line in text, (language, line)
+        # the minimum as every DM_MIN reaches each language: Python and R show the value
+        # without the Fortran kind (`emit.doc_literals`)
+        assert minimum in texts["C"]
+        for language in ("Python", "R"):
+            assert "The minimum valid value is `1`." in texts[language], language
+
+    def test_its_minimum_is_what_dm_min_writes(self):
+        # the last line stands for `DM_MIN(1_int32)`: the header's own expansion, which the
+        # directive parser reads back as the minimum the wrappers check
+        macros = MacroTable(REPO_ROOT / "src/macros.h", include_paths=(REPO_ROOT,))
+        assert _OMP_THREADS_DOC[-1] == macros.expand("DM_MIN(1_int32)").strip()
+
+        parser = DirectiveParser(build_directive_patterns(macros))
+        directives = parser.parse(Doc.parse(list(_OMP_THREADS_DOC)))
+        assert directives == Directives(minimum=Minimum("1_int32"))
+
+    def test_the_wrapper_carries_that_minimum(self):
+        synthesis, _ = pipeline(impl_module())
+        argument = synthesis.project.procedure("tox_demo", "sums").argument("n_omp_threads")
+
+        assert argument.directives == Directives(minimum=Minimum("1_int32"))
+        assert argument.doc.text.split("\n")[-1] == _OMP_THREADS_DOC[-1]
+
+
+class TestTheRole:
+    def test_it_is_marked_on_the_wrapper_argument(self):
+        synthesis, _ = pipeline(impl_module())
+        procedure = synthesis.project.procedure("tox_demo", "sums")
+
+        assert procedure.argument("n_omp_threads").roles.is_omp_threads
+        assert not procedure.argument("n").roles.is_omp_threads
+
+
+# -- what is refused ------------------------------------------------------------------
+
+
+class TestAcceptedRoots:
+    @pytest.mark.parametrize("prefix", ["M_OMP_PURE", "", "impure", "M_OMP_PURE elemental",
+                                        "impure elemental", "recursive"])
+    def test_these_statements_are_fine(self, prefix):
+        assert errors(impl_module(root(prefix=prefix))) == []
+
+    def test_a_root_using_both_macros_where_they_belong(self):
+        uses = (
+            MacroUse("M_OMP_PURE", SourceLocation(None, _STATEMENT_LINE), "sums_impl"),
+            MacroUse("M_OMP_PARALLEL", SourceLocation(None, _STATEMENT_LINE + 9), "sums_impl"),
+        )
+        assert errors(impl_module(macro_uses=uses)) == []
+
+
+class TestWhereItMayAppear:
+    """R1: only on an implementation and the wrappers generated from it."""
+
+    def test_an_export_may_not_take_it(self):
+        export = b.module("tox_plain", b.procedure(
+            "hand_written", b.integer("n", Intent.IN, doc="rows"),
+            b.integer("n_omp_threads", Intent.IN, doc="threads"), b.ierr(),
+        ), doc="Hand-written.")
+
+        assert errors(export) == [
+            "argument 'n_omp_threads' of 'hand_written', which is not an implementation"
+        ]
+
+    def test_nor_return_it(self):
+        export = b.module("tox_plain", b.procedure(
+            "threads_query", b.ierr(),
+            result=b.integer("n_omp_threads", Intent.OUT, doc="threads", is_result=True),
+        ), doc="Hand-written.")
+
+        assert errors(export) == [
+            "result 'n_omp_threads' of 'threads_query', which is not an implementation"
+        ]
+
+    def test_a_recommend_routine_beside_a_root_may_not_take_it(self):
+        recommend = b.procedure(
+            "work_size", b.integer("n_omp_threads", Intent.IN, doc="threads"),
+            b.integer("size", Intent.OUT, doc="size"),
+        )
+
+        assert errors(impl_module(root(), recommend)) == [
+            "argument 'n_omp_threads' of 'work_size', which is not an implementation"
+        ]
+
+    def test_a_prologue_may_not_take_it(self):
+        prologue = b.procedure(
+            "guard",
+            b.integer("n", Intent.IN, doc="rows"),
+            omp_threads(doc="threads"),
+            b.logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        )
+        guarded = root(directives=Directives(prologue=Prologue("guard", "tox_demo_impl")))
+
+        assert errors(impl_module(prologue, guarded)) == [
+            "prologue 'guard' takes 'n_omp_threads'"
+        ]
+
+    def test_a_non_root_s_count_from_its_prologue_keeps_the_extent_rule(self):
+        # only a root's count is left to the root's own declaration rule
+        prologue = b.procedure(
+            "guard",
+            b.integer("n", Intent.IN, doc="rows"),
+            omp_threads(optional=True, doc="threads"),
+            b.real("weights", Intent.IN, "(n_omp_threads)", doc="per thread"),
+            b.logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        )
+        plain = b.procedure(
+            "scale_impl", b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.INOUT, "(n)", doc="the data"),
+            meta=IMPL_META, directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+        )
+        found = errors(impl_module(prologue, plain))
+
+        assert "prologue 'guard' takes 'n_omp_threads'" in found
+        assert any(message.startswith("extent argument 'n_omp_threads' is optional")
+                   for message in found)
+
+    def test_an_implementation_function_may_not_return_it(self):
+        function = b.procedure(
+            "count_impl", b.integer("n", Intent.IN, doc="rows"),
+            result=b.integer("n_omp_threads", Intent.OUT, doc="threads", is_result=True),
+            meta=IMPL_META,
+        )
+
+        assert "result of 'count_impl' is named 'n_omp_threads'" in errors(impl_module(function))
+
+
+class TestItsDeclaration:
+    """R2: a required, scalar `integer(int32)`, `intent(in)`."""
+
+    @pytest.mark.parametrize("argument, problem", [
+        (omp_threads(optional=True), "optional"),
+        (omp_threads(dimension="(2)"), "an array of rank 1"),
+        (omp_threads(kind="int64"), "integer(int64)"),
+        (omp_threads(intent=Intent.INOUT), "intent(inout)"),
+    ])
+    def test_anything_else_is_refused(self, argument, problem):
+        assert f"'n_omp_threads' is {problem}" in errors(impl_module(lone_root(argument)))
+
+    @pytest.mark.parametrize("argument, problem", [
+        (omp_threads(optional=True), "optional"),
+        (omp_threads(intent=Intent.INOUT), "intent(inout)"),
+        (omp_threads(optional=True, intent=Intent.INOUT), "optional, intent(inout)"),
+    ])
+    def test_sizing_a_work_array_it_is_refused_once_with_the_declaration_to_write(
+            self, argument, problem):
+        # an extent's own rule would refuse it too, on the expert wrapper and first, with a
+        # note that does not fit a thread count
+        source = impl_module(root(
+            b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.real("tmp_w", Intent.OUT, "(n, n_omp_threads)", doc="scratch per thread"),
+            b.real("total", Intent.OUT, doc="their sum"),
+            argument,
+        ))
+
+        assert errors(source) == [f"'n_omp_threads' is {problem}"]
+        assert notes(source)[0].startswith(
+            "declare it `integer(int32), intent(in) :: n_omp_threads`"
+        )
+
+
+class TestWhatItMaySize:
+    """R3: only the last extent of a `tmp_` array, as the bare name."""
+
+    def refused(self, *extra):
+        return errors(impl_module(root(
+            b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.real("total", Intent.OUT, doc="their sum"),
+            omp_threads(),
+            *extra,
+        )))
+
+    def test_a_non_last_extent(self):
+        assert self.refused(b.real("tmp_w", Intent.OUT, "(n_omp_threads, n)", doc="scratch")) == [
+            "'n_omp_threads' is used in the extent 'n_omp_threads' of 'tmp_w'"
+        ]
+
+    def test_an_array_that_is_not_a_work_array(self):
+        assert self.refused(b.real("per_thread", Intent.OUT, "(n, n_omp_threads)", doc="out")) == [
+            "'n_omp_threads' is used in the extent 'n_omp_threads' of 'per_thread'"
+        ]
+
+    @pytest.mark.parametrize("name, extents", [
+        ("tmp_w", "(n, 2*n_omp_threads)"),
+        ("out", "(n_omp_threads + 1)"),
+    ])
+    def test_inside_an_extent_expression(self, name, extents):
+        found = self.refused(b.real(name, Intent.OUT, extents, doc="sized by it"))
+
+        assert len(found) == 1 and found[0].startswith(
+            f"'n_omp_threads' is used in the extent "
+        ) and found[0].endswith(f"of '{name}'")
+
+    def test_a_character_length(self):
+        found = self.refused(b.character("label", Intent.OUT, length="n_omp_threads", doc="a"))
+
+        assert found == ["'n_omp_threads' is used in the length 'n_omp_threads' of 'label'"]
+
+
+class TestItsDocumentation:
+    """R4: the generator writes it; an author's text or directive is refused, not dropped."""
+
+    def test_its_own_text(self):
+        source = impl_module(lone_root(omp_threads(doc="how many threads")))
+
+        assert errors(source) == ["'n_omp_threads' has documentation of its own"]
+
+    def test_a_directive(self):
+        threads = omp_threads(doc="The minimum valid value is `2_int32`.",
+                              directives=Directives(minimum=Minimum("2_int32")))
+
+        assert errors(impl_module(lone_root(threads))) == ["'n_omp_threads' carries DM_MIN"]
+
+
+class TestItsPurity:
+    """R5: a root is `M_OMP_PURE` or impure, read from the statement as written."""
+
+    def test_plain_pure(self):
+        assert errors(impl_module(root(prefix="pure"))) == [
+            "OpenMP root 'sums_impl' is declared pure"
+        ]
+
+    def test_elemental_without_impure(self):
+        assert errors(impl_module(root(prefix="elemental"))) == [
+            "OpenMP root 'sums_impl' is elemental, which is pure"
+        ]
+
+    def test_a_statement_that_could_not_be_read(self):
+        assert errors(impl_module(root(prefix=None))) == [
+            "the statement of 'sums_impl' could not be read"
+        ]
+
+    def test_its_macro_on_the_line_the_statement_is_continued_from_is_not_refused_again(self):
+        # `M_OMP_PURE &` above `subroutine sums_impl(`: the prefix is the root's, and the one
+        # error says to write the statement on one line
+        uses = (MacroUse("M_OMP_PURE", SourceLocation(None, _STATEMENT_LINE - 1), "sums_impl"),)
+        source = impl_module(root(prefix=None), macro_uses=uses)
+
+        assert errors(source) == ["the statement of 'sums_impl' could not be read"]
+        assert notes(source)[0].endswith("write `M_OMP_PURE subroutine sums_impl(` on one line")
+
+
+class TestWhereTheMacrosMayBeWritten:
+    """R5: `M_OMP_PURE` on a root's statement, `!M_OMP_PARALLEL(` inside a root -- nowhere else."""
+
+    def plain_impl(self):
+        return b.procedure(
+            "scale_impl", b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.INOUT, "(n)", doc="the data"),
+            meta=IMPL_META, is_pure=True, statement_prefix="M_OMP_PURE",
+            location=SourceLocation(None, 30),
+        )
+
+    def test_m_omp_pure_on_an_implementation_without_the_argument(self):
+        uses = (MacroUse("M_OMP_PURE", SourceLocation(None, 30), "scale_impl"),)
+        source = impl_module(root(), self.plain_impl(), macro_uses=uses)
+
+        assert errors(source) == [
+            "M_OMP_PURE is written in 'scale_impl', and only an OpenMP root may carry it"
+        ]
+        # what to write instead, as a plain implementation or as a root
+        assert notes(source)[0].endswith(
+            "declare 'scale_impl' `pure` (or impure) instead, or give it an 'n_omp_threads' "
+            "argument if it holds the parallel loop"
+        )
+
+    def test_a_parallel_loop_in_an_implementation_without_the_argument(self):
+        uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 35), "scale_impl"),)
+        source = impl_module(root(), self.plain_impl(), macro_uses=uses)
+
+        assert errors(source) == [
+            "!M_OMP_PARALLEL(...) is written in 'scale_impl', and only an OpenMP root may carry it"
+        ]
+        assert notes(source)[0].endswith(
+            "give 'scale_impl' an 'n_omp_threads' argument to make it a root, or move the loop "
+            "into a root"
+        )
+
+    def test_a_parallel_loop_in_a_private_procedure_names_it(self):
+        # the IR holds only what the module publishes, so a private helper is no root, but the
+        # frontend still places the loop in it
+        uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 45), "sum_helper"),)
+        source = impl_module(root(), macro_uses=uses)
+
+        assert errors(source) == [
+            "!M_OMP_PARALLEL(...) is written in 'sum_helper', and only an OpenMP root may carry it"
+        ]
+        assert notes(source)[0].startswith(
+            "a parallel loop belongs only in an OpenMP root, an implementation that takes "
+            "'n_omp_threads'"
+        )
+        assert notes(source)[0].endswith(
+            "'sum_helper' is private, so it cannot be one: move the loop into a root"
+        )
+
+    @pytest.mark.parametrize("macro, fix", [
+        ("M_OMP_PURE", "; declare 'hidden_impl' `pure` (or impure) instead, or make it public, "
+                       "with an 'n_omp_threads' argument, if it holds the parallel loop"),
+        ("M_OMP_PARALLEL", "; 'hidden_impl' is private, and only an implementation the module "
+                           "publishes can be one: make it public, with an 'n_omp_threads' "
+                           "argument, or move the loop into a root"),
+    ])
+    def test_a_private_implementation_is_told_to_be_public(self, macro, fix):
+        # written as a root, but the IR holds only what the module publishes
+        uses = (MacroUse(macro, SourceLocation(None, 45), "hidden_impl"),)
+        source = impl_module(root(), macro_uses=uses)
+
+        assert len(errors(source)) == 1
+        assert notes(source)[0].endswith(fix)
+
+    def test_m_omp_pure_in_the_body_of_a_root(self):
+        uses = (MacroUse("M_OMP_PURE", SourceLocation(None, _STATEMENT_LINE + 3), "sums_impl"),)
+        source = impl_module(macro_uses=uses)
+
+        assert errors(source) == [
+            "M_OMP_PURE is written in the body of 'sums_impl', and only an OpenMP root may carry it"
+        ]
+        assert notes(source)[0].endswith("write `pure` (or impure) in place of M_OMP_PURE")
+
+    def test_outside_every_procedure(self):
+        uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 3), None),)
+
+        assert errors(impl_module(macro_uses=uses)) == [
+            "!M_OMP_PARALLEL(...) is written outside every procedure, and only an OpenMP root "
+            "may carry it"
+        ]
+
+    @pytest.mark.parametrize("macro, written, fix", [
+        ("M_OMP_PURE", "M_OMP_PURE", "; declare 'hand_written' `pure` (or impure) instead"),
+        ("M_OMP_PARALLEL", "!M_OMP_PARALLEL(...)", "; move the loop into a root"),
+    ])
+    def test_in_a_module_that_is_not_an_implementation_module(self, macro, written, fix):
+        export = b.module("tox_plain", b.procedure(
+            "hand_written", b.integer("n", Intent.IN, doc="rows"), b.ierr(),
+            location=SourceLocation(None, 5),
+        ), doc="Hand-written.", macro_uses=(MacroUse(macro, SourceLocation(None, 5),
+                                                     "hand_written"),))
+
+        assert errors(export) == [
+            f"{written} is written in 'hand_written', and only an OpenMP root may carry it"
+        ]
+        # an export cannot become a root, so nothing says to give it the count
+        assert notes(export)[0].endswith(fix)
+
+
+# -- the frontend reads both from the source the author edits ---------------------------
+
+
+@pytest.fixture(scope="module")
+def fixture_impls():
+    bag = DiagnosticBag()
+    parsed = FordFrontend(
+        Paths(root=REPO_ROOT, src_dir=Path("helper/codegen/tests/fixtures/impl")), bag
+    ).parse()
+    assert bag.render() == ""
+    return parsed.project
+
+
+class TestTheFrontend:
+    def test_it_reads_the_macro_before_the_preprocessor_replaces_it(self, fixture_impls):
+        root_ = fixture_impls.procedure("fx_omp_impl", "fx_column_sums_impl")
+
+        assert root_.statement_prefix == "M_OMP_PURE"
+        assert root_.is_pure  # what Ford reads, after the preprocessor
+
+    def test_it_finds_each_macro_in_the_procedure_that_holds_it(self, fixture_impls):
+        uses = fixture_impls.module("fx_omp_impl").macro_uses
+
+        assert [(use.macro, use.procedure) for use in uses] == [
+            ("M_OMP_PURE", "fx_column_sums_impl"), ("M_OMP_PARALLEL", "fx_column_sums_impl"),
+            ("M_OMP_PURE", "fx_column_maxima_impl"), ("M_OMP_PARALLEL", "fx_column_maxima_impl"),
+        ]
+        statement = fixture_impls.procedure("fx_omp_impl", "fx_column_sums_impl").location
+        assert uses[0].location == statement
+
+    def test_a_loop_in_a_private_procedure_is_placed_in_it(self, misplaced):
+        use = misplaced.project.module("fx_helper_impl").macro_uses[-1]
+
+        assert (use.macro, use.procedure) == ("M_OMP_PARALLEL", "fx_helper")
+
+    def test_a_prefix_the_statement_is_continued_from_is_the_root_s(self, misplaced):
+        use = misplaced.project.module("fx_split_impl").macro_uses[0]
+
+        assert (use.macro, use.procedure) == ("M_OMP_PURE", "fx_split_impl")
+        assert use.location.line == misplaced.split_line
+
+    def test_a_loop_in_a_contained_procedure_is_its_host_s_despite_a_namesake(self, misplaced):
+        # the root's contained `helper` holds the loop; a private module `helper` after the root
+        # is another procedure, and the loop is not in it
+        use = misplaced.project.module("fx_shadow_impl").macro_uses[-1]
+
+        assert (use.macro, use.procedure) == ("M_OMP_PARALLEL", "fx_shadow_impl")
+
+    def test_each_is_refused_once_where_it_is(self, misplaced):
+        # the continued statement: one error, which says how to write it, and none that says
+        # its macro is outside every procedure; the root beside a namesake: none
+        assert sorted(misplaced.errors) == [
+            "!M_OMP_PARALLEL(...) is written in 'fx_helper', and only an OpenMP root may carry it",
+            "the statement of 'fx_split_impl' could not be read",
+        ]
+
+
+#: A root as an author writes it, with its parallel loop; `{prefix}` is its statement's prefix,
+#: `{name}` its name, and `{more}` what the module holds after it
+_ROOT_SOURCE = """\
+#include <src/macros.h>
+
+!> summary: Roots whose macros are misplaced
+!| author: A Developer
+!| What the frontend makes of them.
+module {module}
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    M_IMPLICIT_NONE
+    private
+
+    public :: {name}
+
+contains
+
+    !> summary: The sum of every column
+    !| author: A Developer
+    !| Through a per-thread work array.
+    {prefix}subroutine {name}(n_rows, n_cols, values, sums, n_omp_threads, tmp_column)
+        !$ use omp_lib, only: omp_get_thread_num
+        integer(int32), intent(in) :: n_rows
+            !! rows of the matrix
+        integer(int32), intent(in) :: n_cols
+            !! columns of the matrix
+        real(real64), intent(in) :: values(n_rows, n_cols)
+            !! the matrix
+        real(real64), intent(out) :: sums(n_cols)
+            !! the sum of every column
+        integer(int32), intent(in) :: n_omp_threads
+        real(real64), intent(out) :: tmp_column(n_rows, n_omp_threads)
+            !! one column of scratch per thread
+        integer(int32) :: i_col, i_thread
+
+        !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_column) private(i_thread)
+        do i_col = 1, n_cols
+            i_thread = 1
+            !$ i_thread = omp_get_thread_num() + 1
+            tmp_column(:, i_thread) = values(:, i_col)
+            sums(i_col) = sum(tmp_column(:, i_thread))
+        end do
+    end subroutine {name}
+{more}
+end module {module}
+"""
+
+_PRIVATE_HELPER = """
+    pure subroutine fx_helper(n, values, total)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: values(n)
+        real(real64), intent(out) :: total
+        integer(int32) :: i
+        total = 0
+        !M_OMP_PARALLEL(n > 1) shared(values) reduction(+:total)
+        do i = 1, n
+            total = total + values(i)
+        end do
+    end subroutine fx_helper
+"""
+
+
+#: A private module procedure named as the procedure a root contains
+_NAMESAKE = """
+    pure subroutine helper(n, values, total)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: values(n)
+        real(real64), intent(out) :: total
+        total = sum(values)
+    end subroutine helper
+"""
+
+
+def _loop_in_a_contained_helper(source, root):
+    """`source` with the root's parallel loop moved into a procedure `helper` it contains."""
+    return source.replace(
+        "        !M_OMP_PARALLEL",
+        "        call helper()\n    contains\n        subroutine helper()\n        !M_OMP_PARALLEL",
+        1,
+    ).replace(
+        f"        end do\n    end subroutine {root}",
+        f"        end do\n        end subroutine helper\n    end subroutine {root}",
+        1,
+    )
+
+
+@pytest.fixture(scope="module")
+def misplaced(tmp_path_factory):
+    """Three modules, read by Ford and validated: a root beside a private helper holding a
+    parallel loop; a root whose `M_OMP_PURE &` continues onto the next line; and a root whose
+    contained `helper` holds the loop, beside a private module procedure `helper`."""
+    src = tmp_path_factory.mktemp("misplaced")
+    (src / "fx_shadow_impl.F90").write_text(_loop_in_a_contained_helper(_ROOT_SOURCE.format(
+        module="fx_shadow_impl", name="fx_shadow_impl", prefix="M_OMP_PURE ", more=_NAMESAKE,
+    ), "fx_shadow_impl"))
+    (src / "fx_helper_impl.F90").write_text(_ROOT_SOURCE.format(
+        module="fx_helper_impl", name="fx_sums_impl", prefix="M_OMP_PURE ",
+        more=_PRIVATE_HELPER,
+    ))
+    split = _ROOT_SOURCE.format(
+        module="fx_split_impl", name="fx_split_impl", prefix="M_OMP_PURE &\n    ", more="",
+    )
+    (src / "fx_split_impl.F90").write_text(split)
+
+    bag = DiagnosticBag()
+    parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=src), bag).parse()
+    assert bag.render() == ""
+    synthesis = synthesize_wrappers(parsed.project, CONVENTIONS, bag)
+    analyse_project(synthesis.project, bag)
+    validate_project(synthesis.project, bag)
+
+    class Misplaced:
+        project = parsed.project
+        errors = [d.message for d in bag.errors]
+        split_line = split.splitlines().index("    M_OMP_PURE &") + 1
+
+    return Misplaced
+
