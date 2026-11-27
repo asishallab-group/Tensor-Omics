@@ -8,7 +8,7 @@
 !| layers, everything here works from delimited text rather than the library's binary array format.
 module tox_data_tools
     use f42_safeguard
-    use iso_fortran_env, only: real64, int32, iostat_end
+    use iso_fortran_env, only: real64, int32, int64, iostat_end
     use iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, set_err, is_err, check_io_stat
     use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA, ERR_SIZE_MISMATCH
@@ -101,15 +101,33 @@ contains
             actual_delimiter = char(9)
         end if
 
+        ! the argument positions name the offending argument, as the generated wrappers do
         if (n_value_cols <= 0) then
-            call set_err_once(ierr, ERR_INVALID_INPUT)
+            call set_err_once(ierr, ERR_INVALID_INPUT, 6)
             if (DEBUG) write (*, *) 'Error: No value columns specified.'
+            return
+        end if
+        if (any(value_cols < 1)) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, 6)
+            return
+        end if
+        if (gene_col < 1) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, 5)
+            return
+        end if
+        if (start_row < 1) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, 7)
             return
         end if
 
         if (size(expression_vectors, 2) /= n_genes) then
-            call set_err_once(ierr, ERR_SIZE_MISMATCH)
+            call set_err_once(ierr, ERR_SIZE_MISMATCH, 3)
             if (DEBUG) write (*, *) 'Error: expression_vectors column count does not match n_genes.'
+            return
+        end if
+        ! every file's value columns go below the previous file's, from start_row on
+        if (int(start_row, int64) - 1 + int(size(file_list), int64)*n_value_cols > size(expression_vectors, 1)) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH, 3)
             return
         end if
 
@@ -284,6 +302,11 @@ contains
         call set_ok(ios)
         row_count = 0
 
+        if (gene_col < 1) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, 4)
+            return
+        end if
+
         unit = -1  ! a failed OPEN leaves unit undefined: close nothing then
         open (newunit=unit, file=trim(filename), status='old', action='read', iostat=ios)
         call check_okay_ioerror(ios, ierr, ERR_FILE_OPEN, unit)
@@ -346,6 +369,10 @@ contains
         integer(int32) :: hashmap_size
 
         call set_ok(ierr)
+        if (size(gene_to_fam) /= size(gene_ids)) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH, 4)
+            return
+        end if
         gene_to_fam = 0
         n_families = size(family_ids)
         n_genes = size(gene_ids)
@@ -385,6 +412,12 @@ contains
             end if
 
             fam_idx = fam_idx + 1
+            if (fam_idx > n_families) then
+                call set_err_once(ierr, ERR_SIZE_MISMATCH, 3)
+                call hashmap_destroy(gene_map)
+                close (unit)
+                return
+            end if
 
             call split_string(line, fields, char(9), ierr)
 
@@ -541,6 +574,19 @@ contains
         call set_ok(ierr)
         n_genes_total = size(gene_to_fam)
         n_samples = size(expression_vectors, 1)
+        n_genes_kept = 0
+        if (size(gene_ids) /= n_genes_total) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH, 1)
+            return
+        end if
+        if (size(expression_vectors, 2) /= n_genes_total) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH, 2)
+            return
+        end if
+        if (size(mask) /= n_genes_total) then
+            call set_err_once(ierr, ERR_SIZE_MISMATCH, 4)
+            return
+        end if
         n_genes_kept = count(mask)
 
         if (n_genes_kept == 0) then
