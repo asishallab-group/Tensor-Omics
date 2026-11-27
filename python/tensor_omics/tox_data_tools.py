@@ -7,6 +7,12 @@ These populate the raw `gene_ids` / `expression` / `gene_to_family` / `family_id
 :func:`tensor_omics.save_tox_data` later persists; unlike the archive/serde
 layers, everything here works from delimited text rather than the library's binary array format.
 
+The readers are deliberately simple, not a general CSV reader: a line is read whole up to
+4096 characters and refused with `ERR_STRING_TOO_LONG` past that; each delimiter separates two
+fields, so two in a row enclose an empty one; blanks around a field are not part of it; there
+is no quoting. Whatever a reader cannot read as it is meant, it refuses rather than guesses.
+After an error, the contents of every output are undefined.
+
 Python binding, generated from tox_data_tools. Do not edit.
 """
 
@@ -100,6 +106,15 @@ def read_expression_vectors_tsv(
         delimiter='\t',
 ):
     r"""Read expression vectors from csv/tsv files
+
+    Each file's rows give the values of the gene their `gene_col` names: the `value_cols` of a
+    row go to rows `start_row`, `start_row + 1`, ... of that gene's column, and each further file
+    continues below the last. A row naming a gene not in `gene_ids` is skipped; a gene may be
+    named by one row of a file. Every row must have every column read, none of them empty; a
+    value must be one complete, finite number. Blank lines at the end of a file are ignored; a
+    file of no data row is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long.
+    Values of genes no row names are left as they were; after an error, `expression_vectors`
+    is undefined.
 
     Parameters
     ----------
@@ -205,6 +220,14 @@ def read_gene_ids_from_tsv_file(
 ):
     r"""Only read the gene ids from a tsv file
 
+    Each tab-separated row after the header gives one id, from its `gene_col`, in file order.
+    A row without that column, or with it empty, is refused, and so is an id longer than the
+    strings of `gene_ids`. Blank lines at the end of the file are ignored; a file of no data row
+    is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than
+    `gene_ids` has elements, the ones past the last row are left undefined, and the number of
+    rows read is not returned: size `gene_ids` to the file. After an error, `gene_ids` is
+    undefined.
+
     Parameters
     ----------
     filename : str
@@ -278,6 +301,15 @@ def read_orthofinder_file(
         n_gene_to_fam_elements,
 ):
     r"""Read a family file (Orthofinder)
+
+    After its header line, each line of an OrthoFinder `Orthogroups.tsv` is a family: its id,
+    then a tab-separated column per species, each a comma-separated list of genes (empty
+    columns allowed). Family k is the k-th such line, and each gene of `gene_ids` gets the
+    index of the family that lists it, or 0 when none does; listed genes
+    not in `gene_ids` are ignored. Blank lines are skipped. A family id longer than the strings
+    of `family_ids`, a line without one, and more families than `family_ids` holds are refused.
+    A line may be 4096 characters long. With fewer families than `family_ids` has elements, the
+    ones past the last family are left undefined; after an error, all outputs are undefined.
 
     Parameters
     ----------

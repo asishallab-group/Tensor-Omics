@@ -1,0 +1,376 @@
+!> The `read_orthofinder_file` cases: an OrthoFinder `Orthogroups.tsv` (a header line, then one
+!| family per line: its id, then a tab-separated column per species, each a comma-separated list
+!| of genes) gives each family its line's index, and each gene of `gene_ids` the index of the
+!| family that lists it, or 0 (M_GENE_TO_FAM_SENTINEL) when none does; genes not in `gene_ids`,
+!| empty species columns, a file of no family, a missing or empty file, and the shipped files.
+!|
+!| Each file but the shipped one is written by the case into a scratch directory, and the
+!| expected indices are read off its content.
+module mod_test_read_orthofinder_file
+    use asserts
+    use, intrinsic :: iso_fortran_env, only: int32
+    use tox_data_tools, only: read_orthofinder_file, read_gene_ids_from_tsv_file
+    use tox_errors
+    use test_suite, only: test_case
+    use scratch_directory
+    use mod_test_tox_data_tools_fixtures, only: TAB, LF
+    implicit none
+    private
+    public :: get_all_tests_read_orthofinder_file
+
+    !> The gene_to_fam of a gene in no family.
+    integer(int32), parameter :: UNASSIGNED = 0
+
+contains
+
+    !> Every case of `read_orthofinder_file`.
+    function get_all_tests_read_orthofinder_file() result(all_tests)
+        type(test_case), allocatable :: all_tests(:)
+
+        allocate (all_tests(11))
+        all_tests(1) = test_case("test_read_orthofinder_file_families", test_read_orthofinder_file_families)
+        all_tests(2) = test_case("test_read_orthofinder_file_skips_the_header", test_read_orthofinder_file_skips_the_header)
+        all_tests(3) = test_case("test_read_orthofinder_file_empty_species_columns", &
+                                 test_read_orthofinder_file_empty_species_columns)
+        all_tests(4) = test_case("test_read_orthofinder_file_no_family", test_read_orthofinder_file_no_family)
+        all_tests(5) = test_case("test_read_orthofinder_file_missing_or_empty_file", &
+                                 test_read_orthofinder_file_missing_or_empty_file)
+        all_tests(6) = test_case("test_read_orthofinder_file_shipped_material", test_read_orthofinder_file_shipped_material)
+        all_tests(7) = test_case("test_read_orthofinder_file_reads_a_long_line_whole", &
+                                 test_read_orthofinder_file_reads_a_long_line_whole)
+        all_tests(8) = test_case("test_read_orthofinder_file_skips_a_blank_line", &
+                                 test_read_orthofinder_file_skips_a_blank_line)
+        all_tests(9) = test_case("test_read_orthofinder_file_checks_the_sizes", &
+                                 test_read_orthofinder_file_checks_the_sizes)
+        all_tests(10) = test_case("test_read_orthofinder_file_family_lines", &
+                                  test_read_orthofinder_file_family_lines)
+        all_tests(11) = test_case("test_read_orthofinder_file_line_endings", &
+                                  test_read_orthofinder_file_line_endings)
+    end function get_all_tests_read_orthofinder_file
+
+    !> Three families over two species. A gene's index is its family's line (OG7 is family 1,
+    !| whatever its id says); genes are found in either species column and in any position of
+    !| a list, blanks after a comma included; a gene in no family gets 0; a listed gene not in
+    !| `gene_ids` (h9) is ignored. `gene_ids` is in another order than the file.
+    subroutine test_read_orthofinder_file_families()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(6)
+        character(len=8) :: family_ids(3), expected_family_ids(3)
+        integer(int32) :: gene_to_fam(6), expected_gene_to_fam(6), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_families")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"human"//TAB//"mouse"//LF// &
+                                "OG7"//TAB//"g3, g1"//TAB//"m2"//LF// &
+                                "OG2"//TAB//"g2"//TAB//"h9, m1"//LF// &
+                                "OG5"//TAB//"g5"//TAB//"m3"//LF)
+        gene_ids = ["m1", "g1", "g2", "g3", "g4", "m2"]
+
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_families: ierr")
+        expected_family_ids = ["OG7", "OG2", "OG5"]
+        call assert_equal_array_char(family_ids, expected_family_ids, 8, 3, "test_read_orthofinder_file_families: family_ids")
+        expected_gene_to_fam = [2, 1, 2, 1, UNASSIGNED, 1]
+        call assert_equal_array_int(gene_to_fam, expected_gene_to_fam, 6, "test_read_orthofinder_file_families: gene_to_fam")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_families
+
+    !> The first line is the header and is skipped, even when it reads like a family.
+    subroutine test_read_orthofinder_file_skips_the_header()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: family_ids(1), expected_family_ids(1)
+        integer(int32) :: gene_to_fam(2), expected_gene_to_fam(2), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_header")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "OG1"//TAB//"g1"//LF//"OG2"//TAB//"g2"//LF)
+        gene_ids = ["g1", "g2"]
+
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_skips_the_header: ierr")
+        expected_family_ids = ["OG2"]
+        call assert_equal_array_char(family_ids, expected_family_ids, 8, 1, &
+                                     "test_read_orthofinder_file_skips_the_header: family_ids")
+        expected_gene_to_fam = [UNASSIGNED, 1]
+        call assert_equal_array_int(gene_to_fam, expected_gene_to_fam, 2, &
+                                    "test_read_orthofinder_file_skips_the_header: gene_to_fam")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_skips_the_header
+
+    !> A family with no gene of some species has an empty column there, as OrthoFinder writes
+    !| it: two tabs in a row, or a tab at the end of the line. The genes of the other columns
+    !| are still found.
+    subroutine test_read_orthofinder_file_empty_species_columns()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(3)
+        character(len=8) :: family_ids(2)
+        integer(int32) :: gene_to_fam(3), expected_gene_to_fam(3), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_empty_columns")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"a"//TAB//"b"//TAB//"c"//LF// &
+                                "OG1"//TAB//TAB//"g2"//TAB//"g3"//LF// &
+                                "OG2"//TAB//"g1"//TAB//TAB//LF)
+        gene_ids = ["g1", "g2", "g3"]
+
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_empty_species_columns: ierr")
+        expected_gene_to_fam = [2, 1, 1]
+        call assert_equal_array_int(gene_to_fam, expected_gene_to_fam, 3, "test_read_orthofinder_file_empty_species_columns")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_empty_species_columns
+
+    !> A file of nothing but its header lists no family: every gene gets 0, without an error,
+    !| also with no gene and no family at all.
+    subroutine test_read_orthofinder_file_no_family()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2), no_gene_ids(0)
+        character(len=8) :: family_ids(1), no_family_ids(0)
+        integer(int32) :: gene_to_fam(2), no_gene_to_fam(0), expected_gene_to_fam(2), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_no_family")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"a"//LF)
+        gene_ids = ["g1", "g2"]
+
+        gene_to_fam = 7
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_no_family: ierr")
+        expected_gene_to_fam = UNASSIGNED
+        call assert_equal_array_int(gene_to_fam, expected_gene_to_fam, 2, "test_read_orthofinder_file_no_family: gene_to_fam")
+
+        call read_orthofinder_file(orthogroups, no_gene_ids, no_family_ids, no_gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_no_family: no gene, no family")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_no_family
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, and an empty one, which lacks
+    !| the header, with ERR_READ_DATA.
+    subroutine test_read_orthofinder_file_missing_or_empty_file()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: missing, empty
+        character(len=4) :: gene_ids(1)
+        character(len=8) :: family_ids(1)
+        integer(int32) :: gene_to_fam(1), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_missing_or_empty")
+        missing = scratch_file(scratch, "missing.tsv")
+        empty = scratch_file(scratch, "empty.tsv")
+        call write_scratch_file(empty, "")
+        gene_ids = ["g1"]
+
+        call read_orthofinder_file(missing, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, "test_read_orthofinder_file_missing_or_empty_file: missing")
+        call read_orthofinder_file(empty, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_READ_DATA, "test_read_orthofinder_file_missing_or_empty_file: empty")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_missing_or_empty_file
+
+    !> Kept from the old `test_data_accessors` and the R suite's `test_2_read_orthofinder_file`
+    !| (the families of the first ten genes): the shipped files, read as the pipeline reads them.
+    !| Derived with awk from the files: the first ten genes of the expression file are in
+    !| families 48 (OG0000047; genes 1-4), 2146 (OG0002145), 231 (OG0000230) and 128 (OG0000127;
+    !| genes 7-10); gene 80623, XP_063120092.1, is the last gene of family 1's line (every line
+    !| of Orthogroups.tsv ends in CR LF, so this checks the CR is not part of it); the last family
+    !| is 15512, OG0015511; and 81960 of the 88327 genes are in a family.
+    subroutine test_read_orthofinder_file_shipped_material()
+        integer(int32), parameter :: N_GENES = 88327, N_FAMILIES = 15512
+        character(len=32), allocatable :: gene_ids(:), family_ids(:)
+        integer(int32), allocatable :: gene_to_fam(:)
+        integer(int32) :: expected_first_ten(10), ierr
+
+        allocate (gene_ids(N_GENES), family_ids(N_FAMILIES), gene_to_fam(N_GENES))
+        call read_gene_ids_from_tsv_file("material/kallisto_sex_data_no_na.tsv", gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_shipped_material: the gene ids")
+
+        call read_orthofinder_file("material/Orthogroups.tsv", gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_shipped_material: ierr")
+        expected_first_ten = [48, 48, 48, 48, 2146, 231, 128, 128, 128, 128]
+        call assert_equal_array_int(gene_to_fam(1:10), expected_first_ten, 10, &
+                                    "test_read_orthofinder_file_shipped_material: the first ten genes")
+        call assert_string_equal(family_ids(48), "OG0000047", "test_read_orthofinder_file_shipped_material: family 48")
+        call assert_string_equal(family_ids(N_FAMILIES), "OG0015511", "test_read_orthofinder_file_shipped_material: last")
+        call assert_string_equal(gene_ids(80623), "XP_063120092.1", "test_read_orthofinder_file_shipped_material: gene 80623")
+        call assert_equal_int(gene_to_fam(80623), 1, "test_read_orthofinder_file_shipped_material: the last gene of a line")
+        call assert_equal_int(count(gene_to_fam /= UNASSIGNED), 81960, &
+                              "test_read_orthofinder_file_shipped_material: genes in a family")
+    end subroutine test_read_orthofinder_file_shipped_material
+
+    !> A line is read whole up to 4096 characters and refused with ERR_STRING_TOO_LONG naming
+    !| filename (argument 1) past it. 409 genes of 8 characters, each followed by ", " but the
+    !| last, after "OG1" and a tab, make a line of 4092 characters: every gene is in family 1. 600
+    !| make 6002: refused (the reader used to drop the 191 genes past character 4096, silently).
+    subroutine test_read_orthofinder_file_reads_a_long_line_whole()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=8) :: gene_ids(600), family_ids(1)
+        integer(int32) :: gene_to_fam(600), i_gene, n_listed, ierr
+        integer(int32), parameter :: LISTED(2) = [409, 600]
+
+        call create_scratch_directory(scratch, "orthofinder_long_line")
+        do i_gene = 1, 600
+            write (gene_ids(i_gene), '("gene", i4.4)') i_gene
+        end do
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        do n_listed = 1, 2
+            call write_scratch_file(orthogroups, "Orthogroup"//TAB//"a"//LF//family_line(LISTED(n_listed))//LF)
+            call read_orthofinder_file(orthogroups, gene_ids(1:LISTED(n_listed)), family_ids, &
+                                       gene_to_fam(1:LISTED(n_listed)), ierr)
+            if (n_listed == 1) then
+                call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_reads_a_long_line_whole: 4092, ierr")
+                call assert_equal_int(count(gene_to_fam(1:409) == 1), 409, &
+                                      "test_read_orthofinder_file_reads_a_long_line_whole: 4092, genes in family 1")
+            else
+                call assert_err(ierr, ERR_STRING_TOO_LONG, "test_read_orthofinder_file_reads_a_long_line_whole: 6002", 1)
+            end if
+        end do
+
+        call remove_scratch_directory(scratch)
+    contains
+        !> "OG1", a tab, and the first `n` genes separated by ", ".
+        function family_line(n) result(line)
+            integer(int32), intent(in) :: n
+            character(len=:), allocatable :: line
+            integer(int32) :: i
+
+            line = "OG1"//TAB//gene_ids(1)
+            do i = 2, n
+                line = line//", "//gene_ids(i)
+            end do
+        end function family_line
+    end subroutine test_read_orthofinder_file_reads_a_long_line_whole
+
+    !> Blank lines are skipped and take no family index: before the first family, between two, of
+    !| blanks, and at the end, OG1 and OG2 are families 1 and 2. (A blank line used to be counted,
+    !| leaving family_ids(2) unwritten and OG2's genes in family 3.)
+    subroutine test_read_orthofinder_file_skips_a_blank_line()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: family_ids(2), expected_family_ids(2)
+        integer(int32) :: gene_to_fam(2), expected_gene_to_fam(2), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_blank_line")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//LF//"OG1"//TAB//"g1"//LF//LF//"  "//LF// &
+                                "OG2"//TAB//"g2"//LF//LF)
+        gene_ids = ["g1", "g2"]
+
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_skips_a_blank_line: ierr")
+        expected_family_ids = ["OG1", "OG2"]
+        call assert_equal_array_char(family_ids, expected_family_ids, 8, 2, "test_read_orthofinder_file_skips_a_blank_line")
+        expected_gene_to_fam = [1, 2]
+        call assert_equal_array_int(gene_to_fam, expected_gene_to_fam, 2, "test_read_orthofinder_file_skips_a_blank_line")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_skips_a_blank_line
+
+    !> `family_ids` needs room for every family of the file, and `gene_to_fam` an entry per gene:
+    !| two families for one family id, and a gene_to_fam one shorter or one longer than gene_ids,
+    !| are refused with ERR_SIZE_MISMATCH naming the argument (family_ids is argument 3,
+    !| gene_to_fam argument 4). They used to write past the arrays' ends.
+    subroutine test_read_orthofinder_file_checks_the_sizes()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: one_family_id(1), family_ids(2)
+        integer(int32) :: gene_to_fam(2), one_short(1), one_long(3), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_sizes")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//"OG2"//TAB//"g2"//LF)
+        gene_ids = ["g1", "g2"]
+
+        call read_orthofinder_file(orthogroups, gene_ids, one_family_id, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_orthofinder_file_checks_the_sizes: two families, one id", 3)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, one_short, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_orthofinder_file_checks_the_sizes: gene_to_fam one short", 4)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, one_long, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_orthofinder_file_checks_the_sizes: gene_to_fam one long", 4)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_checks_the_sizes: as many as needed")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_checks_the_sizes
+
+    !> A family's id is its line's first field. One longer than the strings of `family_ids` is
+    !| refused with ERR_STRING_TOO_LONG naming family_ids (argument 3), and a line without one (it
+    !| starts with a tab) with ERR_INVALID_INPUT naming filename (argument 1). A family of no listed
+    !| gene is a family all the same: OG2 between OG1 and OG3 is family 2.
+    subroutine test_read_orthofinder_file_family_lines()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: family_ids(3), expected_family_ids(3)
+        integer(int32) :: gene_to_fam(2), expected_gene_to_fam(2), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_family_lines")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        gene_ids = ["g1", "g3"]
+
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG0000001"//TAB//"g1"//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_STRING_TOO_LONG, "test_read_orthofinder_file_family_lines: an id of 9 for 8", 3)
+
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//TAB//"g1"//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_orthofinder_file_family_lines: no id", 1)
+
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//"OG2"//TAB//LF// &
+                                "OG3"//TAB//"g3"//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_family_lines: a family of no gene, ierr")
+        expected_family_ids = ["OG1", "OG2", "OG3"]
+        call assert_equal_array_char(family_ids, expected_family_ids, 8, 3, &
+                                     "test_read_orthofinder_file_family_lines: a family of no gene")
+        expected_gene_to_fam = [1, 3]
+        call assert_equal_array_int(gene_to_fam, expected_gene_to_fam, 2, &
+                                    "test_read_orthofinder_file_family_lines: a family of no gene")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_family_lines
+
+    !> Line endings and blank lines of blanks and tabs: of CR LF lines, and with a lone CR ending the
+    !| file, the last gene of a line carries no CR; a line of blanks and tabs is skipped like an
+    !| empty one, between families and at the end.
+    subroutine test_read_orthofinder_file_line_endings()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: family_ids(2)
+        integer(int32) :: gene_to_fam(2), expected(2), ierr
+        character(len=1), parameter :: CR = char(13)
+
+        call create_scratch_directory(scratch, "orthofinder_line_endings")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        gene_ids = ["g1", "g2"]
+        expected = [1, 2]
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//CR//LF//"OG1"//TAB//"g1"//CR//LF// &
+                                "OG2"//TAB//"g2"//CR//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_line_endings: CR LF")
+        call assert_equal_array_int(gene_to_fam, expected, 2, "test_read_orthofinder_file_line_endings: CR LF")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//"OG2"//TAB//"g2"//CR)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_line_endings: CR at the end")
+        call assert_equal_array_int(gene_to_fam, expected, 2, "test_read_orthofinder_file_line_endings: CR at the end")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//TAB//" "//LF// &
+                                "OG2"//TAB//"g2"//LF//TAB//TAB//LF)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_line_endings: blanks and tabs")
+        call assert_equal_array_int(gene_to_fam, expected, 2, "test_read_orthofinder_file_line_endings: blanks and tabs")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_line_endings
+end module mod_test_read_orthofinder_file

@@ -1,12 +1,22 @@
 #include <src/macros.h>
 
 !> Wrappers for serialization/deserialization of arrays
+!|
+!| Each `save_*` writes its array to a file in the layout of
+!| [[f42_serde_arrays_utils(module)]], and each `load_*` reads one back into an array of the
+!| file's type, rank and shape. They store and read every value as it is, NaN and Inf included.
+!| After an error, a loaded array is undefined.
 module tox_data_read_write
-    use iso_fortran_env, only: real64, int32
-    use tox_errors, only: set_ok, set_err, is_err, is_ok
+    use iso_fortran_env, only: int32, real64
     use f42_serde_arrays_serialize, only: serialize_int_1d, serialize_real_2D, serialize_char_1D
     use f42_serde_arrays_deserialize, only: deserialize_int_1D, deserialize_real_2D, deserialize_char_1D
     M_IMPLICIT_NONE
+    private
+
+    public :: save_gene_ids, save_expression_vectors, save_gene_to_family, save_family_ids
+    public :: save_family_centroids, save_shift_vectors
+    public :: load_gene_ids, load_expression_vectors, load_gene_to_family, load_family_ids
+    public :: load_family_centroids, load_shift_vectors
 
 contains
     !> AUTHOR_AARON_SCHROEDER

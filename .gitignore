@@ -28,8 +28,6 @@
 # A suite with one child module per procedure keeps them in test/mod_test_<module>/, together
 # with the parent mod_test_<module>.F90 that gathers them.
 !/test
-!/test/test_files
-!/test/test_files/**/*
 !/test/mod_test*.[fF]90
 !/test/mod_test_*/
 !/test/mod_test_*/*.[fF]90

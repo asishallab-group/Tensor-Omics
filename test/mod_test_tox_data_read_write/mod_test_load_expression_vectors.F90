@@ -1,0 +1,66 @@
+!> The `load_expression_vectors` cases: expression vectors, a 2-d real64 array, read from a file
+!| written byte for byte in the published layout, every broken file refused with its code, and a
+!| round trip through `save_expression_vectors`. The checks are the suite fixtures' `check_*` for a
+!| 2-d real64 array, shared with every `load_*` of that kind.
+module mod_test_load_expression_vectors
+    use tox_data_read_write, only: load_expression_vectors, save_expression_vectors
+    use test_suite, only: test_case
+    use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_a_missing_file_reals
+    use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_reals
+    use mod_test_tox_data_read_write_fixtures, only: check_loads_non_finite_reals
+    use mod_test_tox_data_read_write_fixtures, only: check_loads_reals
+    use mod_test_tox_data_read_write_fixtures, only: check_round_trip_reals
+    implicit none
+    private
+    public :: get_all_tests_load_expression_vectors
+
+contains
+
+    !> Every case of `load_expression_vectors`.
+    function get_all_tests_load_expression_vectors() result(all_tests)
+        type(test_case), allocatable :: all_tests(:)
+
+        allocate (all_tests(5))
+        all_tests(1) = test_case("test_load_expression_vectors_layout", test_load_expression_vectors_layout)
+        all_tests(2) = test_case("test_load_expression_vectors_refuses_broken_files", &
+                                 test_load_expression_vectors_refuses_broken_files)
+        all_tests(3) = test_case("test_load_expression_vectors_round_trip", &
+                                 test_load_expression_vectors_round_trip)
+        all_tests(4) = test_case("test_load_expression_vectors_non_finite", &
+                                 test_load_expression_vectors_non_finite)
+        all_tests(5) = test_case("test_load_expression_vectors_refuses_a_missing_file", &
+                                 test_load_expression_vectors_refuses_a_missing_file)
+    end function get_all_tests_load_expression_vectors
+
+    !> In place of the old `test_write_read_expression_data`, which round-tripped the shipped
+    !| expression matrix and checked the type code and extents of its header: expression vectors are
+    !| read from a file written byte for byte in the published layout.
+    subroutine test_load_expression_vectors_layout()
+        call check_loads_reals(load_expression_vectors, "test_load_expression_vectors_layout")
+    end subroutine test_load_expression_vectors_layout
+
+    !> Every broken file is refused with its code: an empty one, a short header at each of its
+    !| fields, a wrong magic number, a number of dimensions out of range, another type, rank or
+    !| extent, and a short payload.
+    subroutine test_load_expression_vectors_refuses_broken_files()
+        call check_load_refuses_reals(load_expression_vectors, &
+                                    "test_load_expression_vectors_refuses_broken_files")
+    end subroutine test_load_expression_vectors_refuses_broken_files
+
+    !> What `save_expression_vectors` writes is read back unchanged.
+    subroutine test_load_expression_vectors_round_trip()
+        call check_round_trip_reals(save_expression_vectors, load_expression_vectors, &
+                                    "test_load_expression_vectors_round_trip")
+    end subroutine test_load_expression_vectors_round_trip
+
+    !> NaN and Inf are read bit for bit, without an error, as documented.
+    subroutine test_load_expression_vectors_non_finite()
+        call check_loads_non_finite_reals(load_expression_vectors, "test_load_expression_vectors_non_finite")
+    end subroutine test_load_expression_vectors_non_finite
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, and the error unit stays connected.
+    subroutine test_load_expression_vectors_refuses_a_missing_file()
+        call check_load_refuses_a_missing_file_reals(load_expression_vectors, &
+            "test_load_expression_vectors_refuses_a_missing_file")
+    end subroutine test_load_expression_vectors_refuses_a_missing_file
+end module mod_test_load_expression_vectors

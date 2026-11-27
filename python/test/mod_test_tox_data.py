@@ -28,7 +28,7 @@ from tensor_omics import (
     serialize_int_helper, serialize_real_helper, serialize_char_helper,
     deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
 )
-from test_helpers import run_all_tests, assert_error, assert_refused_by_name
+from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_FILE_OPEN, ERR_INVALID_INPUT
 
 
@@ -288,7 +288,8 @@ def test_an_array_of_no_strings():
 
     The C wrapper used to refuse a zero-length string array as ERR_EMPTY_INPUT before the
     procedure ran, so a data set with zero families or zero genes could be written from Fortran
-    but not from Python. An empty character array also came back as float64.
+    but not from Python. An empty character array also came back as float64. The readers' part
+    of this is in mod_test_tox_data_tools.py.
     """
     written = []
 
@@ -332,27 +333,10 @@ def test_an_array_of_no_strings():
         validate_all_data(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
                           expression, np.ones((3, 0)), shifts, check_shift_consistency=False)
 
-        with open(scratch("no_genes.test.tsv"), "w") as file:
-            file.write("id\tv1\n")
-        assert read_gene_ids_from_tsv_file("no_genes.test.tsv", 8, 0, 1, 1) == []
-        assert read_expression_vectors_tsv([], [], np.ones((1, 0)), 1, 1,
-                                           np.array([2], np.int32), 1) is None
-        with open(scratch("no_families.test.tsv"), "w") as file:
-            file.write("Orthogroup\tsp1\n")
-        families = read_orthofinder_file("no_families.test.tsv", [], 8, 0, 0)
-        assert families["family_ids"] == [] and families["gene_to_fam"].size == 0, families
     finally:
         for name in written:
             if os.path.exists(name):
                 os.remove(name)
-
-
-def test_a_negative_length_or_count_of_the_gene_ids_is_refused_by_name():
-    # both size the strings the binding allocates before the file is even opened (#215)
-    assert_refused_by_name(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", -1, 3, 1, 1),
-                           "gene_ids_strlen = -1", "gene_ids_strlen")
-    assert_refused_by_name(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", 8, -1, 1, 1),
-                           "n_gene_ids_elements = -1", "n_gene_ids_elements")
 
 
 if __name__ == "__main__":

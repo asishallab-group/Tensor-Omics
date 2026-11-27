@@ -2,7 +2,7 @@
 !! Provides a set of reusable assertion subroutines for verifying
 !! expected behavior in tests of any kind (numeric, string, array, etc).
 module asserts
-    use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
+    use, intrinsic :: iso_fortran_env, only: error_unit, output_unit, real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use test_suite, only: record_assertion_failure
@@ -53,43 +53,53 @@ contains
         character(*), intent(in), optional :: additional_msg, got, expected, tol, at
 
         logical(c_bool) :: comma
+        logical :: error_unit_connected
+        integer :: unit
 
-        write (error_unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
+        ! A procedure under test may have closed the error unit (a bug a case reports through
+        ! scratch_directory's check_error_unit_connected): writing to it then opens ./fort.0, so the
+        ! report goes to standard output instead. Reconnecting it by name would not do: that gives
+        ! it a file offset of its own, which overwrites a log stdout and stderr share.
+        inquire (unit=error_unit, opened=error_unit_connected)
+        unit = error_unit
+        if (.not. error_unit_connected) unit = output_unit
+
+        write (unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
         if (present(additional_msg)) then
-            write (error_unit, "(A)", advance="no") COLOR_RED // " --- " // COLOR_ERROR // trim(additional_msg)
+            write (unit, "(A)", advance="no") COLOR_RED // " --- " // COLOR_ERROR // trim(additional_msg)
         end if
-        write (error_unit, "(A)") COLOR_RESET
+        write (unit, "(A)") COLOR_RESET
 
         comma = .false.
 
         if (present(got) .or. present(expected) .or. present(tol) .or. present(at)) then
-            write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    ("
+            write (unit, "(A)") COLOR_LIGHT_GRAY // "    ("
 
             if (present(got)) then
-                write (error_unit, "(A)", advance="no") COLOR_RED // "      got" // COLOR_CREAM // ": " // got
+                write (unit, "(A)", advance="no") COLOR_RED // "      got" // COLOR_CREAM // ": " // got
                 comma = .true.
             end if
 
             if (present(expected)) then
-                if (comma) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
-                write (error_unit, "(A)", advance="no") COLOR_GREEN // " expected" // COLOR_CREAM // ": " // expected
+                if (comma) write (unit, "(A)") COLOR_LIGHT_GRAY // ","
+                write (unit, "(A)", advance="no") COLOR_GREEN // " expected" // COLOR_CREAM // ": " // expected
                 comma = .true.
             end if
 
             if (present(tol)) then
-                if (comma) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
-                write (error_unit, "(A)", advance="no") COLOR_YELLOW // "      tol" // COLOR_CREAM // ": " // tol
+                if (comma) write (unit, "(A)") COLOR_LIGHT_GRAY // ","
+                write (unit, "(A)", advance="no") COLOR_YELLOW // "      tol" // COLOR_CREAM // ": " // tol
                 comma = .true.
             end if
 
             if (present(at)) then
-                if (comma) write (error_unit, "(A)") COLOR_LIGHT_GRAY // ","
-                write (error_unit, "(A)", advance="no") COLOR_CREAM // "       at: " // at
+                if (comma) write (unit, "(A)") COLOR_LIGHT_GRAY // ","
+                write (unit, "(A)", advance="no") COLOR_CREAM // "       at: " // at
                 comma = .true.
             end if
 
-            write (error_unit, "()")
-            write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    )" // COLOR_RESET
+            write (unit, "()")
+            write (unit, "(A)") COLOR_LIGHT_GRAY // "    )" // COLOR_RESET
         end if
 
         ! Fails the test case, not the process: see `failures_in_case` in test_suite for why.
