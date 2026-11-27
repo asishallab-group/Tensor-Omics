@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(10))
+        allocate (all_tests(11))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -43,6 +43,8 @@ contains
                                  test_read_gene_ids_from_tsv_file_refuses_an_id_too_long)
         all_tests(10) = test_case("test_read_gene_ids_from_tsv_file_reads_a_long_line_whole", &
                                   test_read_gene_ids_from_tsv_file_reads_a_long_line_whole)
+        all_tests(11) = test_case("test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id", &
+                                  test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -291,4 +293,33 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_reads_a_long_line_whole
+
+    !> BUG (fails today): a row with fewer fields than `gene_col` is skipped, but counted, so its
+    !| element of `gene_ids` is left unwritten and the next row's id lands after the hole, with
+    !| ERR_OK: rows "x, g1", "y", "z, g3" with gene_col 2 give [g1, (unwritten), g3]; so does an
+    !| empty line between g1 and g3 with gene_col 1. The reader has to refuse such a row, or give
+    !| it a value; a hole with ERR_OK is wrong. (`gene_ids` starts at UNSET, so the hole shows.)
+    subroutine test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: short_row, empty_line
+        character(len=8) :: gene_ids(3)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "gene_ids_row_without_the_id")
+        short_row = scratch_file(scratch, "short_row.tsv")
+        call write_scratch_file(short_row, "h"//TAB//"id"//LF//"x"//TAB//"g1"//LF//"y"//LF//"z"//TAB//"g3"//LF)
+        empty_line = scratch_file(scratch, "empty_line.tsv")
+        call write_scratch_file(empty_line, "id"//LF//"g1"//LF//LF//"g3"//LF)
+
+        gene_ids = "UNSET"
+        call read_gene_ids_from_tsv_file(short_row, gene_ids, 1, 2, ierr)
+        call assert_false(is_ok(ierr) .and. gene_ids(2) == "UNSET" .and. gene_ids(3) == "g3", &
+                          "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: a short row left a hole")
+        gene_ids = "UNSET"
+        call read_gene_ids_from_tsv_file(empty_line, gene_ids, 1, 1, ierr)
+        call assert_false(is_ok(ierr) .and. gene_ids(2) == "UNSET" .and. gene_ids(3) == "g3", &
+                          "test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id: an empty line left a hole")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id
 end module mod_test_read_gene_ids_from_tsv_file
