@@ -2,6 +2,14 @@
 
 #' Read expression vectors from csv/tsv files
 #'
+#' Each file's rows give the values of the gene their `gene_col` names: the `value_cols` of a
+#' row go to rows `start_row`, `start_row + 1`, ... of that gene's column, and each further file
+#' continues below the last. A row naming a gene not in `gene_ids` is skipped. Every row must
+#' have every column read, none of them empty; a value must be one complete, finite number.
+#' Blank lines at the end of a file are ignored. A line may be 4096 characters long.
+#' Values of genes no row names are left as they were; after an error, `expression_vectors`
+#' is undefined.
+#'
 #' Generated from the Fortran procedure \code{tox_data_tools::read_expression_vectors_tsv}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -40,6 +48,13 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 
 #' Only read the gene ids from a tsv file
 #'
+#' Each tab-separated row after the header gives one id, from its `gene_col`, in file order.
+#' A row without that column, or with it empty, is refused, and so is an id longer than the
+#' strings of `gene_ids`. Blank lines at the end of the file are ignored. A line may be 4096
+#' characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
+#' are left undefined, and the number of rows read is not returned: size `gene_ids` to the
+#' file. After an error, `gene_ids` is undefined.
+#'
 #' Generated from the Fortran procedure \code{tox_data_tools::read_gene_ids_from_tsv_file}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -67,6 +82,15 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
 }
 
 #' Read a family file (Orthofinder)
+#'
+#' After its header line, each line of an OrthoFinder `Orthogroups.tsv` is a family: its id,
+#' then a tab-separated column per species, each a comma-separated list of genes (empty
+#' columns allowed). Family k is the k-th such line, and each gene of `gene_ids` gets the
+#' index of the family that lists it, or 0 when none does; listed genes
+#' not in `gene_ids` are ignored. Blank lines are skipped. A family id longer than the strings
+#' of `family_ids`, a line without one, and more families than `family_ids` holds are refused.
+#' A line may be 4096 characters long. With fewer families than `family_ids` has elements, the
+#' ones past the last family are left undefined; after an error, all outputs are undefined.
 #'
 #' Generated from the Fortran procedure \code{tox_data_tools::read_orthofinder_file}, whose argument names
 #' are the ones an error message reports.
