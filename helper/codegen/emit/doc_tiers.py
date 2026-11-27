@@ -145,9 +145,10 @@ def _sorted_permutations_of(spec, conventions):
     The prologue is passed on, so one the prologue builds instead is correctly left out --
     that one is described by the prologue sentence, not as an ordering the wrapper chose.
     """
-    from ..synthesize import sorted_permutations, taken_over_arguments
+    from ..synthesize import project_evaluator, sorted_permutations, taken_over_arguments
 
-    taken = taken_over_arguments(spec.validating.arguments, conventions, spec.prologue)
+    taken = taken_over_arguments(spec.validating.arguments, conventions, spec.prologue,
+                                 project_evaluator(spec.impl))
     return sorted_permutations(taken, spec.prologue, conventions)
 
 

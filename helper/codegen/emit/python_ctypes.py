@@ -45,7 +45,13 @@ from ..render import Writer
 from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
 from .producer_calls import auto_plans, returns_single, supplied_by
-from ..synthesize import binding_computes, carries_computed, is_derived, readable_owners
+from ..synthesize import (
+    binding_computes,
+    carries_computed,
+    is_derived,
+    read_off_a_carrier,
+    readable_owners,
+)
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -797,9 +803,22 @@ class PythonEmitter:
             writer.extend(body)
         return writer.render()
 
+    def _producer_keyword(self, supply, wrapper: CWrapper, stashes: dict[str, str]) -> str:
+        """One producer input of the call, as `name=value` -- or, for an optional of the caller's
+        without a default, left out where it is `None`, so absent stays absent and the
+        producer's own default applies (P1); its binding refuses `None` for a defaulted one."""
+        value = self._producer_value(supply, stashes)
+        supplied = wrapper.argument(supply.argument) if supply.argument is not None else None
+        if supplied is not None and supplied.optional and not supplied.has_default:
+            return f'**({{}} if {value} is None else {{"{supply.name}": {value}}})'
+        return f"{supply.name}={value}"
+
     @staticmethod
     def _producer_value(supply, stashes: dict[str, str]) -> str:
-        """What to pass for one producer input: an argument, or a constant outright."""
+        """What to pass for one producer input: an argument, or a constant outright -- a mode
+        as its string, which the producer's binding maps to its code (rule T)."""
+        if supply.mode is not None:
+            return python_literal(supply.mode.string)
         if supply.is_constant:
             return python_literal(supply.constant)
         return stashes.get(supply.argument, supply.argument)
@@ -865,7 +884,7 @@ class PythonEmitter:
             # the keyword is the *producer's* parameter name, the value the consumer's
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
-                f"{supply.name}={self._producer_value(supply, stashes)}"
+                self._producer_keyword(supply, wrapper, stashes)
                 for supply in plan.binding_inputs)
             single = returns_single(plan.producer)
             if single:
@@ -977,8 +996,8 @@ class PythonEmitter:
 
         if roles.is_extent:
             # the same predicate the signature uses, so an argument is never both asked
-            # for and derived
-            if not readable_owners(argument, wrapper):
+            # for and derived -- and never both computed and read off a carrier (3a)
+            if not read_off_a_carrier(argument, wrapper):
                 return ""
             provider = self._extent_provider(argument, wrapper)
             return provider or ""

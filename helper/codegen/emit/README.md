@@ -54,6 +54,7 @@ cannot disagree — **never re-derive any of it in an emitter**:
 | `.source.roles` | the IR roles: the `is_*` predicates (`is_extent`, `is_shape_arg`, `is_mask_count`, `is_temporary`, `is_bitmask`, `is_mode`) and the links between arguments (`extent_of`, `shape_of`, `shape_arg`, `mask_count_of`, `count_arg`, `result_size_arg`). `is_computed`, `is_derived` and `computed_from` are what the Fortran `foo` does: never decide a binding by them |
 | `synthesize.binding_computes(argument, wrapper)` | whether this tier's binding computes an AUTO value through its producer -- in a generated pair's expert only what sizes a buffer you allocate, and whatever one call fills with it (E2); everywhere else every AUTO value |
 | `synthesize.is_derived(argument, wrapper)` / `readable_owners` | whether this tier's binding works an argument out itself (computes it, reads it off a carrier, a shape, a mask's count) rather than asking for it; and the arrays an extent is read off, in the order to read them (R4). `automatic_plan` gives a producer call's content |
+| `synthesize.read_off_a_carrier(argument, wrapper)` | whether the binding reads an extent off an array that carries it: only where it does not compute it through its producer. Emit a derivation from a carrier only where this holds -- a value is computed or read, never both (a computed one is passed in, and the carriers are checked against it) |
 | `CWrapper.validation_order` | the order in which pointers may safely be null-checked |
 | `.doc` | the parsed documentation, links and all |
 
@@ -167,9 +168,15 @@ Two producer subtleties: match producer inputs to consumer arguments **by name**
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);
 and if the producer refines a value you handed it — capping it, say — adopt what it returned.
 Pass `plan.binding_inputs`, not `plan.inputs`: the derived ones are the producer binding's own to
-work out. And raise the producer's error again in the consumer's words — its argument is the
-producer's, which your caller never wrote: re-decode its code at the position of the consumer
-argument that supplied it (none for a constant), as `_consumer_error` does in Python.
+work out, and an input a table row leaves out (`OMITTED`) is in neither. Pass a constant that is a
+mode (`supply.mode` set) as its string, `supply.mode.string`, which the producer's binding maps to
+its code -- never `supply.constant`, the code itself. And leave out of the call an input whose
+supplier is an optional of the caller's without a default, where the caller left it out: passing
+your host's null (`None`, `NULL`) is refused by a producer's binding that has a default, while
+leaving it out keeps it absent, as it is in Fortran. And raise the producer's error again in the
+consumer's words — its argument is the producer's, which your caller never wrote: re-decode its
+code at the position of the consumer argument that supplied it (none for a constant), as
+`_consumer_error` does in Python.
 In Python the producer import goes *inside* the function, because two modules may size each
 other's outputs and a module-level import would be circular.
 

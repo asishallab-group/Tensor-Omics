@@ -642,6 +642,18 @@ what reaches the implementation, and data is the most direct case of it.
 could be decided at synthesis. The plan is the truth: a table row `| a | a |` against a name match
 is one call by the plans and two by the text.
 
+**Its Fortran half: rule K** (`impl-layer.md`, "A producer call is taken over whole or kept
+whole"). `foo` keeps every value of a call one of whose values it must keep, so no call is split
+between `foo` and the caller. K decides `foo`'s *signature*, during synthesis, before any plan
+exists, so it cannot consult the plans; it keys a call by `roles.producer_call_key`, which resolves
+each row with the function the plans are built with (`roles.resolve_cell`: `| a | a |` is no row
+there either) and the project's one evaluator, refuses the one row the plans ignore (N1, a row
+naming an output), and `roles._check_calls_kept_whole` asserts on every run that the key grouped
+the calls as `OutputFromPlan.call` does. **The collapse:** where K leaves `foo` nothing to take
+over, the pair is one lone wrapper, whose binding computes every AUTO value -- so an expert E2
+published for that call's data is no longer published in Python and R (FES accepted it,
+2026-11-26).
+
 **Enforced, not listed.** The attack that prototyped E2 found the sites a list of them missed
 misbehaving: R took the caller's `norms` and then overwrote it with the producer's, the shim
 skipped its integer check for a data array (NA reached Fortran as INT_MIN), and a shape check
@@ -655,7 +667,7 @@ error tables all come from it. `test_emitter_parity.TestEveryPublishedBindingAgr
 the emitters' decisions over every published binding of the fixtures: R's `.Call` arity against
 the shim's registration, no parameter computed or derived over, Python and R asking alike.
 `test_parameters_reach_the_call` checks it by running: every published Python and R function of
-every fixture library -- the R of `fixtures/carrier` aside, whose shim does not compile -- is
+every fixture library is
 called with a sentinel for each parameter, its own C call intercepted, and each parameter
 compared with what arrived. The Fortran wrapper emitter reads the IR
 facts, which are its own.
@@ -682,6 +694,17 @@ did not fail: R looked the name up in the global environment and **silently used
 of the same name**. Python at least raised. Any R expression a binding writes must name only
 what that function has assigned by then; `TestDataAndASizeFromOneCall` sets globals named like the
 array and the extent to show none is read.
+
+**Computed or read, never both (3a).** A tier whose binding computes a value through its producer
+passes C what the producer gave and checks the carriers against it; it does not also read the
+value off a carrier. `synthesize.read_off_a_carrier` says so, and the two sites that emit a
+derivation from a carrier ask it (`c_call._derived_value`, `python_ctypes._extent_expression`).
+Asking `readable_owners` there instead was the defect: in the plain tier of `fx_capacity_total`,
+which keeps `n_cap` and computes it, the R shim took `n_cap` as a `.Call` parameter and declared
+`int n_cap = (int) Rf_length(y)` beside it, and did not compile; Python read `n_cap` off `y` and
+then overwrote it with the producer's. `readable_owners` itself is unchanged, so an error at
+`n_cap` still names `y` (`error_arguments.source_of`), and the expert, which does not compute
+`n_cap`, still reads it off `y`.
 
 ## Decision: a default is rendered in the vocabulary of the layer that reads it
 

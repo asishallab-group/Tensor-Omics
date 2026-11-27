@@ -333,7 +333,8 @@ Macro & Purpose \\
   & An \texttt{intent(in)} scalar or explicit-shape array of the type, kind and extents of output \texttt{OUT} of the published \texttt{PROC} in
 \texttt{MOD} --- a generated \texttt{foo} or an \texttt{M\_EXPORT\_C} routine, never \texttt{foo\_impl}
 or \texttt{foo\_expert}. As \texttt{MODE}, \texttt{AUTO} calls it for the caller and \texttt{JUST\_INFO}
-only documents it (\texttt{codegen\_guide.md}, 5.9) \\
+only documents it. A table \texttt{| Producer input | Supplied by |} maps an input to an argument,
+a constant, or \texttt{OMITTED}, which leaves an optional input out of the call (\texttt{codegen\_guide.md}, 5.9) \\
 \texttt{DM\_REQUIRED\_IF\_MODE(...)} & This optional argument is required in one mode \\
 \texttt{DM\_PROLOGUE(PROC, MOD)} & Run \texttt{PROC} before the implementation, and let it short-circuit; on the procedure, not on an argument \\
 \bottomrule

@@ -882,7 +882,8 @@ And what calling one directly takes:
   refusal applies only where `foo` makes the call.
 - **A derived producer input** -- one the producer's binding works out itself, an extent read
   off one of its arrays -- is resolved like any other: by name, by a table row, as a constant,
-  else the "no argument of the same name" error. The plan marks it derived
+  else refused -- a cell naming nothing at its row, an input with no row and no argument of its
+  name at the directive's line (`roles._refuses_what_nothing_supplies`). The plan marks it derived
   (`ProducerInput.derived`), so Python and R still leave it out (`binding_inputs`), and the error
   applies only where `foo` calls the producer: a hand-written consumer's producer is called by
   Python and R alone, which never pass it. The resolution used to skip derived inputs before it
@@ -927,8 +928,12 @@ only a size. `foo` called the producer before allocating what it writes into, wh
 - **P1, where a producer input comes from** (`roles._refuses_a_supplier`): a scalar constant, or
   an input of the implementation the caller passes in every tier that calls the producer -- in
   Fortran an `intent(in)` or `intent(inout)` dummy `foo` keeps, required, optional with a
-  `DM_DEFAULT` (resolved before the call, by the supplier's own name), or optional into an optional
-  producer input (passed through); in a binding a parameter, or what it reads off one first. A
+  `DM_DEFAULT` (resolved before the call, by the supplier's own name, whether or not the producer's
+  input is optional too: passed through absent, the producer applied its own default while the
+  implementation applied the consumer's, and a work array came out sized for another stride --
+  memory corruption where the producer's default is the smaller), or optional without one into an
+  optional producer input (passed through, and left out of the Python and R call, which passed
+  `None`/`NULL` the producer's binding refused); in a binding a parameter, or what it reads off one first. A
   work array, a permutation `foo` builds, an output, an optional without a default into a required
   input (a crash before), and a prologue-only argument are refused, each with its own message.
   Chaining, and `validate`'s rule that the prologue writes nothing the setup read, stay their own
@@ -942,6 +947,158 @@ without such an array is byte-identical. **Rejected -- the producer allocating**
 assumed-shape producer output**, which takes its shape from what `foo` allocates: it let an array
 be sized by a value another producer computes later, making R1 order-dependent, and on the binding
 route the producer's binding wants a size the consumer never passes.
+
+### A producer input is given a value of its own kind (rule T, 2026-11-26)
+
+P1 says where a producer input's value comes from; nothing said what it may be. A mode string
+reached an integer producer input in Python and R (`'factor' must be a whole number ... not
+'one'`), a constant mode parameter crossed Python and R as its integer where the producer's binding
+wanted the string, and a real array, a shorter string, a smaller array, a default `logical` into a
+`logical(c_bool)`, or a constant of another type generated Fortran that did not compile -- or, for an
+array whose extent the table set from another argument, read past its end with no `-fcheck` error.
+**T: a producer input is given a value of its own kind, in every tier that calls the producer**
+(`roles._refuses_a_kind`, after P1): every input where the generated Fortran calls the producer,
+`binding_inputs` where only a binding does, silent where `validate` refuses the type itself.
+
+- **Modes meet only modes, on either side.** A mode argument supplies only a mode input whose table
+  names each of its modes with the same value; each value is evaluated in the module its row links
+  (`roles._mode_code`), not in the project's flat table of constants, where two modules' parameters
+  of one name are one entry. A mode input is supplied by such an argument or by a cell naming one of
+  its own mode parameters (`ProducerInput.mode`): Fortran passes its code, Python and R its string.
+  A mode is never computed by `DM_OUTPUT_FROM`, and a mode table on an `intent(out)` argument is
+  refused (`validate`). A split mode supplies nothing (FES's Q1: refused, not supported).
+- **An argument has the input's base type and rank**; where the Fortran calls the producer also its
+  kind, its length where the input's is fixed, and its extents where the input is explicit-shape,
+  compared as row (c) compares an AUTO array's (`roles._renamers`). Only on that route: a binding
+  carries one kind per base type and reads lengths and extents off the value -- checked on both, the
+  extents gave false positives.
+- **A constant supplies a scalar input of its own type**, an integer fitting the kind, a string no
+  longer than a fixed length; `fortran_wrapper._fortran_literal` quotes a string and pads it to that
+  length (a shorter actual does not compile), as Fortran assigns it and the bindings pass it. The
+  length is a literal or a constant evaluated in the producer's own module (`roles.fixed_length`),
+  not looked up in the flat table, where a consumer's parameter of the same name would size it.
+- **Where it is reported.** An argument supplier's refusal at the directive's line, once per pair;
+  a constant's, which a table row gives, at that row, once per implementation, as every refusal
+  one row causes.
+
+**Rejected -- converting a mode's string to its code in the bindings**, so a mode could feed an
+integer input: it works, but it makes a mode's code a published number, which Section 5.10 of the
+guide says it is not. **Rejected -- a mode constant by value** (any constant equal to a code, FES's
+Q8): two parameters sharing a code would be indistinguishable, renumbering the codes would break it,
+and the value would be looked up in the flat namespace; naming the parameter takes the code and the
+string from one row. **An integer constant for a real input is refused, not converted** -- a
+constant is written as Fortran writes it. That is attack-T's call, adopted by the design; FES has
+not decided it, and converting it instead is open.
+
+### A producer call is taken over whole or kept whole (rule K, 2026-11-26)
+
+`foo` keeps a value a producer computes where it sizes an argument the caller still passes or
+receives, and took the rest over. Where one call filled both -- `norms` and the `n_large` that
+sizes the result `picked` -- `foo` called the producer for `norms`, dropped its `n_large`, and
+handed the implementation the caller's: two calls whose values were never compared, and Python and
+R called the producer, then `foo`, which called it again. **One call is now made in one place, in
+every tier:** where `foo` must keep a value one AUTO call fills, it keeps every value that call
+fills (`synthesize.taken_over_arguments`); otherwise it takes them all over. It is the Fortran half
+of E2's same-call clause (`language-layers.md`). A JUST_INFO value belongs to no call: the caller
+supplies it, so it neither keeps a call nor is kept by one.
+
+- **The key.** Synthesis decides `foo`'s signature before any plan exists, so it keys a call by
+  `roles.producer_call_key`: the producer, and each table row resolved by `roles.resolve_cell` --
+  the function `_resolve_output_from` builds the plans with -- with the project's one constant
+  evaluator (`Project.evaluator`, handed on to the project synthesis builds). A row whose cell is
+  the name-matched argument is no row (`| n_items | N_ITEMS |`), and `4_int32` and a parameter
+  `FOUR` are one constant. All 13 callers of `taken_over_arguments` pass that evaluator, the
+  Fortran emitter recomputing `foo`'s body included: with two, the body could disagree with the
+  signature.
+- **N1, refused:** a producer-input row naming a producer argument that is not an input (an
+  output, `ierr`). The plans ignore such a row while the key counts it, so it would split a call;
+  it was accepted silently before. At the row's line, once per implementation.
+- **The assertion.** After analysis `roles._check_calls_kept_whole` checks that no `plan.call`
+  group of a pair is kept in part -- an internal error, once per pair at the first kept value's
+  directive, which no source reaches with N1 in place.
+- **No closure.** A kept value names no other call's AUTO value in its declaration: an AUTO extent
+  is spelled in suppliers (row c), a supplier is never AUTO (chaining), and a computed length of a
+  string the caller passes is refused (3b). Without that refusal K would have to iterate.
+- **The collapse.** Where K leaves `foo` nothing to take over, the pair is one lone wrapper, whose
+  Python and R binding computes every AUTO value (E2): an expert E2 published for that call's data
+  is no longer published (`fx_weighted_norms` in `tests/fixtures/impl/fx_sized_impl.F90`).
+
+**Rejected -- refusing the split** ("size the result for an upper bound"): it makes the author
+restructure a procedure the generator can serve as written. **Rejected -- synthesising, analysing,
+then synthesising again** the implementations whose group came out split: it keys by the plans
+themselves, but it is a second pass for a case nothing in the tree contains, where the shared
+resolver, N1 and the assertion give the same answer in one. E2's record rejects keying by "the
+directive and the table" because the plan is the truth; that concerned a rule evaluated after the
+plans exist, and K keys not by the raw text but by the resolver the plans are built with, checked
+against them on every run.
+
+### `OMITTED`: an optional producer input left out of the call (rule O, 2026-11-26)
+
+An optional producer input the consumer had no argument for had no way out: a constant row
+`| stride | 3_int32 |` restated the producer's default, and for an optional without one
+(`padding`) no constant means "absent". A `Supplied by` cell **`OMITTED`** leaves the input out of
+every call: the Fortran call has no keyword for it, and Python and R leave it out of the binding
+call, never passing `None` or `NULL`, which a defaulted optional's binding refuses. The producer
+does what it does when a caller leaves the argument out -- its bindings apply its `DM_DEFAULT`,
+its Fortran body decides; the two can differ, which is not new. It is in no `plan.inputs`, so P1,
+chaining, the refined-input and prologue rules never meet it, and it is its own kind of supplier
+in K's key, so omitting in one table and supplying in another are two calls. A row overrides
+name-matching, as a constant row does.
+
+Refused, once per implementation at the row's line, one error per cell: `OMITTED` on an input the
+producer requires, or one `DM_REQUIRED_IF_MODE` makes required in a runtime mode (only a runtime
+mode can: a split producer's per-mode wrapper carries no such directive, its input there required,
+and refused as such, or not an argument at all); another spelling
+of it (`Omitted`, quoted, backticked -- a quoted one generated `padding = OMITTED` before, an
+implicit-type error); and the keyword where the consumer has an argument or the project a constant
+named `omitted`. **The table's grammar**, which `OMITTED` makes riskier, is checked in the same
+pass, a `JUST_INFO` table's included (Ford publishes it): a row names an input of the producer
+(N1), and each input has one row (of two, the last won silently). Nothing in the tree is refused.
+The unmatched-input error moved to the directive's line, names the implementation rather than the
+generated wrapper, and offers the `OMITTED` row where the input is optional; a cell naming
+nothing gets its own message at its row, with "did you mean" one edit from an argument.
+
+**Rejected -- implicit omission** (leaving out an optional input nothing supplies). An author who
+has the quantity under another name and forgot the row would silently get the producer's default,
+and for a size that is a buffer too small; the error is what stops that, and the explicit row
+keeps it. **Rejected -- `DEFAULT` as the keyword**: it is wrong for an optional with no default,
+and for the Fortran route, where the body's default applies; `OMITTED` reads right to a Fortran or
+C caller reading the published table, too: leave it out of your call.
+
+### A check runs once every value it names is set (rule V, 2026-11-26)
+
+`foo` validated everything at the top, so a bound naming a value it computes was checked before
+the value existed: `fx_bounded_total`'s `x`, `DM_MAX(real(limit, real64))`, refused valid input
+where the uninitialised `limit` held -1 and accepted invalid input where it held 1000; a bound
+naming a value the prologue writes refused valid input. **In the allocating `foo`, a check runs at
+the latest of three points its names need** (`fortran_wrapper._validation`): the top (P0) for what
+the caller passes and constants; after the last producer call's error return (P1) for a value
+`foo` computes; after `if (handled) return` (P2) for a value the prologue writes. **The validator
+call is split, not moved**: it stays at P0 with every keyword but the late `DM_MIN`/`DM_MAX`, which
+runs in a second call at its point with the sentinel and, for a real, finiteness allowed (checked
+at P0, so not twice; `c_bool` is imported for it). A `DM_EQUALS` moves whole. P1 and P2 are blocks
+of their own, each with its `if (is_err(ierr)) return`; positions are unchanged. On the answered
+path the deferred bounds do not run: they are the implementation's contract, and it does not run.
+`foo_expert` and a lone wrapper check everything at P0.
+
+`validate._check_bounds_name_what_is_set` refuses a name set at none of the points, each class with
+its own message at the bound's line: a `tmp_` or `<base>_perm` `foo` builds, an `intent(out)`
+argument as a value, an argument only the prologue has (`foo_expert` did not compile), a
+`DM_SENTINEL` naming a value set later, and a bound after the prologue on an argument the prologue
+writes itself (its error would blame the caller for the prologue's value).
+
+**Rejected -- moving the whole validator call** (rev 1). It skipped a NaN check on the answered
+path, accepting `y = NaN` (`fx_handled`), and let the prologue read an index unchecked, out of
+bounds (`fx_index`): the guide promises a prologue's arguments are validated like any other.
+**Rejected -- refusing bounds that name values set later**: they are meaningful in `foo_expert`,
+where the caller passes the value, and V makes them meaningful in `foo` too.
+
+**And beside it, two refusals of a value with two sources.** A prologue `intent(out)` over a value a
+producer computes discarded the producer's value silently; it is refused (item 5), `intent(inout)`
+refining it allowed (FES, Q4), and the two older prologue rules leave such a value to it, so one
+cause gives one error. A computed length of a string the caller passes (3b) is refused (FES, Q3):
+Python converted the string to the length before computing it, and reordering is circular where
+the strings' count feeds the producer.
 
 ### The prologue is the allocating tier's sugar, and has no scope
 

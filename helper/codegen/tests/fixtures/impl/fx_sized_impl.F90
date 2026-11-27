@@ -17,6 +17,18 @@ module fx_sized_impl
     public :: fx_two_scales_impl, fx_norm_rank_impl, fx_large_total_impl
     public :: fx_default_scale_impl, fx_padded_total_impl, fx_large_first_impl
     public :: fx_bounded_total_impl, fx_rounded_total_impl
+    public :: fx_picked_norms_impl, fx_weighted_norms_impl
+    public :: fx_unpadded_total_impl, fx_unpadded_impl, fx_unstrided_total_impl, fx_unstrided_impl
+    public :: fx_omitted_once_impl
+    public :: fx_method_total_impl, fx_method_filled_impl, fx_second_total_impl, fx_second_impl
+    public :: fx_wide_stride_total_impl, fx_absent_stride_impl, fx_absent_method_impl
+    public :: fx_labelled_total_impl, fx_labelled_impl
+    public :: METHOD_ONE, METHOD_TWO
+
+    !> the first method
+    integer(int32), parameter :: METHOD_ONE = 1_int32
+    !> the second method
+    integer(int32), parameter :: METHOD_TWO = 2_int32
 
 contains
 
@@ -366,8 +378,8 @@ contains
     !> summary: The sum of values bounded by a limit a producer computes, which sizes nothing
     !| author: A Developer
     !| `limit` is a value only the bound on `x` names, so the Python and R expert takes it as a
-    !| parameter, and is published for it. Its plain `foo` checks `x` against `limit` before
-    !| its producer has computed it, a defect of its own, so the tests call the expert alone.
+    !| parameter, and is published for it. Its plain `foo` checks `x` against `limit` once its
+    !| producer has computed it, and everything else about `x` at the top (rule V).
     pure subroutine fx_bounded_total_impl(n_items, x, scale, limit, total)
         integer(int32), intent(in) :: n_items
             !! number of values
@@ -436,4 +448,389 @@ contains
             !! ones
         ones = 1.0_real64 + 0.0_real64*sum(x)
     end subroutine fx_info_impl
+
+    !> summary: The norms above one, in column order
+    !| author: A Developer
+    !| One producer call gives both `norms` and `n_large`, and `n_large` sizes the result, so the
+    !| caller makes the call (rule K): the wrapper keeps both, and computes neither. Python and R
+    !| make it once.
+    pure subroutine fx_picked_norms_impl(n_dims, n_items, x, norms, n_large, picked)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_large_norms, fx_producers, AUTO)
+        integer(int32), intent(in) :: n_large
+            !! how many norms exceed one
+            !! DM_OUTPUT_FROM(n_large, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_large), intent(out) :: picked
+            !! the norms above one, in column order
+        integer(int32) :: i, k
+        k = 0_int32
+        picked = 0.0_real64*sum(x)
+        do i = 1_int32, n_items
+            if (norms(i) > 1.0_real64 .and. k < n_large) then
+                k = k + 1_int32
+                picked(k) = norms(i)
+            end if
+        end do
+    end subroutine fx_picked_norms_impl
+
+    !> summary: The sum of the column norms, plus a weight for each norm above one
+    !| author: A Developer
+    !| One producer call gives both `norms` and `n_large`, and `n_large` sizes the weights the
+    !| caller passes, so the call is kept whole (rule K): nothing is left to take over, and this
+    !| is one wrapper, whose Python and R binding computes both and checks `w` against `n_large`.
+    pure subroutine fx_weighted_norms_impl(n_dims, n_items, x, norms, n_large, w, total)
+        integer(int32), intent(in) :: n_dims
+            !! number of rows
+        integer(int32), intent(in) :: n_items
+            !! number of columns
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_dims, n_items), intent(in) :: x
+            !! the matrix
+        real(real64), dimension(n_items), intent(in) :: norms
+            !! the norm of each column
+            !! DM_OUTPUT_FROM(norms, fx_large_norms, fx_producers, AUTO)
+        integer(int32), intent(in) :: n_large
+            !! how many norms exceed one
+            !! DM_OUTPUT_FROM(n_large, fx_large_norms, fx_producers, AUTO)
+        real(real64), dimension(n_large), intent(in) :: w
+            !! one weight per norm above one
+        real(real64), intent(out) :: total
+            !! the sum of `norms`, plus the sum of `w`
+        total = sum(norms) + sum(w) + 0.0_real64*sum(x)
+    end subroutine fx_weighted_norms_impl
+
+    !> summary: The sum of some values, plus one for each slot of a work array sized without padding
+    !| author: A Developer
+    !| `OMITTED` leaves the optional `padding` out of the producer call (rule O), so the producer
+    !| does what it does when a caller leaves it out: it adds none.
+    pure subroutine fx_unpadded_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(padded_size, fx_padded_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | padding        | OMITTED     |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_unpadded_total_impl
+
+    !> summary: A result as long as the values, sized by a producer whose padding is left out
+    !| author: A Developer
+    pure subroutine fx_unpadded_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(padded_size, fx_padded_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | padding        | OMITTED     |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_unpadded_impl
+
+    !> summary: The sum of some values, plus a slot each at the producer's own stride
+    !| author: A Developer
+    !| `OMITTED` leaves the defaulted `stride` out of the producer call, so its default applies.
+    pure subroutine fx_unstrided_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | OMITTED     |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_unstrided_total_impl
+
+    !> summary: A result sized by the producer's own stride, which the bindings leave out
+    !| author: A Developer
+    pure subroutine fx_unstrided_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | OMITTED     |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_unstrided_impl
+
+    !> summary: Two work arrays from one producer, its stride left out of one call only
+    !| author: A Developer
+    !| Omitting an input and supplying it are two calls (rule K's key carries the row).
+    pure subroutine fx_omitted_once_impl(n_items, x, a_size, tmp_a, b_size, tmp_b, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: a_size
+            !! size of the first work array, at the producer's own stride
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | OMITTED     |
+        real(real64), dimension(a_size), intent(out) :: tmp_a
+            !! scratch
+        integer(int32), intent(in) :: b_size
+            !! size of the second work array, at a stride of two
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | stride         | 2_int32     |
+        real(real64), dimension(b_size), intent(out) :: tmp_b
+            !! scratch
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the slots of both
+        tmp_a = 1.0_real64
+        tmp_b = 1.0_real64
+        total = sum(x) + sum(tmp_a) + sum(tmp_b)
+    end subroutine fx_omitted_once_impl
+
+    !> summary: The sum of some values, plus a slot per item and method code
+    !| author: A Developer
+    !| The mode `method` supplies the producer's mode input, whose table names every mode of
+    !| it, with the same value, and one more (rule T): Fortran passes the code, through `foo`.
+    pure subroutine fx_method_total_impl(n_items, x, method, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: method
+            !! how many slots per item
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_sized_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_sized_impl(module):METHOD_TWO(variable)]] |
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_method_total_impl
+
+    !> summary: A result of a slot per item and method code
+    !| author: A Developer
+    !| The same, through the bindings: Python and R pass the mode's string.
+    pure subroutine fx_method_filled_impl(n_items, x, method, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: method
+            !! how many slots per item
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_sized_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_sized_impl(module):METHOD_TWO(variable)]] |
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_method_filled_impl
+
+    !> summary: The sum of some values, plus two slots per item, the producer's second method
+    !| author: A Developer
+    !| A constant naming one of the mode input's own parameters (rule T): Fortran passes its code.
+    pure subroutine fx_second_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | method         | METHOD_TWO  |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_second_total_impl
+
+    !> summary: A result of two slots per item, the producer's second method
+    !| author: A Developer
+    !| The same, through the bindings: Python and R pass the mode's string, `two`.
+    pure subroutine fx_second_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(method_size, fx_method_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | method         | METHOD_TWO  |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_second_impl
+
+    !> summary: Slots of a work array, plus a thousand for each slot the stride and it disagree on
+    !| author: A Developer
+    !| `stride` defaults to four here and to three in the producer: `foo` resolves this default
+    !| before the call (P1), as Python and R pass it, so the producer sizes the work array for the
+    !| stride the implementation uses. Before, an omitted `stride` reached the producer absent, and
+    !| the work array was sized for three.
+    pure subroutine fx_wide_stride_total_impl(n_items, x, stride, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: stride
+            !! slots per value
+            !! DM_DEFAULT(4_int32)
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the number of slots, plus a thousand for each the stride expects beyond them
+        integer(int32) :: slots
+        M_DEFAULT_VAL(stride, slots, 4_int32)
+        tmp_buf = 1.0_real64
+        total = sum(tmp_buf) + 1000.0_real64*real(n_items*slots - work_size, real64) + 0.0_real64*sum(x)
+    end subroutine fx_wide_stride_total_impl
+
+    !> summary: A result sized by the producer's stride, or by one the caller gives
+    !| author: A Developer
+    !| `stride` is optional without a default, so where it is left out the producer is called
+    !| without it and takes its own default (P1); Python and R used to pass `None` or `NULL`,
+    !| which the producer's binding refused.
+    pure subroutine fx_absent_stride_impl(n_items, x, stride, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: stride
+            !! slots per value; the producer's own where it is left out
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(strided_size, fx_strided_size, fx_producers, AUTO)
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+        if (present(stride)) filled = filled + 0.0_real64*real(stride, real64)
+    end subroutine fx_absent_stride_impl
+
+    !> summary: A result sized by the producer's method, or by one the caller gives
+    !| author: A Developer
+    !| The same with a mode: left out, the producer takes its own default, `two`.
+    pure subroutine fx_absent_method_impl(n_items, x, method, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in), optional :: method
+            !! how many slots per item; the producer's own where it is left out
+            !!
+            !! | Method | Value |
+            !! |--------|-------|
+            !! | one slot | [[fx_sized_impl(module):METHOD_ONE(variable)]] |
+            !! | two slots | [[fx_sized_impl(module):METHOD_TWO(variable)]] |
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(method_size, fx_any_method_size, fx_producers, AUTO)
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+        if (present(method)) filled = filled + 0.0_real64*real(method, real64)
+    end subroutine fx_absent_method_impl
+
+    !> summary: The sum of some values, plus a slot per item and per character of a label
+    !| author: A Developer
+    !| The table gives the producer's six-character `label` the constant `'abc'`, which `foo`
+    !| passes padded to six (rule T), as Fortran assigns it and Python and R pass it.
+    pure subroutine fx_labelled_total_impl(n_items, x, work_size, tmp_buf, total)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: work_size
+            !! size of the work array
+            !! DM_OUTPUT_FROM(label_size, fx_label_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | label          | 'abc'       |
+        real(real64), dimension(work_size), intent(out) :: tmp_buf
+            !! scratch, one slot each
+        real(real64), intent(out) :: total
+            !! the sum of `x`, plus the number of slots
+        tmp_buf = 1.0_real64
+        total = sum(x) + sum(tmp_buf)
+    end subroutine fx_labelled_total_impl
+
+    !> summary: A result of a slot per item and per character of a label, through the bindings
+    !| author: A Developer
+    pure subroutine fx_labelled_impl(n_items, x, out_size, filled)
+        integer(int32), intent(in) :: n_items
+            !! number of values
+        real(real64), dimension(n_items), intent(in) :: x
+            !! the values
+        integer(int32), intent(in) :: out_size
+            !! size of the result
+            !! DM_OUTPUT_FROM(label_size, fx_label_size, fx_producers, AUTO)
+            !!
+            !! | Producer input | Supplied by |
+            !! |----------------|-------------|
+            !! | label          | 'abc'       |
+        real(real64), dimension(out_size), intent(out) :: filled
+            !! the sum of `x`, in each slot
+        filled = sum(x)
+    end subroutine fx_labelled_impl
 end module fx_sized_impl

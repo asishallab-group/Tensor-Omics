@@ -3,7 +3,7 @@
 `test_emitter_parity` checks the same property by reading the emitters' decisions; this checks
 it by running the generated code. Each published function of every fixture library -- the
 hand-written exports (`fixtures/src`), the implementations (`fixtures/impl`) and the carrier case
-(`fixtures/carrier`, Python only: its R shim does not compile) -- is called with a sentinel for
+(`fixtures/carrier`) -- is called with a sentinel for
 every parameter, its own C call is intercepted, and each parameter is compared with what
 arrived. Producers the binding calls on the way run for real. An argument the binding computes
 or derives over a parameter (the E2 attack's prototype had R overwrite the caller's `norms` with
@@ -16,6 +16,7 @@ other through to `base::.Call`. Skipped without gfortran, gcc and R.
 
 import json
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -360,6 +361,46 @@ def _run_r_file(path: Path, header: str, body: str) -> str:
     return result.stdout
 
 
+#: What R says where an axis a producer sizes was given another length, as `_r_body` prints it
+_R_SHAPE = re.compile(r"^(\w+) : '(\w+)' has \d+ along dimension (\d+), but .*== (\d+);", re.M)
+
+
+def _resized(parameter: dict, axis: int, length: int) -> dict:
+    """The sentinel rebuilt with `length` along `axis`, as `_value` would have built it."""
+    value = dict(parameter["value"])
+    shape = list(value["shape"])
+    shape[axis] = length
+    count = 1
+    for extent in shape:
+        count *= extent
+    kind, index = value["kind"], parameter["index"]
+    flat = {"real": [0.25 + 10 * index + i for i in range(count)],
+            "integer": [1 + (index + i) % 2 for i in range(count)],
+            "logical": [True] * count}[kind]
+    value.update(shape=shape, flat=flat)
+    return dict(parameter, value=value)
+
+
+def _run_r_resizing(path: Path, header: str, specs) -> str:
+    """`_run_r_file` over `specs`, rebuilding a sentinel whose axis a producer sizes and rerunning.
+
+    An axis the binding computes through a producer can only be known by calling it; where R
+    says what it must be, the sentinel is rebuilt with that length, as the Python run does.
+    """
+    for _ in range(4):
+        out = _run_r_file(path, header, _r_body(specs))
+        found = _R_SHAPE.findall(out)
+        if not found:
+            return out
+        for function, name, dimension, length in found:
+            for spec in specs:
+                if spec["function"] == function:
+                    spec["parameters"] = [
+                        _resized(p, int(dimension) - 1, int(length)) if p["name"] == name else p
+                        for p in spec["parameters"]]
+    return out
+
+
 class TestEveryParameterReachesTheCall:
 
     def test_the_hand_written_exports_in_python(self, src_python):
@@ -404,3 +445,16 @@ class TestEveryParameterReachesTheCall:
         assert {s["function"] for s in specs} >= {"fx_capacity_total", "fx_capacity_total_expert"}
         assert _run_python(carrier_built / "py", "fx_impl", carrier_built / "libtensor_omics.so",
                            specs) == {}
+
+    def test_the_carrier_case_in_r(self, carrier_built):
+        specs = _specs(_published(FIXTURE_CARRIER, synthesise=True))
+
+        modules = " ".join(f'source("r/{p.name}");'
+                           for p in sorted((carrier_built / "r").glob("fx_*.R")))
+        out = _run_r_resizing(carrier_built, f"""
+            dyn.load("libtensor_omics.so")
+            source("r/error_handling.R"); source("r/tox_validate.R")
+            {modules}
+        """, specs)
+
+        assert out.strip() == f"checked {len(specs)}", out

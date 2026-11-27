@@ -27,7 +27,7 @@ from .config import CONVENTIONS, Conventions, Paths
 from .diagnostics import DiagnosticBag
 from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
-from .ir.roles import analyse, plain_of_an_expert
+from .ir.roles import analyse, plain_of_an_expert, producer_call_key
 from .ir.types import BaseType, FortranType, Intent
 from .ir.validate import function_result_problems
 
@@ -296,6 +296,7 @@ def taken_over_arguments(
     arguments: Sequence[Argument],
     conventions: Conventions = CONVENTIONS,
     prologue=None,
+    evaluator=None,
 ) -> list[Argument]:
     """The arguments the allocating wrapper prepares itself, rather than taking from the
     caller.
@@ -308,8 +309,22 @@ def taken_over_arguments(
     implementation to read -- both only while nothing the caller still sees depends on them: an
     argument that also gives an extent of a returned array has to stay in the signature, or
     neither the caller nor the binding could size what comes back.
+
+    **A producer call is taken over whole or kept whole (rule K).** Where one value a call
+    fills has to stay, every value that call fills stays, so the caller makes the one call and
+    `foo` none. A call is keyed by `roles.producer_call_key`, the resolver the plans are built
+    with, over `evaluator` -- the project's one (`Project.evaluator`), which every caller passes,
+    so `foo`'s signature and its body agree. A JUST_INFO value belongs to no call. No closure
+    is needed: a kept value names no other call's AUTO value in its declaration (an AUTO extent
+    is spelled in suppliers, a supplier is never AUTO, and a computed length of a string the
+    caller passes is refused).
     """
     names = {argument.name.lower() for argument in arguments}
+    kept_calls = {
+        producer_call_key(argument, arguments, conventions, evaluator)
+        for argument in arguments
+        if is_computed(argument) and _sizes_a_kept_argument(argument, arguments, conventions)
+    }
     taken = []
     for argument in arguments:
         if is_temporary(argument, conventions):
@@ -318,7 +333,10 @@ def taken_over_arguments(
             base = argument.name.lower()[: -len(conventions.perm_suffix)]
             if base in names:
                 taken.append(argument)
-        elif (is_computed(argument) or is_prologue_produced(argument, prologue)) and (
+        elif is_computed(argument):
+            if producer_call_key(argument, arguments, conventions, evaluator) not in kept_calls:
+                taken.append(argument)
+        elif is_prologue_produced(argument, prologue) and (
             not _sizes_a_kept_argument(argument, arguments, conventions)
         ):
             taken.append(argument)
@@ -443,6 +461,7 @@ def synthesize_wrappers(
     are analysed there like any procedure.
     """
     diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
+    evaluator = project.evaluator()
     suffix = conventions.impl_suffix
     by_module: dict[str, list[Procedure]] = {}
     sources: dict[str, Module] = {}
@@ -461,7 +480,7 @@ def synthesize_wrappers(
 
             for base, arguments, mode_fix in _variants(impl, mode_argument, conventions):
                 validating, allocating = _wrappers_for(
-                    base, arguments, impl, conventions, prologue
+                    base, arguments, impl, conventions, prologue, evaluator
                 )
                 # the plain entry point first: it leads the generated `public ::` block
                 # and the subroutine order, which is the order a reader meets the tiers in
@@ -499,7 +518,9 @@ def synthesize_wrappers(
     reexports = _reexport_modules(impl_modules, set(by_module), conventions)
     generated_modules += reexports
 
-    augmented = Project(list(project.modules) + generated_modules, name=project.name)
+    # the same constants, so the same evaluator: what keyed the calls here keys them there
+    augmented = Project(list(project.modules) + generated_modules, name=project.name,
+                        evaluator=evaluator)
     return SynthesisResult(
         project=augmented,
         specs=tuple(specs),
@@ -578,7 +599,8 @@ def alloc_does_more(spec: WrapperSpec, conventions: Conventions = CONVENTIONS) -
     value is a parameter of the expert depends on which producer call fills it, and the
     producers are resolved there.
     """
-    taken = taken_over_arguments(spec.validating.arguments, conventions, spec.prologue)
+    taken = taken_over_arguments(spec.validating.arguments, conventions, spec.prologue,
+                                 project_evaluator(spec.impl))
     if spec.prologue is not None or sorted_permutations(taken, spec.prologue, conventions):
         return True
     expert = spec.validating
@@ -724,6 +746,20 @@ def readable_owners(argument, wrapper, conventions: Conventions = CONVENTIONS) -
     return tuple(optional)  # `validate` refuses an extent only optional arrays carry
 
 
+def read_off_a_carrier(argument, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether the binding of `wrapper` reads the extent `argument` off an array that carries it.
+
+    Only where it does not compute it: a tier whose binding computes a value through its
+    producer passes C what the producer gave, and the carriers are checked against that
+    (`shape_checks`), so nothing also reads it off them -- a value is computed or read, never
+    both. The two sites that emit a derivation ask this (`c_call`, `python_ctypes`);
+    `readable_owners` itself is unchanged, so an error at the extent still names the carrier
+    (`error_arguments.source_of`).
+    """
+    return (not binding_computes(argument, wrapper, conventions)
+            and bool(readable_owners(argument, wrapper, conventions)))
+
+
 def is_derived(argument, wrapper, conventions: Conventions = CONVENTIONS) -> bool:
     """Whether the binding of `wrapper` works `argument` out itself, rather than asking for it.
 
@@ -738,6 +774,14 @@ def is_derived(argument, wrapper, conventions: Conventions = CONVENTIONS) -> boo
     return (binding_computes(argument, procedure, conventions)
             or bool(readable_owners(argument, procedure, conventions))
             or roles.is_inferable_shape_arg or roles.is_mask_count)
+
+
+def project_evaluator(procedure: Procedure):
+    """The one constant evaluator of the project `procedure` is in, or None outside one (a unit
+    test's hand-built procedure). What every caller of `taken_over_arguments` passes."""
+    module = procedure.module if procedure is not None else None
+    project = module.project if module is not None else None
+    return project.evaluator() if project is not None else None
 
 
 def _prologue_of(impl: Procedure, project: Project):
@@ -884,7 +928,7 @@ def prologue_only_arguments(
 
 def _wrappers_for(
     base: str, arguments: list[Argument], impl: Procedure, conventions: Conventions,
-    prologue=None,
+    prologue=None, evaluator=None,
 ) -> tuple[Procedure, Procedure | None]:
     """The validating wrapper, and the allocating one when the two would differ.
 
@@ -900,7 +944,7 @@ def _wrappers_for(
     generate, compile and bind perfectly well -- and quietly rename every entry point that
     has no work arrays to take over.
     """
-    taken = taken_over_arguments(arguments, conventions, prologue)
+    taken = taken_over_arguments(arguments, conventions, prologue, evaluator)
     extra = prologue_only_arguments(prologue, arguments, conventions)
     paired = bool(taken or extra)
 
