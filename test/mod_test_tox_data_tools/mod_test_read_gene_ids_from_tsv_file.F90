@@ -193,7 +193,8 @@ contains
         call read_gene_ids_from_tsv_file(one_line, gene_ids, 2, 1, ierr)
         call assert_err(ierr, ERR_READ_DATA, "test_read_gene_ids_from_tsv_file_missing_header: one line, two expected")
         call read_gene_ids_from_tsv_file(one_line, gene_ids, 1, 1, ierr)
-        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_missing_header: one line, one expected")
+        ! the header is there; no data row follows it (see test_read_gene_ids_from_tsv_file_no_data_row)
+        call assert_err(ierr, ERR_EMPTY_INPUT, "test_read_gene_ids_from_tsv_file_missing_header: one line, one expected")
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_missing_header

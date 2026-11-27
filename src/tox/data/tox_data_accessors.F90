@@ -115,7 +115,7 @@ contains
             return
         end if
 
-        if (size(shift_vectors, 1) < 2*d) then
+        if (size(shift_vectors, 1) /= 2*d) then
             call set_err_once(ierr, ERR_SIZE_MISMATCH)
             return
         end if

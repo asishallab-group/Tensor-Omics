@@ -4,9 +4,10 @@
 #'
 #' Each file's rows give the values of the gene their `gene_col` names: the `value_cols` of a
 #' row go to rows `start_row`, `start_row + 1`, ... of that gene's column, and each further file
-#' continues below the last. A row naming a gene not in `gene_ids` is skipped. Every row must
-#' have every column read, none of them empty; a value must be one complete, finite number.
-#' Blank lines at the end of a file are ignored. A line may be 4096 characters long.
+#' continues below the last. A row naming a gene not in `gene_ids` is skipped; a gene may be
+#' named by one row of a file. Every row must have every column read, none of them empty; a
+#' value must be one complete, finite number. Blank lines at the end of a file are ignored; a
+#' file of no data row is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long.
 #' Values of genes no row names are left as they were; after an error, `expression_vectors`
 #' is undefined.
 #'
@@ -50,8 +51,8 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 #'
 #' Each tab-separated row after the header gives one id, from its `gene_col`, in file order.
 #' A row without that column, or with it empty, is refused, and so is an id longer than the
-#' strings of `gene_ids`. Blank lines at the end of the file are ignored. A line may be 4096
-#' characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
+#' strings of `gene_ids`. Blank lines at the end of the file are ignored; a file of no data row
+#' is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
 #' are left undefined, and the number of rows read is not returned: size `gene_ids` to the
 #' file. After an error, `gene_ids` is undefined.
 #'

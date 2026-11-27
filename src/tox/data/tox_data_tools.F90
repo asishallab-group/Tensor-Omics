@@ -18,6 +18,7 @@ module tox_data_tools
     use iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, is_err, is_ok, check_io_stat
     use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA, ERR_SIZE_MISMATCH, ERR_STRING_TOO_LONG
+    use tox_errors, only: ERR_EMPTY_INPUT
     use f42_config, only: DEBUG
     M_IMPLICIT_NONE
     private
@@ -232,9 +233,10 @@ contains
     !|
     !| Each file's rows give the values of the gene their `gene_col` names: the `value_cols` of a
     !| row go to rows `start_row`, `start_row + 1`, ... of that gene's column, and each further file
-    !| continues below the last. A row naming a gene not in `gene_ids` is skipped. Every row must
-    !| have every column read, none of them empty; a value must be one complete, finite number.
-    !| Blank lines at the end of a file are ignored. A line may be 4096 characters long.
+    !| continues below the last. A row naming a gene not in `gene_ids` is skipped; a gene may be
+    !| named by one row of a file. Every row must have every column read, none of them empty; a
+    !| value must be one complete, finite number. Blank lines at the end of a file are ignored; a
+    !| file of no data row is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long.
     !| Values of genes no row names are left as they were; after an error, `expression_vectors`
     !| is undefined.
     subroutine read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, &
@@ -264,6 +266,7 @@ contains
         integer(int32) :: i_file, i_gene, k, unit, ios, idx, n_genes, n_value_cols, n_fields, n_columns
         integer(int32) :: current_sample, line_length, line_number, n_rows
         integer(int32), allocatable :: firsts(:), lasts(:)
+        logical, allocatable :: named(:)
         character(len=MAX_LINE_LENGTH + 1) :: line
         character(len=1) :: actual_delimiter
         real(real64) :: value
@@ -305,6 +308,9 @@ contains
         end if
         n_columns = max(gene_col, maxval(value_cols))
 
+        allocate (named(n_genes), stat=ios)
+        call check_io_stat(ios, ierr)
+        if (is_err(ierr)) return
         call hashmap_create(gene_map, initial_size=n_genes)
         do i_gene = 1, n_genes
             call hashmap_put(gene_map, trim(gene_ids(i_gene)), i_gene)
@@ -319,15 +325,11 @@ contains
             call skip_lines(unit, n_header_rows, 1, ierr)
             line_number = max(n_header_rows, 0)
             n_rows = 0
+            named = .false.
             rows: do while (is_ok(ierr))
                 call read_data_line(unit, .false., line, line_length, line_number, at_end, 1, ierr)
                 if (is_err(ierr) .or. at_end) exit rows
                 n_rows = n_rows + 1
-                if (n_rows > n_genes) then
-                    call set_err_once(ierr, ERR_INVALID_INPUT, 1)
-                    if (DEBUG) write (*, *) 'Error: more rows than genes, line ', line_number
-                    exit rows
-                end if
                 call split_fields(line(1:line_length), actual_delimiter, firsts, lasts, n_fields)
                 if (n_fields < n_columns) then
                     call set_err_once(ierr, ERR_INVALID_INPUT, 1)
@@ -345,6 +347,12 @@ contains
                         ' not found in master gene list'
                     cycle rows
                 end if
+                if (named(idx)) then
+                    call set_err_once(ierr, ERR_INVALID_INPUT, 1)
+                    if (DEBUG) write (*, *) 'Error: line ', line_number, ' names its gene a second time'
+                    exit rows
+                end if
+                named(idx) = .true.
                 do k = 1, n_value_cols
                     associate (first => firsts(value_cols(k)), last => lasts(value_cols(k)))
                         if (last < first) then
@@ -367,7 +375,7 @@ contains
                     expression_vectors(current_sample + k, idx) = value
                 end do
             end do rows
-            if (is_ok(ierr) .and. n_rows == 0) call set_err_once(ierr, ERR_READ_DATA, 1)
+            if (is_ok(ierr) .and. n_rows == 0) call set_err_once(ierr, ERR_EMPTY_INPUT, 1)
             close (unit)
             unit = -1
             if (is_err(ierr)) exit files
@@ -383,8 +391,8 @@ contains
     !|
     !| Each tab-separated row after the header gives one id, from its `gene_col`, in file order.
     !| A row without that column, or with it empty, is refused, and so is an id longer than the
-    !| strings of `gene_ids`. Blank lines at the end of the file are ignored. A line may be 4096
-    !| characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
+    !| strings of `gene_ids`. Blank lines at the end of the file are ignored; a file of no data row
+    !| is refused with ERR_EMPTY_INPUT. A line may be 4096 characters long. With fewer rows than `gene_ids` has elements, the ones past the last row
     !| are left undefined, and the number of rows read is not returned: size `gene_ids` to the
     !| file. After an error, `gene_ids` is undefined.
     subroutine read_gene_ids_from_tsv_file(filename, gene_ids, n_header_rows, gene_col, ierr)
@@ -443,6 +451,7 @@ contains
             gene_ids(row_count) = line(firsts(gene_col):lasts(gene_col))
         end do
         close (unit)
+        if (is_ok(ierr) .and. row_count == 0) call set_err_once(ierr, ERR_EMPTY_INPUT, 1)
     end subroutine read_gene_ids_from_tsv_file
 
     !> M_EXPORT_C
