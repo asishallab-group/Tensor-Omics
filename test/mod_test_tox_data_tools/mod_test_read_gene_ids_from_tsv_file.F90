@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(8))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -39,6 +39,8 @@ contains
                                  test_read_gene_ids_from_tsv_file_keeps_duplicates)
         all_tests(8) = test_case("test_read_gene_ids_from_tsv_file_shipped_material", &
                                  test_read_gene_ids_from_tsv_file_shipped_material)
+        all_tests(9) = test_case("test_read_gene_ids_from_tsv_file_refuses_an_id_too_long", &
+                                 test_read_gene_ids_from_tsv_file_refuses_an_id_too_long)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -243,4 +245,25 @@ contains
         call read_gene_ids_from_tsv_file(EXPRESSION_FILE, gene_ids(1:N_ROWS - 1), 1, 1, ierr)
         call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_gene_ids_from_tsv_file_shipped_material: one id too few")
     end subroutine test_read_gene_ids_from_tsv_file_shipped_material
+
+    !> BUG (fails today): an id longer than the strings of `gene_ids` is cut to fit, without a
+    !| word. With versioned ids that is another gene's id: NP_001.10 cut to 8 characters is
+    !| NP_001.1. The reader has to either keep the id or refuse it (ERR_STRING_TOO_LONG would say
+    !| why); returning the cut id with ERR_OK is wrong.
+    subroutine test_read_gene_ids_from_tsv_file_refuses_an_id_too_long()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: tsv
+        character(len=8) :: gene_ids(1)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "gene_ids_too_long")
+        tsv = scratch_file(scratch, "genes.tsv")
+        call write_scratch_file(tsv, "id"//LF//"NP_001.10"//LF)
+
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_false(is_ok(ierr) .and. gene_ids(1) == "NP_001.1", &
+                          "test_read_gene_ids_from_tsv_file_refuses_an_id_too_long: NP_001.10 came back as NP_001.1 with ERR_OK")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_refuses_an_id_too_long
 end module mod_test_read_gene_ids_from_tsv_file
