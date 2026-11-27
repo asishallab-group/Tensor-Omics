@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, Origin
+from ..synthesize import binding_computes, readable_owners
 
 
 @dataclass(frozen=True)
@@ -103,12 +104,13 @@ def extent_provider(extent: CArgument, wrapper: CWrapper) -> Position | None:
     """The input an extent's value is read off: the first one carrying it that must be passed.
 
     Not an optional, which may be absent, nor a work array, which the binding allocates *from*
-    the extent. An array whose shape travels separately carries it as its element count.
+    the extent. An array whose shape travels separately carries it as its element count. In
+    the order `synthesize.readable_owners` puts them, so an array the caller passes comes before
+    one the binding computes, and is read before the producers (R4).
     """
-    roles = extent.source.roles if extent.source else None
-    if roles is None:
+    if extent.source is None:
         return None
-    for owner in roles.extent_of:
+    for owner in readable_owners(extent, wrapper):
         c_owner = wrapper.argument(owner.name)
         if not _carries(c_owner) or c_owner.optional:
             continue
@@ -124,11 +126,11 @@ def _expected(extent: CArgument, wrapper: CWrapper) -> Expected | None:
     roles = extent.source.roles if extent.source else None
     if roles is None or not roles.is_extent:
         return None
-    if roles.is_computed:
+    if binding_computes(extent, wrapper):
         return Expected("variable", extent=extent.name)
     if roles.is_mask_count:
         return Expected("mask", extent=extent.name, mask=roles.mask_count_of.name)
-    if roles.is_inferable_extent:
+    if readable_owners(extent, wrapper):
         position = extent_provider(extent, wrapper)
         if position is None:
             return None

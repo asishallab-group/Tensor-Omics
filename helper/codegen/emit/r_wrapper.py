@@ -18,6 +18,7 @@ from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
+from ..synthesize import is_derived
 from .doc_literals import render as _render
 from .doc_roxygen import render_roxygen
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -96,14 +97,25 @@ class RWrapperEmitter:
             producer = stripped_name(plan.producer)
             call_args = ", ".join(
                 f"{supply.name} = {self._producer_value(supply, wrapper)}"
-                for supply in plan.binding_inputs
+                for supply in plan.binding_inputs if not self._may_be_absent(supply, wrapper)
             )
-            call = f"{producer}({call_args})"
+            absent = [supply for supply in plan.binding_inputs
+                      if self._may_be_absent(supply, wrapper)]
+            if absent:
+                # an optional of the caller's without a default is left out where it is NULL,
+                # so absent stays absent and the producer's own default applies (P1)
+                given = ", ".join(
+                    f"if (!is.null({self._producer_value(supply, wrapper)})) "
+                    f"list({supply.name} = {self._producer_value(supply, wrapper)})"
+                    for supply in absent)
+                call = f"do.call({producer}, c(list({call_args}), {given}))"
+            else:
+                call = f"{producer}({call_args})"
             if returns_single(plan.producer):
                 writer.line(f"{argument.name} <- {self._producer_call(wrapper, plan, call, tables)}")
                 continue
 
-            key = (producer, call_args)
+            key = (producer, call)
             if key not in calls:
                 suffix = "" if not calls else f"_{len(calls)}"
                 calls[key] = f".{producer}_result{suffix}"
@@ -127,8 +139,18 @@ class RWrapperEmitter:
         return (f"tryCatch({call}, tox_error = function(e) "
                 f"{CONSUMER_ERROR}(e, c({positions}), {names}))")
 
+    @staticmethod
+    def _may_be_absent(supply, wrapper: CWrapper) -> bool:
+        """Whether the caller's argument supplying `supply` is an optional without a default,
+        which is `NULL` where it was left out."""
+        supplied = wrapper.argument(supply.argument) if supply.argument is not None else None
+        return supplied is not None and supplied.optional and not supplied.has_default
+
     def _producer_value(self, supply, wrapper: CWrapper) -> str:
-        """What to pass for one producer input: an argument, or a constant outright."""
+        """What to pass for one producer input: an argument, or a constant outright -- a mode
+        as its string, which the producer's binding maps to its code (rule T)."""
+        if supply.mode is not None:
+            return r_literal(supply.mode.string)
         if supply.is_constant:
             return r_literal(supply.constant)
         return self._r_value_of(supply.argument, wrapper)
@@ -167,7 +189,7 @@ class RWrapperEmitter:
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived(argument)
+            and not is_derived(argument, wrapper)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -178,7 +200,7 @@ class RWrapperEmitter:
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived_in_c(argument)
+            and not self._is_derived_in_c(argument, wrapper)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -195,20 +217,11 @@ class RWrapperEmitter:
         return CCallEmitter()._must_be_supplied(argument, wrapper)
 
     @staticmethod
-    def _is_derived(argument: CArgument) -> bool:
-        roles = argument.source.roles if argument.source else None
-        return bool(roles and roles.is_derived)
+    def _is_derived_in_c(argument: CArgument, wrapper: CWrapper) -> bool:
+        """What the shim derives itself, so R does not pass it: the C emitter's own rule."""
+        from .c_call import CCallEmitter
 
-    @staticmethod
-    def _is_derived_in_c(argument: CArgument) -> bool:
-        # C derives extents/shapes/counts, but not computed args (R passes those)
-        roles = argument.source.roles if argument.source else None
-        if roles is None:
-            return False
-        if roles.is_computed:
-            return False
-        return (roles.is_inferable_extent or roles.is_inferable_shape_arg
-                or roles.is_mask_count)
+        return CCallEmitter._is_derived(argument, wrapper)
 
     def _param(self, argument: CArgument) -> str:
         if argument.optional:

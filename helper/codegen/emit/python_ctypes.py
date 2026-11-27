@@ -45,6 +45,13 @@ from ..render import Writer
 from .error_arguments import equalities_of, shapes_of, sources_of
 from .errors_python import public_names
 from .producer_calls import auto_plans, returns_single, supplied_by
+from ..synthesize import (
+    binding_computes,
+    carries_computed,
+    is_derived,
+    read_off_a_carrier,
+    readable_owners,
+)
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -559,7 +566,7 @@ class PythonEmitter:
             for argument in wrapper
             if argument.intent.is_input
             and not argument.is_temporary
-            and not self._is_derived(argument)
+            and not is_derived(argument, wrapper)
             and (not argument.is_synthesised or self._must_be_supplied(argument, wrapper))
         ]
 
@@ -573,11 +580,6 @@ class PythonEmitter:
         if argument.is_error:
             return False
         return not self._extent_expression(argument, wrapper)
-
-    @staticmethod
-    def _is_derived(argument: CArgument) -> bool:
-        roles = argument.source.roles if argument.source else None
-        return bool(roles and roles.is_derived)
 
     @staticmethod
     def _default_of(argument: CArgument) -> str | None:
@@ -801,9 +803,22 @@ class PythonEmitter:
             writer.extend(body)
         return writer.render()
 
+    def _producer_keyword(self, supply, wrapper: CWrapper, stashes: dict[str, str]) -> str:
+        """One producer input of the call, as `name=value` -- or, for an optional of the caller's
+        without a default, left out where it is `None`, so absent stays absent and the
+        producer's own default applies (P1); its binding refuses `None` for a defaulted one."""
+        value = self._producer_value(supply, stashes)
+        supplied = wrapper.argument(supply.argument) if supply.argument is not None else None
+        if supplied is not None and supplied.optional and not supplied.has_default:
+            return f'**({{}} if {value} is None else {{"{supply.name}": {value}}})'
+        return f"{supply.name}={value}"
+
     @staticmethod
     def _producer_value(supply, stashes: dict[str, str]) -> str:
-        """What to pass for one producer input: an argument, or a constant outright."""
+        """What to pass for one producer input: an argument, or a constant outright -- a mode
+        as its string, which the producer's binding maps to its code (rule T)."""
+        if supply.mode is not None:
+            return python_literal(supply.mode.string)
         if supply.is_constant:
             return python_literal(supply.constant)
         return stashes.get(supply.argument, supply.argument)
@@ -869,7 +884,7 @@ class PythonEmitter:
             # the keyword is the *producer's* parameter name, the value the consumer's
             # argument; they coincide under name-matching but not when a table renames one
             call_args = ", ".join(
-                f"{supply.name}={self._producer_value(supply, stashes)}"
+                self._producer_keyword(supply, wrapper, stashes)
                 for supply in plan.binding_inputs)
             single = returns_single(plan.producer)
             if single:
@@ -938,25 +953,12 @@ class PythonEmitter:
         """
         if argument.origin in (Origin.EXTENT, Origin.STRLEN):
             owner = wrapper.argument(argument.sizes)
-            return owner is not None and self._is_computed(owner)
-        roles = argument.source.roles if argument.source else None
-        if roles is None or not roles.is_extent:
+            return owner is not None and binding_computes(owner, wrapper)
+        if argument.source is None:
             return False
-        for owner in roles.extent_of:
-            c_owner = wrapper.argument(owner.name)
-            if c_owner is None:
-                continue
-            if self._is_computed(c_owner):
-                return True
-            shape = wrapper.argument(c_owner.shape_arg) if c_owner.shape_arg else None
-            if shape is not None and self._is_computed(shape):
-                return True
-        return False
-
-    @staticmethod
-    def _is_computed(argument: CArgument) -> bool:
-        roles = argument.source.roles if argument.source else None
-        return bool(roles and roles.is_computed)
+        # read off the first carrier (R4): one the caller passed whenever there is one
+        owners = readable_owners(argument, wrapper)
+        return bool(owners) and carries_computed(owners[0], wrapper)
 
     def _extent_expression(self, argument: CArgument, wrapper: CWrapper) -> str:
         """Where a derived argument's value comes from."""
@@ -994,8 +996,8 @@ class PythonEmitter:
 
         if roles.is_extent:
             # the same predicate the signature uses, so an argument is never both asked
-            # for and derived
-            if not roles.is_inferable_extent:
+            # for and derived -- and never both computed and read off a carrier (3a)
+            if not read_off_a_carrier(argument, wrapper):
                 return ""
             provider = self._extent_provider(argument, wrapper)
             return provider or ""
@@ -1028,7 +1030,7 @@ class PythonEmitter:
         if position is not None:
             return self._position(position)
         # an output sized by a shape argument: the count is the product of that shape
-        for owner in argument.source.roles.extent_of:
+        for owner in readable_owners(argument, wrapper):
             c_owner = wrapper.argument(owner.name)
             if c_owner is not None and c_owner.shape_arg is not None:
                 return f"int({_NP}.prod({c_owner.shape_arg}))"
@@ -1078,7 +1080,7 @@ class PythonEmitter:
         for argument in wrapper:
             if argument.intent.is_input and not argument.is_temporary:
                 continue
-            if self._is_derived(argument) and argument.intent.is_input:
+            if is_derived(argument, wrapper) and argument.intent.is_input:
                 continue
             lines.line(f"{argument.name} = {self._new_value(argument)}")
         if lines:
