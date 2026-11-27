@@ -902,3 +902,484 @@ class TestJustInfoLinksThePublishedWrapper:
         assert run_python(built, """
             print(json.dumps(list(tox.fx_info([1.0], 3))))
         """) == [1.0, 1.0, 1.0]
+
+
+#: A 2 x 3 matrix whose column norms are 5, 1 and 2.5: unsorted, and one of them not above one
+_NORMS_X_PY = """
+            x = np.asfortranarray([[3.0, 0.6, 1.5], [4.0, 0.8, 2.0]])
+"""  # indented as the bodies below are, which `run_python` dedents together with it
+_NORMS_X = "matrix(c(3, 4, 0.6, 0.8, 1.5, 2), 2)"
+_NORMS_X_R = f"""
+            x <- {_NORMS_X}
+"""
+
+
+class TestAnArrayAProducerFills:
+    """An array a producer fills (`fx_norm_rank`, `fx_large_first`), through Python and R.
+
+    The plain tier computes it in Fortran. The expert tier takes it from the caller, as Fortran's
+    and C's do (E2) -- unless the same producer call also gives a size the binding allocates by,
+    which it then computes whole.
+    """
+
+    def test_the_plain_call_in_python(self, built):
+        out = run_python(built, _NORMS_X_PY + """
+            result = tox.fx_norm_rank(x, 2)
+            print(json.dumps([list(result["ranked"]), result["total"]]))
+        """)
+
+        assert out == [[1.0, 2.5, 5.0], 6.0]
+
+    def test_the_plain_call_in_r(self, built):
+        out = run_r(built, _NORMS_X_R + """
+            r <- fx_norm_rank(x, 2L); cat(r$ranked, r$total)
+        """)
+
+        assert out == ["1", "2.5", "5", "6"]
+
+    def test_the_expert_takes_the_caller_s_norms_in_python(self, built):
+        # sentinels no producer would compute, read-only as a result handed back would be:
+        # they reach the implementation unchanged
+        out = run_python(built, _NORMS_X_PY + """
+            norms = np.array([9.0, 7.0, 8.0]); norms.flags.writeable = False
+            result = tox.fx_norm_rank_expert(x, 2, norms, [2, 3, 1])
+            print(json.dumps(list(result["ranked"])))
+        """)
+
+        assert out == [7.0, 8.0, 9.0]
+
+    def test_the_expert_takes_the_caller_s_norms_in_r(self, built):
+        out = run_r(built, _NORMS_X_R + """
+            cat(fx_norm_rank_expert(x, 2L, c(9, 7, 8), c(2L, 3L, 1L))$ranked)
+        """)
+
+        assert out == ["7", "8", "9"]
+
+    def test_the_expert_signature(self, built):
+        out = run_python(built, """
+            import inspect
+            print(json.dumps([list(inspect.signature(f).parameters) for f in (
+                tox.fx_norm_rank_expert, tox.fx_large_first_expert, tox.fx_rounded_total_expert,
+                tox.fx_bounded_total_expert)]))
+        """)
+
+        assert out == [["x", "scale", "norms", "norms_perm"], ["scale", "x", "norms_perm"],
+                       ["x", "rounded"], ["x", "scale", "limit"]]
+
+    def test_the_docstring_names_what_the_expert_takes(self, built):
+        # R5: the Python parameters, not the C arguments (`work_size`, `tmp_buf`)
+        out = run_python(built, """
+            print(json.dumps(tox.fx_norm_rank_expert.__doc__))
+        """)
+
+        assert "you supply `norms` and `norms_perm` yourself." in out
+        assert ("`fx_norm_rank` computes `norms` with `fx_column_norms` and seeds `norms_perm` "
+                "and sorts it by `norms`.") in out
+
+    def test_nan_in_the_caller_s_norms_is_refused_naming_them_in_python(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + _NORMS_X_PY + """
+            print(json.dumps(raised(lambda: tox.fx_norm_rank_expert(
+                x, 2, [9.0, float("nan"), 8.0], [2, 3, 1]))))
+        """)
+
+        assert out[2] == "norms", out
+
+    def test_na_in_the_caller_s_norms_is_refused_naming_them_in_r(self, built):
+        out = r_raised(built, f"fx_norm_rank_expert({_NORMS_X}, 2L, c(9, NA, 8), c(2L, 3L, 1L))")
+
+        assert out[2] == "norms", out
+
+    def test_a_wrong_length_is_refused(self, built):
+        out = run_python(built, _PY_REFUSED + _NORMS_X_PY + """
+            print(json.dumps(refused(lambda: tox.fx_norm_rank_expert(x, 2, [9.0, 7.0], [2, 1]))))
+        """)
+
+        assert out[:3] == ["ToxArgumentError", None, "norms"]
+
+    def test_a_producer_error_names_the_caller_s_argument(self, built):
+        # fx_column_norms takes at most three rows; four reach it from the plain tier's Fortran
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps(raised(lambda: tox.fx_norm_rank(np.ones((4, 3), order="F"), 2))))
+        """)
+
+        assert out[:3] == ["ToxInputError", "ERR_INVALID_INPUT", "x"], out
+        assert out[3].endswith("(argument 'x', via 'n_dims')"), out
+        assert r_raised(built, "fx_norm_rank(matrix(1, 4, 3), 2L)")[1:] == [
+            "ERR_INVALID_INPUT", "x", "invalid input arguments (argument 'x', via 'n_dims')"]
+
+
+class TestDataAndASizeFromOneCall:
+    """`fx_large_first`: one producer call gives `norms` and the size `n_large` of a work array.
+
+    The expert computes both, whole, from that one call: a size can depend on the values the call
+    computes, so it is not paired with data the caller passed. `norms` is declared before `x`,
+    and a second producer, called first, is given `n_items`: it is read off `x`, which the caller
+    passed, before any producer runs (R4). It was read off `norms`, which a producer fills --
+    after the producers, so Python raised `UnboundLocalError`, and R read a global of that name.
+    """
+
+    #: 2.5 + 5, the norms above one, plus a thousand for each of the 3 x 2 slots of scratch
+    TOTAL = 7.5 + 6000.0
+
+    def test_the_expert_in_python(self, built):
+        out = run_python(built, _NORMS_X_PY + """
+            print(json.dumps([tox.fx_large_first_expert(2, x, [2, 3, 1]), tox.fx_large_first(2, x)]))
+        """)
+
+        assert out == [self.TOTAL, self.TOTAL]
+
+    def test_the_expert_in_r(self, built):
+        out = run_r(built, _NORMS_X_R + """
+            cat(fx_large_first_expert(2L, x, c(2L, 3L, 1L)), fx_large_first(2L, x))
+        """)
+
+        assert out == [str(self.TOTAL)] * 2
+
+    def test_r_reads_no_global_of_the_array_s_or_the_extent_s_name(self, built):
+        out = run_r(built, _NORMS_X_R + """
+            norms <- c(100, 200, 300, 400, 500); n_items <- 99L; n_large <- 7L
+            cat(fx_large_first_expert(2L, x, c(2L, 3L, 1L)))
+        """)
+
+        assert out == [str(self.TOTAL)]
+
+
+class TestAnIntegerArrayTheCallerPasses:
+    """`fx_rounded_total_expert` takes the integer array a producer fills in `foo`.
+
+    The R shim checks it as it converts it, like any integer array a caller passes: the routing
+    the E2 attack's prototype missed let a double through, and NA reached Fortran as INT_MIN.
+    """
+
+    def test_python(self, built):
+        out = run_python(built, """
+            print(json.dumps([tox.fx_rounded_total([1.2, 2.7, -0.4]),
+                              tox.fx_rounded_total_expert([1.2, 2.7, -0.4], [1, 3, 0])]))
+        """)
+
+        assert out == [4.0, 4.0]
+
+    def test_r_takes_whole_doubles_and_refuses_na(self, built):
+        assert r_raised(built, "fx_rounded_total_expert(c(1.2, 2.7, -0.4), c(1, 3, 0))") == [
+            "returned", "4"]
+        assert r_raised(built, "fx_rounded_total_expert(c(1.2, 2.7, -0.4), c(1L, NA, 0L))")[2] \
+            == "rounded"
+        assert r_raised(built, "fx_rounded_total_expert(c(1.2, 2.7, -0.4), c(1, 2.5, 0))")[2] \
+            == "rounded"
+
+
+class TestAValueOnlyABoundNames:
+    """`fx_bounded_total`: `limit` sizes nothing, so the Python and R expert takes it as a
+    parameter, and is published for it (E2); the plain tier computes it, and checks `x` against
+    it once it has (rule V; `test_end_to_end_fortran.TestABoundIsCheckedOnceItsValuesAreSet`)."""
+
+    def test_the_expert_validates_by_the_caller_s_limit(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_bounded_total_expert([1.0, 2.0], 9, 3)),
+                              raised(lambda: tox.fx_bounded_total_expert([1.0, 5.0], 9, 3))]))
+        """)
+
+        assert out[0] == ["returned", 3.0]
+        assert out[1][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "x"]
+
+    def test_the_plain_tier_validates_by_the_limit_it_computes(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([raised(lambda: tox.fx_bounded_total([1.0, 2.0], 3)),
+                              raised(lambda: tox.fx_bounded_total([1.0, 7.0], 3))]))
+        """)
+
+        assert out[0] == ["returned", 3.0]
+        assert out[1][:3] == ["ToxInputError", "ERR_INVALID_INPUT", "x"]
+
+
+def function_body(text: str, start: str, end: str) -> str:
+    """The text of one generated function, from `start` to the next `end` after it."""
+    head = text.index(start)
+    tail = text.find(end, head + len(start))
+    return text[head:] if tail < 0 else text[head:tail]
+
+
+class TestACallKeptWhole:
+    """Rule K: one producer call gives `norms` and `n_large`, which sizes something the caller
+    passes or receives, so the call is kept whole -- the wrapper computes neither, and Python and
+    R make the call once. Before, `foo` took `norms` over and called the producer again for it.
+    """
+
+    def test_python(self, built):
+        out = run_python(built, _PY_PRODUCER_ERROR + """
+            x = np.array([[2.0, 0.5, 3.0]])
+            print(json.dumps([tox.fx_picked_norms(x).tolist(),
+                              raised(lambda: tox.fx_weighted_norms(x, np.array([10.0, 20.0]))),
+                              raised(lambda: tox.fx_weighted_norms(x, np.array([10.0])))]))
+        """)
+
+        assert out[0] == [2.0, 3.0]
+        assert out[1] == ["returned", 2.0 + 0.5 + 3.0 + 30.0]
+        assert out[2][:3] == ["ToxArgumentError", None, "w"], out[2]
+
+    def test_r(self, built):
+        x = "matrix(c(2, 0.5, 3), nrow = 1)"
+        assert r_raised(built, f"fx_picked_norms({x})") == ["returned", "2 3"]
+        assert r_raised(built, f"fx_weighted_norms({x}, c(10, 20))") == ["returned", "35.5"]
+        assert r_raised(built, f"fx_weighted_norms({x}, c(10))")[:3] == [
+            "tox_shape_error", "NA", "w"]
+
+    def test_each_binding_makes_the_call_once_and_the_wrapper_none(self, built):
+        python = (built / "py" / "fx_impl" / "fx_sized.py").read_text()
+        r = (built / "r" / "fx_sized.R").read_text()
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        for name in ("fx_picked_norms", "fx_weighted_norms"):
+            assert function_body(python, f"def {name}(", "\ndef ").count("fx_large_norms(") == 1
+            assert function_body(r, f"{name} <- function(", "\n}").count("fx_large_norms(") == 1
+            assert "call fx_large_norms(" not in function_body(
+                fortran, f"subroutine {name}(", f"end subroutine {name}")
+        # the negative control: a call nothing keeps is taken over, so `foo` makes it
+        assert "call fx_large_norms(" in function_body(
+            fortran, "subroutine fx_large_total(", "end subroutine fx_large_total")
+
+    def test_nothing_is_left_to_take_over_so_there_is_one_wrapper(self, built):
+        out = run_python(built, """
+            import inspect
+            print(json.dumps([list(inspect.signature(tox.fx_weighted_norms).parameters),
+                              hasattr(tox, "fx_weighted_norms_expert"),
+                              hasattr(tox, "fx_picked_norms_expert")]))
+        """)
+
+        assert out == [["x", "w"], False, False]
+
+
+class TestAnOmittedProducerInput:
+    """Rule O: `| padding | OMITTED |` leaves the input out of every call, so the producer does
+    what it does for a caller who leaves it out -- `fx_padded_size` adds nothing, and
+    `fx_strided_size` takes its stride of three. On the Fortran route (a work array, through `foo`)
+    and the binding route (a result) alike; omitting in one table and supplying in another are
+    two calls."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([tox.fx_unpadded_total(x), len(tox.fx_unpadded(x)),
+                              tox.fx_unstrided_total(x), len(tox.fx_unstrided(x)),
+                              tox.fx_omitted_once(x)]))
+        """)
+
+        assert out == [6 + 3, 3, 6 + 9, 9, 6 + 9 + 6]
+
+    def test_r(self, built):
+        out = run_r(built, """
+            x <- c(1, 2, 3)
+            cat(fx_unpadded_total(x), length(fx_unpadded(x)), fx_unstrided_total(x),
+                length(fx_unstrided(x)), fx_omitted_once(x))
+        """)
+
+        assert out == ["9", "3", "15", "9", "21"]
+
+    def test_no_call_passes_it(self, built):
+        python = (built / "py" / "fx_impl" / "fx_sized.py").read_text()
+        r = (built / "r" / "fx_sized.R").read_text()
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        assert "padding" not in function_body(python, "def fx_unpadded(", "\ndef ").split(
+            "fx_padded_size(", 1)[1].split(")", 1)[0]
+        assert "stride" not in function_body(r, "fx_unstrided <- function(", "\n}").split(
+            "fx_strided_size(", 1)[1].split(")", 1)[0]
+        assert "stride =" not in function_body(
+            fortran, "subroutine fx_unstrided_total(", "end subroutine fx_unstrided_total")
+        # the negative control: a consumer that supplies it passes it
+        assert "padding = padding" in function_body(
+            fortran, "subroutine fx_padded_total(", "end subroutine fx_padded_total")
+
+
+class TestAModeReachesAProducerAsAMode:
+    """Rule T: a mode argument supplies a producer's mode input whose table names its modes, and
+    one more (`fx_method_size` accepts `three`); a constant naming one of the input's mode
+    parameters is its code in Fortran and its string in Python and R. Before, Python and R passed
+    `METHOD_TWO` as the integer 2, which the producer's binding refused."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([tox.fx_method_total(x, "one"), tox.fx_method_total(x, "two"),
+                              len(tox.fx_method_filled(x, "one")), len(tox.fx_method_filled(x, "two")),
+                              tox.fx_second_total(x), len(tox.fx_second(x))]))
+        """)
+
+        assert out == [6 + 3, 6 + 6, 3, 6, 6 + 6, 6]
+
+    def test_r(self, built):
+        out = run_r(built, """
+            x <- c(1, 2, 3)
+            cat(fx_method_total(x, "one"), fx_method_total(x, "two"), length(fx_method_filled(x, "one")),
+                length(fx_method_filled(x, "two")), fx_second_total(x), length(fx_second(x)))
+        """)
+
+        assert out == ["9", "12", "3", "6", "12", "6"]
+
+    def test_the_constant_crosses_as_its_code_and_its_string(self, built):
+        python = (built / "py" / "fx_impl" / "fx_sized.py").read_text()
+        r = (built / "r" / "fx_sized.R").read_text()
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        assert "fx_method_size(n_items=n_items, method='two')" in function_body(
+            python, "def fx_second(", "\ndef ")
+        assert 'method = "two"' in function_body(r, "fx_second <- function(", "\n}")
+        assert "method = 2_int32" in function_body(
+            fortran, "subroutine fx_second_total(", "end subroutine fx_second_total")
+
+
+class TestAnAbsentOptionalStaysAbsent:
+    """P1's pass-through: an optional of the caller's without a default, feeding a producer's
+    optional input that has one, is left out of the binding's call where the caller left it out,
+    so the producer takes its own default. Python and R passed `None` and `NULL`, which the
+    producer's binding refused -- for an integer and for a mode alike. And a consumer's own
+    default reaches the producer in every tier (`fx_wide_stride_total`, 4 where the producer's
+    is 3)."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([len(tox.fx_absent_stride(x)), len(tox.fx_absent_stride(x, 2)),
+                              len(tox.fx_absent_method(x)), len(tox.fx_absent_method(x, "one")),
+                              tox.fx_wide_stride_total(x)]))
+        """)
+
+        assert out == [9, 6, 6, 3, 12.0]
+
+    def test_r(self, built):
+        out = run_r(built, """
+            x <- c(1, 2, 3)
+            cat(length(fx_absent_stride(x)), length(fx_absent_stride(x, 2L)),
+                length(fx_absent_method(x)), length(fx_absent_method(x, "one")),
+                fx_wide_stride_total(x))
+        """)
+
+        assert out == ["9", "6", "6", "3", "12"]
+
+
+class TestAStringConstantForAFixedLength:
+    """Rule T: `| label | 'abc' |` into a `character(len=6)` producer input. `foo` passes it padded
+    to six -- `'abc'` alone did not compile ("shorter than of dummy argument") -- as Python and R
+    pass it, so every tier sizes 3 items plus 3 characters."""
+
+    def test_python(self, built):
+        out = run_python(built, """
+            x = np.array([1.0, 2.0, 3.0])
+            print(json.dumps([tox.fx_labelled_total(x), len(tox.fx_labelled(x))]))
+        """)
+
+        assert out == [6 + 6, 6]
+
+    def test_r(self, built):
+        assert run_r(built, "x <- c(1, 2, 3); cat(fx_labelled_total(x), length(fx_labelled(x)))") \
+            == ["12", "6"]
+
+    def test_foo_passes_it_padded(self, built):
+        fortran = (built / "fortran" / "fx_sized.F90").read_text()
+        assert "label = 'abc   ',&" in function_body(
+            fortran, "subroutine fx_labelled_total(", "end subroutine fx_labelled_total")
+
+
+FIXTURE_CARRIER = Path("helper/codegen/tests/fixtures/carrier")
+
+
+@pytest.fixture(scope="module")
+def carrier_built(tmp_path_factory):
+    """`fixtures/carrier` built into a library of its own, R shims included."""
+    out = tmp_path_factory.mktemp("e2e_carrier")
+    _generate(out, REPO_ROOT / FIXTURE_CARRIER)
+    _build(out, REPO_ROOT / FIXTURE_CARRIER)
+    return out
+
+
+class TestAValueThatSizesOnlyAnInput:
+    """The carrier case of E2: in the expert, `n_cap` is read off `y`, which carries it.
+
+    Before, the Python and R expert computed it through the producer and refused a `y` of
+    another length -- and of any length where the producer refuses its input. Now it reads it
+    off `y` and accepts any length, as Fortran's and C's expert always have. The plain tier
+    still computes it, and checks `y` against it.
+    """
+
+    def test_python_reads_it_off_the_array(self, carrier_built):
+        out = run_python(carrier_built, _PY_PRODUCER_ERROR + """
+            print(json.dumps([
+                raised(lambda: tox.fx_capacity_total_expert([3.0, 1.0], [2, 1], [1.0, 1.0])),
+                # six items: the producer refuses more than five, and is not called
+                raised(lambda: tox.fx_capacity_total_expert([6.0, 5, 4, 3, 2, 1], [6, 5, 4, 3, 2, 1], [10.0])),
+                raised(lambda: tox.fx_capacity_total([3.0, 1.0], [1.0, 1.0, 1.0])),
+                raised(lambda: tox.fx_capacity_total([3.0, 1.0], [1.0, 1.0])),
+            ]))
+        """)
+
+        assert out[0] == ["returned", 1.0 + 2.0]
+        assert out[1] == ["returned", 1.0 + 10.0]
+        assert out[2] == ["returned", 1.0 + 3.0]
+        assert out[3][:3] == ["ToxArgumentError", None, "y"], out[3]
+
+    def test_the_expert_asks_for_no_capacity(self, carrier_built):
+        out = run_python(carrier_built, """
+            import inspect
+            print(json.dumps(list(inspect.signature(tox.fx_capacity_total_expert).parameters)))
+        """)
+
+        assert out == ["x", "x_perm", "y"]
+
+    def test_r_reads_it_off_the_array(self, carrier_built):
+        assert r_raised(carrier_built,
+                        "fx_capacity_total_expert(c(3, 1), c(2L, 1L), c(1, 1))") == ["returned", "3"]
+        # six items: the producer refuses more than five, and is not called
+        assert r_raised(carrier_built, "fx_capacity_total_expert(c(6, 5, 4, 3, 2, 1), "
+                                       "c(6L, 5L, 4L, 3L, 2L, 1L), c(10))") == ["returned", "11"]
+
+    def test_r_computes_it_in_the_plain_tier_and_checks_the_array(self, carrier_built):
+        # the shim takes the capacity R computed, and reads no second one off `y`: it compiled
+        assert r_raised(carrier_built, "fx_capacity_total(c(3, 1), c(1, 1, 1))") == ["returned", "4"]
+        wrong = r_raised(carrier_built, "fx_capacity_total(c(3, 1), c(1, 1))")
+        assert wrong[:3] == ["tox_shape_error", "NA", "y"], wrong
+
+    def test_the_r_expert_asks_for_no_capacity(self, carrier_built):
+        assert run_r(carrier_built, 'cat(names(formals(fx_capacity_total_expert)))') == [
+            "x", "x_perm", "y"]
+
+    def test_python_computes_it_in_the_plain_tier_and_reads_nothing_off_the_array(self):
+        # computed through the producer, then `y` is checked against it: no `n_cap = y.shape[0]`
+        # first, which the producer's value overwrote (3a). The expert, which reads it off `y`,
+        # is the negative control
+        from codegen.generate import generate
+
+        paths = Paths(root=REPO_ROOT, src_dir=REPO_ROOT / FIXTURE_CARRIER)
+        result = generate(paths=paths, targets=("python",), library="build/libtensor_omics.so")
+        [module] = [f.content for f in result.files if f.path.name == "fx_carrier.py"]
+        bodies = {name: module.split(f"def {name}(", 1)[1].split("\ndef ", 1)[0]
+                  for name in ("fx_capacity_total", "fx_capacity_total_expert",
+                               "fx_inout_capacity")}
+
+        assert "n_cap = y.shape[0]" not in bodies["fx_capacity_total"]
+        assert "n_cap = fx_room_for(" in bodies["fx_capacity_total"]
+        assert "n_cap = y.shape[0]" not in bodies["fx_inout_capacity"]
+        assert "n_cap = y.shape[0]" in bodies["fx_capacity_total_expert"]
+
+
+class TestAComputedCapacityOfAnInOutArray:
+    """A lone wrapper whose computed capacity sizes an `intent(inout)` array (3a).
+
+    Nothing is taken over, so there is one wrapper, whose binding computes `n_cap` through the
+    producer and checks `y` against it. Its R shim declared `n_cap` twice -- the `.Call`
+    parameter R computed, and a second one read off `y` -- and did not compile.
+    """
+
+    def test_python(self, carrier_built):
+        out = run_python(carrier_built, _PY_PRODUCER_ERROR + """
+            y = np.zeros(3)
+            first = raised(lambda: tox.fx_inout_capacity([1.0, 2.0], y))
+            print(json.dumps([first, y.tolist(),
+                              raised(lambda: tox.fx_inout_capacity([1.0, 2.0], np.zeros(2)))]))
+        """)
+
+        assert out[0] == ["returned", None]
+        assert out[1] == [3.0, 3.0, 3.0]
+        assert out[2][:3] == ["ToxArgumentError", None, "y"], out[2]
+
+    def test_r(self, carrier_built):
+        assert r_raised(carrier_built, "fx_inout_capacity(c(1, 2), c(0, 0, 0))") == [
+            "returned", "3 3 3"]
+        wrong = r_raised(carrier_built, "fx_inout_capacity(c(1, 2), c(0, 0))")
+        assert wrong[:3] == ["tox_shape_error", "NA", "y"], wrong
