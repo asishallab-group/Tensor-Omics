@@ -493,3 +493,252 @@ class TestAnImplementationPositionIsTranslated:
         assert self.run(built, tmp_path, call, 5) == ["ok", "1", "2", "0", "0", "0"]
         call = "call fx_pos_share_expert(N, values, scratch, total, ierr)"
         assert self.run(built, tmp_path, call, 5) == ["ok", "1", "2", "3", "0", "0"]
+
+
+#: The probe for the arrays a producer fills (`fx_sized_impl`): a 2 x 3 matrix whose column
+#: norms are 5, 1 and 2.5, so one call gives them unsorted and one of them is not above one
+_SIZED_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use tox_errors, only: get_err_code, get_err_arg_pos
+    use fx_sized, only: fx_norm_rank, fx_norm_rank_expert, fx_large_total, fx_default_scale, &
+        fx_padded_total, fx_wide_stride_total
+    implicit none
+    real(real64) :: x(2, 3) = reshape([3.0_real64, 4.0_real64, 0.6_real64, 0.8_real64, &
+                                       1.5_real64, 2.0_real64], [2, 3])
+    real(real64) :: ranked(3), total
+    real(real64) :: values(3) = [1.0_real64, 2.0_real64, 4.0_real64]
+    integer(int32) :: ierr
+
+{body}
+end program probe
+"""
+
+
+class TestAnArrayAProducerFills:
+    """`foo` allocates an array right above the producer call that fills it (R1).
+
+    It used to allocate it after every producer call, so the producer wrote into an unallocated
+    array: under -fcheck=all, which these probes are compiled with, that is a runtime error.
+    """
+
+    def test_foo_fills_sorts_and_passes_it(self, built, tmp_path):
+        # norms 5, 1, 2.5 sorted ascending through norms_perm; the scratch is 3 columns x 2
+        out = run_fortran(built, tmp_path, """
+            call fx_norm_rank(2, 3, x, 2, ranked, total, ierr)
+            print '(i0, 3(1x, f6.2), 1x, f6.2)', ierr, ranked, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "1.00", "2.50", "5.00", "6.00"]
+
+    def test_the_expert_takes_it_from_the_caller(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            block
+                real(real64) :: scratch(6)
+                call fx_norm_rank_expert(2, 3, x, 2, [9.0_real64, 7.0_real64, 8.0_real64], &
+                    [2, 3, 1], 6, scratch, ranked, total, ierr)
+            end block
+            print '(i0, 3(1x, f6.2))', ierr, ranked
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "7.00", "8.00", "9.00"]
+
+    def test_a_producer_error_names_the_caller_s_argument(self, built, tmp_path):
+        # fx_column_norms takes at most three rows, a bound fx_norm_rank leaves out: its
+        # ERR_INVALID_INPUT at its own n_dims (1) is fx_norm_rank's n_dims, also its first
+        out = run_fortran(built, tmp_path, """
+            block
+                real(real64) :: tall(4, 3) = 1.0_real64
+                call fx_norm_rank(4, 3, tall, 2, ranked, total, ierr)
+            end block
+            print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["201", "1"]
+
+    def test_one_call_gives_the_array_and_a_size_its_values_decide(self, built, tmp_path):
+        # 5 + 1 + 2.5, plus a thousand for each of the two norms above one
+        out = run_fortran(built, tmp_path, """
+            call fx_large_total(2, 3, x, total, ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "2008.50"]
+
+    def test_a_zero_extent(self, built, tmp_path):
+        # no columns at all: the array, the size and the scratch are all empty
+        out = run_fortran(built, tmp_path, """
+            call fx_large_total(2, 0, x(:, 1:0), total, ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "0.00"]
+
+
+class TestAnOptionalSupplier:
+    """P1: an optional producer input's supplier, resolved or passed through as it stands."""
+
+    def test_its_default_is_resolved_under_the_name_the_table_gives_it(self):
+        # `factor | scale`: left out, `scale` is its default 2, so the scratch is 3 x 2
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_default_scale(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+            call fx_default_scale(3, values, 3, total, ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "13.00", "0", "16.00"]
+
+    def test_an_absent_one_stays_absent_through_to_the_producer(self):
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_padded_total(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+            call fx_padded_total(3, values, 2, total, ierr)
+            print '(i0, 1x, f6.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "10.00", "0", "12.00"]
+
+    def test_its_default_is_resolved_where_the_producer_s_input_is_optional_too(self):
+        # `stride` defaults to 4 here and to 3 in the producer: left out, `foo` passes the 4 it
+        # resolved, so the work array has the 12 slots the implementation expects. Passed
+        # through absent, the producer sized it for 3 (9 slots), and 3 more were expected than
+        # there were: 9 + 3000
+        out = run_fortran(self.built, self.tmp_path, """
+            call fx_wide_stride_total(3, values, total=total, ierr=ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+            call fx_wide_stride_total(3, values, 2, total, ierr)
+            print '(i0, 1x, f8.2)', ierr, total
+        """, probe=_SIZED_PROBE)
+
+        assert out == ["0", "12.00", "0", "6.00"]
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, built, tmp_path):
+        self.built, self.tmp_path = built, tmp_path
+
+
+#: The probe for `fx_staged_impl` and `fx_bounded_total`: bounds naming what `foo` sets later
+_STAGED_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use tox_errors, only: get_err_code, get_err_arg_pos
+    use fx_sized, only: fx_bounded_total
+    use fx_staged, only: fx_handled, fx_index, fx_two_points, fx_feeds, fx_refined
+    implicit none
+    real(real64) :: total, nan
+    integer(int32) :: ierr, itotal
+    nan = ieee_value(1.0_real64, ieee_quiet_nan)
+
+{body}
+end program probe
+"""
+
+#: prints an error's code and position, or 0 0
+_REPORT = "print '(i0, 1x, i0)', get_err_code(ierr), get_err_arg_pos(ierr)"
+
+
+class TestABoundIsCheckedOnceItsValuesAreSet:
+    """Rule V: in `foo`, a check runs once every value it names is set -- at the top (P0), after
+    the producers (P1), or after the prologue (P2) -- and what the caller passes is checked at the
+    top all the same. Only the late bound moves, in a second call: the rest of the argument's
+    checks, finiteness included, stay at the top, so the prologue never reads it unchecked."""
+
+    def run(self, body):
+        return run_fortran(self.built, self.tmp_path, body, probe=_STAGED_PROBE)
+
+    @pytest.mark.parametrize("init", [[], ["-finit-integer=-1"], ["-finit-integer=1000"]])
+    def test_after_the_producers_whatever_the_local_held_before(self, init):
+        # `x`'s DM_MAX(real(limit, real64)) was checked before `fx_scaled_size` set `limit`:
+        # with -finit-integer=-1 valid input was refused, with 1000 invalid input accepted
+        built = self.built
+        if init:
+            built = self.tmp_path / "init"
+            built.mkdir()
+            for obj in self.built.glob("*.o"):
+                if obj.name != "fx_sized.o":
+                    (built / obj.name).symlink_to(obj)
+            for mod in self.built.glob("*.mod"):
+                (built / mod.name).symlink_to(mod)
+            source = next(self.built.rglob("fx_sized.F90"))
+            _compile(source, built, [*WRAPPER_FLAGS, *init])
+        out = run_fortran(built, self.tmp_path, f"""
+            call fx_bounded_total(2, [1.0_real64, 2.0_real64], 3, total, ierr)
+            {_REPORT}
+            call fx_bounded_total(2, [1.0_real64, 7.0_real64], 3, total, ierr)
+            {_REPORT}
+        """, probe=_STAGED_PROBE)
+
+        assert out == ["0", "0", "201", "2"]
+
+    def test_the_latest_point_a_check_names_wins(self):
+        # limit 2 (a producer), level 100 (the prologue): y between them is checked after the
+        # prologue, m's equality with the limit after the producers
+        out = self.run(f"""
+            call fx_two_points(n_items=1, factor=2, y=50, w=3, m=2, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_two_points(n_items=1, factor=2, y=1, w=3, m=2, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_two_points(n_items=1, factor=2, y=50, w=3, m=3, total=itotal, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["0", "0", "201", "3", "206", "5"]
+
+    def test_finiteness_is_checked_before_a_prologue_that_answers_the_call(self):
+        # the prologue answers a single item itself; y's bound names the level it writes, but
+        # y's finiteness does not wait for it: NaN is refused on the answered path too
+        out = self.run(f"""
+            call fx_handled(n_items=1, x=[1.0_real64], y=nan, total=total, ierr=ierr)
+            {_REPORT}
+            call fx_handled(n_items=2, x=[1.0_real64, 2.0_real64], y=5.0_real64, total=total, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["204", "3", "201", "3"]
+
+    def test_an_index_is_checked_before_the_prologue_reads_it(self):
+        # k's DM_MIN(1_int32) stays at the top; its DM_MAX(level) waits for the prologue, which
+        # reads x(k) -- out of bounds for k = 0, were the whole check moved below it
+        out = self.run(f"""
+            call fx_index(n_items=3, x=[1.0_real64, 2.0_real64, 3.0_real64], k=2, total=total, ierr=ierr)
+            {_REPORT}
+            print '(f6.2)', total
+            call fx_index(n_items=3, x=[1.0_real64, 2.0_real64, 3.0_real64], k=0, total=total, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["0", "0", "2.00", "201", "3"]
+
+    def test_a_bound_on_an_input_the_producer_reads(self):
+        # factor's DM_MIN(2_int32) is the caller's to meet, at the top; the producer refuses 0
+        # itself, its position mapped to factor's
+        out = self.run(f"""
+            call fx_feeds(n_items=3, factor=1, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_feeds(n_items=3, factor=0, total=itotal, ierr=ierr)
+            {_REPORT}
+            call fx_feeds(n_items=3, factor=2, total=itotal, ierr=ierr)
+            {_REPORT}
+            print '(i0)', itotal
+        """)
+
+        assert out == ["201", "2", "201", "2", "0", "0", "8"]
+
+    def test_a_value_the_prologue_refines_is_checked_as_refined(self):
+        # item 5 allows a prologue to refine (intent(inout)) a produced value: limit 3 * 4,
+        # halved to 6. y's DM_MAX(limit) runs after the prologue, against the 6
+        out = self.run(f"""
+            call fx_refined(n_items=3, factor=4, y=5, total=itotal, ierr=ierr)
+            {_REPORT}
+            print '(i0)', itotal
+            call fx_refined(n_items=3, factor=4, y=7, total=itotal, ierr=ierr)
+            {_REPORT}
+        """)
+
+        assert out == ["0", "0", "11", "201", "3"]
+
+    @pytest.fixture(autouse=True)
+    def _paths(self, built, tmp_path):
+        self.built, self.tmp_path = built, tmp_path

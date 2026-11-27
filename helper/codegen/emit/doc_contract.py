@@ -12,6 +12,7 @@ the caller (#203). Plain text, which numpydoc and roxygen both render as it stan
 from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion
+from ..synthesize import is_derived, readable_owners
 from .doc_literals import render
 
 #: Said of every string a caller passes
@@ -60,9 +61,9 @@ def equality_notes(argument: CArgument, language: str) -> list[str]:
     for extent in procedure.arguments:
         equals = extent.directives.equals
         roles = extent.roles
-        if equals is None or roles is None or not roles.is_derived:
+        if equals is None or roles is None or not is_derived(extent, procedure):
             continue
-        owners = roles.readable_owners
+        owners = readable_owners(extent, procedure)
         if not owners or owners[0] is not array:
             continue
         axes = [

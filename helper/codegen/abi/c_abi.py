@@ -23,6 +23,7 @@ from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
 from ..ir.validate import bindings_cannot_carry
 from ..names import extent_argument_name, strlen_argument_name
+from ..synthesize import size_names_in
 from .model import (
     CArgument,
     CBinding,
@@ -114,9 +115,12 @@ def build_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
 
 
 def reads_a_dummy(extent: str, procedure: Procedure) -> bool:
-    """Whether an extent names a dummy of `procedure` anywhere in it, a bare name included."""
+    """Whether an extent names a dummy of `procedure` anywhere in it, a bare name included.
+
+    A `size()` operand counts: the extent is computed from that dummy's shape.
+    """
     dummies = {dummy.name.lower() for dummy in procedure.arguments}
-    return any(identifier.lower() in dummies for identifier in _IDENTIFIER_RE.findall(extent))
+    return any(named.name.lower() in dummies for named in size_names_in(extent))
 
 
 def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:

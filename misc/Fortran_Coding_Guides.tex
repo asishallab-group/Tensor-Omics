@@ -330,10 +330,11 @@ Macro & Purpose \\
 \texttt{DM\_DEFAULT(VAL)} & Default value (optional scalars only) \\
 \texttt{DM\_RESULT\_SIZE\_IS(ARG)} & Only the first \texttt{ARG} elements of this output are filled \\
 \begin{tabular}[t]{@{}l@{}}\texttt{DM\_OUTPUT\_FROM(OUT,}\\\quad\texttt{PROC, MOD, MODE)}\end{tabular}
-  & An \texttt{intent(in)} value: output \texttt{OUT} of the published \texttt{PROC} in
+  & An \texttt{intent(in)} scalar or explicit-shape array of the type, kind and extents of output \texttt{OUT} of the published \texttt{PROC} in
 \texttt{MOD} --- a generated \texttt{foo} or an \texttt{M\_EXPORT\_C} routine, never \texttt{foo\_impl}
 or \texttt{foo\_expert}. As \texttt{MODE}, \texttt{AUTO} calls it for the caller and \texttt{JUST\_INFO}
-only documents it (\texttt{codegen\_guide.md}, 5.9) \\
+only documents it. A table \texttt{| Producer input | Supplied by |} maps an input to an argument,
+a constant, or \texttt{OMITTED}, which leaves an optional input out of the call (\texttt{codegen\_guide.md}, 5.9) \\
 \texttt{DM\_REQUIRED\_IF\_MODE(...)} & This optional argument is required in one mode \\
 \texttt{DM\_PROLOGUE(PROC, MOD)} & Run \texttt{PROC} before the implementation, and let it short-circuit; on the procedure, not on an argument \\
 \bottomrule
@@ -375,9 +376,9 @@ end subroutine pool_means_impl
 Two Fortran entry points, and the bindings around them:
 
 \begin{itemize}
-  \item \texttt{foo} — validates, calls the \texttt{DM\_OUTPUT\_FROM} producers, allocates the work
-        arrays, seeds and sorts the permutations, runs the \texttt{DM\_PROLOGUE}, and calls the
-        implementation. \textbf{The entry point a caller reaches for first}, and it takes
+  \item \texttt{foo} — validates, calls the \texttt{DM\_OUTPUT\_FROM} producers, allocating each
+        array a producer fills right above its call, then allocates the work arrays, seeds and
+        sorts the permutations, runs the \texttt{DM\_PROLOGUE}, and calls the implementation. \textbf{The entry point a caller reaches for first}, and it takes
         \texttt{ierr} last, after the optional arguments.
   \item \texttt{foo\_expert} — validates and calls the implementation with what you supply,
         allocating and preparing nothing. Emitted only where there is something to take over; where
