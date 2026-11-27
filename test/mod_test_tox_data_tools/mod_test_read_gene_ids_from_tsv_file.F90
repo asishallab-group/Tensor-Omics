@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(12))
+        allocate (all_tests(13))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -47,6 +47,8 @@ contains
                                   test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id)
         all_tests(12) = test_case("test_read_gene_ids_from_tsv_file_missing_file", &
                                   test_read_gene_ids_from_tsv_file_missing_file)
+        all_tests(13) = test_case("test_read_gene_ids_from_tsv_file_gene_col_bound", &
+                                  test_read_gene_ids_from_tsv_file_gene_col_bound)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -343,4 +345,26 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_missing_file
+
+    !> `gene_col` counts from 1: 0 and -1 are refused with ERR_INVALID_INPUT naming gene_col
+    !| (argument 4), 1 is read. 0 used to read past the start of the row's fields.
+    subroutine test_read_gene_ids_from_tsv_file_gene_col_bound()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: tsv
+        character(len=8) :: gene_ids(1)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "gene_ids_gene_col_bound")
+        tsv = scratch_file(scratch, "genes.tsv")
+        call write_scratch_file(tsv, "id"//LF//"g1"//LF)
+
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 0, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_gene_ids_from_tsv_file_gene_col_bound: 0", 4)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, -1, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_gene_ids_from_tsv_file_gene_col_bound: -1", 4)
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_gene_ids_from_tsv_file_gene_col_bound: 1")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_gene_col_bound
 end module mod_test_read_gene_ids_from_tsv_file

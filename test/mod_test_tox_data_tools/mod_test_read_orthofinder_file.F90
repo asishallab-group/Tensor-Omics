@@ -27,7 +27,7 @@ contains
     function get_all_tests_read_orthofinder_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(8))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_read_orthofinder_file_families", test_read_orthofinder_file_families)
         all_tests(2) = test_case("test_read_orthofinder_file_skips_the_header", test_read_orthofinder_file_skips_the_header)
         all_tests(3) = test_case("test_read_orthofinder_file_empty_species_columns", &
@@ -40,6 +40,8 @@ contains
                                  test_read_orthofinder_file_reads_a_long_line_whole)
         all_tests(8) = test_case("test_read_orthofinder_file_skips_a_blank_line", &
                                  test_read_orthofinder_file_skips_a_blank_line)
+        all_tests(9) = test_case("test_read_orthofinder_file_checks_the_sizes", &
+                                 test_read_orthofinder_file_checks_the_sizes)
     end function get_all_tests_read_orthofinder_file
 
     !> Three families over two species. A gene's index is its family's line (OG7 is family 1,
@@ -253,4 +255,32 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_orthofinder_file_skips_a_blank_line
+
+    !> `family_ids` needs room for every family of the file, and `gene_to_fam` an entry per gene:
+    !| two families for one family id, and a gene_to_fam one shorter or one longer than gene_ids,
+    !| are refused with ERR_SIZE_MISMATCH naming the argument (family_ids is argument 3,
+    !| gene_to_fam argument 4). They used to write past the arrays' ends.
+    subroutine test_read_orthofinder_file_checks_the_sizes()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups
+        character(len=4) :: gene_ids(2)
+        character(len=8) :: one_family_id(1), family_ids(2)
+        integer(int32) :: gene_to_fam(2), one_short(1), one_long(3), ierr
+
+        call create_scratch_directory(scratch, "orthofinder_sizes")
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"sp"//LF//"OG1"//TAB//"g1"//LF//"OG2"//TAB//"g2"//LF)
+        gene_ids = ["g1", "g2"]
+
+        call read_orthofinder_file(orthogroups, gene_ids, one_family_id, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_orthofinder_file_checks_the_sizes: two families, one id", 3)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, one_short, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_orthofinder_file_checks_the_sizes: gene_to_fam one short", 4)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, one_long, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_orthofinder_file_checks_the_sizes: gene_to_fam one long", 4)
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_err(ierr, ERR_OK, "test_read_orthofinder_file_checks_the_sizes: as many as needed")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_checks_the_sizes
 end module mod_test_read_orthofinder_file

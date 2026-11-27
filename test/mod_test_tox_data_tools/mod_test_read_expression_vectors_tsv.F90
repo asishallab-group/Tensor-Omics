@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(27))
+        allocate (all_tests(28))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -77,6 +77,8 @@ contains
                                   test_read_expression_vectors_tsv_reads_a_long_line_whole)
         all_tests(27) = test_case("test_read_expression_vectors_tsv_missing_file", &
                                   test_read_expression_vectors_tsv_missing_file)
+        all_tests(28) = test_case("test_read_expression_vectors_tsv_checks_the_positions", &
+                                  test_read_expression_vectors_tsv_checks_the_positions)
     end function get_all_tests_read_expression_vectors_tsv
 
     !> Writes `content` to `name` in `scratch`, reads it as the one file with one header row and
@@ -742,4 +744,48 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_missing_file
+
+    !> `gene_col` (argument 5), every entry of `value_cols` (argument 6) and `start_row`
+    !| (argument 7) count from 1: 0 is refused with ERR_INVALID_INPUT naming the argument, and so is
+    !| a -1 among value_cols. And `expression_vectors` (argument 3) needs a row for every value
+    !| column of every file from start_row on: two columns into one row, start_row 2 for two
+    !| columns in two rows, and two files of one column into one row are refused with
+    !| ERR_SIZE_MISMATCH; start_row 1 for two columns in two rows is read. They used to read or
+    !| write past the arrays' ends.
+    subroutine test_read_expression_vectors_tsv_checks_the_positions()
+        type(scratch_directory_type) :: scratch
+        character(len=1024) :: one_file(1), two_files(2)
+        real(real64) :: one_row(1, 3), two_rows(2, 3)
+        integer(int32) :: two_cols(2), one_col(1), with_zero(2), with_negative(2), ierr
+
+        call create_scratch_directory(scratch, "expression_positions")
+        one_file(1) = scratch_file(scratch, "expression.tsv")
+        call write_scratch_file(trim(one_file(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1"//TAB//"2"//LF)
+        two_files = one_file(1)
+        two_cols = [2, 3]
+        one_col = [2]
+        with_zero = [2, 0]
+        with_negative = [-1, 2]
+
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, two_rows, 1, 0, two_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_expression_vectors_tsv_checks_the_positions: gene_col 0", 5)
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, two_rows, 1, 1, with_zero, 1, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_expression_vectors_tsv_checks_the_positions: value_cols 0", 6)
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, two_rows, 1, 1, with_negative, 1, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_expression_vectors_tsv_checks_the_positions: value_cols -1", 6)
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, two_rows, 1, 1, two_cols, 0, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_read_expression_vectors_tsv_checks_the_positions: start_row 0", 7)
+
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, one_row, 1, 1, two_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_expression_vectors_tsv_checks_the_positions: 2 columns, 1 row", 3)
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, two_rows, 1, 1, two_cols, 2, ierr=ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, &
+                        "test_read_expression_vectors_tsv_checks_the_positions: start_row 2, 2 columns, 2 rows", 3)
+        call read_expression_vectors_tsv(two_files, THREE_GENE_IDS, one_row, 1, 1, one_col, 1, ierr=ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_read_expression_vectors_tsv_checks_the_positions: 2 files, 1 row", 3)
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, two_rows, 1, 1, two_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_read_expression_vectors_tsv_checks_the_positions: start_row 1, 2 rows")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_checks_the_positions
 end module mod_test_read_expression_vectors_tsv

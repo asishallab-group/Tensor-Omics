@@ -21,7 +21,7 @@ contains
     function get_all_tests_apply_unassigned_mask() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(6))
+        allocate (all_tests(7))
         all_tests(1) = test_case("test_apply_unassigned_mask_keeps_the_masked", test_apply_unassigned_mask_keeps_the_masked)
         all_tests(2) = test_case("test_apply_unassigned_mask_keeps_all", test_apply_unassigned_mask_keeps_all)
         all_tests(3) = test_case("test_apply_unassigned_mask_refuses_none_kept", &
@@ -30,6 +30,8 @@ contains
         all_tests(5) = test_case("test_apply_unassigned_mask_no_sample", test_apply_unassigned_mask_no_sample)
         all_tests(6) = test_case("test_apply_unassigned_mask_checks_the_mask_size", &
                                  test_apply_unassigned_mask_checks_the_mask_size)
+        all_tests(7) = test_case("test_apply_unassigned_mask_checks_the_sizes", &
+                                 test_apply_unassigned_mask_checks_the_sizes)
     end function get_all_tests_apply_unassigned_mask
 
     !> Four genes g1..g4 in families [1, 0, 2, 0], with two samples: gene j's column is
@@ -195,4 +197,34 @@ contains
         call assert_true(is_err(ierr), "test_apply_unassigned_mask_checks_the_mask_size: a mask of 3 for 2 genes, kept " &
                          //n_genes_kept//" with ERR_OK")
     end subroutine test_apply_unassigned_mask_checks_the_mask_size
+
+    !> `mask`, `gene_ids` and the columns of `expression_vectors` need an entry per gene of
+    !| `gene_to_fam`: one fewer of any is refused with ERR_SIZE_MISMATCH naming it (gene_ids is
+    !| argument 1, expression_vectors 2, mask 4), and the arrays are left as they were. They used to
+    !| be read past their ends.
+    subroutine test_apply_unassigned_mask_checks_the_sizes()
+        character(len=4), allocatable :: gene_ids(:), short_ids(:)
+        real(real64), allocatable :: expression_vectors(:, :), short_expression(:, :)
+        integer(int32), allocatable :: gene_to_fam(:)
+        logical(c_bool) :: mask(4), short_mask(3)
+        integer(int32) :: n_genes_kept, ierr
+
+        call four_genes(gene_ids, expression_vectors, gene_to_fam)
+        mask = .true.
+        short_mask = .true.
+        call apply_unassigned_mask(gene_ids, expression_vectors, gene_to_fam, short_mask, n_genes_kept, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_apply_unassigned_mask_checks_the_sizes: mask one short", 4)
+
+        allocate (short_ids(3))
+        short_ids = ["g1", "g2", "g3"]
+        call apply_unassigned_mask(short_ids, expression_vectors, gene_to_fam, mask, n_genes_kept, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_apply_unassigned_mask_checks_the_sizes: gene_ids one short", 1)
+        call assert_equal_int(size(short_ids), 3, "test_apply_unassigned_mask_checks_the_sizes: gene_ids left alone")
+
+        allocate (short_expression(2, 3))
+        short_expression = 1.0_real64
+        call apply_unassigned_mask(gene_ids, short_expression, gene_to_fam, mask, n_genes_kept, ierr)
+        call assert_err(ierr, ERR_SIZE_MISMATCH, "test_apply_unassigned_mask_checks_the_sizes: a column short", 2)
+        call assert_equal_int(size(gene_ids), 4, "test_apply_unassigned_mask_checks_the_sizes: gene_ids left alone")
+    end subroutine test_apply_unassigned_mask_checks_the_sizes
 end module mod_test_apply_unassigned_mask
