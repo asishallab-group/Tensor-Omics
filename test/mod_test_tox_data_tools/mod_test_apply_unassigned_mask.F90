@@ -21,13 +21,15 @@ contains
     function get_all_tests_apply_unassigned_mask() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(5))
+        allocate (all_tests(6))
         all_tests(1) = test_case("test_apply_unassigned_mask_keeps_the_masked", test_apply_unassigned_mask_keeps_the_masked)
         all_tests(2) = test_case("test_apply_unassigned_mask_keeps_all", test_apply_unassigned_mask_keeps_all)
         all_tests(3) = test_case("test_apply_unassigned_mask_refuses_none_kept", &
                                  test_apply_unassigned_mask_refuses_none_kept)
         all_tests(4) = test_case("test_apply_unassigned_mask_follows_the_mask", test_apply_unassigned_mask_follows_the_mask)
         all_tests(5) = test_case("test_apply_unassigned_mask_no_sample", test_apply_unassigned_mask_no_sample)
+        all_tests(6) = test_case("test_apply_unassigned_mask_checks_the_mask_size", &
+                                 test_apply_unassigned_mask_checks_the_mask_size)
     end function get_all_tests_apply_unassigned_mask
 
     !> Four genes g1..g4 in families [1, 0, 2, 0], with two samples: gene j's column is
@@ -171,4 +173,26 @@ contains
         call assert_equal_int(size(expression_vectors, 1), 0, "test_apply_unassigned_mask_no_sample: samples")
         call assert_equal_int(size(expression_vectors, 2), 2, "test_apply_unassigned_mask_no_sample: genes")
     end subroutine test_apply_unassigned_mask_no_sample
+
+    !> BUG (fails today): nothing checks that `mask` has an entry per gene. Here it has one more,
+    !| and it keeps that one: n_genes_kept is 3 of 2 genes, and the third kept gene is
+    !| uninitialized memory, with ERR_OK. (A mask shorter than the genes reads past its end and
+    !| cannot be a case here: it aborts a bounds-checked run.) A mask of the wrong size has to be
+    !| refused, ERR_SIZE_MISMATCH as the module's other size checks say.
+    subroutine test_apply_unassigned_mask_checks_the_mask_size()
+        character(len=4), allocatable :: gene_ids(:)
+        real(real64), allocatable :: expression_vectors(:, :)
+        integer(int32), allocatable :: gene_to_fam(:)
+        logical(c_bool) :: mask(3)
+        integer(int32) :: n_genes_kept, ierr
+
+        allocate (gene_ids(2), expression_vectors(1, 2), gene_to_fam(2))
+        gene_ids = ["g1", "g2"]
+        expression_vectors = 1.0_real64
+        gene_to_fam = [1, 1]
+        mask = .true.
+        call apply_unassigned_mask(gene_ids, expression_vectors, gene_to_fam, mask, n_genes_kept, ierr)
+        call assert_true(is_err(ierr), "test_apply_unassigned_mask_checks_the_mask_size: a mask of 3 for 2 genes, kept " &
+                         //n_genes_kept//" with ERR_OK")
+    end subroutine test_apply_unassigned_mask_checks_the_mask_size
 end module mod_test_apply_unassigned_mask
