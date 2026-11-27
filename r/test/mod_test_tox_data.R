@@ -1,62 +1,32 @@
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
 
-# ---- Example: replicate Fortran test logic in R ----
-
-test_1_read_expression_vectors_tsv <- function() {
-  # Define your file lists (replace with your actual file paths)
-  file <- c("material/kallisto_sex_data_no_na.tsv")
-
-  # Parameters
+# The shipped data set, read and filtered as the pipeline does, for the validation case below.
+# The readers' and the filter's own cases are in mod_test_tox_data_tools.R (and the values they
+# read, in the Fortran tox_data_tools suite).
+.read_the_shipped_data_set <- function() {
   n_genes <- 88327
-  gene_len <- 32
   n_samples <- 67
-  value_cols <- 2:68
+  n_families <<- 15512
+  file <- "material/kallisto_sex_data_no_na.tsv"
 
-  # Allocate result matrices
-  kallisto_expr <<- matrix(0, nrow = n_samples, ncol = n_genes)
-
-  # one file, and the string width comes before the count now
-  gene_ids <<- read_gene_ids_from_tsv_file(file[1], gene_len, n_genes,
-                                           n_header_rows = 1, gene_col = 1)
-
-  # expression_vectors is filled in place and returned
+  gene_ids <<- read_gene_ids_from_tsv_file(file, 32L, n_genes, n_header_rows = 1, gene_col = 1)
   kallisto_expr <<- read_expression_vectors_tsv(
     file_list = file,
     gene_ids = gene_ids,
-    expression_vectors = kallisto_expr,
+    expression_vectors = matrix(0, nrow = n_samples, ncol = n_genes),
     n_header_rows = 1,
     gene_col = 1,
-    value_cols = as.integer(value_cols),
+    value_cols = 2:68,
     start_row = 1L,
     delimiter = "\t"
   )
-
-  # Debug: Check dimensions and types before calling Fortran
-  assert_equal_int(length(gene_ids), 88327L, "Read gene id count from tsv doesn't match")
-}
-
-test_2_read_orthofinder_file <- function() {
-  # Read family mapping
-  n_families <<- 15512
-  family_len <- 32
-  res_family <- read_orthofinder_file("material/Orthogroups.tsv", gene_ids,
-                                      family_len, n_families, length(gene_ids))
+  res_family <- read_orthofinder_file("material/Orthogroups.tsv", gene_ids, 32L, n_families, length(gene_ids))
   gene_family_ids <<- res_family$family_ids
   gene_to_fam <<- res_family$gene_to_fam
-  assert_true(identical(
-    gene_family_ids[gene_to_fam[seq_len(10)]],
-    c("OG0000047", "OG0000047", "OG0000047", "OG0000047", "OG0002145", "OG0000230", "OG0000127", "OG0000127", "OG0000127", "OG0000127")
-  ), "Family mapping mismatch")
-}
 
-test_3_filter_unassigned_genes <- function() {
-  gene_to_fam[1] = 0L # unset assignment for first gene, so at least one is unassigned
-  # Filter out genes without family assignments
-
+  gene_to_fam[1] <<- 0L # unset assignment for first gene, so at least one is unassigned
   res_filter <- get_unassigned_mask(gene_to_fam)
-
-  assert_true(identical(gene_to_fam > 0, res_filter$mask), "Filtered mask mismatch")
   gene_ids <<- gene_ids[res_filter$mask]
   kallisto_expr <<- kallisto_expr[, res_filter$mask]
   gene_to_fam <<- gene_to_fam[res_filter$mask]
@@ -64,6 +34,8 @@ test_3_filter_unassigned_genes <- function() {
 }
 
 test_4_validation <- function() {
+  .read_the_shipped_data_set()
+
   # Set parameters for validation
   n_genes <- n_genes_kept
   n_samples <- nrow(kallisto_expr)
@@ -191,7 +163,8 @@ test_5_zipping <- function() {
 # ---- An array of no strings (#221 B3) ----
 # Every procedure taking or returning an array of strings works with none of them. The C wrapper
 # used to refuse a zero-length string array as ERR_EMPTY_INPUT before the procedure ran, so a data
-# set with zero families or zero genes could be written from Fortran but not from R.
+# set with zero families or zero genes could be written from Fortran but not from R. The readers'
+# part of this is in mod_test_tox_data_tools.R.
 test_an_array_of_no_strings <- function() {
   written <- character(0)
   scratch <- function(name) {
@@ -230,14 +203,6 @@ test_an_array_of_no_strings <- function() {
   validate_all_data(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
                     expression, matrix(1, 3, 0), shifts, check_shift_consistency = FALSE)
 
-  writeLines("id\tv1", scratch("no_genes_R.test.tsv"))
-  ids <- read_gene_ids_from_tsv_file("no_genes_R.test.tsv", 8L, 0L, n_header_rows = 1L, gene_col = 1L)
-  assert_true(length(ids) == 0, "a file of no genes reads as none")
-  read_expression_vectors_tsv(character(0), character(0), matrix(1, 1, 0), 1L, 1L, 2L, 1L)
-  writeLines("Orthogroup\tsp1", scratch("no_families_R.test.tsv"))
-  families <- read_orthofinder_file("no_families_R.test.tsv", character(0), 8L, 0L, 0L)
-  assert_true(length(families$family_ids) == 0 && length(families$gene_to_fam) == 0,
-              "a family file of no family reads as none")
 }
 
 run_all_tests()
