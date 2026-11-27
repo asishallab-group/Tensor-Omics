@@ -10,14 +10,20 @@
 !|
 !| POSIX `mkdir`, `rmdir` and `getpid` are called through `bind(C)`; Fortran has no directory
 !| operations of its own.
+!|
+!| `check_error_unit_connected` is for a case where a procedure under test fails to open a file:
+!| it fails unless Fortran's error unit is still connected afterwards, and connects it again if
+!| not, so the rest of the run still reports. `clear_stack` before such a call makes an undefined
+!| local unit number read as 0, the error unit, in an unoptimized build, so that closing a unit
+!| never opened shows instead of depending on whatever the stack held.
 module scratch_directory
     use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char
-    use, intrinsic :: iso_fortran_env, only: int32
+    use, intrinsic :: iso_fortran_env, only: int32, error_unit
     use asserts, only: assert_true, assert_equal_int
     implicit none
     private
     public :: scratch_directory_type, create_scratch_directory, scratch_file, write_scratch_file
-    public :: remove_scratch_directory
+    public :: remove_scratch_directory, clear_stack, check_error_unit_connected
 
     !> How many files one scratch directory records.
     integer(int32), parameter :: MAX_FILES = 64
@@ -127,4 +133,21 @@ contains
         call assert_equal_int(c_rmdir(scratch%path//c_null_char), 0_int32, &
                               "remove_scratch_directory: rmdir "//scratch%path//" (is something unexpected left in it?)")
     end subroutine remove_scratch_directory
+
+    !> Overwrites the next 16 KiB of the stack with zeros (see the module's documentation).
+    subroutine clear_stack()
+        integer(int32), volatile :: filler(4096)
+
+        filler = 0
+    end subroutine clear_stack
+
+    !> Fails unless the error unit is connected; connects it to /dev/stderr again if it is not.
+    subroutine check_error_unit_connected(msg)
+        character(*), intent(in) :: msg
+        logical :: connected
+
+        inquire (unit=error_unit, opened=connected)
+        call assert_true(connected, msg//": the error unit was closed")
+        if (.not. connected) open (unit=error_unit, file="/dev/stderr", action="write")
+    end subroutine check_error_unit_connected
 end module scratch_directory

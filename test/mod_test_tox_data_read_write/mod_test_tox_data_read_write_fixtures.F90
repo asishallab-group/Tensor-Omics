@@ -18,9 +18,8 @@
 !| two string arrays another. Each check is one case of a child, in a scratch directory of its
 !| own, named after the case.
 !|
-!| Not checked here: a missing file, or a path that cannot be written. Both make the serde layer
-!| close a unit number it never opened, which closes stderr or aborts the process (see the batch's
-!| report); they cannot be cases until that is fixed.
+!| A missing file and a path that cannot be written are refused with ERR_FILE_OPEN, and the error
+!| unit stays connected (the serde layer used to close the unit number it had not opened).
 module mod_test_tox_data_read_write_fixtures
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32, int8
@@ -37,6 +36,9 @@ module mod_test_tox_data_read_write_fixtures
     public :: check_round_trip_integers
     public :: check_saves_reals, check_save_replaces_reals, check_loads_reals, check_load_refuses_reals
     public :: check_round_trip_reals, check_saves_non_finite_reals, check_loads_non_finite_reals
+    public :: check_save_refuses_an_unwritable_path_strings, check_load_refuses_a_missing_file_strings
+    public :: check_save_refuses_an_unwritable_path_integers, check_load_refuses_a_missing_file_integers
+    public :: check_save_refuses_an_unwritable_path_reals, check_load_refuses_a_missing_file_reals
 
     !> The magic number every array file starts with, 'FA20' read as an int32.
     integer(int32), parameter :: MAGIC = 1178677808
@@ -659,4 +661,108 @@ contains
         call check_same_file(read_back, input, case_name)
         call remove_scratch_directory(scratch)
     end subroutine check_loads_non_finite_reals
+    !> A path in a directory that does not exist is refused by `save` with ERR_FILE_OPEN, and the
+    !| error unit stays connected.
+    subroutine check_save_refuses_an_unwritable_path_strings(save, case_name)
+        procedure(save_strings_interface) :: save
+        character(*), intent(in) :: case_name
+        type(scratch_directory_type) :: scratch
+        character(len=6) :: values(3)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, case_name)
+        call three_strings(values)
+        call clear_stack()
+        call save(values, scratch%path//"/no_such_directory/file.bin", ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, case_name)
+        call check_error_unit_connected(case_name)
+        call remove_scratch_directory(scratch)
+    end subroutine check_save_refuses_an_unwritable_path_strings
+
+    !> A file that does not exist is refused by `load` with ERR_FILE_OPEN, and the error unit stays
+    !| connected.
+    subroutine check_load_refuses_a_missing_file_strings(load, case_name)
+        procedure(load_strings_interface) :: load
+        character(*), intent(in) :: case_name
+        type(scratch_directory_type) :: scratch
+        character(len=6) :: values(3)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, case_name)
+        call clear_stack()
+        call load(values, scratch_file(scratch, "missing.bin"), ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, case_name)
+        call check_error_unit_connected(case_name)
+        call remove_scratch_directory(scratch)
+    end subroutine check_load_refuses_a_missing_file_strings
+
+    !> A path in a directory that does not exist is refused by `save` with ERR_FILE_OPEN, and the
+    !| error unit stays connected.
+    subroutine check_save_refuses_an_unwritable_path_integers(save, case_name)
+        procedure(save_integers_interface) :: save
+        character(*), intent(in) :: case_name
+        type(scratch_directory_type) :: scratch
+        integer(int32) :: values(4)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, case_name)
+        call four_integers(values)
+        call clear_stack()
+        call save(values, scratch%path//"/no_such_directory/file.bin", ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, case_name)
+        call check_error_unit_connected(case_name)
+        call remove_scratch_directory(scratch)
+    end subroutine check_save_refuses_an_unwritable_path_integers
+
+    !> A file that does not exist is refused by `load` with ERR_FILE_OPEN, and the error unit stays
+    !| connected.
+    subroutine check_load_refuses_a_missing_file_integers(load, case_name)
+        procedure(load_integers_interface) :: load
+        character(*), intent(in) :: case_name
+        type(scratch_directory_type) :: scratch
+        integer(int32) :: values(4)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, case_name)
+        call clear_stack()
+        call load(values, scratch_file(scratch, "missing.bin"), ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, case_name)
+        call check_error_unit_connected(case_name)
+        call remove_scratch_directory(scratch)
+    end subroutine check_load_refuses_a_missing_file_integers
+
+    !> A path in a directory that does not exist is refused by `save` with ERR_FILE_OPEN, and the
+    !| error unit stays connected.
+    subroutine check_save_refuses_an_unwritable_path_reals(save, case_name)
+        procedure(save_reals_interface) :: save
+        character(*), intent(in) :: case_name
+        type(scratch_directory_type) :: scratch
+        real(real64) :: values(2, 3)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, case_name)
+        call two_by_three_reals(values)
+        call clear_stack()
+        call save(values, scratch%path//"/no_such_directory/file.bin", ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, case_name)
+        call check_error_unit_connected(case_name)
+        call remove_scratch_directory(scratch)
+    end subroutine check_save_refuses_an_unwritable_path_reals
+
+    !> A file that does not exist is refused by `load` with ERR_FILE_OPEN, and the error unit stays
+    !| connected.
+    subroutine check_load_refuses_a_missing_file_reals(load, case_name)
+        procedure(load_reals_interface) :: load
+        character(*), intent(in) :: case_name
+        type(scratch_directory_type) :: scratch
+        real(real64) :: values(2, 3)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, case_name)
+        call clear_stack()
+        call load(values, scratch_file(scratch, "missing.bin"), ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, case_name)
+        call check_error_unit_connected(case_name)
+        call remove_scratch_directory(scratch)
+    end subroutine check_load_refuses_a_missing_file_reals
 end module mod_test_tox_data_read_write_fixtures

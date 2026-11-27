@@ -4,6 +4,7 @@
 module mod_test_save_gene_to_family
     use tox_data_read_write, only: save_gene_to_family
     use test_suite, only: test_case
+    use mod_test_tox_data_read_write_fixtures, only: check_save_refuses_an_unwritable_path_integers
     use mod_test_tox_data_read_write_fixtures, only: check_save_replaces_integers
     use mod_test_tox_data_read_write_fixtures, only: check_saves_integers
     implicit none
@@ -16,10 +17,12 @@ contains
     function get_all_tests_save_gene_to_family() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(2))
+        allocate (all_tests(3))
         all_tests(1) = test_case("test_save_gene_to_family_layout", test_save_gene_to_family_layout)
         all_tests(2) = test_case("test_save_gene_to_family_replaces_a_file", &
                                  test_save_gene_to_family_replaces_a_file)
+        all_tests(3) = test_case("test_save_gene_to_family_refuses_an_unwritable_path", &
+                                 test_save_gene_to_family_refuses_an_unwritable_path)
     end function get_all_tests_save_gene_to_family
 
     !> In place of the old `test_read_write_gene_to_fam`, which round-tripped the shipped mapping:
@@ -32,4 +35,11 @@ contains
     subroutine test_save_gene_to_family_replaces_a_file()
         call check_save_replaces_integers(save_gene_to_family, "test_save_gene_to_family_replaces_a_file")
     end subroutine test_save_gene_to_family_replaces_a_file
+
+    !> A path in a directory that does not exist is refused with ERR_FILE_OPEN, and the error unit
+    !| stays connected.
+    subroutine test_save_gene_to_family_refuses_an_unwritable_path()
+        call check_save_refuses_an_unwritable_path_integers(save_gene_to_family, &
+            "test_save_gene_to_family_refuses_an_unwritable_path")
+    end subroutine test_save_gene_to_family_refuses_an_unwritable_path
 end module mod_test_save_gene_to_family

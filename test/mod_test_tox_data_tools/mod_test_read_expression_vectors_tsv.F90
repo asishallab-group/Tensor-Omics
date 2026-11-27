@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(26))
+        allocate (all_tests(27))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -75,6 +75,8 @@ contains
                                   test_read_expression_vectors_tsv_matches_whole_ids)
         all_tests(26) = test_case("test_read_expression_vectors_tsv_reads_a_long_line_whole", &
                                   test_read_expression_vectors_tsv_reads_a_long_line_whole)
+        all_tests(27) = test_case("test_read_expression_vectors_tsv_missing_file", &
+                                  test_read_expression_vectors_tsv_missing_file)
     end function get_all_tests_read_expression_vectors_tsv
 
     !> Writes `content` to `name` in `scratch`, reads it as the one file with one header row and
@@ -712,4 +714,32 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_reads_a_long_line_whole
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, as the only file and as the
+    !| second after one that was read, and the error unit stays connected (see
+    !| `test_read_gene_ids_from_tsv_file_missing_file`).
+    subroutine test_read_expression_vectors_tsv_missing_file()
+        type(scratch_directory_type) :: scratch
+        character(len=1024) :: one_file(1), two_files(2)
+        real(real64) :: expression_vectors(2, 3)
+        integer(int32) :: value_cols(1), ierr
+
+        call create_scratch_directory(scratch, "expression_missing_file")
+        one_file(1) = scratch_file(scratch, "missing.tsv")
+        two_files(1) = scratch_file(scratch, "present.tsv")
+        call write_scratch_file(trim(two_files(1)), "id"//TAB//"a"//LF//"g1"//TAB//"1"//LF)
+        two_files(2) = one_file(1)
+        value_cols = [2]
+
+        call clear_stack()
+        call read_expression_vectors_tsv(one_file, THREE_GENE_IDS, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, "test_read_expression_vectors_tsv_missing_file: the only file")
+        call check_error_unit_connected("test_read_expression_vectors_tsv_missing_file: the only file")
+        call clear_stack()
+        call read_expression_vectors_tsv(two_files, THREE_GENE_IDS, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, "test_read_expression_vectors_tsv_missing_file: the second file")
+        call check_error_unit_connected("test_read_expression_vectors_tsv_missing_file: the second file")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_missing_file
 end module mod_test_read_expression_vectors_tsv

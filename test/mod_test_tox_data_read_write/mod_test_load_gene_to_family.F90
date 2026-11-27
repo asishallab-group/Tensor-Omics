@@ -5,6 +5,7 @@
 module mod_test_load_gene_to_family
     use tox_data_read_write, only: load_gene_to_family, save_gene_to_family
     use test_suite, only: test_case
+    use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_a_missing_file_integers
     use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_integers
     use mod_test_tox_data_read_write_fixtures, only: check_loads_integers
     use mod_test_tox_data_read_write_fixtures, only: check_round_trip_integers
@@ -18,11 +19,13 @@ contains
     function get_all_tests_load_gene_to_family() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(3))
+        allocate (all_tests(4))
         all_tests(1) = test_case("test_load_gene_to_family_layout", test_load_gene_to_family_layout)
         all_tests(2) = test_case("test_load_gene_to_family_refuses_broken_files", &
                                  test_load_gene_to_family_refuses_broken_files)
         all_tests(3) = test_case("test_load_gene_to_family_round_trip", test_load_gene_to_family_round_trip)
+        all_tests(4) = test_case("test_load_gene_to_family_refuses_a_missing_file", &
+                                 test_load_gene_to_family_refuses_a_missing_file)
     end function get_all_tests_load_gene_to_family
 
     !> In place of the old `test_read_write_gene_to_fam`, which round-tripped the shipped mapping:
@@ -44,4 +47,10 @@ contains
         call check_round_trip_integers(save_gene_to_family, load_gene_to_family, &
                                     "test_load_gene_to_family_round_trip")
     end subroutine test_load_gene_to_family_round_trip
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, and the error unit stays connected.
+    subroutine test_load_gene_to_family_refuses_a_missing_file()
+        call check_load_refuses_a_missing_file_integers(load_gene_to_family, &
+            "test_load_gene_to_family_refuses_a_missing_file")
+    end subroutine test_load_gene_to_family_refuses_a_missing_file
 end module mod_test_load_gene_to_family

@@ -5,6 +5,7 @@
 module mod_test_load_family_centroids
     use tox_data_read_write, only: load_family_centroids, save_family_centroids
     use test_suite, only: test_case
+    use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_a_missing_file_reals
     use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_reals
     use mod_test_tox_data_read_write_fixtures, only: check_loads_non_finite_reals
     use mod_test_tox_data_read_write_fixtures, only: check_loads_reals
@@ -19,7 +20,7 @@ contains
     function get_all_tests_load_family_centroids() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(4))
+        allocate (all_tests(5))
         all_tests(1) = test_case("test_load_family_centroids_layout", test_load_family_centroids_layout)
         all_tests(2) = test_case("test_load_family_centroids_refuses_broken_files", &
                                  test_load_family_centroids_refuses_broken_files)
@@ -27,6 +28,8 @@ contains
                                  test_load_family_centroids_round_trip)
         all_tests(4) = test_case("test_load_family_centroids_non_finite", &
                                  test_load_family_centroids_non_finite)
+        all_tests(5) = test_case("test_load_family_centroids_refuses_a_missing_file", &
+                                 test_load_family_centroids_refuses_a_missing_file)
     end function get_all_tests_load_family_centroids
 
     !> In place of the old `test_read_write_family_centroids`, which round-tripped the shipped
@@ -54,4 +57,10 @@ contains
     subroutine test_load_family_centroids_non_finite()
         call check_loads_non_finite_reals(load_family_centroids, "test_load_family_centroids_non_finite")
     end subroutine test_load_family_centroids_non_finite
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, and the error unit stays connected.
+    subroutine test_load_family_centroids_refuses_a_missing_file()
+        call check_load_refuses_a_missing_file_reals(load_family_centroids, &
+            "test_load_family_centroids_refuses_a_missing_file")
+    end subroutine test_load_family_centroids_refuses_a_missing_file
 end module mod_test_load_family_centroids

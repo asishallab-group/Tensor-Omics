@@ -4,6 +4,7 @@
 module mod_test_save_family_centroids
     use tox_data_read_write, only: save_family_centroids
     use test_suite, only: test_case
+    use mod_test_tox_data_read_write_fixtures, only: check_save_refuses_an_unwritable_path_reals
     use mod_test_tox_data_read_write_fixtures, only: check_save_replaces_reals
     use mod_test_tox_data_read_write_fixtures, only: check_saves_non_finite_reals
     use mod_test_tox_data_read_write_fixtures, only: check_saves_reals
@@ -17,12 +18,14 @@ contains
     function get_all_tests_save_family_centroids() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(3))
+        allocate (all_tests(4))
         all_tests(1) = test_case("test_save_family_centroids_layout", test_save_family_centroids_layout)
         all_tests(2) = test_case("test_save_family_centroids_replaces_a_file", &
                                  test_save_family_centroids_replaces_a_file)
         all_tests(3) = test_case("test_save_family_centroids_non_finite", &
                                  test_save_family_centroids_non_finite)
+        all_tests(4) = test_case("test_save_family_centroids_refuses_an_unwritable_path", &
+                                 test_save_family_centroids_refuses_an_unwritable_path)
     end function get_all_tests_save_family_centroids
 
     !> In place of the old `test_read_write_family_centroids`, which round-tripped the shipped
@@ -40,4 +43,11 @@ contains
     subroutine test_save_family_centroids_non_finite()
         call check_saves_non_finite_reals(save_family_centroids, "test_save_family_centroids_non_finite")
     end subroutine test_save_family_centroids_non_finite
+
+    !> A path in a directory that does not exist is refused with ERR_FILE_OPEN, and the error unit
+    !| stays connected.
+    subroutine test_save_family_centroids_refuses_an_unwritable_path()
+        call check_save_refuses_an_unwritable_path_reals(save_family_centroids, &
+            "test_save_family_centroids_refuses_an_unwritable_path")
+    end subroutine test_save_family_centroids_refuses_an_unwritable_path
 end module mod_test_save_family_centroids

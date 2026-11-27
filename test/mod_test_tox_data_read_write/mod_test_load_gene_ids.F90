@@ -5,6 +5,7 @@
 module mod_test_load_gene_ids
     use tox_data_read_write, only: load_gene_ids, save_gene_ids
     use test_suite, only: test_case
+    use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_a_missing_file_strings
     use mod_test_tox_data_read_write_fixtures, only: check_load_refuses_strings
     use mod_test_tox_data_read_write_fixtures, only: check_loads_strings
     use mod_test_tox_data_read_write_fixtures, only: check_round_trip_strings
@@ -18,11 +19,13 @@ contains
     function get_all_tests_load_gene_ids() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(3))
+        allocate (all_tests(4))
         all_tests(1) = test_case("test_load_gene_ids_layout", test_load_gene_ids_layout)
         all_tests(2) = test_case("test_load_gene_ids_refuses_broken_files", &
                                  test_load_gene_ids_refuses_broken_files)
         all_tests(3) = test_case("test_load_gene_ids_round_trip", test_load_gene_ids_round_trip)
+        all_tests(4) = test_case("test_load_gene_ids_refuses_a_missing_file", &
+                                 test_load_gene_ids_refuses_a_missing_file)
     end function get_all_tests_load_gene_ids
 
     !> In place of the old `test_read_write_gene_ids`, which round-tripped the shipped gene ids but
@@ -45,4 +48,10 @@ contains
     subroutine test_load_gene_ids_round_trip()
         call check_round_trip_strings(save_gene_ids, load_gene_ids, "test_load_gene_ids_round_trip")
     end subroutine test_load_gene_ids_round_trip
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, and the error unit stays connected.
+    subroutine test_load_gene_ids_refuses_a_missing_file()
+        call check_load_refuses_a_missing_file_strings(load_gene_ids, &
+            "test_load_gene_ids_refuses_a_missing_file")
+    end subroutine test_load_gene_ids_refuses_a_missing_file
 end module mod_test_load_gene_ids

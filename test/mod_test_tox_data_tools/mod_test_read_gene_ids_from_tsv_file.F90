@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(11))
+        allocate (all_tests(12))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -45,6 +45,8 @@ contains
                                   test_read_gene_ids_from_tsv_file_reads_a_long_line_whole)
         all_tests(11) = test_case("test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id", &
                                   test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id)
+        all_tests(12) = test_case("test_read_gene_ids_from_tsv_file_missing_file", &
+                                  test_read_gene_ids_from_tsv_file_missing_file)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -322,4 +324,23 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_refuses_a_row_without_the_id
+
+    !> A file that does not exist is refused with ERR_FILE_OPEN, and the error unit stays
+    !| connected: the reader used to close the unit number it had not opened, which the cleared
+    !| stack makes 0, the error unit (aborting the run or closing stderr with other garbage).
+    subroutine test_read_gene_ids_from_tsv_file_missing_file()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: missing
+        character(len=8) :: gene_ids(1)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "gene_ids_missing_file")
+        missing = scratch_file(scratch, "missing.tsv")
+        call clear_stack()
+        call read_gene_ids_from_tsv_file(missing, gene_ids, 1, 1, ierr)
+        call assert_err(ierr, ERR_FILE_OPEN, "test_read_gene_ids_from_tsv_file_missing_file")
+        call check_error_unit_connected("test_read_gene_ids_from_tsv_file_missing_file")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_missing_file
 end module mod_test_read_gene_ids_from_tsv_file
