@@ -79,7 +79,10 @@
 #define M_BIT_MASK_TEST(BIT_MASK, I_BIT) btest(BIT_MASK(M_BIT_MASK_WORD(I_BIT)), M_BIT_MASK_BIT(I_BIT))
 
 ! not using is_err here, as our error code encoding might lead to unexpected behavior. The ISO standard defines success value as zero.
-#define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); close(unit); return; end if
+! `unit` is -1 until an OPEN connects it (a NEWUNIT= value is never -1), so a failed OPEN closes
+! nothing: the variable is left undefined then, and closing it closed whatever unit it happened to
+! name, stderr included. After closing, `unit` is -1 again, so a caller closing it as well is a no-op.
+#define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); if (unit /= -1) close(unit); unit = -1; return; end if
 
 ! An error code packs the position of the argument that caused it in as
 ! `M_ERR_ARG_POS_FACTOR*arg_pos + error`, so no `ERR_*` value may reach the factor.

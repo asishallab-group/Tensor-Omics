@@ -59,6 +59,7 @@ contains
 
         call set_ok(ierr)
 
+        unit = -1  ! see M_CHECK_IO_ERR
         open (newunit=unit, file=filename, form='unformatted', access='stream', status='replace', iostat=ierr)
         M_CHECK_IO_ERR(ERR_FILE_OPEN)
 
@@ -150,6 +151,7 @@ contains
 
         call set_ok(ierr)
 
+        unit = -1  ! see M_CHECK_IO_ERR
         open (newunit=unit, file=filename, form='unformatted', access='stream', status='old', iostat=ierr)
         M_CHECK_IO_ERR(ERR_FILE_OPEN)
 
@@ -174,6 +176,7 @@ contains
         if (ndims < 0 .or. ndims > 15) then
             call set_err(ierr, ERR_INVALID_FORMAT)
             close (unit)
+            unit = -1
             return
         end if
 
@@ -215,7 +218,7 @@ contains
         integer(int32), allocatable :: dims(:)
 
         call read_file_header_helper(filename, unit, type_code, ndims, dims, ierr)
-        close (unit)
+        if (unit /= -1) close (unit)
         if (is_err(ierr)) return
 
         if (size(dims) > dims_out_capacity) then

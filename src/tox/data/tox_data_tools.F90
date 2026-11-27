@@ -36,11 +36,14 @@ contains
         integer(int32), intent(in) :: msg
             !! Error code readable version used for setting
         integer(int32), intent(in), optional :: unit
-            !! pass unit allowing it to be closed
+            !! pass unit allowing it to be closed; -1 for one that is not connected
 
         if (is_err(ioerror)) then
             call set_err(ierr, msg)
-            if (present(unit)) close(unit)
+            ! -1 is a unit the failed OPEN never connected (see the readers)
+            if (present(unit)) then
+                if (unit /= -1) close (unit)
+            end if
             return
         end if
 
@@ -125,6 +128,7 @@ contains
 
         do i = 1, size(file_list)
             if (DEBUG) write (*, *) 'Reading file: ', trim(file_list(i))
+            unit = -1  ! a failed OPEN leaves unit undefined: close nothing then
             open (newunit=unit, file=trim(file_list(i)), status='old', action='read', iostat=ios)
             call check_okay_ioerror(ios, ierr, ERR_FILE_OPEN, unit)
             if (is_err(ierr)) then
@@ -280,6 +284,7 @@ contains
         call set_ok(ios)
         row_count = 0
 
+        unit = -1  ! a failed OPEN leaves unit undefined: close nothing then
         open (newunit=unit, file=trim(filename), status='old', action='read', iostat=ios)
         call check_okay_ioerror(ios, ierr, ERR_FILE_OPEN, unit)
         if (is_err(ierr)) return
