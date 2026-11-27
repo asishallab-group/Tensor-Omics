@@ -30,7 +30,7 @@ contains
     function get_all_tests_read_expression_vectors_tsv() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(22))
+        allocate (all_tests(23))
         all_tests(1) = test_case("test_read_expression_vectors_tsv_values", test_read_expression_vectors_tsv_values)
         all_tests(2) = test_case("test_read_expression_vectors_tsv_value_cols_order", &
                                  test_read_expression_vectors_tsv_value_cols_order)
@@ -67,6 +67,8 @@ contains
                                   test_read_expression_vectors_tsv_refuses_a_partial_number)
         all_tests(22) = test_case("test_read_expression_vectors_tsv_matches_whole_ids", &
                                   test_read_expression_vectors_tsv_matches_whole_ids)
+        all_tests(23) = test_case("test_read_expression_vectors_tsv_reads_a_long_line_whole", &
+                                  test_read_expression_vectors_tsv_reads_a_long_line_whole)
     end function get_all_tests_read_expression_vectors_tsv
 
     !> Writes `content` to `name` in `scratch`, reads it as the one file with one header row and
@@ -611,4 +613,30 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_expression_vectors_tsv_matches_whole_ids
+
+    !> BUG (fails today): a line is read into a buffer of 2048 characters, and what is past it is
+    !| dropped without a word. Here the value 9.75 sits at characters 2047 to 2050 and comes back
+    !| as 9 (the "9." that fits). The reader has to read the whole line or refuse it; a cut value
+    !| with ERR_OK is wrong.
+    subroutine test_read_expression_vectors_tsv_reads_a_long_line_whole()
+        type(scratch_directory_type) :: scratch
+        character(len=2048) :: gene_ids(1)
+        real(real64) :: expression_vectors(1, 1)
+        integer(int32) :: value_cols(1), ierr
+        character(len=1024) :: file_list(1)
+
+        call create_scratch_directory(scratch, "expression_long_line")
+        file_list(1) = scratch_file(scratch, "expression.tsv")
+        ! an id of 2045 characters, the tab at 2046, the value at 2047..2050
+        gene_ids(1) = repeat("x", 2045)
+        call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//LF//trim(gene_ids(1))//TAB//"9.75"//LF)
+        value_cols = [2]
+        expression_vectors = UNWRITTEN
+
+        call read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_false(is_ok(ierr) .and. expression_vectors(1, 1) /= 9.75_real64, &
+                          "test_read_expression_vectors_tsv_reads_a_long_line_whole: 9.75 past character 2048 read cut")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_expression_vectors_tsv_reads_a_long_line_whole
 end module mod_test_read_expression_vectors_tsv

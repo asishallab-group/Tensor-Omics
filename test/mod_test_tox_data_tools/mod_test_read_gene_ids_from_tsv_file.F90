@@ -22,7 +22,7 @@ contains
     function get_all_tests_read_gene_ids_from_tsv_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(9))
+        allocate (all_tests(10))
         all_tests(1) = test_case("test_read_gene_ids_from_tsv_file_reads_the_column", &
                                  test_read_gene_ids_from_tsv_file_reads_the_column)
         all_tests(2) = test_case("test_read_gene_ids_from_tsv_file_header_rows", &
@@ -41,6 +41,8 @@ contains
                                  test_read_gene_ids_from_tsv_file_shipped_material)
         all_tests(9) = test_case("test_read_gene_ids_from_tsv_file_refuses_an_id_too_long", &
                                  test_read_gene_ids_from_tsv_file_refuses_an_id_too_long)
+        all_tests(10) = test_case("test_read_gene_ids_from_tsv_file_reads_a_long_line_whole", &
+                                  test_read_gene_ids_from_tsv_file_reads_a_long_line_whole)
     end function get_all_tests_read_gene_ids_from_tsv_file
 
     !> In place of the old `test_read_gene_ids` (which checked only that the first id of the
@@ -266,4 +268,27 @@ contains
 
         call remove_scratch_directory(scratch)
     end subroutine test_read_gene_ids_from_tsv_file_refuses_an_id_too_long
+
+    !> BUG (fails today): a line is read into a buffer of 2048 characters, and what is past it is
+    !| dropped without a word. Here the id is in the second column and runs from character 2041 to
+    !| 2052: it comes back cut after its eighth character. The reader has to read the whole line
+    !| or refuse it; returning the cut id with ERR_OK is wrong.
+    subroutine test_read_gene_ids_from_tsv_file_reads_a_long_line_whole()
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: tsv
+        character(len=16) :: gene_ids(1)
+        integer(int32) :: ierr
+
+        call create_scratch_directory(scratch, "gene_ids_long_line")
+        tsv = scratch_file(scratch, "genes.tsv")
+        ! 2039 characters of padding, the tab at 2040, the id at 2041..2052
+        call write_scratch_file(tsv, "h"//TAB//"id"//LF//repeat("x", 2039)//TAB//"GENE00000042"//LF)
+
+        call read_gene_ids_from_tsv_file(tsv, gene_ids, 1, 2, ierr)
+        call assert_false(is_ok(ierr) .and. gene_ids(1) /= "GENE00000042", &
+                          "test_read_gene_ids_from_tsv_file_reads_a_long_line_whole: the id past character 2048 came back as '" &
+                          //trim(gene_ids(1))//"' with ERR_OK")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_gene_ids_from_tsv_file_reads_a_long_line_whole
 end module mod_test_read_gene_ids_from_tsv_file

@@ -27,7 +27,7 @@ contains
     function get_all_tests_read_orthofinder_file() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(6))
+        allocate (all_tests(7))
         all_tests(1) = test_case("test_read_orthofinder_file_families", test_read_orthofinder_file_families)
         all_tests(2) = test_case("test_read_orthofinder_file_skips_the_header", test_read_orthofinder_file_skips_the_header)
         all_tests(3) = test_case("test_read_orthofinder_file_empty_species_columns", &
@@ -36,6 +36,8 @@ contains
         all_tests(5) = test_case("test_read_orthofinder_file_missing_or_empty_file", &
                                  test_read_orthofinder_file_missing_or_empty_file)
         all_tests(6) = test_case("test_read_orthofinder_file_shipped_material", test_read_orthofinder_file_shipped_material)
+        all_tests(7) = test_case("test_read_orthofinder_file_reads_a_long_line_whole", &
+                                 test_read_orthofinder_file_reads_a_long_line_whole)
     end function get_all_tests_read_orthofinder_file
 
     !> Three families over two species. A gene's index is its family's line (OG7 is family 1,
@@ -195,4 +197,32 @@ contains
         call assert_equal_int(count(gene_to_fam /= UNASSIGNED), 81960, &
                               "test_read_orthofinder_file_shipped_material: genes in a family")
     end subroutine test_read_orthofinder_file_shipped_material
+
+    !> BUG (fails today): a line is read into a buffer of 4096 characters, and what is past it is
+    !| dropped without a word, so a family listing many genes loses its last ones: of 600 genes
+    !| of 8 characters each ("gene0001, ..."), the 191 past character 4096 are left in no family.
+    !| OrthoFinder writes such lines for large families over many species. The reader has to
+    !| read the whole line or refuse it; leaving genes unassigned with ERR_OK is wrong.
+    subroutine test_read_orthofinder_file_reads_a_long_line_whole()
+        integer(int32), parameter :: N_GENES = 600
+        type(scratch_directory_type) :: scratch
+        character(len=:), allocatable :: orthogroups, family_line
+        character(len=8) :: gene_ids(N_GENES), family_ids(1)
+        integer(int32) :: gene_to_fam(N_GENES), i_gene, ierr
+
+        call create_scratch_directory(scratch, "orthofinder_long_line")
+        family_line = "OG1"//TAB
+        do i_gene = 1, N_GENES
+            write (gene_ids(i_gene), '("gene", i4.4)') i_gene
+            family_line = family_line//gene_ids(i_gene)//", "
+        end do
+        orthogroups = scratch_file(scratch, "Orthogroups.tsv")
+        call write_scratch_file(orthogroups, "Orthogroup"//TAB//"a"//LF//family_line//LF)
+
+        call read_orthofinder_file(orthogroups, gene_ids, family_ids, gene_to_fam, ierr)
+        call assert_false(is_ok(ierr) .and. count(gene_to_fam == 1) /= N_GENES, &
+                          "test_read_orthofinder_file_reads_a_long_line_whole: genes past character 4096 left in no family")
+
+        call remove_scratch_directory(scratch)
+    end subroutine test_read_orthofinder_file_reads_a_long_line_whole
 end module mod_test_read_orthofinder_file
