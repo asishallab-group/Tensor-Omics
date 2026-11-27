@@ -31,7 +31,7 @@ from tensor_omics import (
     validate_string_array_uniqueness,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT, ToxArgumentError
-from test_helpers import run_all_tests, assert_error
+from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
 
 EXPR = np.array([[1.0, 2.0, 3.0, 4.0]])          # one axis, four genes
 FAMILY = [1, 1, 1, 1]
@@ -52,7 +52,7 @@ def refused(func, argument, pattern):
 
 
 def centroid(gene_to_family=FAMILY, n_families=1, mask=MASK, expr=EXPR):
-    return group_centroid_orthologs(expr, gene_to_family, n_families, mask)
+    return group_centroid_orthologs(expr, gene_to_family, n_families, TEST_N_OMP_THREADS, mask)
 
 
 def path(name):

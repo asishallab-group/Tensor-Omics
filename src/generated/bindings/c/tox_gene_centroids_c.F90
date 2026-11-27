@@ -81,6 +81,7 @@ contains
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            n_omp_threads,&
             ortholog_set,&
             ierr&
         ) bind(C, name="group_centroid_orthologs_c")
@@ -101,6 +102,12 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         logical(c_bool), dimension(n_genes), intent(in), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
@@ -111,6 +118,7 @@ contains
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_families)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
@@ -123,6 +131,7 @@ contains
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
+            n_omp_threads = n_omp_threads,&
             ortholog_set = ortholog_set,&
             ierr = ierr&
         )
@@ -138,6 +147,7 @@ contains
             n_families,&
             centroid_matrix,&
             tmp_family_genes,&
+            n_omp_threads,&
             ortholog_set,&
             ierr&
         ) bind(C, name="group_centroid_orthologs_expert_c")
@@ -149,6 +159,12 @@ contains
             !! Total number of genes in the 'expression_vectors' matrix.
         integer(c_int), intent(in), target :: n_families
             !! Total number of gene families to compute centroids for.
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_axes, n_genes), intent(in), target :: expression_vectors
             !! The input matrix of all gene expression vectors (n_axes x n_genes).
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_family
@@ -158,8 +174,8 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        logical(c_bool), dimension(n_genes), intent(out), target :: tmp_family_genes
-            !! Work array: `.true.` for the genes of the family being averaged.
+        logical(c_bool), dimension(n_genes, n_omp_threads), intent(out), target :: tmp_family_genes
+            !! Work array: `.true.` for the genes of the family being averaged, one column per thread.
         logical(c_bool), dimension(n_genes), intent(in), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
@@ -170,10 +186,11 @@ contains
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_families)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_family_genes, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_family_genes, n_genes * n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
 
         call group_centroid_orthologs_expert(&
@@ -184,6 +201,7 @@ contains
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
             tmp_family_genes = tmp_family_genes,&
+            n_omp_threads = n_omp_threads,&
             ortholog_set = ortholog_set,&
             ierr = ierr&
         )
@@ -198,6 +216,7 @@ contains
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            n_omp_threads,&
             ierr&
         ) bind(C, name="group_centroid_all_c")
         use tox_gene_centroids, only: group_centroid_all
@@ -217,6 +236,12 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -225,6 +250,7 @@ contains
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_families)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
@@ -236,6 +262,7 @@ contains
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
+            n_omp_threads = n_omp_threads,&
             ierr = ierr&
         )
     end subroutine group_centroid_all_c
@@ -250,6 +277,7 @@ contains
             n_families,&
             centroid_matrix,&
             tmp_family_genes,&
+            n_omp_threads,&
             ierr&
         ) bind(C, name="group_centroid_all_expert_c")
         use tox_gene_centroids, only: group_centroid_all_expert
@@ -260,6 +288,12 @@ contains
             !! Total number of genes in the 'expression_vectors' matrix.
         integer(c_int), intent(in), target :: n_families
             !! Total number of gene families to compute centroids for.
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_axes, n_genes), intent(in), target :: expression_vectors
             !! The input matrix of all gene expression vectors (n_axes x n_genes).
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_family
@@ -269,8 +303,8 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        logical(c_bool), dimension(n_genes), intent(out), target :: tmp_family_genes
-            !! Work array: `.true.` for the genes of the family being averaged.
+        logical(c_bool), dimension(n_genes, n_omp_threads), intent(out), target :: tmp_family_genes
+            !! Work array: `.true.` for the genes of the family being averaged, one column per thread.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -279,10 +313,11 @@ contains
         M_CHECK_NON_NULL(n_axes)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_families)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_family_genes, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_family_genes, n_genes * n_omp_threads)
 
         call group_centroid_all_expert(&
             expression_vectors = expression_vectors,&
@@ -292,6 +327,7 @@ contains
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
             tmp_family_genes = tmp_family_genes,&
+            n_omp_threads = n_omp_threads,&
             ierr = ierr&
         )
     end subroutine group_centroid_all_expert_c

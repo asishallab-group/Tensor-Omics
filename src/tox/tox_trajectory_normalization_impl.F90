@@ -127,6 +127,7 @@ contains
         call set_ok(status)
 
         ! Normalize each sample/entity independently
+        !TODO parallelize: the series are independent, but with 5 timepoints 4 threads were slower than serial (#218), because work columns that short false-share between threads. The work arrays exist because a series is strided; an assumed-shape core (`v(:)`, `v_norm(:)`) could drop them, which is unmeasured.
         do i_sample = 1, n_samples
             do i_factor = 1, n_factors
                 do i_timepoint = 1, n_timepoints

@@ -76,13 +76,14 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_gene_centroids_impl(module):group_centroid_impl]] needs, then calls it. The entry point to reach for first; see [[tox_gene_centroids(module):group_centroid_orthologs_expert]] to prepare it yourself.
     !| A family without selected genes gets the zero vector.
-    pure subroutine group_centroid_orthologs(&
+    M_OMP_PURE subroutine group_centroid_orthologs(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            n_omp_threads,&
             ortholog_set,&
             ierr&
         )
@@ -101,23 +102,30 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         logical(c_bool), dimension(n_genes), intent(in) :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical(c_bool), dimension(:), allocatable :: tmp_family_genes
+        logical(c_bool), dimension(:, :), allocatable :: tmp_family_genes
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=7_int32, min=1_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
 #endif
 
-        M_ALLOCATE(tmp_family_genes(n_genes))
+        M_ALLOCATE(tmp_family_genes(n_genes, M_OMP_N_THREADS(n_omp_threads)))
 
         call group_centroid_impl(&
             expression_vectors = expression_vectors,&
@@ -128,13 +136,14 @@ contains
             centroid_matrix = centroid_matrix,&
             mode = MODE_GROUP_ORTHOLOGS,&
             tmp_family_genes = tmp_family_genes,&
+            n_omp_threads = M_OMP_N_THREADS(n_omp_threads),&
             ortholog_set = ortholog_set&
         )
     end subroutine group_centroid_orthologs
 
     !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):group_centroid_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_gene_centroids(module):group_centroid_orthologs]] does both.
     !| A family without selected genes gets the zero vector.
-    pure subroutine group_centroid_orthologs_expert(&
+    M_OMP_PURE subroutine group_centroid_orthologs_expert(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -142,6 +151,7 @@ contains
             n_families,&
             centroid_matrix,&
             tmp_family_genes,&
+            n_omp_threads,&
             ortholog_set,&
             ierr&
         )
@@ -151,6 +161,12 @@ contains
             !! Total number of genes in the 'expression_vectors' matrix.
         integer(int32), intent(in) :: n_families
             !! Total number of gene families to compute centroids for.
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_axes, n_genes), intent(in) :: expression_vectors
             !! The input matrix of all gene expression vectors (n_axes x n_genes).
         integer(int32), dimension(n_genes), intent(in) :: gene_to_family
@@ -160,8 +176,8 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        logical(c_bool), dimension(n_genes), intent(out) :: tmp_family_genes
-            !! Work array: `.true.` for the genes of the family being averaged.
+        logical(c_bool), dimension(n_genes, n_omp_threads), intent(out) :: tmp_family_genes
+            !! Work array: `.true.` for the genes of the family being averaged, one column per thread.
         logical(c_bool), dimension(n_genes), intent(in) :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(int32), intent(out) :: ierr
@@ -172,6 +188,7 @@ contains
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
@@ -186,19 +203,21 @@ contains
             centroid_matrix = centroid_matrix,&
             mode = MODE_GROUP_ORTHOLOGS,&
             tmp_family_genes = tmp_family_genes,&
+            n_omp_threads = n_omp_threads,&
             ortholog_set = ortholog_set&
         )
     end subroutine group_centroid_orthologs_expert
 
     !> summary: Validates its inputs, prepares what [[tox_gene_centroids_impl(module):group_centroid_impl]] needs, then calls it. The entry point to reach for first; see [[tox_gene_centroids(module):group_centroid_all_expert]] to prepare it yourself.
     !| A family without selected genes gets the zero vector.
-    pure subroutine group_centroid_all(&
+    M_OMP_PURE subroutine group_centroid_all(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_axes
@@ -216,21 +235,28 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical(c_bool), dimension(:), allocatable :: tmp_family_genes
+        logical(c_bool), dimension(:, :), allocatable :: tmp_family_genes
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=7_int32, min=1_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
 #endif
 
-        M_ALLOCATE(tmp_family_genes(n_genes))
+        M_ALLOCATE(tmp_family_genes(n_genes, M_OMP_N_THREADS(n_omp_threads)))
 
         call group_centroid_impl(&
             expression_vectors = expression_vectors,&
@@ -240,13 +266,14 @@ contains
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
             mode = MODE_GROUP_ALL,&
-            tmp_family_genes = tmp_family_genes&
+            tmp_family_genes = tmp_family_genes,&
+            n_omp_threads = M_OMP_N_THREADS(n_omp_threads)&
         )
     end subroutine group_centroid_all
 
     !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):group_centroid_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_gene_centroids(module):group_centroid_all]] does both.
     !| A family without selected genes gets the zero vector.
-    pure subroutine group_centroid_all_expert(&
+    M_OMP_PURE subroutine group_centroid_all_expert(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -254,6 +281,7 @@ contains
             n_families,&
             centroid_matrix,&
             tmp_family_genes,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_axes
@@ -262,6 +290,12 @@ contains
             !! Total number of genes in the 'expression_vectors' matrix.
         integer(int32), intent(in) :: n_families
             !! Total number of gene families to compute centroids for.
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_axes, n_genes), intent(in) :: expression_vectors
             !! The input matrix of all gene expression vectors (n_axes x n_genes).
         integer(int32), dimension(n_genes), intent(in) :: gene_to_family
@@ -271,8 +305,8 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        logical(c_bool), dimension(n_genes), intent(out) :: tmp_family_genes
-            !! Work array: `.true.` for the genes of the family being averaged.
+        logical(c_bool), dimension(n_genes, n_omp_threads), intent(out) :: tmp_family_genes
+            !! Work array: `.true.` for the genes of the family being averaged, one column per thread.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -281,6 +315,7 @@ contains
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
@@ -294,7 +329,8 @@ contains
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
             mode = MODE_GROUP_ALL,&
-            tmp_family_genes = tmp_family_genes&
+            tmp_family_genes = tmp_family_genes,&
+            n_omp_threads = n_omp_threads&
         )
     end subroutine group_centroid_all_expert
 

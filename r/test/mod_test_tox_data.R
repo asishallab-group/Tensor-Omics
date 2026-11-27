@@ -77,7 +77,7 @@ test_4_validation <- function() {
 
   force(validate_expression_data(kallisto_expr, check_non_negative = TRUE))
 
-  family_centroids <- group_centroid_all(kallisto_expr, gene_to_fam, n_families)
+  family_centroids <- group_centroid_all(kallisto_expr, gene_to_fam, n_families, TEST_N_OMP_THREADS)
 
   force(validate_family_centroids(family_centroids))
 

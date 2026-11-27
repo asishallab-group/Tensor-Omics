@@ -1,6 +1,11 @@
 ANSI_START <- "\033["
 FG256_START <- paste0(ANSI_START, "38;5;")
 
+# The n_omp_threads the tests pass to a procedure that takes one (#218). More than one, so an
+# --openmp build runs the parallel loop of every call whose trip count reaches the procedure's
+# threshold.
+TEST_N_OMP_THREADS <- 4L
+
 COLORS <- list(
   green = 154,
   copper = 214,

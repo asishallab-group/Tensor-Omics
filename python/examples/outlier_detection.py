@@ -39,7 +39,7 @@ from example_data import (UNASSIGNED, build_gene_to_family, read_expression,
                           read_families, read_ortholog_mask, write_labeled_matrix)
 from tensor_omics import (compute_shift_vector_field, detect_outliers,
                           distance_to_centroid, group_centroid_all,
-                          group_centroid_orthologs)
+                          group_centroid_orthologs, max_omp_threads)
 
 DEFAULT_FAMILIES = Path("material/filtered_families.tsv")
 DEFAULT_EXPRESSION = Path("material/normalization.tsv")
@@ -87,10 +87,10 @@ def main(argv=None):
           f"{int(assigned.sum())} in {n_families} families")
 
     if args.orthologs is None:
-        centroids = group_centroid_all(expression_vectors, gene_to_family, n_families)
+        centroids = group_centroid_all(expression_vectors, gene_to_family, n_families, max_omp_threads())
     else:
         centroids = group_centroid_orthologs(
-            expression_vectors, gene_to_family, n_families,
+            expression_vectors, gene_to_family, n_families, max_omp_threads(),
             read_ortholog_mask(args.orthologs, gene_ids),
         )
 
