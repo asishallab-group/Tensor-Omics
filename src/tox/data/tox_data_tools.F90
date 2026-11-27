@@ -124,8 +124,8 @@ contains
             call set_err_once(ierr, ERR_READ_DATA, arg_pos)
             return
         end if
-        ! gfortran and ifx drop the carriage return of a CR LF line ending themselves; another
-        ! compiler may not, and a CR ending the file's last line, without LF, is kept by them too
+        ! dead on gfortran, which drops the carriage return of a CR LF line and of a lone CR ending
+        ! the file itself, and on ifx for CR LF; kept for a compiler that does not
         if (line_length > 0) then
             if (line(line_length:line_length) == CARRIAGE_RETURN) line_length = line_length - 1
         end if
