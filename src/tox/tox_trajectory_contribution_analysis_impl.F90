@@ -121,14 +121,14 @@ contains
             call init_random(random_seed)
         end if
 
-        do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_factor, trajectories, factor_idx, sample_idx)
+        do i_timepoint = 1, n_timepoints
             tmp_factor(i_timepoint) = trajectories(factor_idx, sample_idx, i_timepoint)
         end do
 
         do i_perm = 1, n_permutations
             call select_random_sample_helper(n_samples, sample_idx, random_sample)
 
-            do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_dependent, trajectories, dependent_idx, random_sample)
+            do i_timepoint = 1, n_timepoints
                 tmp_dependent(i_timepoint) = trajectories(dependent_idx, random_sample, i_timepoint)
             end do
 
@@ -171,14 +171,14 @@ contains
                 total_p_value = total_p_value + 1.0_real64
             end if
 
-            do concurrent (i_timepoint = 1:n_timepoints) shared(local_contributions_perm_test, i_perm, local_contributions_observed, local_p_values)
+            do i_timepoint = 1, n_timepoints
                 if (local_contributions_perm_test(i_timepoint, i_perm) >= local_contributions_observed(i_timepoint)) then
                     local_p_values(i_timepoint) = local_p_values(i_timepoint) + 1.0_real64
                 end if
             end do
         end do
 
-        do concurrent (i_timepoint = 1:n_timepoints) shared(local_p_values, n_permutations)
+        do i_timepoint = 1, n_timepoints
             local_p_values(i_timepoint) = anint(local_p_values(i_timepoint), kind=real64)/real(n_permutations, kind=real64)
         end do
 
@@ -222,7 +222,7 @@ contains
         ! together (both above or both below baseline) and negative when they move oppositely.
         ! Summing over all timepoints gives the total co-variation between factor and dependent.
         total_contribution = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) reduce(+:total_contribution)
+        do i_dim = 1, n_dims
             local_contributions(i_dim) = (factor(i_dim) - factor_baseline) * (dependent(i_dim) - dependent_baseline)
             total_contribution = total_contribution + local_contributions(i_dim)
         end do
@@ -274,7 +274,7 @@ contains
 
         call set_ok(ierr)
 
-        !TODO optimize: work across samples is embarrassingly parallel (each i_sample only reads its own slice of `trajectories` and writes its own slice of the outputs), but this loop is sequential because `tmp_factors`/`tmp_dependent` are single shared work buffers reused across iterations. Parallelizing would require per-iteration private copies of these buffers (e.g. `local()` in a do concurrent), which is worth considering given how aggressively do concurrent is used elsewhere in this file for sample loops.
+        !TODO optimize: work across samples is embarrassingly parallel (each i_sample only reads its own slice of `trajectories` and writes its own slice of the outputs), but this loop is sequential because `tmp_factors`/`tmp_dependent` are single shared work buffers reused across iterations. Parallelizing would require per-iteration private copies of these buffers.
         do i_sample = 1, n_samples
             ! create factor vectors for current sample
             do i_sel_factor = 1, n_selected_factors
@@ -370,7 +370,7 @@ contains
         n_vel = size(velocity, kind=int32)
         if (n_vel == 0_int32) return
 
-        do concurrent (i_vel = 1:n_vel) shared(velocity, trajectory)
+        do i_vel = 1, n_vel
             velocity(i_vel) = trajectory(i_vel + 1) - trajectory(i_vel)
         end do
     end subroutine compute_velocity_trajectory_helper
@@ -399,7 +399,7 @@ contains
         n_vel = size(velocity, kind=int32)
         if (n_vel == 0_int32) return
 
-        do concurrent (i_vel = 1:n_vel) shared(velocity, trajectories, factor_idx, sample_idx)
+        do i_vel = 1, n_vel
             velocity(i_vel) = trajectories(factor_idx, sample_idx, i_vel + 1) - trajectories(factor_idx, sample_idx, i_vel)
         end do
     end subroutine compute_factor_velocity_from_trajectories_helper
@@ -454,8 +454,8 @@ contains
         n_vel = size(velocity, dim=1, kind=int32)
         if (n_vel == 0_int32) return
 
-        do concurrent (i_sample = 1:n_samples) shared(trajectories, n_factors, n_timepoints, velocity)
-            do concurrent (i_factor = 1:n_factors) shared(trajectories, n_samples, n_timepoints, i_sample, velocity)
+        do i_sample = 1, n_samples
+            do i_factor = 1, n_factors
                 call compute_factor_velocity_from_trajectories_helper(trajectories, n_factors, n_samples, n_timepoints, i_factor, i_sample, velocity(:, i_factor, i_sample))
             end do
         end do
@@ -484,8 +484,8 @@ contains
         n_vel = size(velocity, dim=1, kind=int32)
         if (n_vel < 2) return
 
-        do concurrent (i_sample = 1:n_samples) shared(velocity, acceleration, n_factors, n_vel)
-            do concurrent (i_factor = 1:n_factors) shared(velocity, acceleration, n_vel, i_sample)
+        do i_sample = 1, n_samples
+            do i_factor = 1, n_factors
                 call compute_velocity_trajectory_helper(velocity(:, i_factor, i_sample), &
                                                         acceleration(:, i_factor, i_sample), &
                                                         n_vel)
@@ -569,7 +569,6 @@ contains
 
         do i_sample = 1, n_samples
             ! ---- Step 1: velocity contributions ----
-            ! GFORTRAN BUG: do concurrent (i_factor = 1:n_factors) shared(trajectories, n_samples, n_timepoints, i_sample, tmp_factors)
             do i_factor = 1, n_factors
                 call compute_factor_velocity_from_trajectories_helper(trajectories, n_factors, n_samples, n_timepoints, i_factor, i_sample, tmp_factors(:, i_factor))
             end do
@@ -588,7 +587,7 @@ contains
                         tmp_contributions, contrib_velocity(i_factor, i_dependent, i_sample), tmp_ierr)
                     if (is_err(tmp_ierr)) ierr = tmp_ierr
 
-                    do concurrent (i_timepoint = 2:n_timepoints) shared(velocity_contribution_series, i_factor, i_dependent, i_sample, tmp_contributions)
+                    do i_timepoint = 2, n_timepoints
                         velocity_contribution_series(i_timepoint, i_factor, i_dependent, i_sample) = &
                             tmp_contributions(i_timepoint - 1)
                     end do
@@ -620,7 +619,7 @@ contains
                         tmp_contributions(1:n_acc), contrib_acceleration(i_factor, i_dependent, i_sample), tmp_ierr)
                     if (is_err(tmp_ierr)) ierr = tmp_ierr
 
-                    do concurrent (i_timepoint = 3:n_timepoints) shared(acceleration_contribution_series, i_factor, i_dependent, i_sample, tmp_contributions)
+                    do i_timepoint = 3, n_timepoints
                         acceleration_contribution_series(i_timepoint, i_factor, i_dependent, i_sample) = &
                             tmp_contributions(i_timepoint - 2)
                     end do

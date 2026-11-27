@@ -101,16 +101,16 @@ contains
 
         ! Collect the absolute residual values, laid out exactly as a
         ! (n_reps_S1 + n_reps_S2, n_neighbors, n_points) array would be
-        do concurrent(i_point=1:n_points)
-            do concurrent(i_neighbor=1:n_neighbors) local(n_predecessors) shared(i_point, n_reps_S1, n_reps_S2)
+        do i_point = 1, n_points
+            do i_neighbor = 1, n_neighbors
                 n_predecessors = ((i_point - 1)*n_neighbors + (i_neighbor - 1))*(n_reps_S1 + n_reps_S2)
-                do concurrent(i_rep=1:n_reps_S1) shared(n_predecessors, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, neighborhood_residuals_S1, i_point, i_neighbor)
+                do i_rep = 1, n_reps_S1
                     tmp_abs_residual_pool(n_predecessors + i_rep) = abs(neighborhood_residuals_S1(i_rep, i_neighbor, i_point))
 
                     tmp_abs_residual_pool_perm(n_predecessors + i_rep) = n_predecessors + i_rep
                 end do
 
-                do concurrent(i_rep=1:n_reps_S2) local(pool_idx) shared(n_predecessors, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, neighborhood_residuals_S2, i_point, i_neighbor)
+                do i_rep = 1, n_reps_S2
                     pool_idx = i_rep + n_reps_S1
 
                     tmp_abs_residual_pool(n_predecessors + pool_idx) = abs(neighborhood_residuals_S2(i_rep, i_neighbor, i_point))
@@ -174,7 +174,7 @@ contains
         ! inner (i_neighbor) loop must be a plain sequential `do`: different neighbors can hit the same
         ! (i_point, bin_idx) count simultaneously, so `counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1`
         ! would be a data race under `do concurrent`.
-        do concurrent(i_point=1:n_points) local(included_reps) shared(included_n_reps)
+        do i_point = 1, n_points
             included_reps = 0_int32
             do i_neighbor = 1, n_neighbors
                 ! Exclude neighbor if desired
@@ -200,8 +200,8 @@ contains
         end do
 
         ! 2. calculate pmf
-        do concurrent(i_bin=1:n_bins)
-            do concurrent(i_point=1:n_points) shared(pmf, i_bin, included_n_reps, counts)
+        do i_bin = 1, n_bins
+            do i_point = 1, n_points
                 if (included_n_reps(i_point) == 0) then
                     pmf(i_point, i_bin) = 0.0_real64
                 else
@@ -241,7 +241,7 @@ contains
         ! Another thing, switching the loops would enable both to run concurrently and the 0.5*js_divergences step could be done in one go,
         ! but cache locality still beats that, except for the case of thousands of neighbors, which might not be the common case.
         do i_bin = 1, n_bins
-            do concurrent(i_point=1:n_points) local(s1_val, s2_val, S_mean) shared(i_bin, pmf_S1, pmf_S2, js_divergences)
+            do i_point = 1, n_points
                 s1_val = pmf_S1(i_point, i_bin)
                 s2_val = pmf_S2(i_point, i_bin)
                 S_mean = 0.5_real64*(s1_val + s2_val)
@@ -259,7 +259,7 @@ contains
         end do
 
         ! 2. Compute the js_divergences
-        do concurrent(i_point=1:n_points) shared(js_divergences)
+        do i_point = 1, n_points
             js_divergences(i_point) = 0.5_real64*js_divergences(i_point)
         end do
     end subroutine compute_divergence_per_reference_point_impl
@@ -297,7 +297,7 @@ contains
             weights = 0.0_real64
         else
             ! Calculate the global Jensen-Shannon divergence
-            do concurrent(i_point=1:n_points) local(included_reps) shared(weights, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
+            do i_point = 1, n_points
                 included_reps = included_n_reps_S1(i_point) + included_n_reps_S2(i_point)
 
                 weights(i_point) = real(included_reps, real64)/total_sample_count

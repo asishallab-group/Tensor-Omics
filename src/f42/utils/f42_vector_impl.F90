@@ -33,7 +33,7 @@ contains
         dot_product = 0.0_real64
         norm1_sq = 0.0_real64
         norm2_sq = 0.0_real64
-        do concurrent(i_dim=1:n_dims) shared(v1, v2) reduce(+:dot_product, norm1_sq, norm2_sq)
+        do i_dim = 1, n_dims
             dot_product = dot_product + v1(i_dim)*v2(i_dim)
             norm1_sq = norm1_sq + v1(i_dim)**2
             norm2_sq = norm2_sq + v2(i_dim)**2
@@ -98,7 +98,7 @@ contains
         exponent = scaling_exponent(vector)
 
         scaled_squares_sum = 0.0_real64
-        do concurrent(i_dim=1:n_dims) shared(vector, exponent) reduce(+:scaled_squares_sum)
+        do i_dim = 1, n_dims
             scaled_squares_sum = scaled_squares_sum + scale(vector(i_dim), exponent)**2
         end do
         scaled_norm = sqrt(scaled_squares_sum)
@@ -114,7 +114,7 @@ contains
 
         integer(int32) :: i_dim
 
-        do concurrent(i_dim=1:size(vector)) shared(vector, to_be_added)
+        do i_dim = 1, size(vector)
             vector(i_dim) = vector(i_dim) + to_be_added(i_dim)
         end do
     end subroutine add_vector
@@ -129,7 +129,7 @@ contains
 
         integer(int32) :: i_dim
 
-        do concurrent(i_dim=1:size(vector)) shared(vector, to_be_subtracted)
+        do i_dim = 1, size(vector)
             vector(i_dim) = vector(i_dim) - to_be_subtracted(i_dim)
         end do
     end subroutine subtract_vector

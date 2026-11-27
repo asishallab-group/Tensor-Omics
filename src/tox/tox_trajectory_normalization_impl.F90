@@ -52,7 +52,7 @@ contains
         end if
 
         if (ieee_is_finite(denominator)) then
-            do concurrent (i_point = 1:n_points) shared(v_norm, v, min_val, denominator)
+            do i_point = 1, n_points
                 v_norm(i_point) = (v(i_point) - min_val)/denominator
             end do
         else
@@ -60,7 +60,7 @@ contains
             ! opposite signs. Halving every term keeps each difference finite, and the ratio of
             ! two halved differences is the same ratio.
             denominator = max_val/2.0_real64 - min_val/2.0_real64
-            do concurrent (i_point = 1:n_points) shared(v_norm, v, min_val, denominator)
+            do i_point = 1, n_points
                 v_norm(i_point) = (v(i_point)/2.0_real64 - min_val/2.0_real64)/denominator
             end do
         end if
@@ -129,7 +129,7 @@ contains
         ! Normalize each sample/entity independently
         do i_sample = 1, n_samples
             do i_factor = 1, n_factors
-                do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_series, trajectories, i_sample, i_factor)
+                do i_timepoint = 1, n_timepoints
                     tmp_series(i_timepoint) = trajectories(i_factor, i_sample, i_timepoint)
                 end do
 

@@ -52,9 +52,7 @@ contains
         ! Check if we should use kernel smoothing
         use_kernel = (kernel_sigma > 0.0_real64)
 
-        do concurrent(i_target=1:n_target) &
-            local(query_x, sum_weights, min_dist, min_idx, exact_match_found, used_idx, ref_x, delta, i_used, weight) &
-            shared(y_out, n_used, indices_used, x_ref, x_query, y_ref, use_kernel, kernel_cutoff, kernel_sigma)
+        do i_target = 1, n_target
 
             query_x = x_query(i_target)
             sum_weights = 0.0_real64

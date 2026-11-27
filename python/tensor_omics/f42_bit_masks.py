@@ -25,7 +25,7 @@ new word, so `bitmasks(:, i_mask)` is a mask of its own and passes to any proced
 without a copy.
 
 **Parallel loops write whole words.** Two iterations that set flags in the same word race, so
-a `do concurrent` over flags may only read a mask; one that writes runs over words or columns.
+a parallel loop over flags may only read a mask; one that writes runs over words or columns.
 
 **Hot loops** use the whole-mask procedures, or step from one set flag to the next with
 ``bitmask_next``. A procedure call per flag costs more

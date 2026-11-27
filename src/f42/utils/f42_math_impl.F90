@@ -68,7 +68,7 @@ contains
         real(real64) :: largest
 
         largest = 0.0_real64
-        do concurrent(i_value=1:size(values, kind=int32)) shared(values) reduce(max:largest)
+        do i_value = 1, size(values, kind=int32)
             largest = max(largest, abs(values(i_value)))
         end do
         exponent = scaling_exponent_for_largest(largest)
@@ -158,14 +158,13 @@ contains
         ! distances far smaller than the values (distinct values close together near 2**-470, say)
         ! with squares below tiny, which a build that flushes subnormals turns into a spread of 0.
         largest_distance = 0.0_real64
-        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled) reduce(max:largest_distance)
+        do i_element = 1, n_elements
             largest_distance = max(largest_distance, abs(scale(vec(i_element), exponent) - mean_scaled))
         end do
         distance_exponent = scaling_exponent_for_largest(largest_distance)
 
         squares_sum_scaled = 0.0_real64
-        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled, distance_exponent) &
-            reduce(+:squares_sum_scaled)
+        do i_element = 1, n_elements
             squares_sum_scaled = squares_sum_scaled &
                                  + scale(scale(vec(i_element), exponent) - mean_scaled, distance_exponent)**2
         end do
@@ -195,7 +194,7 @@ contains
         real(real64) :: scaled_sum
 
         scaled_sum = 0.0_real64
-        do concurrent(i_element=1:size(vec, kind=int32)) shared(vec, exponent) reduce(+:scaled_sum)
+        do i_element = 1, size(vec, kind=int32)
             scaled_sum = scaled_sum + scale(vec(i_element), exponent)
         end do
         scaled_mean = scaled_sum/real(size(vec, kind=int32), real64)
@@ -256,7 +255,7 @@ contains
     !|
     !| For a caller that has already established those three facts about a whole array -- so the
     !| per-element check would only re-derive what is known -- and therefore wants the transform
-    !| in a `do concurrent` with no shared `ierr` to write.
+    !| in a loop of independent iterations with no shared `ierr` to write.
     pure subroutine logx_helper(val, base, exponent)
         real(real64), intent(in) :: val
             !! Value (`x` in \( b^y = x \)), must be `> 0`

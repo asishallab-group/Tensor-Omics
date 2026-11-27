@@ -53,18 +53,18 @@ contains
         ! 2**scale_exponent > n_selected_genes: exact, and the scaled sum stays below the largest
         ! value. Dividing by the equally scaled count then gives the same quotient, with the same
         ! rounding, as the plain sum divided by the count.
-        ! The genes are summed in order, not in a do concurrent: every gene adds into the same
-        ! centroid, which concurrent iterations may not do. The axes are independent.
+        ! The genes are summed in order: every gene adds into the same centroid, so their
+        ! iterations are not independent. The axes are.
         scale_exponent = exponent(real(n_selected_genes, real64))
         do i_gene = 1, n_genes
             if (.not. genes_selection_mask(i_gene)) cycle
-            do concurrent (i_axis = 1:n_axes) shared(centroid, expression_vectors, i_gene, scale_exponent)
+            do i_axis = 1, n_axes
                 centroid(i_axis) = centroid(i_axis) + scale(expression_vectors(i_axis, i_gene), -scale_exponent)
             end do
         end do
 
         scaled_count = scale(real(n_selected_genes, real64), -scale_exponent)
-        do concurrent (i_axis = 1:n_axes) shared(centroid, scaled_count)
+        do i_axis = 1, n_axes
             centroid(i_axis) = centroid(i_axis)/scaled_count
         end do
     end subroutine mean_vector_impl

@@ -877,7 +877,7 @@ contains
 
   !> A non-finite distance must surface as an error, not silently flow into log2.
   !| `compute_family_scaling` feeds family means/stddevs to `logx_helper` (non-validating) inside a
-  !| `do concurrent`. The wrapper refuses a NaN/Inf distance before the implementation runs, so it
+  !| loop. The wrapper refuses a NaN/Inf distance before the implementation runs, so it
   !| never propagates into a family mean; `test_loess_points_finite_on_every_exit` covers a finite
   !| distance whose family sum overflows, which the implementation checks itself.
   subroutine test_family_scaling_non_finite_distance()

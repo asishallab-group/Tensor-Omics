@@ -27,6 +27,21 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
+      # ifx (-qopenmp) and nvfortran (-stdpar) thread every `do concurrent` on their own, which
+      # would nest inside the OpenMP root loops (#218), so src/ uses plain `do` loops. A grep on
+      # the statement's start: a label or a construct name may precede it; comments are skipped.
+      - name: Refuse do concurrent in src/
+        run: |
+          status=0
+          matches=$(grep -rniE '^[[:space:]]*([0-9]+[[:space:]]+)?([a-z][a-z0-9_]*[[:space:]]*:[[:space:]]*)?do[[:space:]]*,?[[:space:]]*concurrent([^a-z0-9_]|$)' src) || status=$?
+          if [ "$status" -eq 0 ]; then
+            while IFS=: read -r file line _; do
+              echo "::error file=$file,line=$line::do concurrent is not used here (#218), write a plain do"
+            done <<< "$matches"
+            exit 1
+          fi
+          [ "$status" -eq 1 ] || exit 2
+
       - name: Install Fortran Compiler
         uses: ./.github/actions/install-Fortran
         with:

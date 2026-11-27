@@ -135,8 +135,7 @@ contains
         ! onto that hyperplane is v - ((v . 1)/(1 . 1)) * 1, and since 1 . 1 = n_selected_axes and
         ! every component of the diagonal unit direction is equal, this reduces to subtracting the
         ! mean of v's coordinates ("diagonal_component") from each coordinate of v.
-        do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component, i_axis_differing) &
-            shared(n_selected_axes, selected_vecs)
+        do i_vec = 1, n_selected_vecs
 
             ! The projection is the origin exactly when all coordinates are equal, so that case is
             ! decided on the coordinates themselves: their rounded mean need not equal them, and
@@ -155,13 +154,12 @@ contains
                 ! coordinate is divided before it is added: a mean is never larger than its largest
                 ! value, but the sum can overflow where the mean does not.
                 diagonal_component = 0.0_real64
-                do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, n_selected_axes) &
-                    reduce(+:diagonal_component)
+                do i_axis = 1, n_selected_axes
                     diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)/real(n_selected_axes, real64)
                 end do
 
                 ! transform vector to its projection
-                do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, diagonal_component)
+                do i_axis = 1, n_selected_axes
                     selected_vecs(i_axis, i_vec) = selected_vecs(i_axis, i_vec) - diagonal_component
                 end do
             end if
@@ -274,8 +272,7 @@ contains
         largest_1 = 0.0_real64
         largest_2 = 0.0_real64
         largest_reference = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2, orientation_reference, shift_weight) &
-            reduce(max:largest_1, largest_2, largest_reference)
+        do i_dim = 1, n_dims
             largest_1 = max(largest_1, abs(v1(i_dim)))
             largest_2 = max(largest_2, abs(v2(i_dim) + shift_weight*v1(i_dim)))
             largest_reference = max(largest_reference, abs(orientation_reference(i_dim)))
@@ -300,8 +297,7 @@ contains
         dot_12 = 0.0_real64
         squared_1 = 0.0_real64
         squared_2 = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2, exponent_1, exponent_2, shift_weight) &
-            reduce(+:dot_12, squared_1, squared_2)
+        do i_dim = 1, n_dims
             dot_12 = dot_12 + scale(v1(i_dim), -exponent_1)*scale(v2(i_dim) + shift_weight*v1(i_dim), -exponent_2)
             squared_1 = squared_1 + scale(v1(i_dim), -exponent_1)**2
             squared_2 = squared_2 + scale(v2(i_dim) + shift_weight*v1(i_dim), -exponent_2)**2
@@ -313,10 +309,7 @@ contains
         squared_perpendicular = 0.0_real64
         squared_reference = 0.0_real64
         along_rotation = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) local(perpendicular_component) &
-            shared(v1, v2, orientation_reference, exponent_1, exponent_2, exponent_reference, projection_factor, &
-                   shift_weight) &
-            reduce(+:squared_perpendicular, squared_reference, along_rotation)
+        do i_dim = 1, n_dims
             perpendicular_component = scale(v2(i_dim) + shift_weight*v1(i_dim), -exponent_2) &
                                       - projection_factor*scale(v1(i_dim), -exponent_1)
             squared_perpendicular = squared_perpendicular + perpendicular_component**2
@@ -434,7 +427,7 @@ contains
         call set_ok(ierr)
 
         largest = 0.0_real64
-        do concurrent (i_axis = 1:n_axes) shared(vec) reduce(max:largest)
+        do i_axis = 1, n_axes
             largest = max(largest, abs(vec(i_axis)))
         end do
 
@@ -453,11 +446,11 @@ contains
         ! overflow however huge the components are.
         scale_exponent = exponent(largest)
         total_abs = 0.0_real64
-        do concurrent (i_axis = 1:n_axes) shared(vec, scale_exponent) reduce(+:total_abs)
+        do i_axis = 1, n_axes
             total_abs = total_abs + scale(abs(vec(i_axis)), -scale_exponent)
         end do
 
-        do concurrent (i_axis = 1:n_axes) shared(contributions, vec, scale_exponent, total_abs)
+        do i_axis = 1, n_axes
             contributions(i_axis) = scale(abs(vec(i_axis)), -scale_exponent)/total_abs
         end do
     end subroutine compute_relative_axis_contributions_impl
