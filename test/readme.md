@@ -18,6 +18,7 @@ test_framework/                          # The Fortran test framework, a local f
 ├── fpm.toml                             # (a dev-dependency of tensor_omics, see below)
 └── src/
     ├── asserts.F90                      # Assertions
+    ├── scratch_directory.F90            # A directory of its own for a case's files
     └── test_suite.F90                   # Suite registry, running, reporting
 test/
 ├── run_tests.F90                        # The test program: registers every suite
@@ -27,7 +28,6 @@ test/
 │   ├── mod_test_calc_fchange.F90
 │   ├── ...
 │   └── mod_test_tox_normalization_fixtures.F90   # Data the children share
-└── test_files/                          # Input files for the tox_data suites
 python/test/mod_test_<module>.py         # Python binding suites
 r/test/mod_test_<module>.R               # R binding suites
 ```
@@ -157,6 +157,11 @@ unique within the suite.
   expressions; `--diagnostics` warns about temporaries.
 - **Assertions that can fail.** A size fixed at compile time, or `no NaN` after an exact
   comparison, checks nothing.
+- **Files in a scratch directory.** A case that reads or writes files creates a directory of its
+  own with `create_scratch_directory`, names its files with `scratch_file`, writes their exact
+  bytes with `write_scratch_file`, and ends with `remove_scratch_directory`, which fails if
+  anything unexpected is left (`test_framework/src/scratch_directory.F90`). The content of a file
+  a case reads is spelled out in the case, so its expected values can be read off it.
 
 ### Assertions
 

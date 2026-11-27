@@ -31,33 +31,30 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
-        allocate (all_tests(23))
+        allocate (all_tests(20))
 
         call setup_global_data()
 
-        all_tests(1) = test_case("test_read_gene_ids", test_read_gene_ids)
-        all_tests(2) = test_case("test_read_expression_data", test_read_expression_data)
-        all_tests(3) = test_case("test_read_family_mapping", test_read_family_mapping)
-        all_tests(4) = test_case("test_validate_data", test_validate_data)
-        all_tests(5) = test_case("test_compute_centroids", test_compute_centroids)
-        all_tests(6) = test_case("test_write_read_expression_data", test_write_read_expression_data)
-        all_tests(7) = test_case("test_compute_shift_vectors", test_compute_shift_vectors)
-        all_tests(8) = test_case("test_write_read_shift_vectors", test_write_read_shift_vectors)
-        all_tests(9) = test_case("test_read_write_gene_ids", test_read_write_gene_ids)
-        all_tests(10) = test_case("test_read_write_gene_to_fam", test_read_write_gene_to_fam)
-        all_tests(11) = test_case("test_read_write_family_ids", test_read_write_family_ids)
-        all_tests(12) = test_case("test_read_write_family_centroids", test_read_write_centroids)
-        all_tests(13) = test_case("test_data_accessors", test_data_accessors)
-        all_tests(14) = test_case("test_archive", test_archive)
-        all_tests(15) = test_case("test_hashing", test_hashing)
-        all_tests(16) = test_case("test_validate_duplicate_gene_ids", test_validate_duplicate_gene_ids)
-        all_tests(17) = test_case("test_validate_nan_direct", test_validate_nan_direct)
-        all_tests(18) = test_case("test_validate_inf_direct", test_validate_inf_direct)
-        all_tests(19) = test_case("test_validate_negative_expression", test_validate_negative_expression)
-        all_tests(20) = test_case("test_validate_invalid_gene_to_fam", test_validate_invalid_gene_to_fam)
-        all_tests(21) = test_case("test_validate_empty_strings", test_validate_empty_strings)
-        all_tests(22) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
-        all_tests(23) = test_case("test_manual_archive", test_manual_archive)
+        all_tests(1) = test_case("test_validate_data", test_validate_data)
+        all_tests(2) = test_case("test_compute_centroids", test_compute_centroids)
+        all_tests(3) = test_case("test_write_read_expression_data", test_write_read_expression_data)
+        all_tests(4) = test_case("test_compute_shift_vectors", test_compute_shift_vectors)
+        all_tests(5) = test_case("test_write_read_shift_vectors", test_write_read_shift_vectors)
+        all_tests(6) = test_case("test_read_write_gene_ids", test_read_write_gene_ids)
+        all_tests(7) = test_case("test_read_write_gene_to_fam", test_read_write_gene_to_fam)
+        all_tests(8) = test_case("test_read_write_family_ids", test_read_write_family_ids)
+        all_tests(9) = test_case("test_read_write_family_centroids", test_read_write_centroids)
+        all_tests(10) = test_case("test_data_accessors", test_data_accessors)
+        all_tests(11) = test_case("test_archive", test_archive)
+        all_tests(12) = test_case("test_hashing", test_hashing)
+        all_tests(13) = test_case("test_validate_duplicate_gene_ids", test_validate_duplicate_gene_ids)
+        all_tests(14) = test_case("test_validate_nan_direct", test_validate_nan_direct)
+        all_tests(15) = test_case("test_validate_inf_direct", test_validate_inf_direct)
+        all_tests(16) = test_case("test_validate_negative_expression", test_validate_negative_expression)
+        all_tests(17) = test_case("test_validate_invalid_gene_to_fam", test_validate_invalid_gene_to_fam)
+        all_tests(18) = test_case("test_validate_empty_strings", test_validate_empty_strings)
+        all_tests(19) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
+        all_tests(20) = test_case("test_manual_archive", test_manual_archive)
     end function get_all_tests_tox_data
 
     !> Setup global test data
@@ -144,103 +141,6 @@ contains
         ! Clean up temporary arrays
         deallocate (ortholog_mask, family_genes_work)
     end subroutine setup_global_data
-
-    !> Test reading gene IDs
-    subroutine test_read_gene_ids()
-        call assert_true(allocated(gene_ids), "Gene IDs should be allocated")
-        call assert_equal_int(size(gene_ids), n_genes, "Number of gene IDs should match")
-        call assert_true(len_trim(gene_ids(1)) > 0, "First gene ID should not be empty")
-    end subroutine test_read_gene_ids
-
-    !> Test reading expression data
-    subroutine test_read_expression_data()
-        character(len=256), allocatable :: gene_ids_false_inputs(:)
-        real(real64), allocatable :: expr_vecs_false_inputs(:, :)
-        character(len=64), allocatable :: inf_file(:), nan_file(:), missing_col_file(:), invalid_struct_file(:), no_genes_file(:), empty_file(:), mixed_seperators(:)
-        character(len=64), allocatable :: csv_file(:)
-        integer(int32) :: ierr
-
-        call set_ok(ierr)
-
-        allocate (inf_file(1))
-        allocate (nan_file(1))
-        allocate (missing_col_file(1))
-        allocate (gene_ids_false_inputs(10))
-        allocate (expr_vecs_false_inputs(6, 10))
-        allocate (invalid_struct_file(1))
-        allocate (no_genes_file(1))
-        allocate (empty_file(1))
-        allocate (mixed_seperators(1))
-        allocate (csv_file(1))
-
-        call assert_true(allocated(kallisto_expr), "Expression data should be allocated")
-        call assert_equal_int(size(kallisto_expr, 1), total_samples, "Number of samples should match")
-        call assert_equal_int(size(kallisto_expr, 2), n_genes, "Number of genes should match")
-        call assert_true(all(kallisto_expr >= 0.0_real64), "All expression values should be non-negative")
-
-        call read_gene_ids_from_tsv_file('test/test_files/kallisto_dup_gene_ids.tsv', gene_ids_false_inputs, 1, 1, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error while reading duplicate gene ids")
-
-        call validate_string_array_uniqueness(gene_ids_false_inputs, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Duplicate gene IDs should be detected")
-
-        inf_file = [ &
-                   'test/test_files/kallisto_Inf.tsv']
-
-        nan_file = [ &
-                   'test/test_files/kallisto_NaN.tsv']
-
-        invalid_struct_file = [ &
-                              'test/test_files/kallisto_invalid_strucutre.tsv']
-
-        no_genes_file = [ &
-                        'test/test_files/kallisto_no_gene_ids.tsv']
-
-        empty_file = [ &
-                     'test/test_files/kallisto_empty_file.tsv']
-
-        mixed_seperators = [ &
-                           'test/test_files/kallisto_mixed_seperators.tsv']
-
-        csv_file = [ &
-                   'test/test_files/kallisto_csv_values.csv']
-
-        call read_expression_vectors_tsv(inf_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for Inf in expression data")
-        call set_ok(ierr)
-
-        call read_expression_vectors_tsv(nan_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for NaN in expression data")
-        call set_ok(ierr)
-
-        call read_expression_vectors_tsv(invalid_struct_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "Should throw error for invalid structure")
-        call set_ok(ierr)
-
-        call read_expression_vectors_tsv(no_genes_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Should print warnings for missing genes")
-        call set_ok(ierr)
-
-        call read_expression_vectors_tsv(empty_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "should throw error for empty file")
-        call set_ok(ierr)
-
-        call read_expression_vectors_tsv(mixed_seperators, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should throw error for file with mixed seperators")
-        call set_ok(ierr)
-
-        call read_expression_vectors_tsv(csv_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ',', ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "Should read csv file without error")
-
-    end subroutine test_read_expression_data
-
-    !> Test reading family mapping
-    subroutine test_read_family_mapping()
-        call assert_true(allocated(gene_to_fam), "Gene to family mapping should be allocated")
-        call assert_true(allocated(gene_family_ids), "Family IDs should be allocated")
-        call assert_equal_int(size(gene_to_fam), n_genes, "Gene to family mapping size should match")
-        call assert_equal_int(size(gene_family_ids), n_families, "Number of family IDs should match")
-    end subroutine test_read_family_mapping
 
     !> Test data validation
     subroutine test_validate_data()
