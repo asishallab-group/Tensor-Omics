@@ -535,7 +535,8 @@ contains
     !> BUG (fails today): an empty cell does not count as a field, so the values right of it move
     !| one column left. Of a row "g1, 1, (empty), 3", columns 2 and 3 come back as 1 and 3; the
     !| 3 belongs to column 4. The reader has to refuse the row (the cell has no value, and TOX
-    !| takes no NaN); reading the neighbour's value with ERR_OK is wrong.
+    !| takes no NaN); reading the neighbour's value, or leaving the element alone, with ERR_OK is
+    !| wrong.
     subroutine test_read_expression_vectors_tsv_refuses_an_empty_cell()
         type(scratch_directory_type) :: scratch
         character(len=4) :: one_gene(1)
@@ -552,6 +553,8 @@ contains
         expression_vectors = UNWRITTEN
 
         call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        ! a refusal only: the cell has no value, so leaving its element alone with ERR_OK is wrong too
+        call assert_true(is_err(ierr), "test_read_expression_vectors_tsv_refuses_an_empty_cell: accepted with ERR_OK")
         call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 3.0_real64, &
                           "test_read_expression_vectors_tsv_refuses_an_empty_cell: column 4's value read as column 3's")
 
@@ -561,7 +564,7 @@ contains
     !> BUG (fails today): a value is read list-directed, which stops at a comma or a blank and
     !| takes a slash for "no value". So "0,25" (a decimal comma) reads as 0, and "/" leaves
     !| whatever the previous value was: here column 2's 1.5. The reader has to refuse a field it
-    !| does not read whole; returning 0 or 1.5 with ERR_OK is wrong.
+    !| does not read whole; any ERR_OK is wrong.
     subroutine test_read_expression_vectors_tsv_refuses_a_partial_number()
         type(scratch_directory_type) :: scratch
         character(len=4) :: one_gene(1)
@@ -577,12 +580,14 @@ contains
         call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB//"0,25"//LF)
         expression_vectors = UNWRITTEN
         call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_true(is_err(ierr), "test_read_expression_vectors_tsv_refuses_a_partial_number: 0,25 accepted with ERR_OK")
         call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 0.0_real64, &
                           "test_read_expression_vectors_tsv_refuses_a_partial_number: 0,25 read as 0")
 
         call write_scratch_file(trim(file_list(1)), "id"//TAB//"a"//TAB//"b"//LF//"g1"//TAB//"1.5"//TAB//"/"//LF)
         expression_vectors = UNWRITTEN
         call read_expression_vectors_tsv(file_list, one_gene, expression_vectors, 1, 1, value_cols, 1, ierr=ierr)
+        call assert_true(is_err(ierr), "test_read_expression_vectors_tsv_refuses_a_partial_number: / accepted with ERR_OK")
         call assert_false(is_ok(ierr) .and. expression_vectors(2, 1) == 1.5_real64, &
                           "test_read_expression_vectors_tsv_refuses_a_partial_number: / read as the previous value, 1.5")
 

@@ -14,7 +14,7 @@ module mod_test_tox_data_tools_fixtures
     !> The line ending of every file in this suite.
     character(len=1), parameter :: LF = char(10)
 
-    !> What an output holds before a call, so that an element the procedure never writes shows.
-    !| No expected value in this suite equals it.
+    !> What an output holds before a call, so that an element the procedure never writes shows:
+    !| an expected value equal to it says "left alone". No value in a file a case writes equals it.
     real(real64), parameter :: UNWRITTEN = -777.0_real64
 end module mod_test_tox_data_tools_fixtures
