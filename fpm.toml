@@ -34,7 +34,10 @@ diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-t
 default.linux.flags = "-fPIC"
 # nvfortran treats a backslash in a string as a C escape unless told otherwise; standard Fortran,
 # gfortran and ifx treat it as an ordinary character (`"\"` is one character long).
-default.nvfortran.flags = "-Mbackslash"
+# nvfortran flushes subnormal numbers to zero unless told otherwise, and then writes them as 0
+# (the JSON writer, f42_serde_json_serialize, would lose them); -Kieee -Mnoflushz keep them.
+# nvfortran 26.9 or later is required: 25.7 miscompiles the JSON writer's class(*) arguments.
+default.nvfortran.flags = "-Mbackslash -Kieee -Mnoflushz"
 
 # fpm links the root library against every package it knows, the test_framework dev-dependency
 # included and even without --tests (resolve_target_linking in fpm_targets.f90). Without these
