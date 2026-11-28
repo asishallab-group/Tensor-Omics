@@ -665,6 +665,44 @@ end do
 
 Avoid creating copies of input arrays. For large omics datasets (tens of thousands of genes, hundreds of tissues), an unexpected copy easily exceeds available memory. Design algorithms to work on slices and views of the original data.
 
+\subsection{No Array Temporaries}\label{sec:no-array-temporaries}
+
+In the hand-written library sources (the top-level \texttt{src/} outside \texttt{src/generated/},
+\texttt{DM\_} expressions included) every array value needs a home. An operation on arrays (an
+operator or an elemental function applied to an array) may stand only as the right side of an
+assignment, where each element goes straight into the left side: \texttt{y = 2*x},
+\texttt{bitmask = iand(bitmask, other)}. Everywhere else, write a loop, or call
+\texttt{all\_equal(array, value)}, \texttt{any\_below(array, bound)} or \texttt{any\_above(array, bound)}
+from \texttt{f42\_array\_checks\_impl} (\texttt{int32} and \texttt{real64}, rank 1 and 2, no NaN). So:
+\begin{itemize}
+  \item no array operation as an argument, of an intrinsic (\texttt{MASK=} included) or of any procedure,
+        and none in a specification expression: not \texttt{all(x == 0.0\_real64)},
+        \texttt{count(.not. mask)}, \texttt{maxval(x, mask=x > 0)}, \texttt{sum(x*w)} (that is
+        \texttt{dot\_product(x, w)});
+  \item no \texttt{where}, no \texttt{forall};
+  \item no array constructor and no array-valued intrinsic (\texttt{pack}, \texttt{reshape},
+        \texttt{transpose}, \texttt{matmul}, \texttt{spread}, \texttt{cshift}, a reduction with
+        \texttt{DIM=}), unless the source fixes its element count (\texttt{shape(a)}, \texttt{[n, m]});
+  \item no character elemental function of an array, such as \texttt{adjustl(names)}, even as the
+        right side of an assignment;
+  \item no vector subscript \texttt{x(idx)} as an argument; as a whole side of an assignment
+        (\texttt{y = x(idx)}, \texttt{x(idx) = 0}) it is allowed;
+  \item the left side's array appears on the right only as the same designator or a disjoint part
+        (\texttt{a(:, j) = a(:, k)}), never overlapping (\texttt{v(2:n) = v(1:n-1)}, \texttt{x = x(idx)}).
+\end{itemize}
+\begin{sloppypar}
+An intrinsic with a scalar result over a variable or a section stays: \texttt{all(mask)},
+\texttt{count(mask)}, \texttt{maxval(values(1:n))}, \texttt{norm2(a(:, j))}. A section that may not be
+contiguous (a row \texttt{a(i, :)}, \texttt{v(1::2)}, a pointer, any section of an assumed-shape array)
+is copied when it reaches an explicit-shape, assumed-size or \texttt{contiguous} dummy: pass it only to
+an assumed-shape one.
+\end{sloppypar}
+
+The \texttt{--diagnostics} build's \texttt{-Warray-temporaries} names every argument copy and most built
+arrays, but not operations inside intrinsics or \texttt{where}: no compiler builds those today, and the
+rule forbids them for their form. Scalar character temporaries (\texttt{trim}, \texttt{//}) are outside
+this rule; tests follow \texttt{test/readme.md}.
+
 \subsection{Logical Masks}
 
 A logical mask is a \texttt{logical} array with the same shape as the data it describes: \texttt{.true.} marks an element to include, \texttt{.false.} marks it to exclude. Passing a mask alongside the full array lets a routine include or exclude elements in place — with a plain \texttt{if (mask(...))} check — instead of first allocating a smaller array and copying the kept elements into it. This saves both the allocation and the copy, which matters at big scale.
@@ -846,12 +884,15 @@ If you need a compound structure that must cross the language boundary, decompos
 \section{The \texttt{f42\_utils} Utility Module}
 % =============================================================================
 
+\begin{sloppypar}
 \texttt{src/f42/utils/} contains general-purpose helper functions shared across the project, split
 by topic into \texttt{f42\_math\_impl}, \texttt{f42\_sort\_impl}, \texttt{f42\_random\_impl},
-\texttt{f42\_vector\_impl} and \texttt{f42\_stats\_impl}: \texttt{mean}, \texttt{std\_dev},
-\texttt{norm}, \texttt{clamp}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close},
-\texttt{logx}, \texttt{compute\_edf}, etc. \texttt{f42\_utils\_impl} re-exports all five, so one
-\texttt{use} reaches everything.
+\texttt{f42\_vector\_impl}, \texttt{f42\_stats\_impl} and \texttt{f42\_array\_checks\_impl}:
+\texttt{mean}, \texttt{std\_dev}, \texttt{norm}, \texttt{clamp}, \texttt{sort\_array},
+\texttt{angle\_between}, \texttt{is\_close}, \texttt{logx}, \texttt{compute\_edf}, \texttt{all\_equal},
+\texttt{any\_below}, etc. \texttt{f42\_utils\_impl} re-exports all six, so one \texttt{use} reaches
+everything.
+\end{sloppypar}
 
 \textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether
 the family already provides it. If you write a function that is genuinely reusable across modules,
@@ -1159,6 +1200,7 @@ Use this checklist when reviewing or submitting any Fortran code contribution:
   \item The implementation validates nothing and allocates nothing; where it does report a runtime error, \texttt{ierr} is initialised with \texttt{set\_ok(ierr)} and every failure path returns immediately.
   \item Every constraint is stated as a \texttt{DM\_} macro on the argument it constrains, and every work array is named \texttt{tmp\_}.
   \item No unexplained copies of large arrays.
+  \item Every array value has a home (Section~\ref{sec:no-array-temporaries}): no array operation as an argument, no \texttt{where}, no constructor with a run-time count.
   \item No derived types in anything that reaches C, Python or R.
   \item All utility functions are in the \texttt{f42\_utils} family (or re-use existing ones).
   \item FORD comments (\texttt{!>}, \texttt{!|}, \texttt{!!}) are present for the module and every public procedure, written as API prose — they are what Python and R users read.
