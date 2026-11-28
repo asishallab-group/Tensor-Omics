@@ -14,7 +14,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(28))
+    allocate(all_tests(29))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -44,6 +44,7 @@ contains
     all_tests(26) = test_case("test_family_scaling_fallback_returns_linear_scale", test_family_scaling_fallback_returns_linear_scale)
     all_tests(27) = test_case("test_family_scaling_degree_bounds", test_family_scaling_degree_bounds)
     all_tests(28) = test_case("test_loess_points_finite_on_every_exit", test_loess_points_finite_on_every_exit)
+    all_tests(29) = test_case("test_rdi_invalid_family_sorted_as_zero", test_rdi_invalid_family_sorted_as_zero)
 
   end function get_all_tests_get_outliers
 
@@ -802,6 +803,32 @@ contains
         "Negative distance with zero scaling gives RDI=0.0 (not outlier)")
 
   end subroutine test_negative_distances
+
+  !> A gene whose family index has no scaling factor gets the error RDI -1, and the copy to sort
+  !| holds 0 for it, so it sorts first. Genes 1 and 3 are in families 1 and 2 (factors 1 and 2),
+  !| gene 2 in family 5 of 2: rdi = (3/1, -1, 4/2) = (3, -1, 2), the copy (3, 0, 2), which the
+  !| indirect sort leaves in gene order and orders by perm = (2, 3, 1).
+  subroutine test_rdi_invalid_family_sorted_as_zero()
+    integer(int32), parameter :: n_genes = 3_int32
+    real(real64) :: distances(n_genes), dscale(2), rdi(n_genes), sorted_rdi(n_genes)
+    real(real64) :: expected_rdi(n_genes), expected_sorted(n_genes)
+    integer(int32) :: gene_to_fam(n_genes), perm(n_genes), expected_perm(n_genes), ierr
+
+    distances = [3.0_real64, 7.0_real64, 4.0_real64]
+    gene_to_fam = [1_int32, 5_int32, 2_int32]
+    dscale = [1.0_real64, 2.0_real64]
+    expected_rdi = [3.0_real64, -1.0_real64, 2.0_real64]
+    expected_sorted = [3.0_real64, 0.0_real64, 2.0_real64]
+    expected_perm = [2_int32, 3_int32, 1_int32]
+
+    call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, ierr)
+    call assert_equal_int(get_err_code(ierr), 0, "test_rdi_invalid_family_sorted_as_zero: ierr")
+    call assert_equal_array_real(rdi, expected_rdi, n_genes, 0.0_real64, &
+                                 "test_rdi_invalid_family_sorted_as_zero: rdi keeps -1 for gene 2")
+    call assert_equal_array_real(sorted_rdi, expected_sorted, n_genes, 0.0_real64, &
+                                 "test_rdi_invalid_family_sorted_as_zero: sorted_rdi holds 0 for gene 2")
+    call assert_equal_array_int(perm, expected_perm, n_genes, "test_rdi_invalid_family_sorted_as_zero: perm")
+  end subroutine test_rdi_invalid_family_sorted_as_zero
 
   !> Exhaustive: invalid family indices (should error 201).
   !> This test checks that if gene_to_fam contains invalid indices, error_code is 201 and dscale falls back to -1.0 for all families.
