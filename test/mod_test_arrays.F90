@@ -18,7 +18,7 @@ contains
 
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(28))
+        allocate (all_tests(29))
         all_tests(1) = test_case("test_integer_array_1d", test_integer_array_1d)
         all_tests(2) = test_case("test_integer_array_2d", test_integer_array_2d)
         all_tests(3) = test_case("test_integer_array_3d", test_integer_array_3d)
@@ -47,6 +47,7 @@ contains
         all_tests(26) = test_case("test_complex_array_3d", test_complex_array_3d)
         all_tests(27) = test_case("test_complex_array_4d", test_complex_array_4d)
         all_tests(28) = test_case("test_complex_array_5d", test_complex_array_5d)
+        all_tests(29) = test_case("test_integer_array_shape_mismatch", test_integer_array_shape_mismatch)
     end function get_all_tests_arrays
 
     ! ================================================================
@@ -208,6 +209,30 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_array_int(iarr, iarr2, size(iarr), "Mismatch")
     end subroutine test_integer_array_empty
+
+    !> A file is read only into an array of its own shape: a (2, 3) array refuses a (2, 4) target,
+    !| whose extents differ only past the first dimension, and a (3, 3) target, whose first extent
+    !| differs; a (2, 3) target reads it.
+    subroutine test_integer_array_shape_mismatch()
+        integer(int32) :: written(2, 3), same_shape(2, 3), more_columns(2, 4), more_rows(3, 3)
+        character(len=100) :: fname
+        integer(int32) :: ierr
+
+        written = reshape([1, 2, 3, 4, 5, 6], [2, 3])
+        fname = "iarr_shape_mismatch.test.bin"
+        call serialize_int_2d(written, fname, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_integer_array_shape_mismatch: serialize (2, 3)")
+
+        call deserialize_int_2d(more_columns, fname, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_DIM_MISMATCH, &
+                              "test_integer_array_shape_mismatch: (2, 3) into (2, 4)")
+        call deserialize_int_2d(more_rows, fname, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_DIM_MISMATCH, &
+                              "test_integer_array_shape_mismatch: (2, 3) into (3, 3)")
+        call deserialize_int_2d(same_shape, fname, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_integer_array_shape_mismatch: (2, 3) into (2, 3)")
+        call assert_equal_array_int(same_shape, written, size(written), "test_integer_array_shape_mismatch: values")
+    end subroutine test_integer_array_shape_mismatch
 
     ! ================================================================
     ! Real tests
