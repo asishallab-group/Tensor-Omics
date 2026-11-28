@@ -12,7 +12,7 @@
   },
   "k_means_clustering (call)": {
     "prefix": "tox:k_means_clustering",
-    "description": "1. Assigns each data point to one of `k` clusters whose centroid is clostest",
+    "description": "1. Assigns each data point to one of `k` clusters whose centroid is closest",
     "body": [
       "${1:result} <- k_means_clustering(",
       "  data_points = ${2:data_points},",

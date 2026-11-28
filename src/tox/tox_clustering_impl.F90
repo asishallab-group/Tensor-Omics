@@ -4,7 +4,8 @@
 !| (agglomerative) linkage clustering over a precomputed distance matrix.
 !|
 !| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
-!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| applies the same to whole time series, treating each sample's trajectory, over all its factors
+!| and timepoints, as one point.
 !| `linkage_clustering` takes the distances already computed and merges under the linkage
 !| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_impl
@@ -12,6 +13,8 @@ module tox_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
+    use f42_math_impl, only: scaling_exponent_for_largest, scaling_factors
+    use tox_errors, only: set_ok, set_err, ERR_NAN_INF
     M_IMPLICIT_NONE
 
     integer(int32), parameter :: METHOD_AVERAGE = 0_int32
@@ -30,8 +33,10 @@ contains
     !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
     !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
     !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
-    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
-    pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, max_iterations)
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question. The
+    !| distances and means are scaled as that procedure documents, with the same limits.
+    pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, &
+                                                         tmp_centroid_factors, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
             !! DM_MIN(1_int32)
@@ -50,7 +55,9 @@ contains
             !!
             !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last sample, or its starting centroid if it never had one.
         integer(int32), dimension(n_samples), intent(out) :: labels
             !! array of labels, one per sample, so the first label is the first sample's.
             !!
@@ -59,8 +66,14 @@ contains
             !! holds the number of samples having the respective label assigned
         real(real64), dimension(n_factors*n_timepoints, n_samples), intent(out) :: tmp_flattened_trajectories
             !! Work matrix holding each sample's trajectory as one column
+        real(real64), dimension(n_factors*n_timepoints, n_clusters), intent(out) :: tmp_centroid_factors
+            !! Work matrix: for each cluster and each entry of a flattened trajectory, the power of
+            !! two its values are summed with when the centroids are recomputed
         integer(int32), intent(in) :: max_iterations
-            !! number of maximum iterations of the clustering
+            !! number of maximum iterations of the clustering. Unlike
+            !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
+            !! 300, this one has to be given.
+            !! DM_MIN(1_int32)
 
         integer(int32) :: i_sample, i_time, i_factor
 
@@ -77,16 +90,34 @@ contains
         end do
 
         call k_means_clustering_impl(n_clusters, tmp_flattened_trajectories, n_samples, n_factors*n_timepoints, &
-                                     centroids, labels, label_counts, max_iterations)
+                                     centroids, labels, label_counts, tmp_centroid_factors, max_iterations)
     end subroutine cluster_factor_trajectories_k_means_impl
 
     !> summary: k-means clustering algorithm
     !| AUTHOR_FRANZ_ERIC_SILL
     !|
-    !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    !| 1. Assigns each data point to one of `k` clusters whose centroid is closest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
-    pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
+    !|
+    !| A point exactly as close to several centroids goes to the last of them, the one with the
+    !| highest cluster index.
+    !|
+    !| Each point's squared distances are compared scaled by a power of two picked for that point,
+    !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
+    !| centroid in that measure, and each coordinate of a centroid is the mean of its cluster's
+    !| values in that dimension, summed scaled by the power of two picked for that set. So for
+    !| finite input the squared distances that decide a label neither overflow nor vanish beside
+    !| larger values, and no centroid's sum overflows; only the distances to centroids far from a
+    !| point may overflow, and those centroids lose. One limit stays: where the build or the host
+    !| flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
+    !|
+    !| Ordinary data needs no scaling: its distances and means are computed with the plain
+    !| formulas' arithmetic, rounded as those formulas round in builds that do not contract a
+    !| multiplication and an addition into one fused operation (FMA); where a build does, a near
+    !| tie can fall the other way.
+    pure subroutine k_means_clustering_impl(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, &
+                                            tmp_centroid_factors, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
             !! DM_MIN(1_int32)
@@ -101,21 +132,31 @@ contains
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last point, or its starting centroid if it never had one.
         integer(int32), dimension(n_points), intent(out) :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             !!
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
             !! holds the number of points having the respective label assigned
+        real(real64), dimension(n_dims, n_clusters), intent(out) :: tmp_centroid_factors
+            !! Work matrix: for each cluster and dimension, the power of two the values are summed
+            !! with when the centroids are recomputed
         integer(int32), intent(in), optional :: max_iterations
-            !! number of maximum iterations of the clustering.
+            !! number of maximum iterations of the clustering. Defaults to 300, while
+            !! [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl(subroutine)]]
+            !! requires it.
+            !! DM_MIN(1_int32)
             !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
         integer(int32) :: label, iteration, i_point, max_iter
         logical(c_bool) :: labels_changed
+        real(real64) :: positive_infinity
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
+        positive_infinity = ieee_value(1.0_real64, ieee_positive_inf)
 
         ! initialize labels to a value outside the valid [1, n_clusters] range so the first
         ! comparison below never reads undefined intent(out) memory and always triggers
@@ -130,7 +171,8 @@ contains
             labels_changed = .false.
             label_counts = 0
             do i_point = 1, n_points
-                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
+                call k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, &
+                                                   positive_infinity, label)
 
                 label_counts(label) = label_counts(label) + 1
                 if (labels(i_point) /= label) then
@@ -142,12 +184,20 @@ contains
             ! if the assignments did not change, the clustering is done
             if (.not. labels_changed) exit
 
-            call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
+            call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, &
+                                                            label_counts, tmp_centroid_factors)
         end do
     end subroutine k_means_clustering_impl
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Helper to recompute the centroids in k-means by taking the mean of assigned points
-    pure subroutine k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
+    !| Helper to recompute the centroids in k-means by taking the mean of assigned points. Each
+    !| coordinate of a centroid is the mean of one set, its points' values in that dimension, and
+    !| is summed scaled by the power of two f42's rule picks for that set's largest magnitude, as
+    !| f42's mean sums a set: the mean of two values at `2**1023` is `2**1023`, and a coordinate of
+    !| small values beside a large one keeps its own. The factors are multiplied in, not applied
+    !| with scale(), which is a library call per element; values whose set needs no scaling are
+    !| summed exactly as before, in point order.
+    pure subroutine k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, &
+                                                               label_counts, factors)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
         integer(int32), intent(in) :: n_points
@@ -157,37 +207,63 @@ contains
         real(real64), dimension(n_dims, n_points), intent(in) :: data_points
             !! matrix with data points to cluster
         real(real64), dimension(n_dims, n_clusters), intent(inout) :: centroids
-            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-            !! The centroids should be unique. This is not checked in this routine.
-            !!
-            !! The final values will be the final centroids of the clusters
+            !! the centroids, recomputed in place; a cluster without points keeps its own
         integer(int32), dimension(n_points), intent(in) :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             !!
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(in) :: label_counts
             !! holds the number of points having the respective label assigned
+        real(real64), dimension(n_dims, n_clusters), intent(out) :: factors
+            !! work: first each set's largest magnitude, then the factor its values are summed with
 
         integer(int32) :: i_point, label, i_dim, i_cluster
+        real(real64) :: down, up
 
-        centroids = 0.0_real64
+        ! the largest magnitude of each (cluster, dimension) set
+        factors = 0.0_real64
         do i_point = 1, n_points
             label = labels(i_point)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, label, data_points)
-                centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)
+            do i_dim = 1, n_dims
+                factors(i_dim, label) = max(factors(i_dim, label), abs(data_points(i_dim, i_point)))
             end do
         end do
 
-        do concurrent (i_cluster = 1:n_clusters) shared(centroids, label_counts)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, i_cluster, label_counts)
-                centroids(i_dim, i_cluster) = centroids(i_dim, i_cluster)/real(max(label_counts(i_cluster), 1_int32), real64)
+        ! A cluster without points keeps the centroid it has: it has no mean, and any value made
+        ! up for it (the origin, say) would make the result depend on the coordinate system.
+        do i_cluster = 1, n_clusters
+            if (label_counts(i_cluster) == 0) cycle
+            do i_dim = 1, n_dims
+                ! one of the two factors is 1, so their product is the power of two itself
+                call scaling_factors(scaling_exponent_for_largest(factors(i_dim, i_cluster)), down, up)
+                factors(i_dim, i_cluster) = down*up
+                centroids(i_dim, i_cluster) = 0.0_real64
+            end do
+        end do
+
+        do i_point = 1, n_points
+            label = labels(i_point)
+            do i_dim = 1, n_dims
+                centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)*factors(i_dim, label)
+            end do
+        end do
+
+        do i_cluster = 1, n_clusters
+            if (label_counts(i_cluster) == 0) cycle
+            do i_dim = 1, n_dims
+                ! dividing by the factor brings the mean back to its values' scale; it is exact unless
+                ! the result is subnormal (a set scaled up by 2**600 whose mean lies below tiny), where
+                ! it rounds once
+                centroids(i_dim, i_cluster) = (centroids(i_dim, i_cluster)/real(label_counts(i_cluster), real64)) &
+                                              /factors(i_dim, i_cluster)
             end do
         end do
     end subroutine k_means_recompute_cluster_centroids_helper
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper routine to assign a cluster's label to a point in k-means
-    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)
+    pure subroutine k_means_assign_cluster_helper(i_point, n_clusters, data_points, n_points, n_dims, centroids, &
+                                                  positive_infinity, label)
         integer(int32), intent(in) :: i_point
             !! index of the point that should be assigned a cluster
         integer(int32), intent(in) :: n_clusters
@@ -203,21 +279,44 @@ contains
             !! The centroids should be unique. This is not checked in this routine.
             !!
             !! The final values will be the final centroids of the clusters
+        real(real64), intent(in) :: positive_infinity
+            !! +Inf, which the searches for the smallest values start from; passed in, as
+            !! `ieee_value` is a library call on ifx and this runs once per point
         integer(int32), intent(out) :: label
             !! assigned label
 
         integer(int32) :: i_cluster, i_dim
-        real(real64) :: squared_dist_to_centroid, smallest_squared_dist
+        real(real64) :: squared_dist_to_centroid, smallest_squared_dist, nearest_largest_difference, largest_difference
+        real(real64) :: down, up
+
+        ! The squared distances are compared scaled by a power of two picked for this point: from the
+        ! largest coordinate difference to the centroid whose largest difference is smallest (an
+        ! overflowing difference counts as +Inf). Scaled so, the nearest centroid's squares neither
+        ! overflow nor all vanish (where subnormals are flushed, differences below 2**-1022 still
+        ! read as 0); a farther one's may overflow, but it loses anyway. A common factor changes no
+        ! comparison, and an ordinary point gets the exponent 0, so the factors are 1 and the
+        ! expression is the plain one. The factors are multiplied in, not applied with scale(),
+        ! which is a library call per element.
+        nearest_largest_difference = positive_infinity
+        do i_cluster = 1, n_clusters
+            largest_difference = 0.0_real64
+            do i_dim = 1, n_dims
+                largest_difference = max(largest_difference, abs(data_points(i_dim, i_point) - centroids(i_dim, i_cluster)))
+            end do
+            nearest_largest_difference = min(nearest_largest_difference, largest_difference)
+        end do
+        call scaling_factors(scaling_exponent_for_largest(nearest_largest_difference), down, up)
 
         label = 0_int32
-        smallest_squared_dist = ieee_value(1.0_real64, ieee_positive_inf)
+        smallest_squared_dist = positive_infinity
 
         ! calculate distance to each centroid and assign to closest
         do i_cluster = 1, n_clusters
             squared_dist_to_centroid = 0.0_real64
             ! GFORTRAN BUG: do concurrent (i_dim = 1:n_dims) shared(data_points, i_point, i_cluster) reduce(+:squared_dist_to_centroid)
             do i_dim = 1, n_dims
-                squared_dist_to_centroid = squared_dist_to_centroid + (data_points(i_dim, i_point) - centroids(i_dim, i_cluster))**2
+                squared_dist_to_centroid = squared_dist_to_centroid &
+                                           + ((data_points(i_dim, i_point)*down - centroids(i_dim, i_cluster)*down)*up)**2
             end do
 
             if (squared_dist_to_centroid <= smallest_squared_dist) then
@@ -235,11 +334,27 @@ contains
     !| returning, on success or on error, so the matrix comes back unchanged. There is no
     !| need to copy it before calling.
     !| @endnote
-    pure subroutine linkage_clustering_impl(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
+    !|
+    !| UPGMA and WPGMA average each pair of distances scaled by the power of two f42's rule picks
+    !| for the larger, and Ward combines its three distances scaled for the largest of them, so for
+    !| finite input no update overflows, and small distances beside large ones keep their value.
+    !| Ward's distances can still exceed every input distance, as they grow with the clusters'
+    !| sizes: a merge whose true height passes `huge` stops the run with `ERR_NAN_INF`. When an
+    !| input exceeds `2**1007`, Ward keeps its scratch distances scaled by `2**-16`, so that one
+    !| passing `huge` on the way is still compared right; inputs below `2**-1006` are then
+    !| subnormal in that scratch, and read as 0 where subnormals are flushed.
+    !|
+    !| Every update is clamped where rounding can leave the range it lies in mathematically: an
+    !| average into the pair it averages, a Ward update to at least the merge's height. So the
+    !| heights never decrease, and equal distances average to themselves. Distances that need no
+    !| scaling get the plain formulas' arithmetic, rounded as those formulas round in builds that
+    !| do not contract a multiplication and an addition into one fused operation (FMA); a clamp
+    !| changes such a result only where that rounding left the range.
+    pure subroutine linkage_clustering_impl(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
-            !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+            !! symmetric distance matrix, holding the non-negative distances between points. Distance of X->X is always zero.
             !!
             !! @note
             !! The bottom triangle is used as scratch and restored from the top triangle before
@@ -250,35 +365,83 @@ contains
             !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
             !! distance-matrix naming convention in the generated wrapper.
         integer(int32), dimension(n_points - 1), intent(out) :: merge_i
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            !! the first of the two clusters merged at merge k: a positive label is a point, its
+            !! 1-based index; a negative label `-j` is the cluster made by merge j. Of the two, this
+            !! is the one whose lowest point index is the higher.
+            !!
+            !! The signs are the reverse of R's `hclust`, whose `merge` holds points as negative
+            !! and merged clusters as positive numbers.
         integer(int32), dimension(n_points - 1), intent(out) :: merge_j
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            !! the second of the two clusters merged at merge k, labelled as in `merge_i`: the one
+            !! whose lowest point index is the lower.
+            !!
+            !! Two pairs at the same distance merge in the order of their lowest point indices: the
+            !! pair whose lower cluster has the lowest point index first, then the one whose higher
+            !! cluster has.
         real(real64), dimension(n_points - 1), intent(out) :: heights
-            !! height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
+            !! the linkage distance at which merge k joins its two clusters, by the method's
+            !! criterion. The heights never decrease from one merge to the next.
         integer(int32), dimension(n_points - 1), intent(out) :: cluster_sizes
-            !! size of cluster at iteration k
+            !! number of points in the cluster made by merge k
         integer(int32), intent(in) :: method
             !! used algorithm
-            !! DM_MIN(0_int32)
-            !! DM_MAX(2_int32)
             !!
             !! | Method | Value |
             !! |--------|-------|
             !! | Average / UPGMA | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]] |
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward | [[tox_clustering_impl(module):METHOD_WARD(variable)]] |
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure: `ERR_NAN_INF` when a merge's true
+            !! height passes `huge`, which only Ward's can for finite input, as its distances grow
+            !! with the clusters' sizes. The merges before it are written and right, the later ones
+            !! are not written, and the matrix still comes back unchanged.
 
-        integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label
-        real(real64) :: dist_AB
+        integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label, storage_exponent, i_row, i_col
+        real(real64) :: dist_AB, height
+        logical(c_bool) :: found
+        ! Ward's distances grow with the clusters' sizes, but stay below sqrt(n/2) times the largest
+        ! input for n points, so below 2**15.5 times it for any int32 count: stored scaled by 2**-16,
+        ! no Ward distance of an input up to huge can pass huge in the scratch triangle
+        real(real64), parameter :: LARGEST_STORED_UNSCALED = 2.0_real64**1007
+        integer(int32), parameter :: WARD_STORAGE_EXPONENT = -16_int32
 
         !TODO optimize: get_min_distance_indices_helper does a full O(n^2) scan of the lower triangle on every
         !               one of the n-1 merge iterations, making this O(n^3) overall. Classic agglomerative
         !               clustering can be done in O(n^2) total with the nearest-neighbor-chain algorithm, which
         !               would matter a lot for larger n_points.
-        do i = 1, n_points - 1
-            call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB)
+        ! The scratch triangle holds Ward's distances scaled by 2**WARD_STORAGE_EXPONENT when an
+        ! input exceeds 2**1007, so that a distance whose true value passes huge on the way, and
+        ! may come back below it once more points join, stays finite and comparable; +Inf remains
+        ! the marker of a retired entry alone. Every height is scaled back as it is written.
+        storage_exponent = 0_int32
+        if (method == METHOD_WARD) then
+            if (maxval(distances) > LARGEST_STORED_UNSCALED) storage_exponent = WARD_STORAGE_EXPONENT
+        end if
+        if (storage_exponent /= 0_int32) then
+            do i_col = 1, n_points - 1
+                do i_row = i_col + 1, n_points
+                    distances(i_row, i_col) = scale(distances(i_row, i_col), storage_exponent)
+                end do
+            end do
+        end if
 
-            heights(i) = dist_AB
+        call set_ok(ierr)
+        do i = 1, n_points - 1
+            call get_min_distance_indices_helper(distances, n_points, idx_A, idx_B, dist_AB, found)
+            ! +Inf marks a retired entry, so a merge distance that passed huge cannot be told from
+            ! one; with no entry below it the merge is not found
+            if (.not. found) then
+                call set_err(ierr, ERR_NAN_INF)
+                exit
+            end if
+            ! a merge whose true height passes huge cannot be written; the merges before it are right
+            height = scale(dist_AB, -storage_exponent)
+            if (height > huge(height)) then
+                call set_err(ierr, ERR_NAN_INF)
+                exit
+            end if
+            heights(i) = height
 
             ! Get Weight and cluster index/label
             call get_cluster_data_linkage_helper(distances, n_points, cluster_sizes, idx_B, size_B, cluster_label)
@@ -294,7 +457,8 @@ contains
             case (METHOD_WEIGHTED)
                 call merge_distances_xPGMA_linkage_helper(distances, n_points, idx_A, idx_B, 1_int32, 1_int32, i)
             case (METHOD_WARD)
-                call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, dist_AB)
+                call merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, i, cluster_sizes, &
+                                                         dist_AB)
             end select
         end do
 
@@ -369,13 +533,11 @@ contains
             !! iteration of current merge
 
         integer(int32) :: i_node
-        real(real64) :: new_dist, size_AB_real, new_dist_part_AC, new_dist_part_BC
 
         ! Merge distances
         ! Update merged nodes with arithmetic mean distances
         ! Use column index for merged distances -> fill idx_A with infinity values
         ! update bottom triangle
-        size_AB_real = real(size_B + size_A, real64)
         ! Lance-Williams update formula for UPGMA/WPGMA: new d(AB,C) = (size_A*d(A,C) + size_B*d(B,C)) / (size_A+size_B).
         ! For WPGMA (METHOD_WEIGHTED) the caller passes size_A=size_B=1 instead of the true cluster
         ! sizes, which reduces this to the unweighted average (d(A,C)+d(B,C))/2, giving every
@@ -384,24 +546,15 @@ contains
             if (distances(i_node, i_node) >= 0.0_real64) then
                 ! i_node < idx_B < idx_A -> fill rows in both
                 if (i_node < idx_B) then
-                    new_dist_part_AC = distances(idx_A, i_node)*real(size_A, real64)
-                    new_dist_part_BC = distances(idx_B, i_node)*real(size_B, real64)
-                    new_dist = (new_dist_part_AC + new_dist_part_BC)/size_AB_real
-                    distances(idx_B, i_node) = new_dist
+                    distances(idx_B, i_node) = average_linkage_update_helper(distances(idx_A, i_node), distances(idx_B, i_node), size_A, size_B)
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
-                    new_dist_part_AC = distances(idx_A, i_node)*real(size_A, real64)
-                    new_dist_part_BC = distances(i_node, idx_B)*real(size_B, real64)
-                    new_dist = (new_dist_part_AC + new_dist_part_BC)/size_AB_real
-                    distances(i_node, idx_B) = new_dist
+                    distances(i_node, idx_B) = average_linkage_update_helper(distances(idx_A, i_node), distances(i_node, idx_B), size_A, size_B)
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
-                    new_dist_part_AC = distances(i_node, idx_A)*real(size_A, real64)
-                    new_dist_part_BC = distances(i_node, idx_B)*real(size_B, real64)
-                    new_dist = (new_dist_part_AC + new_dist_part_BC)/size_AB_real
-                    distances(i_node, idx_B) = new_dist
+                    distances(i_node, idx_B) = average_linkage_update_helper(distances(i_node, idx_A), distances(i_node, idx_B), size_A, size_B)
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
             end if
@@ -411,8 +564,40 @@ contains
     end subroutine merge_distances_xPGMA_linkage_helper
 
     !> AUTHOR_FRANZ_ERIC_SILL
+    !| Helper for the *PGMA algorithms: the Lance-Williams update of one distance,
+    !| `(size_A*d(A,C) + size_B*d(B,C))/(size_A + size_B)`. The two distances are scaled by the
+    !| power of two f42's rule picks for the larger of them before they are weighted, so the sum
+    !| cannot overflow, and the result is scaled back. The weighted mean lies between the two
+    !| distances, and is clamped there, as rounding can land it just outside: so two equal distances
+    !| average to themselves, and, as both are at least the merge's height, no later height is
+    !| lower than this merge's. Distances that need no scaling get the exponent 0 and the
+    !| multiply-first formula as it always was.
+    pure real(real64) function average_linkage_update_helper(dist_AC, dist_BC, size_A, size_B) result(new_dist)
+        real(real64), intent(in) :: dist_AC
+            !! distance from cluster A to the other cluster C
+        real(real64), intent(in) :: dist_BC
+            !! distance from cluster B to C
+        integer(int32), intent(in) :: size_A
+            !! weight of A: its size for UPGMA, 1 for WPGMA
+        integer(int32), intent(in) :: size_B
+            !! weight of B: its size for UPGMA, 1 for WPGMA
+
+        integer(int32) :: exponent
+        real(real64) :: weighted_AC, weighted_BC
+
+        exponent = scaling_exponent_for_largest(max(dist_AC, dist_BC))
+        ! in separate statements, as the formula always was: a compiler that fuses a multiplication
+        ! and an addition within one expression (nvfortran does, even at -O0) then rounds as before
+        weighted_AC = scale(dist_AC, exponent)*real(size_A, real64)
+        weighted_BC = scale(dist_BC, exponent)*real(size_B, real64)
+        new_dist = scale((weighted_AC + weighted_BC)/real(size_A + size_B, real64), -exponent)
+        new_dist = min(max(new_dist, min(dist_AC, dist_BC)), max(dist_AC, dist_BC))
+    end function average_linkage_update_helper
+
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper for ward algorithm for updating the distance matrix on merge of two clusters
-    pure subroutine merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, cluster_sizes, dist_AB)
+    pure subroutine merge_distances_ward_linkage_helper(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, cluster_sizes, &
+                                                        dist_AB)
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         real(real64), dimension(n_points, n_points), intent(inout) :: distances
@@ -432,7 +617,7 @@ contains
         real(real64), intent(in) :: dist_AB
             !! distance between cluster A and B
 
-        integer(int32) :: i_node, size_C, cluster_label_C
+        integer(int32) :: i_node, size_C, cluster_label_C, exponent
         real(real64) :: new_dist, new_dist_part_AC, new_dist_part_BC, new_dist_part_AB, size_AC_real, size_BC_real, size_ABC_real
 
         ! Merge distances
@@ -450,27 +635,38 @@ contains
                 size_AC_real = real(size_A + size_C, real64)
                 size_BC_real = real(size_B + size_C, real64)
                 size_ABC_real = real(size_A + size_B + size_C, real64)
-                new_dist_part_AB = dist_AB**2 * (real(size_C, real64)/size_ABC_real)
 
                 ! i_node < idx_B < idx_A -> fill rows in both
                 if (i_node < idx_B) then
-                    new_dist_part_AC = distances(idx_A, i_node)**2 * (size_AC_real/size_ABC_real)
-                    new_dist_part_BC = distances(idx_B, i_node)**2 * (size_BC_real/size_ABC_real)
-                    new_dist = sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB)
+                    ! scaled for the three distances this update combines
+                    exponent = scaling_exponent_for_largest(max(distances(idx_A, i_node), distances(idx_B, i_node), dist_AB))
+                    new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
+                    new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
+                    new_dist_part_BC = scale(distances(idx_B, i_node), exponent)**2*(size_BC_real/size_ABC_real)
+                    ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
+                    new_dist = max(scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent), dist_AB)
                     distances(idx_B, i_node) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B <= i_node < idx_A -> fill col of idx_B, row of idx_A
                 else if (i_node < idx_A) then
-                    new_dist_part_AC = distances(idx_A, i_node)**2 * (size_AC_real/size_ABC_real)
-                    new_dist_part_BC = distances(i_node, idx_B)**2 * (size_BC_real/size_ABC_real)
-                    new_dist = sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB)
+                    ! scaled for the three distances this update combines
+                    exponent = scaling_exponent_for_largest(max(distances(idx_A, i_node), distances(i_node, idx_B), dist_AB))
+                    new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
+                    new_dist_part_AC = scale(distances(idx_A, i_node), exponent)**2*(size_AC_real/size_ABC_real)
+                    new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
+                    ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
+                    new_dist = max(scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent), dist_AB)
                     distances(i_node, idx_B) = new_dist
                     distances(idx_A, i_node) = ieee_value(1.0_real64, ieee_positive_inf)
                     ! idx_B < idx_A < i_node -> fill columns in both
                 else if (i_node > idx_A) then
-                    new_dist_part_AC = distances(i_node, idx_A)**2 * (size_AC_real/size_ABC_real)
-                    new_dist_part_BC = distances(i_node, idx_B)**2 * (size_BC_real/size_ABC_real)
-                    new_dist = sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB)
+                    ! scaled for the three distances this update combines
+                    exponent = scaling_exponent_for_largest(max(distances(i_node, idx_A), distances(i_node, idx_B), dist_AB))
+                    new_dist_part_AB = scale(dist_AB, exponent)**2*(real(size_C, real64)/size_ABC_real)
+                    new_dist_part_AC = scale(distances(i_node, idx_A), exponent)**2*(size_AC_real/size_ABC_real)
+                    new_dist_part_BC = scale(distances(i_node, idx_B), exponent)**2*(size_BC_real/size_ABC_real)
+                    ! at least dist_AB, as d(A,C) and d(B,C) are; rounding can land it below
+                    new_dist = max(scale(sqrt(new_dist_part_AC + new_dist_part_BC - new_dist_part_AB), -exponent), dist_AB)
                     distances(i_node, idx_B) = new_dist
                     ! don't fill idx_A with infinity, as whole column will be marked inactive
                 end if
@@ -507,7 +703,7 @@ contains
     !| - Ignores columns with self-distance (i,i)<0
     !| - Searches in bottom triangle (excluding self-distance (i, i))
     !| - bottom triangle -> `row_idx > col_idx`
-    pure subroutine get_min_distance_indices_helper(distances, n, row_idx, col_idx, min_dist)
+    pure subroutine get_min_distance_indices_helper(distances, n, row_idx, col_idx, min_dist, found)
         integer(int32), intent(in) :: n
             !! number of rows and columns of square matrix `distances`
         real(real64), dimension(n, n), intent(in) :: distances
@@ -518,10 +714,14 @@ contains
             !! column index of min distance in `distances`
         real(real64), intent(out) :: min_dist
             !! min distance
+        logical(c_bool), intent(out) :: found
+            !! whether an entry below +Inf was found; if not, `row_idx` and `col_idx` are 0
 
         integer(int32) :: i_row, i_col
 
         min_dist = ieee_value(1.0_real64, ieee_positive_inf)
+        row_idx = 0_int32
+        col_idx = 0_int32
 
         do i_col = 1, n - 1
             if (distances(i_col, i_col) >= 0.0_real64) then
@@ -534,5 +734,6 @@ contains
                 end do
             end if
         end do
+        found = row_idx /= 0_int32
     end subroutine get_min_distance_indices_helper
 end module tox_clustering_impl

@@ -6,7 +6,8 @@
 !| (agglomerative) linkage clustering over a precomputed distance matrix.
 !|
 !| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
-!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| applies the same to whole time series, treating each sample's trajectory, over all its factors
+!| and timepoints, as one point.
 !| `linkage_clustering` takes the distances already computed and merges under the linkage
 !| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_c
@@ -20,6 +21,7 @@ module tox_clustering_c
     public :: cluster_factor_trajectories_k_means_c
     public :: cluster_factor_trajectories_k_means_expert_c
     public :: k_means_clustering_c
+    public :: k_means_clustering_expert_c
     public :: linkage_clustering_c
 
 contains
@@ -29,7 +31,8 @@ contains
     !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
     !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
     !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
-    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question. The
+    !| distances and means are scaled as that procedure documents, with the same limits.
     subroutine cluster_factor_trajectories_k_means_c(&
             n_clusters,&
             trajectories,&
@@ -65,7 +68,9 @@ contains
             !!
             !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last sample, or its starting centroid if it never had one.
         integer(c_int), dimension(n_samples), intent(out), target :: labels
             !! array of labels, one per sample, so the first label is the first sample's.
             !!
@@ -73,7 +78,10 @@ contains
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
             !! holds the number of samples having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering
+            !! number of maximum iterations of the clustering. Unlike
+            !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
+            !! 300, this one has to be given.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -113,7 +121,8 @@ contains
     !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
     !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
     !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
-    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question. The
+    !| distances and means are scaled as that procedure documents, with the same limits.
     subroutine cluster_factor_trajectories_k_means_expert_c(&
             n_clusters,&
             trajectories,&
@@ -125,6 +134,7 @@ contains
             labels,&
             label_counts,&
             tmp_flattened_trajectories,&
+            tmp_centroid_factors,&
             max_iterations,&
             ierr&
         ) bind(C, name="cluster_factor_trajectories_k_means_expert_c")
@@ -150,7 +160,9 @@ contains
             !!
             !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without samples (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last sample, or its starting centroid if it never had one.
         integer(c_int), dimension(n_samples), intent(out), target :: labels
             !! array of labels, one per sample, so the first label is the first sample's.
             !!
@@ -159,8 +171,14 @@ contains
             !! holds the number of samples having the respective label assigned
         real(c_double), dimension(n_factors*n_timepoints, n_samples), intent(out), target :: tmp_flattened_trajectories
             !! Work matrix holding each sample's trajectory as one column
+        real(c_double), dimension(n_factors*n_timepoints, n_clusters), intent(out), target :: tmp_centroid_factors
+            !! Work matrix: for each cluster and each entry of a flattened trajectory, the power of
+            !! two its values are summed with when the centroids are recomputed
         integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering
+            !! number of maximum iterations of the clustering. Unlike
+            !! [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]], which defaults to
+            !! 300, this one has to be given.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -177,6 +195,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(labels, n_samples)
         M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
         M_CHECK_ARRAY_NON_NULL(tmp_flattened_trajectories, (n_factors*n_timepoints) * n_samples)
+        M_CHECK_ARRAY_NON_NULL(tmp_centroid_factors, (n_factors*n_timepoints) * n_clusters)
         if (n_centroids_elements_dim_1 /= n_factors*n_timepoints) then
             call set_err(ierr, ERR_SIZE_MISMATCH, 6_int32)
             return
@@ -192,15 +211,33 @@ contains
             labels = labels,&
             label_counts = label_counts,&
             tmp_flattened_trajectories = tmp_flattened_trajectories,&
+            tmp_centroid_factors = tmp_centroid_factors,&
             max_iterations = max_iterations,&
             ierr = ierr&
         )
     end subroutine cluster_factor_trajectories_k_means_expert_c
 
     !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering(subroutine)]]
-    !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    !| 1. Assigns each data point to one of `k` clusters whose centroid is closest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
+    !|
+    !| A point exactly as close to several centroids goes to the last of them, the one with the
+    !| highest cluster index.
+    !|
+    !| Each point's squared distances are compared scaled by a power of two picked for that point,
+    !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
+    !| centroid in that measure, and each coordinate of a centroid is the mean of its cluster's
+    !| values in that dimension, summed scaled by the power of two picked for that set. So for
+    !| finite input the squared distances that decide a label neither overflow nor vanish beside
+    !| larger values, and no centroid's sum overflows; only the distances to centroids far from a
+    !| point may overflow, and those centroids lose. One limit stays: where the build or the host
+    !| flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
+    !|
+    !| Ordinary data needs no scaling: its distances and means are computed with the plain
+    !| formulas' arithmetic, rounded as those formulas round in builds that do not contract a
+    !| multiplication and an addition into one fused operation (FMA); where a build does, a near
+    !| tie can fall the other way.
     subroutine k_means_clustering_c(&
             n_clusters,&
             data_points,&
@@ -228,7 +265,9 @@ contains
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
-            !! The final values will be the final centroids of the clusters
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last point, or its starting centroid if it never had one.
         integer(c_int), dimension(n_points), intent(out), target :: labels
             !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
             !!
@@ -236,7 +275,10 @@ contains
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
             !! holds the number of points having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
-            !! number of maximum iterations of the clustering.
+            !! number of maximum iterations of the clustering. Defaults to 300, while
+            !! [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl(subroutine)]]
+            !! requires it.
+            !! The minimum valid value is `1_int32`.
             !! The default value is `300_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -265,12 +307,124 @@ contains
         )
     end subroutine k_means_clustering_c
 
+    !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering_expert(subroutine)]]
+    !| 1. Assigns each data point to one of `k` clusters whose centroid is closest
+    !| 2. Recalculates the centroids using the mean of its assigned points
+    !| 3. repeat 1-2 until assignment remains unchanged
+    !|
+    !| A point exactly as close to several centroids goes to the last of them, the one with the
+    !| highest cluster index.
+    !|
+    !| Each point's squared distances are compared scaled by a power of two picked for that point,
+    !| by f42's rule for sums of squares, from its largest coordinate difference to the nearest
+    !| centroid in that measure, and each coordinate of a centroid is the mean of its cluster's
+    !| values in that dimension, summed scaled by the power of two picked for that set. So for
+    !| finite input the squared distances that decide a label neither overflow nor vanish beside
+    !| larger values, and no centroid's sum overflows; only the distances to centroids far from a
+    !| point may overflow, and those centroids lose. One limit stays: where the build or the host
+    !| flushes subnormal numbers to zero, coordinates closer than `2**-1022` read as equal.
+    !|
+    !| Ordinary data needs no scaling: its distances and means are computed with the plain
+    !| formulas' arithmetic, rounded as those formulas round in builds that do not contract a
+    !| multiplication and an addition into one fused operation (FMA); where a build does, a near
+    !| tie can fall the other way.
+    subroutine k_means_clustering_expert_c(&
+            n_clusters,&
+            data_points,&
+            n_points,&
+            n_dims,&
+            centroids,&
+            labels,&
+            label_counts,&
+            tmp_centroid_factors,&
+            max_iterations,&
+            ierr&
+        ) bind(C, name="k_means_clustering_expert_c")
+        use tox_clustering, only: k_means_clustering_expert
+
+        integer(c_int), intent(in), target :: n_clusters
+            !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_points`.
+        integer(c_int), intent(in), target :: n_points
+            !! number of points to cluster
+        integer(c_int), intent(in), target :: n_dims
+            !! number of elements a point has
+        real(c_double), dimension(n_dims, n_points), intent(in), target :: data_points
+            !! matrix with data points to cluster
+        real(c_double), dimension(n_dims, n_clusters), intent(inout), target :: centroids
+            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+            !! The centroids should be unique. This is not checked in this routine.
+            !!
+            !! The final values will be the final centroids of the clusters. A cluster that ends up
+            !! without points (its `label_counts` is 0) keeps the centroid it had when it lost its
+            !! last point, or its starting centroid if it never had one.
+        integer(c_int), dimension(n_points), intent(out), target :: labels
+            !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+            !!
+            !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
+        integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
+            !! holds the number of points having the respective label assigned
+        real(c_double), dimension(n_dims, n_clusters), intent(out), target :: tmp_centroid_factors
+            !! Work matrix: for each cluster and dimension, the power of two the values are summed
+            !! with when the centroids are recomputed
+        integer(c_int), intent(in), target :: max_iterations
+            !! number of maximum iterations of the clustering. Defaults to 300, while
+            !! [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl(subroutine)]]
+            !! requires it.
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `300_int32`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_clusters)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_dims)
+        M_CHECK_NON_NULL(max_iterations)
+        M_CHECK_ARRAY_NON_NULL(data_points, n_dims * n_points)
+        M_CHECK_ARRAY_NON_NULL(centroids, n_dims * n_clusters)
+        M_CHECK_ARRAY_NON_NULL(labels, n_points)
+        M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
+        M_CHECK_ARRAY_NON_NULL(tmp_centroid_factors, n_dims * n_clusters)
+
+        call k_means_clustering_expert(&
+            n_clusters = n_clusters,&
+            data_points = data_points,&
+            n_points = n_points,&
+            n_dims = n_dims,&
+            centroids = centroids,&
+            labels = labels,&
+            label_counts = label_counts,&
+            tmp_centroid_factors = tmp_centroid_factors,&
+            max_iterations = max_iterations,&
+            ierr = ierr&
+        )
+    end subroutine k_means_clustering_expert_c
+
     !> summary: C-wrapper for [[tox_clustering(module):linkage_clustering(subroutine)]]
     !| @note
     !| The bottom triangle is used as scratch and restored from the top triangle before
     !| returning, on success or on error, so the matrix comes back unchanged. There is no
     !| need to copy it before calling.
     !| @endnote
+    !|
+    !| UPGMA and WPGMA average each pair of distances scaled by the power of two f42's rule picks
+    !| for the larger, and Ward combines its three distances scaled for the largest of them, so for
+    !| finite input no update overflows, and small distances beside large ones keep their value.
+    !| Ward's distances can still exceed every input distance, as they grow with the clusters'
+    !| sizes: a merge whose true height passes `huge` stops the run with `ERR_NAN_INF`. When an
+    !| input exceeds `2**1007`, Ward keeps its scratch distances scaled by `2**-16`, so that one
+    !| passing `huge` on the way is still compared right; inputs below `2**-1006` are then
+    !| subnormal in that scratch, and read as 0 where subnormals are flushed.
+    !|
+    !| Every update is clamped where rounding can leave the range it lies in mathematically: an
+    !| average into the pair it averages, a Ward update to at least the merge's height. So the
+    !| heights never decrease, and equal distances average to themselves. Distances that need no
+    !| scaling get the plain formulas' arithmetic, rounded as those formulas round in builds that
+    !| do not contract a multiplication and an addition into one fused operation (FMA); a clamp
+    !| changes such a result only where that rounding left the range.
     subroutine linkage_clustering_c(&
             distances,&
             n_points,&
@@ -287,7 +441,7 @@ contains
         integer(c_int), intent(in), target :: n_points
             !! number of points to cluster
         real(c_double), dimension(n_points, n_points), intent(inout), target :: distances
-            !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+            !! symmetric distance matrix, holding the non-negative distances between points. Distance of X->X is always zero.
             !!
             !! @note
             !! The bottom triangle is used as scratch and restored from the top triangle before
@@ -298,17 +452,26 @@ contains
             !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
             !! distance-matrix naming convention in the generated wrapper.
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_i
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            !! the first of the two clusters merged at merge k: a positive label is a point, its
+            !! 1-based index; a negative label `-j` is the cluster made by merge j. Of the two, this
+            !! is the one whose lowest point index is the higher.
+            !!
+            !! The signs are the reverse of R's `hclust`, whose `merge` holds points as negative
+            !! and merged clusters as positive numbers.
         integer(c_int), dimension(n_points - 1), intent(out), target :: merge_j
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
+            !! the second of the two clusters merged at merge k, labelled as in `merge_i`: the one
+            !! whose lowest point index is the lower.
+            !!
+            !! Two pairs at the same distance merge in the order of their lowest point indices: the
+            !! pair whose lower cluster has the lowest point index first, then the one whose higher
+            !! cluster has.
         real(c_double), dimension(n_points - 1), intent(out), target :: heights
-            !! height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
+            !! the linkage distance at which merge k joins its two clusters, by the method's
+            !! criterion. The heights never decrease from one merge to the next.
         integer(c_int), dimension(n_points - 1), intent(out), target :: cluster_sizes
-            !! size of cluster at iteration k
+            !! number of points in the cluster made by merge k
         character(len=1, kind=c_char), dimension(8), intent(in), target :: method
             !! used algorithm
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `2_int32`.
             !!
             !! | Method           | Value                                                     |
             !! |------------------|-----------------------------------------------------------|
@@ -316,7 +479,10 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code; zero on success, non-zero on failure: `ERR_NAN_INF` when a merge's true
+            !! height passes `huge`, which only Ward's can for finite input, as its distances grow
+            !! with the clusters' sizes. The merges before it are written and right, the later ones
+            !! are not written, and the matrix still comes back unchanged.
         integer(int32) :: method_mode_f
 
         M_CHECK_IERR_NON_NULL

@@ -1,0 +1,784 @@
+!> The `linkage_clustering` cases: for each of the three methods (average/UPGMA, weighted/WPGMA,
+!| Ward), the merges, heights and cluster sizes of matrices whose merge order is derived by hand;
+!| equal distances, two points, one point, duplicate points, all points equal, many points; the
+!| range of `method`, the dimension checks, the distance-matrix checks and the NaN/Inf checks.
+!| The matrix must come back unchanged every time, as the documentation promises.
+!|
+!| A merge is checked as the pair {smaller label, larger label}: positive labels are points,
+!| `-k` the cluster made by merge `k`. Which of the two goes into `merge_i` -- the cluster whose
+!| lowest point index is the higher -- is checked once, in `test_linkage_clustering_merge_order`.
+!| Where a case has ties, the merges check the documented tie rule: tied pairs merge in the order
+!| of the lower cluster's lowest point index, then the higher cluster's.
+!|
+!| UPGMA and WPGMA average distances that are integers or halves, so their heights are exact and
+!| compared with tolerance 0. Ward's update takes square roots, so its heights are compared within
+!| WARD_RTOL; the exact values are closed forms derived by hand.
+module mod_test_linkage_clustering
+    use asserts
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use tox_clustering, only: linkage_clustering
+    ! the method codes are the implementation's; the wrapper does not re-export them
+    use tox_clustering_impl, only: METHOD_AVERAGE, METHOD_WEIGHTED, METHOD_WARD
+    use tox_errors
+    use test_suite, only: test_case
+    use mod_test_tox_clustering_fixtures, only: UNWRITTEN_INT, UNWRITTEN_REAL, N_NON_FINITE, NON_FINITE_NAMES, &
+                                                non_finite_value
+    implicit none
+    private
+    public :: get_all_tests_linkage_clustering
+
+    !> Ward's heights are square roots of Lance-Williams updates whose order of operations is the
+    !| implementation's, not the contract's, so each rounds differently from the closed form; a few
+    !| ulps, relative.
+    real(real64), parameter :: WARD_RTOL = 4*epsilon(1.0_real64)
+
+    integer(int32), parameter :: N_METHODS = 3
+    integer(int32), parameter :: METHODS(N_METHODS) = [METHOD_AVERAGE, METHOD_WEIGHTED, METHOD_WARD]
+    character(*), parameter :: METHOD_NAMES(N_METHODS) = ["UPGMA", "WPGMA", "Ward "]
+
+    !> The example of https://en.wikipedia.org/wiki/UPGMA (and /WPGMA), points a..e as 1..5.
+    integer(int32), parameter :: WIKI_N = 5
+    real(real64), parameter :: WIKI_DISTANCES(WIKI_N, WIKI_N) = reshape([ &
+                               0.0_real64, 17.0_real64, 21.0_real64, 31.0_real64, 23.0_real64, &
+                               17.0_real64, 0.0_real64, 30.0_real64, 34.0_real64, 21.0_real64, &
+                               21.0_real64, 30.0_real64, 0.0_real64, 28.0_real64, 39.0_real64, &
+                               31.0_real64, 34.0_real64, 28.0_real64, 0.0_real64, 43.0_real64, &
+                               23.0_real64, 21.0_real64, 39.0_real64, 43.0_real64, 0.0_real64], [WIKI_N, WIKI_N])
+
+    !> Six points on a line, at 0, 10, 40, 11, 60, 62: the distances are the differences. The
+    !| first merge, 2 with 4, has point 3 between them and points 5 and 6 after them, so it
+    !| updates rows before, between and after the merged pair.
+    integer(int32), parameter :: LINE_N = 6
+    real(real64), parameter :: LINE_POSITIONS(LINE_N) = [0.0_real64, 10.0_real64, 40.0_real64, 11.0_real64, &
+                                                         60.0_real64, 62.0_real64]
+
+contains
+
+    !> Every case of `linkage_clustering`.
+    function get_all_tests_linkage_clustering() result(all_tests)
+        type(test_case), allocatable :: all_tests(:)
+
+        allocate (all_tests(24))
+        all_tests(1) = test_case("test_linkage_clustering_wikipedia_example", test_linkage_clustering_wikipedia_example)
+        all_tests(2) = test_case("test_linkage_clustering_points_on_a_line", test_linkage_clustering_points_on_a_line)
+        all_tests(3) = test_case("test_linkage_clustering_equal_distances", test_linkage_clustering_equal_distances)
+        all_tests(4) = test_case("test_linkage_clustering_two_points", test_linkage_clustering_two_points)
+        all_tests(5) = test_case("test_linkage_clustering_one_point", test_linkage_clustering_one_point)
+        all_tests(6) = test_case("test_linkage_clustering_duplicate_points", test_linkage_clustering_duplicate_points)
+        all_tests(7) = test_case("test_linkage_clustering_all_points_equal", test_linkage_clustering_all_points_equal)
+        all_tests(8) = test_case("test_linkage_clustering_many_points", test_linkage_clustering_many_points)
+        all_tests(9) = test_case("test_linkage_clustering_method_range", test_linkage_clustering_method_range)
+        all_tests(10) = test_case("test_linkage_clustering_dimensions", test_linkage_clustering_dimensions)
+        all_tests(11) = test_case("test_linkage_clustering_distance_matrix_checks", &
+                                  test_linkage_clustering_distance_matrix_checks)
+        all_tests(12) = test_case("test_linkage_clustering_rejects_nan_and_inf", test_linkage_clustering_rejects_nan_and_inf)
+        all_tests(13) = test_case("test_linkage_clustering_check_order", test_linkage_clustering_check_order)
+        all_tests(14) = test_case("test_linkage_clustering_ward_squares_below_tiny", &
+                                  test_linkage_clustering_ward_squares_below_tiny)
+        all_tests(15) = test_case("test_linkage_clustering_ward_squares_past_huge", &
+                                  test_linkage_clustering_ward_squares_past_huge)
+        all_tests(16) = test_case("test_linkage_clustering_averages_past_huge", test_linkage_clustering_averages_past_huge)
+        all_tests(17) = test_case("test_linkage_clustering_ward_height_past_huge", test_linkage_clustering_ward_height_past_huge)
+        all_tests(18) = test_case("test_linkage_clustering_heights_never_decrease", &
+                                  test_linkage_clustering_heights_never_decrease)
+        all_tests(19) = test_case("test_linkage_clustering_merge_order", test_linkage_clustering_merge_order)
+        all_tests(20) = test_case("test_linkage_clustering_ward_small_beside_large", &
+                                  test_linkage_clustering_ward_small_beside_large)
+        all_tests(21) = test_case("test_linkage_clustering_ward_near_huge_completes", &
+                                  test_linkage_clustering_ward_near_huge_completes)
+        all_tests(22) = test_case("test_linkage_clustering_ward_past_huge_stops_right", &
+                                  test_linkage_clustering_ward_past_huge_stops_right)
+        all_tests(23) = test_case("test_linkage_clustering_equal_distances_average_to_themselves", &
+                                  test_linkage_clustering_equal_distances_average_to_themselves)
+        all_tests(24) = test_case("test_linkage_clustering_tie_after_averaging", test_linkage_clustering_tie_after_averaging)
+    end function get_all_tests_linkage_clustering
+
+    !> Clusters a copy of `distances` and checks `ierr` OK, that the copy comes back identical,
+    !| every merge as the pair {lower, higher} (unless `check_merges` is false), every height
+    !| (exactly when `rtol` is 0, else within `rtol`, relative) and every cluster size (with the
+    !| merges). The outputs have one element more than the call is told, which must stay unwritten.
+    subroutine check_linkage(n_points, distances, method, expected_lower, expected_higher, expected_heights, rtol, &
+                             expected_sizes, check_merges, msg)
+        integer(int32), intent(in) :: n_points, method
+        real(real64), intent(in) :: distances(n_points, n_points)
+        integer(int32), intent(in) :: expected_lower(n_points - 1), expected_higher(n_points - 1)
+        integer(int32), intent(in) :: expected_sizes(n_points - 1)
+        real(real64), intent(in) :: expected_heights(n_points - 1), rtol
+        logical, intent(in) :: check_merges
+        character(*), intent(in) :: msg
+        real(real64) :: passed(n_points, n_points), heights(n_points)
+        integer(int32) :: merge_i(n_points), merge_j(n_points), cluster_sizes(n_points), ierr, n_merges
+        integer(int32) :: lower_labels(n_points), higher_labels(n_points)
+
+        n_merges = n_points - 1
+        passed = distances
+        merge_i = UNWRITTEN_INT
+        merge_j = UNWRITTEN_INT
+        cluster_sizes = UNWRITTEN_INT
+        heights = UNWRITTEN_REAL
+        call linkage_clustering(passed, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)
+        call assert_err(ierr, ERR_OK, msg//": ierr")
+        call assert_identical_array_real(passed, distances, n_points*n_points, msg//": the matrix comes back unchanged")
+        if (check_merges) then
+            lower_labels = min(merge_i, merge_j)
+            higher_labels = max(merge_i, merge_j)
+            call assert_equal_array_int(lower_labels, expected_lower, n_merges, msg//": lower label of each merge")
+            call assert_equal_array_int(higher_labels, expected_higher, n_merges, msg//": higher label of each merge")
+            call assert_equal_array_int(cluster_sizes, expected_sizes, n_merges, msg//": cluster_sizes")
+        end if
+        if (rtol > 0.0_real64) then
+            call assert_allclose_array_real(heights, expected_heights, n_merges, rtol, 0.0_real64, msg//": heights")
+        else
+            call assert_equal_array_real(heights, expected_heights, n_merges, 0.0_real64, msg//": heights")
+        end if
+        call assert_equal_int(merge_i(n_points), UNWRITTEN_INT, msg//": nothing written past the last merge_i")
+        call assert_equal_int(merge_j(n_points), UNWRITTEN_INT, msg//": nothing written past the last merge_j")
+        call assert_equal_int(cluster_sizes(n_points), UNWRITTEN_INT, msg//": nothing written past the last size")
+        call assert_equal_real(heights(n_points), UNWRITTEN_REAL, 0.0_real64, msg//": nothing written past the last height")
+    end subroutine check_linkage
+
+    !> Calls `linkage_clustering` on input it must refuse; checks the error and that the matrix
+    !| comes back identical, NaN included.
+    subroutine check_refused(n_points, distances, n_elements, method, expected_code, expected_arg_pos, msg)
+        integer(int32), intent(in) :: n_points, n_elements, method, expected_code, expected_arg_pos
+        real(real64), intent(in) :: distances(n_elements)
+        character(*), intent(in) :: msg
+        real(real64) :: passed(n_elements), heights(4)
+        integer(int32) :: merge_i(4), merge_j(4), cluster_sizes(4), ierr
+
+        passed = distances
+        call linkage_clustering(passed, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)
+        call assert_err(ierr, expected_code, msg, arg_pos=expected_arg_pos)
+        call assert_identical_array_real(passed, distances, n_elements, msg//": the matrix comes back unchanged")
+    end subroutine check_refused
+
+    !> Fills `distances` with the matrix of `n_points` points at the same distance `distance` from
+    !| each other.
+    pure subroutine fill_equidistant(n_points, distance, distances)
+        integer(int32), intent(in) :: n_points
+        real(real64), intent(in) :: distance
+        real(real64), intent(out) :: distances(n_points, n_points)
+        integer(int32) :: i_point
+
+        distances = distance
+        do i_point = 1, n_points
+            distances(i_point, i_point) = 0.0_real64
+        end do
+    end subroutine fill_equidistant
+
+    !> Kept from the old suite (`test_linkage_methods` case 1, and the internal helpers'
+    !| `test_linkage_helpers_xPGMA` and `test_linkage_helpers_ward`, whose intermediate matrices
+    !| decide the heights below). Every method merges {1, 2} at 17, then {-1, 5}, then {3, 4} at
+    !| 28, then {-3, -2}; sizes 2, 3, 2, 5.
+    !| - UPGMA: d(12, c) = (21 + 30)/2 = 25.5, d(12, d) = 32.5, d(12, e) = (23 + 21)/2 = 22, the
+    !|   second height; d(12e, c) = (2*25.5 + 39)/3 = 30, d(12e, d) = (2*32.5 + 43)/3 = 36; after
+    !|   {3, 4} at 28, the last is (30 + 36)/2 = 33.
+    !| - WPGMA: the same 22 and 28; d(12e, c) = (25.5 + 39)/2 = 32.25, d(12e, d) = (32.5 + 43)/2 =
+    !|   37.75, the last (32.25 + 37.75)/2 = 35.
+    !| - Ward, d(AB, C)**2 = ((nA + nC) d(A, C)**2 + (nB + nC) d(B, C)**2 - nC d(A, B)**2)/(nA + nB + nC):
+    !|   d(12, c)**2 = (2*441 + 2*900 - 289)/3 = 2393/3, d(12, d)**2 = (2*961 + 2*1156 - 289)/3 = 1315,
+    !|   d(12, e)**2 = (2*529 + 2*441 - 289)/3 = 1651/3, the second height (23.46);
+    !|   d(12e, c)**2 = (3*2393/3 + 2*1521 - 1651/3)/4 = 7327/6 (34.9), d(12e, d)**2 = (3*1315 + 2*1849
+    !|   - 1651/3)/4 = 10639/6 (42.1), so {3, 4} at 28 comes third; the last is
+    !|   ((3 + 1)*7327/6 + (3 + 1)*10639/6 - 3*784)/5 = 28876/15 (43.88).
+    subroutine test_linkage_clustering_wikipedia_example()
+        integer(int32), parameter :: lower(WIKI_N - 1) = [1, -1, 3, -3], higher(WIKI_N - 1) = [2, 5, 4, -2]
+        integer(int32), parameter :: sizes(WIKI_N - 1) = [2, 3, 2, 5]
+        real(real64), parameter :: upgma_heights(WIKI_N - 1) = [17.0_real64, 22.0_real64, 28.0_real64, 33.0_real64]
+        real(real64), parameter :: wpgma_heights(WIKI_N - 1) = [17.0_real64, 22.0_real64, 28.0_real64, 35.0_real64]
+        real(real64), parameter :: ward_heights(WIKI_N - 1) = [17.0_real64, sqrt(1651.0_real64/3.0_real64), 28.0_real64, &
+                                                               sqrt(28876.0_real64/15.0_real64)]
+
+        call check_linkage(WIKI_N, WIKI_DISTANCES, METHOD_AVERAGE, lower, higher, upgma_heights, 0.0_real64, sizes, .true., &
+                           "test_linkage_clustering_wikipedia_example: UPGMA")
+        call check_linkage(WIKI_N, WIKI_DISTANCES, METHOD_WEIGHTED, lower, higher, wpgma_heights, 0.0_real64, sizes, .true., &
+                           "test_linkage_clustering_wikipedia_example: WPGMA")
+        call check_linkage(WIKI_N, WIKI_DISTANCES, METHOD_WARD, lower, higher, ward_heights, WARD_RTOL, sizes, .true., &
+                           "test_linkage_clustering_wikipedia_example: Ward")
+    end subroutine test_linkage_clustering_wikipedia_example
+
+    !> Six points on a line at 0, 10, 40, 11, 60, 62. Every method merges {2, 4} at 1 (the cluster
+    !| then sits at index 2), {5, 6} at 2 (at 5), {-1, 1} (at 1), {-2, 3} (at 3), {-4, -3}; sizes
+    !| 2, 2, 3, 3, 6.
+    !| - UPGMA, the mean of all distances between the two clusters: d(24, 1) = 10.5,
+    !|   d(56, 3) = (20 + 22)/2 = 21, and {1, 2, 4} against {3, 5, 6}: (40 + 60 + 62 + 30 + 50 + 52
+    !|   + 29 + 49 + 51)/9 = 47.
+    !| - WPGMA: 10.5 and 21 as well; d(124, 3) = (40 + 29.5)/2 = 34.75, d(124, 56) = (61 + 50.5)/2 =
+    !|   55.75, the last (55.75 + 34.75)/2 = 45.25.
+    !| - Ward on distances between points of a line is sqrt(2 nA nB/(nA + nB)) times the distance
+    !|   of the centroids: {2, 4} (at 10.5) to {1}: sqrt(4/3)*10.5 = 7 sqrt(3); {5, 6} (at 61) to
+    !|   {3}: sqrt(4/3)*21 = 14 sqrt(3), below {1, 2, 4} to {3}, sqrt(3/2)*33; and {1, 2, 4} (at 7)
+    !|   to {3, 5, 6} (at 54): sqrt(3)*47.
+    subroutine test_linkage_clustering_points_on_a_line()
+        integer(int32), parameter :: lower(LINE_N - 1) = [2, 5, -1, -2, -4], higher(LINE_N - 1) = [4, 6, 1, 3, -3]
+        integer(int32), parameter :: sizes(LINE_N - 1) = [2, 2, 3, 3, 6]
+        real(real64), parameter :: upgma_heights(LINE_N - 1) = [1.0_real64, 2.0_real64, 10.5_real64, 21.0_real64, 47.0_real64]
+        real(real64), parameter :: wpgma_heights(LINE_N - 1) = [1.0_real64, 2.0_real64, 10.5_real64, 21.0_real64, &
+                                                                45.25_real64]
+        real(real64), parameter :: ward_heights(LINE_N - 1) = [1.0_real64, 2.0_real64, 7*sqrt(3.0_real64), &
+                                                               14*sqrt(3.0_real64), 47*sqrt(3.0_real64)]
+        real(real64) :: distances(LINE_N, LINE_N)
+        integer(int32) :: i_row, i_col
+
+        do i_col = 1, LINE_N
+            do i_row = 1, LINE_N
+                distances(i_row, i_col) = abs(LINE_POSITIONS(i_row) - LINE_POSITIONS(i_col))
+            end do
+        end do
+
+        call check_linkage(LINE_N, distances, METHOD_AVERAGE, lower, higher, upgma_heights, 0.0_real64, sizes, .true., &
+                           "test_linkage_clustering_points_on_a_line: UPGMA")
+        call check_linkage(LINE_N, distances, METHOD_WEIGHTED, lower, higher, wpgma_heights, 0.0_real64, sizes, .true., &
+                           "test_linkage_clustering_points_on_a_line: WPGMA")
+        call check_linkage(LINE_N, distances, METHOD_WARD, lower, higher, ward_heights, WARD_RTOL, sizes, .true., &
+                           "test_linkage_clustering_points_on_a_line: Ward")
+    end subroutine test_linkage_clustering_points_on_a_line
+
+    !> Kept from the old suite (`test_linkage_methods` case 2): four points all at distance 1. Every
+    !| merge is at 1 for every method (for Ward: any two clusters of a regular simplex with unit
+    !| edges are at 1). Every merge is a tie, broken by the lowest column and row: {1, 2}, then
+    !| the cluster at index 1 with 3, then with 4; sizes 2, 3, 4. Ward's updated distances are 1
+    !| only to within rounding, which can break the ties either way, so for Ward only the heights
+    !| are checked.
+    subroutine test_linkage_clustering_equal_distances()
+        integer(int32), parameter :: n_points = 4
+        integer(int32), parameter :: lower(n_points - 1) = [1, -1, -2], higher(n_points - 1) = [2, 3, 4]
+        integer(int32), parameter :: sizes(n_points - 1) = [2, 3, 4]
+        real(real64), parameter :: heights(n_points - 1) = [1.0_real64, 1.0_real64, 1.0_real64]
+        real(real64) :: distances(n_points, n_points)
+        integer(int32) :: i_method
+
+        call fill_equidistant(n_points, 1.0_real64, distances)
+        do i_method = 1, N_METHODS
+            call check_linkage(n_points, distances, METHODS(i_method), lower, higher, heights, &
+                               merge(WARD_RTOL, 0.0_real64, i_method == 3), sizes, i_method /= 3, &
+                               "test_linkage_clustering_equal_distances: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_equal_distances
+
+    !> Kept from the old suite (`test_linkage_methods` case 3): two points at 5 merge once, {1, 2}
+    !| at 5, size 2, for every method.
+    subroutine test_linkage_clustering_two_points()
+        integer(int32), parameter :: lower(1) = [1], higher(1) = [2], sizes(1) = [2]
+        real(real64), parameter :: heights(1) = [5.0_real64]
+        real(real64) :: distances(2, 2)
+        integer(int32) :: i_method
+
+        call fill_equidistant(2_int32, 5.0_real64, distances)
+        do i_method = 1, N_METHODS
+            call check_linkage(2_int32, distances, METHODS(i_method), lower, higher, heights, &
+                               0.0_real64, sizes, .true., "test_linkage_clustering_two_points: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_two_points
+
+    !> Kept from the old suite (`test_linkage_methods` case 4, which checked only `ierr`): one point
+    !| merges nothing; `ierr` is OK, the outputs (no elements) are not written at all, and the
+    !| matrix [0] comes back.
+    subroutine test_linkage_clustering_one_point()
+        real(real64) :: distances(1, 1)
+        integer(int32) :: i_method
+        integer(int32) :: no_merges(0)
+        real(real64) :: no_heights(0)
+
+        distances = 0.0_real64
+        do i_method = 1, N_METHODS
+            call check_linkage(1_int32, distances, METHODS(i_method), no_merges, no_merges, &
+                               no_heights, 0.0_real64, no_merges, .true., &
+                               "test_linkage_clustering_one_point: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_one_point
+
+    !> Points 1 and 3 coincide (distance 0), and point 2 is at 4 from both. {1, 3} merges first,
+    !| at 0, then {-1, 2}: UPGMA and WPGMA at (4 + 4)/2 = 4, Ward at sqrt((2*16 + 2*16 - 0)/3) =
+    !| 8/sqrt(3); sizes 2, 3.
+    subroutine test_linkage_clustering_duplicate_points()
+        integer(int32), parameter :: lower(2) = [1, -1], higher(2) = [3, 2], sizes(2) = [2, 3]
+        real(real64), parameter :: average_heights(2) = [0.0_real64, 4.0_real64]
+        real(real64), parameter :: ward_heights(2) = [0.0_real64, 8.0_real64/sqrt(3.0_real64)]
+        real(real64) :: distances(3, 3)
+
+        distances = reshape([0.0_real64, 4.0_real64, 0.0_real64, 4.0_real64, 0.0_real64, 4.0_real64, &
+                             0.0_real64, 4.0_real64, 0.0_real64], shape(distances))
+        call check_linkage(3_int32, distances, METHOD_AVERAGE, lower, higher, average_heights, 0.0_real64, &
+                           sizes, .true., "test_linkage_clustering_duplicate_points: UPGMA")
+        call check_linkage(3_int32, distances, METHOD_WEIGHTED, lower, higher, average_heights, 0.0_real64, &
+                           sizes, .true., "test_linkage_clustering_duplicate_points: WPGMA")
+        call check_linkage(3_int32, distances, METHOD_WARD, lower, higher, ward_heights, &
+                           WARD_RTOL, sizes, .true., "test_linkage_clustering_duplicate_points: Ward")
+    end subroutine test_linkage_clustering_duplicate_points
+
+    !> Four points that all coincide: every distance is 0, so every height is exactly 0 for every
+    !| method, Ward's square root included, and the ties go as in
+    !| `test_linkage_clustering_equal_distances`: {1, 2}, {-1, 3}, {-2, 4}; sizes 2, 3, 4.
+    subroutine test_linkage_clustering_all_points_equal()
+        integer(int32), parameter :: lower(3) = [1, -1, -2], higher(3) = [2, 3, 4], sizes(3) = [2, 3, 4]
+        real(real64), parameter :: heights(3) = [0.0_real64, 0.0_real64, 0.0_real64]
+        real(real64) :: distances(4, 4)
+        integer(int32) :: i_method
+
+        distances = 0.0_real64
+        do i_method = 1, N_METHODS
+            call check_linkage(4_int32, distances, METHODS(i_method), lower, higher, &
+                               heights, 0.0_real64, sizes, .true., &
+                               "test_linkage_clustering_all_points_equal: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_all_points_equal
+
+    !> 64 points all at distance 1, the equal-distance case at a size where the cluster labels and
+    !| sizes run past a few: every height is 1 for every method; for UPGMA and WPGMA, whose averages
+    !| of ones are exactly 1, the ties chain every point onto the first cluster -- merge 1 is
+    !| {1, 2}, merge k > 1 is {-(k - 1), k + 1} -- and the size after merge k is k + 1.
+    subroutine test_linkage_clustering_many_points()
+        integer(int32), parameter :: n_points = 64
+        integer(int32) :: lower(n_points - 1), higher(n_points - 1), sizes(n_points - 1), i_merge, i_method
+        real(real64) :: heights(n_points - 1), distances(n_points, n_points)
+
+        do i_merge = 1, n_points - 1
+            lower(i_merge) = merge(1_int32, -(i_merge - 1_int32), i_merge == 1)
+            higher(i_merge) = i_merge + 1_int32
+            sizes(i_merge) = i_merge + 1_int32
+        end do
+        heights = 1.0_real64
+        call fill_equidistant(n_points, 1.0_real64, distances)
+
+        do i_method = 1, N_METHODS
+            call check_linkage(n_points, distances, METHODS(i_method), lower, higher, heights, &
+                               merge(WARD_RTOL, 0.0_real64, i_method == 3), sizes, i_method /= 3, &
+                               "test_linkage_clustering_many_points: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_many_points
+
+    !> `method` is one of the three codes 0, 1, 2; -1 and 3 are refused, naming `method`.
+    subroutine test_linkage_clustering_method_range()
+        real(real64) :: distances(3, 3)
+
+        call fill_equidistant(3_int32, 1.0_real64, distances)
+        call check_refused(3_int32, distances, 9_int32, -1_int32, ERR_INVALID_INPUT, 7_int32, &
+                           "test_linkage_clustering_method_range: -1")
+        call check_refused(3_int32, distances, 9_int32, 3_int32, ERR_INVALID_INPUT, 7_int32, &
+                           "test_linkage_clustering_method_range: 3")
+    end subroutine test_linkage_clustering_method_range
+
+    !> No points is empty input, a negative count invalid, both naming `n_points`. For n_points =
+    !| -2 the distance check still runs and reads (-2)**2 = 4 elements of a matrix that has none
+    !| (finding G2 of batch 11); the actual passed here has 9 elements, so that read stays inside
+    !| it and this case cannot show it.
+    subroutine test_linkage_clustering_dimensions()
+        real(real64) :: distances(3, 3)
+
+        call fill_equidistant(3_int32, 1.0_real64, distances)
+        call check_refused(0_int32, distances, 9_int32, METHOD_AVERAGE, ERR_EMPTY_INPUT, 2_int32, &
+                           "test_linkage_clustering_dimensions: n_points 0")
+        call check_refused(-2_int32, distances, 9_int32, METHOD_AVERAGE, ERR_INVALID_INPUT, 2_int32, &
+                           "test_linkage_clustering_dimensions: n_points -2")
+    end subroutine test_linkage_clustering_dimensions
+
+    !> The distance-matrix convention: a negative distance (kept from the old suite's
+    !| `test_linkage_methods` case 6), a non-zero diagonal and an asymmetric matrix are each
+    !| refused, naming `distances`, for every method.
+    subroutine test_linkage_clustering_distance_matrix_checks()
+        real(real64) :: distances(3, 3)
+        integer(int32) :: i_method
+        character(*), parameter :: prefix = "test_linkage_clustering_distance_matrix_checks: "
+
+        do i_method = 1, N_METHODS
+            call fill_equidistant(3_int32, 1.0_real64, distances)
+            distances(1, 3) = -1.0_real64
+            distances(3, 1) = -1.0_real64
+            call check_refused(3_int32, distances, 9_int32, METHODS(i_method), ERR_INVALID_INPUT, 1_int32, &
+                               prefix//trim(METHOD_NAMES(i_method))//": negative distance")
+            call fill_equidistant(3_int32, 1.0_real64, distances)
+            distances(2, 2) = 0.5_real64
+            call check_refused(3_int32, distances, 9_int32, METHODS(i_method), ERR_INVALID_INPUT, 1_int32, &
+                               prefix//trim(METHOD_NAMES(i_method))//": non-zero diagonal")
+            call fill_equidistant(3_int32, 1.0_real64, distances)
+            distances(3, 2) = 2.0_real64
+            call check_refused(3_int32, distances, 9_int32, METHODS(i_method), ERR_INVALID_INPUT, 1_int32, &
+                               prefix//trim(METHOD_NAMES(i_method))//": asymmetric")
+        end do
+    end subroutine test_linkage_clustering_distance_matrix_checks
+
+    !> Kept from the old suite (`test_linkage_methods` case 5, NaN only): NaN, +Inf and -Inf, in
+    !| one triangle only and in both, are refused naming `distances`, for every method.
+    subroutine test_linkage_clustering_rejects_nan_and_inf()
+        real(real64) :: distances(3, 3)
+        integer(int32) :: i_method, i_value
+
+        do i_method = 1, N_METHODS
+            do i_value = 1, N_NON_FINITE
+                call fill_equidistant(3_int32, 1.0_real64, distances)
+                distances(3, 1) = non_finite_value(i_value)
+                call check_refused(3_int32, distances, 9_int32, METHODS(i_method), ERR_NAN_INF, 1_int32, &
+                                   "test_linkage_clustering_rejects_nan_and_inf: "//trim(METHOD_NAMES(i_method))//": "// &
+                                   trim(NON_FINITE_NAMES(i_value))//" in the lower triangle")
+                distances(1, 3) = non_finite_value(i_value)
+                call check_refused(3_int32, distances, 9_int32, METHODS(i_method), ERR_NAN_INF, 1_int32, &
+                                   "test_linkage_clustering_rejects_nan_and_inf: "//trim(METHOD_NAMES(i_method))//": "// &
+                                   trim(NON_FINITE_NAMES(i_value))//" in both triangles")
+            end do
+        end do
+    end subroutine test_linkage_clustering_rejects_nan_and_inf
+
+    !> Which refusal wins when several apply: `n_points` before `distances` before `method`, whose
+    !| one check is the generated test against the three method codes, made after the arguments'
+    !| own checks. A NaN matrix with method 3 names `distances`; with no points as well,
+    !| `n_points`. At n_points = 0 the matrix has no elements, so the NaN is never read: the second
+    !| call shows only that `n_points` is reported before `method`.
+    subroutine test_linkage_clustering_check_order()
+        real(real64) :: distances(3, 3)
+
+        call fill_equidistant(3_int32, 1.0_real64, distances)
+        distances(2, 1) = non_finite_value(1_int32)
+        call check_refused(3_int32, distances, 9_int32, 3_int32, ERR_NAN_INF, 1_int32, &
+                           "test_linkage_clustering_check_order: method 3 and NaN")
+        call check_refused(0_int32, distances, 9_int32, 3_int32, ERR_EMPTY_INPUT, 2_int32, &
+                           "test_linkage_clustering_check_order: no points, method 3 and NaN")
+    end subroutine test_linkage_clustering_check_order
+
+    !> Regression (#223, "Ward update"): Ward's update squares the distances, and three points at
+    !| s = 2**-600 from each other, all normal numbers, have squares below the smallest subnormal;
+    !| unscaled, Ward's second height used to come out 0. Every method merges {1, 2} at s, then
+    !| {-1, 3} at s: for Ward, d(12, 3)**2 = (2 s**2 + 2 s**2 - s**2)/3 = s**2.
+    subroutine test_linkage_clustering_ward_squares_below_tiny()
+        real(real64), parameter :: s = 2.0_real64**(-600)
+        integer(int32), parameter :: lower(2) = [1, -1], higher(2) = [2, 3], sizes(2) = [2, 3]
+        real(real64), parameter :: heights(2) = [s, s]
+        real(real64) :: distances(3, 3)
+
+        call fill_equidistant(3_int32, s, distances)
+        call check_linkage(3_int32, distances, METHOD_WARD, lower, higher, heights, WARD_RTOL, sizes, &
+                           .true., "test_linkage_clustering_ward_squares_below_tiny")
+    end subroutine test_linkage_clustering_ward_squares_below_tiny
+
+    !> Regression (#223, "Ward update"): three points at s = 2**600 from each other merge {1, 2}
+    !| at s, then {-1, 3} at s (d(12, 3)**2 = (2 s**2 + 2 s**2 - s**2)/3 = s**2). Their squares pass
+    !| huge, and unscaled the update used to be Inf + Inf - Inf = NaN: the second merge then found no
+    !| distance below +Inf, reused the first merge's indices, read the retired cluster's diagonal
+    !| -1 as an iteration and indexed `cluster_sizes(-1)`, which aborted a bounds-checked build.
+    subroutine test_linkage_clustering_ward_squares_past_huge()
+        real(real64), parameter :: s = 2.0_real64**600
+        integer(int32), parameter :: lower(2) = [1, -1], higher(2) = [2, 3], sizes(2) = [2, 3]
+        real(real64), parameter :: heights(2) = [s, s]
+        real(real64) :: distances(3, 3)
+
+        call fill_equidistant(3_int32, s, distances)
+        call check_linkage(3_int32, distances, METHOD_WARD, lower, higher, heights, WARD_RTOL, sizes, &
+                           .true., "test_linkage_clustering_ward_squares_past_huge")
+    end subroutine test_linkage_clustering_ward_squares_past_huge
+
+    !> Regression: three points at s = 2**1023 from each other merge {1, 2}, then {-1, 3}, both at
+    !| s (the average of s and s), with UPGMA and WPGMA. Forming size_A*d(A, C) + size_B*d(B, C)
+    !| unscaled, s + s used to be +Inf, and the second merge took the abort path described in
+    !| `test_linkage_clustering_ward_squares_past_huge`.
+    subroutine test_linkage_clustering_averages_past_huge()
+        real(real64), parameter :: s = 2.0_real64**1023
+        integer(int32), parameter :: lower(2) = [1, -1], higher(2) = [2, 3], sizes(2) = [2, 3]
+        real(real64), parameter :: heights(2) = [s, s]
+        real(real64) :: distances(3, 3)
+        integer(int32) :: i_method
+
+        call fill_equidistant(3_int32, s, distances)
+        do i_method = 1, 2
+            call check_linkage(3_int32, distances, METHODS(i_method), lower, higher, heights, 0.0_real64, sizes, &
+                               .true., "test_linkage_clustering_averages_past_huge: "//trim(METHOD_NAMES(i_method)))
+        end do
+    end subroutine test_linkage_clustering_averages_past_huge
+
+    !> A Ward distance can exceed every input distance -- it grows with the clusters' sizes -- so
+    !| finite input can make a merge height pass huge, and the run then says so: ERR_NAN_INF, naming
+    !| no argument, with the matrix handed back unchanged. Points 1 and 2 coincide, so do 3 and 4,
+    !| and the pairs are D = 1.5*2**1023 apart: {1, 2} and {3, 4} merge at 0, and the last merge
+    !| would be at sqrt(2 nA nB/(nA + nB)) D = sqrt(2) D, past huge. (At D = 2**1023 the last merge,
+    !| sqrt(2) D = 1.27e308, is still finite and the run completes.) Regression: the run used to
+    !| find no distance below +Inf, the retired-entry marker, reuse the previous merge's indices and
+    !| take the abort path described in `test_linkage_clustering_ward_squares_past_huge`.
+    subroutine test_linkage_clustering_ward_height_past_huge()
+        real(real64), parameter :: d = 1.5_real64*2.0_real64**1023
+        real(real64) :: distances(4, 4), passed(4, 4), heights(3)
+        integer(int32) :: merge_i(3), merge_j(3), cluster_sizes(3), ierr
+
+        distances = reshape([0.0_real64, 0.0_real64, d, d, 0.0_real64, 0.0_real64, d, d, &
+                             d, d, 0.0_real64, 0.0_real64, d, d, 0.0_real64, 0.0_real64], shape(distances))
+        passed = distances
+        call linkage_clustering(passed, 4_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
+        call assert_err(ierr, ERR_NAN_INF, "test_linkage_clustering_ward_height_past_huge", arg_pos=0_int32)
+        call assert_identical_array_real(passed, distances, 16_int32, &
+                                         "test_linkage_clustering_ward_height_past_huge: the matrix comes back unchanged")
+    end subroutine test_linkage_clustering_ward_height_past_huge
+
+    !> UPGMA, WPGMA and Ward are monotone -- every update is at least the distance of the merge it
+    !| follows -- and the heights must not decrease, though an unclamped rounded update can land an
+    !| ulp or two below it (regression: it used to, and R's `cutree(h = ...)` refuses such a tree). Points all at the same
+    !| distance d merge at d every time; found by search among d = 0.1, 0.2, ..., 9.9:
+    !| - UPGMA, four points at 0.7, 1.4, 1.9, 2.8: the third height, (2d + d)/3, 1 ulp below d;
+    !| - Ward, three points at 3.9 and 7.8, four at 3.3: the last height 1 ulp below d.
+    !| The heights must not decrease and must equal d to within rounding (a few ulps: the update
+    !| rounds, and an optimizer may contract it into a fused multiply-add).
+    subroutine test_linkage_clustering_heights_never_decrease()
+        integer(int32), parameter :: n_cases = 7
+        integer(int32), parameter :: CASE_METHODS(n_cases) = [METHOD_AVERAGE, METHOD_AVERAGE, METHOD_AVERAGE, &
+                                                              METHOD_AVERAGE, METHOD_WARD, METHOD_WARD, METHOD_WARD]
+        integer(int32), parameter :: CASE_POINTS(n_cases) = [4, 4, 4, 4, 3, 3, 4]
+        real(real64), parameter :: CASE_DISTANCES(n_cases) = [0.7_real64, 1.4_real64, 1.9_real64, 2.8_real64, &
+                                                              3.9_real64, 7.8_real64, 3.3_real64]
+        real(real64) :: distances(4, 4), heights(3), expected(3)
+        integer(int32) :: merge_i(3), merge_j(3), cluster_sizes(3), ierr, i_case, n_points
+        character(len=80) :: msg
+
+        do i_case = 1, n_cases
+            n_points = CASE_POINTS(i_case)
+            write (msg, '(a,a,a,i0,a,f3.1)') "test_linkage_clustering_heights_never_decrease: ", &
+                trim(METHOD_NAMES(merge(1_int32, 3_int32, CASE_METHODS(i_case) == METHOD_AVERAGE))), ", ", &
+                n_points, " points at ", CASE_DISTANCES(i_case)
+            call fill_equidistant(n_points, CASE_DISTANCES(i_case), distances)
+            expected = CASE_DISTANCES(i_case)
+            call linkage_clustering(distances, n_points, merge_i, merge_j, heights, cluster_sizes, CASE_METHODS(i_case), ierr)
+            call assert_err(ierr, ERR_OK, trim(msg)//": ierr")
+            call assert_sorted_real(heights, n_points - 1_int32, trim(msg)//": heights")
+            call assert_allclose_array_real(heights, expected, n_points - 1_int32, WARD_RTOL, 0.0_real64, &
+                                            trim(msg)//": heights equal d")
+        end do
+    end subroutine test_linkage_clustering_heights_never_decrease
+
+    !> The documented order within a merge: `merge_i` holds the cluster whose lowest point index is
+    !| the higher, `merge_j` the other, for every method.
+    !| - Wikipedia example: {1, 2}: 2 and 1; {-1 = {1, 2}, 5}: 5 and -1; {3, 4}: 4 and 3;
+    !|   {-2 = {1, 2, 5}, -3 = {3, 4}}: -3 and -2.
+    !| - Six points on a line: {2, 4}: 4 and 2; {5, 6}: 6 and 5; {-1 = {2, 4}, 1}: -1 and 1;
+    !|   {-2 = {5, 6}, 3}: -2 and 3; {-3 = {1, 2, 4}, -4 = {3, 5, 6}}: -4 and -3.
+    subroutine test_linkage_clustering_merge_order()
+        integer(int32), parameter :: wiki_merge_i(WIKI_N - 1) = [2, 5, 4, -3], wiki_merge_j(WIKI_N - 1) = [1, -1, 3, -2]
+        integer(int32), parameter :: line_merge_i(LINE_N - 1) = [4, 6, -1, -2, -4]
+        integer(int32), parameter :: line_merge_j(LINE_N - 1) = [2, 5, 1, 3, -3]
+        real(real64) :: wiki(WIKI_N, WIKI_N), line(LINE_N, LINE_N), heights(LINE_N - 1)
+        integer(int32) :: merge_i(LINE_N - 1), merge_j(LINE_N - 1), cluster_sizes(LINE_N - 1), ierr, i_method
+        integer(int32) :: i_row, i_col
+        character(len=60) :: msg
+
+        do i_col = 1, LINE_N
+            do i_row = 1, LINE_N
+                line(i_row, i_col) = abs(LINE_POSITIONS(i_row) - LINE_POSITIONS(i_col))
+            end do
+        end do
+        do i_method = 1, N_METHODS
+            msg = "test_linkage_clustering_merge_order: "//trim(METHOD_NAMES(i_method))
+            wiki = WIKI_DISTANCES
+            call linkage_clustering(wiki, WIKI_N, merge_i, merge_j, heights, cluster_sizes, METHODS(i_method), ierr)
+            call assert_err(ierr, ERR_OK, trim(msg)//": Wikipedia, ierr")
+            call assert_equal_array_int(merge_i, wiki_merge_i, WIKI_N - 1_int32, trim(msg)//": Wikipedia, merge_i")
+            call assert_equal_array_int(merge_j, wiki_merge_j, WIKI_N - 1_int32, trim(msg)//": Wikipedia, merge_j")
+            call linkage_clustering(line, LINE_N, merge_i, merge_j, heights, cluster_sizes, METHODS(i_method), ierr)
+            call assert_err(ierr, ERR_OK, trim(msg)//": line, ierr")
+            call assert_equal_array_int(merge_i, line_merge_i, LINE_N - 1_int32, trim(msg)//": line, merge_i")
+            call assert_equal_array_int(merge_j, line_merge_j, LINE_N - 1_int32, trim(msg)//": line, merge_j")
+        end do
+    end subroutine test_linkage_clustering_merge_order
+
+    !> Sets the distance between points `i` and `j`, both ways.
+    pure subroutine set_distance(distances, i, j, distance)
+        real(real64), intent(inout) :: distances(:, :)
+        integer(int32), intent(in) :: i, j
+        real(real64), intent(in) :: distance
+
+        distances(i, j) = distance
+        distances(j, i) = distance
+    end subroutine set_distance
+
+    !> Regression: Ward's distances are scaled for the distances each update combines; scaled for
+    !| the largest in the run, small ones beside a large one used to lose their squares. Points 1, 2 at 1, both at 2 from point 3, and all three at L from point 4:
+    !| {1, 2} merge at 1, then {-1, 3} at sqrt((2*4 + 2*4 - 1)/3) = sqrt(5), then point 4 at
+    !| sqrt(((2 + 1)*(4/3) L**2 + 2 L**2 - 5)/4), which is sqrt(1.5) L to well within rounding.
+    !| - L = 2**664 (about 1e200): scaled for L, the squares of 1 and 2 read 0, and the second
+    !|   height used to come out 1 (the merge's own height, by the monotonicity clamp);
+    !| - the same scaled by 2**-664, s = 2**-664 at 2**-332, whose small squares underflow
+    !|   unscaled.
+    subroutine test_linkage_clustering_ward_small_beside_large()
+        integer(int32), parameter :: lower(3) = [1, -1, -2], higher(3) = [2, 3, 4], sizes(3) = [2, 3, 4]
+        real(real64) :: distances(4, 4), unit, large, expected_heights(3)
+        integer(int32) :: i_case
+        character(len=70) :: msg
+
+        do i_case = 1, 2
+            if (i_case == 1) then
+                unit = 1.0_real64
+                large = 2.0_real64**664
+            else
+                unit = 2.0_real64**(-664)
+                large = 2.0_real64**(-332)
+            end if
+            write (msg, '(a,i0)') "test_linkage_clustering_ward_small_beside_large: case ", i_case
+            distances = 0.0_real64
+            call set_distance(distances, 1_int32, 2_int32, unit)
+            call set_distance(distances, 1_int32, 3_int32, 2*unit)
+            call set_distance(distances, 2_int32, 3_int32, 2*unit)
+            call set_distance(distances, 1_int32, 4_int32, large)
+            call set_distance(distances, 2_int32, 4_int32, large)
+            call set_distance(distances, 3_int32, 4_int32, large)
+            expected_heights(1) = unit
+            expected_heights(2) = sqrt(5.0_real64)*unit
+            expected_heights(3) = sqrt(1.5_real64)*large
+            call check_linkage(4_int32, distances, METHOD_WARD, lower, higher, expected_heights, WARD_RTOL, &
+                               sizes, .true., trim(msg))
+        end do
+    end subroutine test_linkage_clustering_ward_small_beside_large
+
+    !> The points of the two Ward cases below: 4 near L, 20 near 0 and 4 near -L on a line,
+    !| L = 0.28 huge, as distances; with `with_pair`, two more points 29 and 30, 0.9 huge apart
+    !| and huge from all others (a distance matrix need not come from points).
+    subroutine fill_near_huge(with_pair, distances)
+        logical, intent(in) :: with_pair
+        real(real64), intent(out) :: distances(:, :)
+        real(real64) :: positions(28), line_length
+        integer(int32) :: i_point, j_point
+
+        line_length = 0.28_real64*huge(1.0_real64)
+        do i_point = 1, 4
+            positions(i_point) = line_length*(1.0_real64 + i_point*1.0e-6_real64)
+        end do
+        do i_point = 5, 24
+            positions(i_point) = line_length*((i_point - 4)*1.0e-9_real64)
+        end do
+        do i_point = 25, 28
+            positions(i_point) = -line_length*(1.0_real64 + (i_point - 24)*1.0e-6_real64)
+        end do
+        distances = huge(1.0_real64)
+        do j_point = 1, 28
+            do i_point = 1, 28
+                distances(i_point, j_point) = abs(positions(i_point) - positions(j_point))
+            end do
+        end do
+        if (with_pair) then
+            call set_distance(distances, 29_int32, 30_int32, 0.9_real64*huge(1.0_real64))
+            distances(29, 29) = 0.0_real64
+            distances(30, 30) = 0.0_real64
+        end if
+    end subroutine fill_near_huge
+
+    !> A Ward distance whose true value passes huge can come back below it once more points join,
+    !| and the run must then complete. 28 points on a line, 4 near 0.28 huge, 20 near 0, 4 near
+    !| -0.28 huge: an intermediate distance passes huge, but every merge height stays below it; the
+    !| exact tree (rational arithmetic) ends with {-19, -24} at 0.722958691093232 huge and
+    !| {-25, -26} at 0.855416274676020 huge. Regression: unscaled, the run used to stop with a false
+    !| ERR_NAN_INF after 26 merges, as the retired-entry marker +Inf could not be told from the
+    !| passed distance.
+    subroutine test_linkage_clustering_ward_near_huge_completes()
+        real(real64) :: distances(28, 28), passed(28, 28), heights(27), last_in_huge(2)
+        integer(int32) :: merge_i(27), merge_j(27), cluster_sizes(27), ierr
+        character(*), parameter :: msg = "test_linkage_clustering_ward_near_huge_completes: "
+        ! the exact heights are known to 15 digits
+        real(real64), parameter :: exact_last_in_huge(2) = [0.722958691093232_real64, 0.855416274676020_real64]
+
+        call fill_near_huge(.false., distances)
+        passed = distances
+        call linkage_clustering(passed, 28_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
+        call assert_err(ierr, ERR_OK, msg//"ierr")
+        call assert_identical_array_real(passed, distances, 28_int32*28_int32, msg//"the matrix comes back unchanged")
+        call assert_sorted_real(heights, 27_int32, msg//"heights")
+        call assert_equal_int(merge_i(26), -19_int32, msg//"merge 26, merge_i")
+        call assert_equal_int(merge_j(26), -24_int32, msg//"merge 26, merge_j")
+        call assert_equal_int(merge_i(27), -25_int32, msg//"merge 27, merge_i")
+        call assert_equal_int(merge_j(27), -26_int32, msg//"merge 27, merge_j")
+        last_in_huge = heights(26:27)/huge(1.0_real64)
+        call assert_allclose_array_real(last_in_huge, exact_last_in_huge, 2_int32, &
+                                        1.0e-14_real64, 0.0_real64, msg//"the last two heights")
+    end subroutine test_linkage_clustering_ward_near_huge_completes
+
+    !> The run stops exactly at the first merge whose true height passes huge, with every merge
+    !| before it written and right. The 28 points of
+    !| `test_linkage_clustering_ward_near_huge_completes` and two more, 0.9 huge apart and huge
+    !| from all others: the 28 points merge as before, then {29, 30} at 0.9 huge, and the last merge
+    !| would be at 1.70 huge. So ERR_NAN_INF naming no argument, the first 27 merges those of the
+    !| 28 points alone, merge 28 {30, 29} at 0.9 huge, and the matrix back unchanged. Regression:
+    !| the run used to write {30, 29} as merge 27, in place of {-25, -26}, before it stopped.
+    subroutine test_linkage_clustering_ward_past_huge_stops_right()
+        real(real64) :: distances(30, 30), passed(30, 30), heights(29), alone(28, 28), alone_heights(27)
+        integer(int32) :: merge_i(29), merge_j(29), cluster_sizes(29), alone_i(27), alone_j(27), alone_sizes(27), ierr
+        character(*), parameter :: msg = "test_linkage_clustering_ward_past_huge_stops_right: "
+
+        call fill_near_huge(.false., alone)
+        call linkage_clustering(alone, 28_int32, alone_i, alone_j, alone_heights, alone_sizes, METHOD_WARD, ierr)
+        call fill_near_huge(.true., distances)
+        passed = distances
+        call linkage_clustering(passed, 30_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_WARD, ierr)
+        call assert_err(ierr, ERR_NAN_INF, msg//"ierr", arg_pos=0_int32)
+        call assert_identical_array_real(passed, distances, 30_int32*30_int32, msg//"the matrix comes back unchanged")
+        call assert_equal_array_int(merge_i, alone_i, 27_int32, msg//"merges 1 to 27, merge_i")
+        call assert_equal_array_int(merge_j, alone_j, 27_int32, msg//"merges 1 to 27, merge_j")
+        call assert_equal_array_real(heights, alone_heights, 27_int32, 0.0_real64, msg//"merges 1 to 27, heights")
+        call assert_equal_int(merge_i(28), 30_int32, msg//"merge 28, merge_i")
+        call assert_equal_int(merge_j(28), 29_int32, msg//"merge 28, merge_j")
+        call assert_equal_real(heights(28), 0.9_real64*huge(1.0_real64), 0.0_real64, msg//"merge 28, height")
+    end subroutine test_linkage_clustering_ward_past_huge_stops_right
+
+    !> An average of two equal distances is that distance. Points 1 and 2 at 1, both at 2 from
+    !| point 3, and all three at x from point 4: UPGMA merges {1, 2} at 1, {-1, 3} at 2, and then
+    !| point 4 at the average of x, x and x, which is x, exactly; WPGMA as well. Unclamped, the
+    !| average rounds off: divide-first, 7*fl(2/3) + 7*fl(1/3), gives 6.999999999999999 (a
+    !| regression of an earlier fix), and multiply-first, (2*2.8 + 2.8)/3, 2.7999999999999994.
+    subroutine test_linkage_clustering_equal_distances_average_to_themselves()
+        real(real64), parameter :: EQUAL_DISTANCES(2) = [7.0_real64, 2.8_real64]
+        integer(int32), parameter :: lower(3) = [1, -1, -2], higher(3) = [2, 3, 4], sizes(3) = [2, 3, 4]
+        real(real64) :: distances(4, 4), expected_heights(3)
+        integer(int32) :: i_case, i_method
+        character(len=90) :: msg
+
+        do i_method = 1, 2
+            do i_case = 1, 2
+                write (msg, '(a,a,a,f3.1)') "test_linkage_clustering_equal_distances_average_to_themselves: ", &
+                    trim(METHOD_NAMES(i_method)), " at ", EQUAL_DISTANCES(i_case)
+                distances = 0.0_real64
+                call set_distance(distances, 1_int32, 2_int32, 1.0_real64)
+                call set_distance(distances, 1_int32, 3_int32, 2.0_real64)
+                call set_distance(distances, 2_int32, 3_int32, 2.0_real64)
+                call set_distance(distances, 1_int32, 4_int32, EQUAL_DISTANCES(i_case))
+                call set_distance(distances, 2_int32, 4_int32, EQUAL_DISTANCES(i_case))
+                call set_distance(distances, 3_int32, 4_int32, EQUAL_DISTANCES(i_case))
+                expected_heights(1) = 1.0_real64
+                expected_heights(2) = 2.0_real64
+                expected_heights(3) = EQUAL_DISTANCES(i_case)
+                call check_linkage(4_int32, distances, METHODS(i_method), lower, higher, expected_heights, &
+                                   0.0_real64, sizes, .true., trim(msg))
+            end do
+        end do
+    end subroutine test_linkage_clustering_equal_distances_average_to_themselves
+
+    !> A tie that is exact in real arithmetic is broken by the documented rule. UPGMA on
+    !| six points: {4, 5} at 0.5; point 3 at 1 from both, so {-1, 3} at 1; points 1 and 2 at 7, and
+    !| point 6 at 7 from 3, 4 and 5, so {1, 2} and {-2, 6} tie at 7; all other distances 100. The
+    !| documented order merges {1, 2} first (lowest point index 1 against 3), then {-2, 6}, then
+    !| the two clusters at 100. merge_i [5, -1, 2, 6, -4], merge_j [4, 3, 1, -2, -3]. Regression:
+    !| divide-first used to round d(-2, 6) to 6.999999999999999 and merge it first.
+    subroutine test_linkage_clustering_tie_after_averaging()
+        real(real64) :: distances(6, 6), passed(6, 6), heights(5)
+        integer(int32) :: merge_i(5), merge_j(5), cluster_sizes(5), ierr
+        character(*), parameter :: msg = "test_linkage_clustering_tie_after_averaging: "
+        integer(int32), parameter :: expected_merge_i(5) = [5, -1, 2, 6, -4], expected_merge_j(5) = [4, 3, 1, -2, -3]
+        real(real64), parameter :: expected_heights(5) = [0.5_real64, 1.0_real64, 7.0_real64, 7.0_real64, 100.0_real64]
+
+        distances = 100.0_real64
+        call set_distance(distances, 1_int32, 2_int32, 7.0_real64)
+        call set_distance(distances, 4_int32, 5_int32, 0.5_real64)
+        call set_distance(distances, 3_int32, 4_int32, 1.0_real64)
+        call set_distance(distances, 3_int32, 5_int32, 1.0_real64)
+        call set_distance(distances, 3_int32, 6_int32, 7.0_real64)
+        call set_distance(distances, 4_int32, 6_int32, 7.0_real64)
+        call set_distance(distances, 5_int32, 6_int32, 7.0_real64)
+        call fill_diagonal_with_zeros(distances)
+        passed = distances
+        call linkage_clustering(passed, 6_int32, merge_i, merge_j, heights, cluster_sizes, METHOD_AVERAGE, ierr)
+        call assert_err(ierr, ERR_OK, msg//"ierr")
+        call assert_equal_array_int(merge_i, expected_merge_i, 5_int32, msg//"merge_i")
+        call assert_equal_array_int(merge_j, expected_merge_j, 5_int32, msg//"merge_j")
+        call assert_equal_array_real(heights, expected_heights, 5_int32, 0.0_real64, msg//"heights")
+    end subroutine test_linkage_clustering_tie_after_averaging
+
+    !> Sets every diagonal element of a square matrix to 0.
+    pure subroutine fill_diagonal_with_zeros(distances)
+        real(real64), intent(inout) :: distances(:, :)
+        integer(int32) :: i_point
+
+        do i_point = 1, size(distances, 1, kind=int32)
+            distances(i_point, i_point) = 0.0_real64
+        end do
+    end subroutine fill_diagonal_with_zeros
+end module mod_test_linkage_clustering
