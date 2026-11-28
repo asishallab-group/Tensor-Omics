@@ -9,8 +9,9 @@
 !| other sample.
 module tox_trajectory_contribution_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, set_err, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: set_ok, is_err, set_err, validate_in_range_real
     use f42_random_impl, only: init_random, rand_range
+    use f42_math_impl, only: mean
     M_IMPLICIT_NONE
 
     ! Public aliases the interface generator maps the `baseline_mode` strings onto: an arg
@@ -26,29 +27,8 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_random_impl(module):init_random(subroutine)]] beforehand.
-    subroutine select_random_sample(n_samples, current_sample, random_sample, ierr)
-        integer(int32), intent(in) :: n_samples
-            !! number of samples
-        integer(int32), intent(in) :: current_sample
-            !! sample that won't be selected
-        integer(int32), intent(out) :: random_sample
-            !! selected random sample
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        call set_ok(ierr)
-
-        call validate_in_range_int(n_samples, ierr, min=2_int32)
-        call validate_in_range_int(current_sample, ierr, min=1_int32, max=n_samples)
-
-        if (is_err(ierr)) return
-
-        call select_random_sample_helper(n_samples, current_sample, random_sample)
-    end subroutine select_random_sample
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_random_impl(module):init_random(subroutine)]] beforehand.
-    subroutine select_random_sample_helper(n_samples, current_sample, random_sample)
+    !| Validates nothing: `n_samples` must be at least 2 and `current_sample` in `[1, n_samples]`.
+    subroutine select_random_sample(n_samples, current_sample, random_sample)
         integer(int32), intent(in) :: n_samples
             !! number of samples
         integer(int32), intent(in) :: current_sample
@@ -63,7 +43,7 @@ contains
         if (random_sample >= current_sample) then
             random_sample = random_sample + 1
         end if
-    end subroutine select_random_sample_helper
+    end subroutine select_random_sample
 
 
 
@@ -73,7 +53,9 @@ contains
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! DM_MIN(2_int32)
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
@@ -109,7 +91,11 @@ contains
         real(real64), dimension(n_timepoints), intent(out) :: tmp_dependent
             !! Working array to hold the random dependent in contiguous memory
         integer(int32), intent(in), optional :: random_seed
-            !! Seed to use for random number generation.
+            !! Seed to use for random number generation. Given, it reseeds the process-wide
+            !! generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+            !! procedure that draws), so the draws are reproducible and that generator goes on
+            !! from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+            !! the draws continue that generator where it stands.
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -126,7 +112,7 @@ contains
         end do
 
         do i_perm = 1, n_permutations
-            call select_random_sample_helper(n_samples, sample_idx, random_sample)
+            call select_random_sample(n_samples, sample_idx, random_sample)
 
             do concurrent (i_timepoint = 1:n_timepoints) shared(tmp_dependent, trajectories, dependent_idx, random_sample)
                 tmp_dependent(i_timepoint) = trajectories(dependent_idx, random_sample, i_timepoint)
@@ -212,7 +198,7 @@ contains
             !! Error code
 
         integer(int32) :: i_dim
-        real(real64) :: factor_baseline, dependent_baseline
+        real(real64) :: factor_baseline, dependent_baseline, factor_deviation, dependent_deviation
 
         call compute_baselines_factor_dependent_impl(n_dims, factor, dependent, baseline_mode, factor_baseline, dependent_baseline, ierr)
         if (is_err(ierr)) return
@@ -221,9 +207,19 @@ contains
         ! (an uncentered/instantaneous covariance term): it is positive when factor and dependent move
         ! together (both above or both below baseline) and negative when they move oppositely.
         ! Summing over all timepoints gives the total co-variation between factor and dependent.
+        ! A deviation of exactly zero makes the product exactly zero, even where the other one
+        ! overflowed to +-Inf (a deviation, or a velocity, whose true value exceeds huge): the
+        ! true product is 0, and Inf * 0 would be NaN.
         total_contribution = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) reduce(+:total_contribution)
-            local_contributions(i_dim) = (factor(i_dim) - factor_baseline) * (dependent(i_dim) - dependent_baseline)
+        do concurrent (i_dim = 1:n_dims) shared(local_contributions, factor, factor_baseline, dependent, dependent_baseline) &
+                local(factor_deviation, dependent_deviation) reduce(+:total_contribution)
+            factor_deviation = factor(i_dim) - factor_baseline
+            dependent_deviation = dependent(i_dim) - dependent_baseline
+            if (factor_deviation == 0.0_real64 .or. dependent_deviation == 0.0_real64) then
+                local_contributions(i_dim) = 0.0_real64
+            else
+                local_contributions(i_dim) = factor_deviation*dependent_deviation
+            end if
             total_contribution = total_contribution + local_contributions(i_dim)
         end do
     end subroutine compute_contributions_impl
@@ -343,12 +339,16 @@ contains
             dependent_baseline = minval(dependent)
 
         case (MODE_BASELINE_MEAN)
-            ! Mean-centered contributions
-            factor_baseline = sum(factor)/real(n_timepoints, kind=real64)
-            dependent_baseline = sum(dependent)/real(n_timepoints, kind=real64)
+            ! Mean-centered contributions; `mean` scales its sum, so the mean of finite values is
+            ! finite even where their plain sum would overflow
+            factor_baseline = mean(factor)
+            dependent_baseline = mean(dependent)
         end select
 
-        ! Validate that baselines are finite (non-NaN, non-Inf)
+        ! Validate that baselines are finite (non-NaN, non-Inf). Finite input always gives a
+        ! finite baseline; non-finite input reaches here only from
+        ! compute_velocity_acceleration_contributions, whose velocities and accelerations are
+        ! differences that overflow to +-Inf when their true value exceeds huge.
         call validate_in_range_real(factor_baseline, ierr)
         call validate_in_range_real(dependent_baseline, ierr)
 
@@ -424,6 +424,7 @@ contains
                                                                   n_timepoints)
         integer(int32), intent(in)  :: n_timepoints
             !! number of timepoints
+            !! DM_MIN(1_int32)
         real(real64), dimension(max(0_int32, n_timepoints - 1)), intent(in)  :: velocity
             !! velocity trajectory
         real(real64), dimension(max(0_int32, n_timepoints - 2)), intent(out) :: acceleration
@@ -474,6 +475,7 @@ contains
             !! number of samples
         integer(int32), intent(in)  :: n_timepoints
             !! number of timepoints
+            !! DM_MIN(1_int32)
         real(real64), dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples), intent(in)  ::  velocity
             !! input velocity trajectories
         real(real64), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out) :: acceleration

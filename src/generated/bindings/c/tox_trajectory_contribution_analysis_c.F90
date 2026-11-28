@@ -55,7 +55,9 @@ contains
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
         integer(c_int), intent(in), target :: n_permutations
@@ -85,7 +87,11 @@ contains
         real(c_double), dimension(n_permutations), intent(out), target :: total_contributions
             !! Total contribution (`sum(local_contributions)`) per permutation
         integer(c_int), intent(in), optional :: random_seed
-            !! Seed to use for random number generation.
+            !! Seed to use for random number generation. Given, it reseeds the process-wide
+            !! generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+            !! procedure that draws), so the draws are reproducible and that generator goes on
+            !! from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+            !! the draws continue that generator where it stands.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         integer(int32) :: baseline_mode_mode_f
@@ -162,7 +168,9 @@ contains
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
         integer(c_int), intent(in), target :: n_permutations
@@ -196,7 +204,11 @@ contains
         real(c_double), dimension(n_timepoints), intent(out), target :: tmp_dependent
             !! Working array to hold the random dependent in contiguous memory
         integer(c_int), intent(in), optional :: random_seed
-            !! Seed to use for random number generation.
+            !! Seed to use for random number generation. Given, it reseeds the process-wide
+            !! generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+            !! procedure that draws), so the draws are reproducible and that generator goes on
+            !! from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+            !! the draws continue that generator where it stands.
         integer(c_int), intent(out), target :: ierr
             !! Error code
         integer(int32) :: baseline_mode_mode_f
@@ -706,6 +718,7 @@ contains
             !! number of elements in `velocity`, which must be `max(0_int32, n_timepoints - 1)`
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_velocity_elements), intent(in), target :: velocity
             !! velocity trajectory
         real(c_double), dimension(max(0_int32, n_timepoints - 2)), intent(out), target :: acceleration
@@ -794,6 +807,7 @@ contains
             !! number of samples
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_velocity_elements_dim_1, n_factors, n_samples), intent(in), target :: velocity
             !! input velocity trajectories
         real(c_double), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out), target :: acceleration

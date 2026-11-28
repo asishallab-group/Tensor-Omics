@@ -57,7 +57,9 @@ contains
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
         integer(int32), intent(in) :: n_permutations
@@ -87,7 +89,11 @@ contains
         real(real64), dimension(n_permutations), intent(out) :: total_contributions
             !! Total contribution (`sum(local_contributions)`) per permutation
         integer(int32), intent(in), optional :: random_seed
-            !! Seed to use for random number generation.
+            !! Seed to use for random number generation. Given, it reseeds the process-wide
+            !! generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+            !! procedure that draws), so the draws are reproducible and that generator goes on
+            !! from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+            !! the draws continue that generator where it stands.
         integer(int32), intent(out) :: ierr
             !! Error code
         real(real64), dimension(:), allocatable :: tmp_factor
@@ -96,7 +102,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_samples, ierr, arg_pos=3_int32, min=2_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_in_range_int(factor_idx, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_in_range_int(dependent_idx, ierr, arg_pos=6_int32, min=1_int32, max=n_factors)
@@ -161,7 +167,9 @@ contains
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_samples
-            !! number of samples
+            !! number of samples; a permutation draws a sample other than `sample_idx`, so there
+            !! must be at least two
+            !! The minimum valid value is `2_int32`.
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
         integer(int32), intent(in) :: n_permutations
@@ -195,14 +203,18 @@ contains
         real(real64), dimension(n_timepoints), intent(out) :: tmp_dependent
             !! Working array to hold the random dependent in contiguous memory
         integer(int32), intent(in), optional :: random_seed
-            !! Seed to use for random number generation.
+            !! Seed to use for random number generation. Given, it reseeds the process-wide
+            !! generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+            !! procedure that draws), so the draws are reproducible and that generator goes on
+            !! from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+            !! the draws continue that generator where it stands.
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_samples, ierr, arg_pos=3_int32, min=2_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_in_range_int(factor_idx, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_in_range_int(dependent_idx, ierr, arg_pos=6_int32, min=1_int32, max=n_factors)
@@ -641,6 +653,7 @@ contains
         )
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(max(0_int32, n_timepoints - 1)), intent(in) :: velocity
             !! velocity trajectory
         real(real64), dimension(max(0_int32, n_timepoints - 2)), intent(out) :: acceleration
@@ -650,6 +663,7 @@ contains
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_timepoints, ierr, arg_pos=3_int32, min=1_int32)
         call validate_all_in_range_real(velocity, (max(0_int32, n_timepoints - 1)), ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
@@ -716,6 +730,7 @@ contains
             !! number of samples
         integer(int32), intent(in) :: n_timepoints
             !! number of timepoints
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples), intent(in) :: velocity
             !! input velocity trajectories
         real(real64), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out) :: acceleration
@@ -727,6 +742,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
+        call validate_in_range_int(n_timepoints, ierr, arg_pos=5_int32, min=1_int32)
         call validate_all_in_range_real(velocity, (max(0_int32, n_timepoints - 1)) * n_factors * n_samples, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif

@@ -17,7 +17,11 @@
 #'   The maximum valid value is `n_samples`.
 #' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param n_permutations a integer scalar. number of permutations to perform
-#' @param random_seed a integer scalar. Seed to use for random number generation.
+#' @param random_seed a integer scalar. Seed to use for random number generation. Given, it reseeds the process-wide
+#'   generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+#'   procedure that draws), so the draws are reproducible and that generator goes on
+#'   from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+#'   the draws continue that generator where it stands.
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric matrix. Per-timepoint contributions per permutation}
 #'   \item{total_contributions}{a numeric vector. Total contribution (`sum(local_contributions)`) per permutation}
@@ -198,6 +202,7 @@ compute_velocity_trajectory <- function(trajectory) {
 #'
 #' @param velocity a numeric vector. velocity trajectory
 #' @param n_timepoints a integer scalar. number of timepoints
+#'   The minimum valid value is `1`.
 #' @return a numeric vector. acceleration trajectory
 #' @export
 compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints) {
@@ -236,6 +241,7 @@ compute_velocity_trajectories <- function(trajectories) {
 #'
 #' @param velocity a numeric array of rank 3. input velocity trajectories
 #' @param n_timepoints a integer scalar. number of timepoints
+#'   The minimum valid value is `1`.
 #' @return a numeric array of rank 3. output acceleration trajectories
 #' @export
 compute_acceleration_from_velocity <- function(velocity, n_timepoints) {

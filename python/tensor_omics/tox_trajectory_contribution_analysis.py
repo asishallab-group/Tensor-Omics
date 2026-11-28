@@ -226,7 +226,11 @@ def perform_permutation_test(
     n_permutations : int
         number of permutations to perform
     random_seed : int, optional
-        Seed to use for random number generation.
+        Seed to use for random number generation. Given, it reseeds the process-wide
+        generator of the Fortran runtime (the intrinsic `random_number`'s, shared by every
+        procedure that draws), so the draws are reproducible and that generator goes on
+        from this seed afterwards; NumPy's and R's own generators are not touched. Absent,
+        the draws continue that generator where it stands.
 
     Returns
     -------
@@ -699,6 +703,7 @@ def compute_acceleration_from_velocity_trajectory(
         velocity trajectory
     n_timepoints : int
         number of timepoints
+        The minimum valid value is `1`.
 
     Returns
     -------
@@ -814,6 +819,7 @@ def compute_acceleration_from_velocity(
         input velocity trajectories
     n_timepoints : int
         number of timepoints
+        The minimum valid value is `1`.
 
     Returns
     -------
