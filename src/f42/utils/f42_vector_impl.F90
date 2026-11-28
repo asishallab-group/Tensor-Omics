@@ -6,7 +6,7 @@
 module f42_vector_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err
-    use f42_math_impl, only: clamp, is_close, scaling_exponent
+    use f42_math_impl, only: clamp, is_close, scaling_exponent, scaling_exponent_for_largest
     M_IMPLICIT_NONE
 
 contains
@@ -103,6 +103,44 @@ contains
         end do
         scaled_norm = sqrt(scaled_squares_sum)
     end subroutine scaled_length
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Calculates the euclidean distance between two vectors, `sqrt(sum((vec1 - vec2)**2))`, with
+    !| the differences scaled before they are squared by the power of two
+    !| [[f42_math_impl(module):scaling_exponent_for_largest(function)]] picks for the largest of
+    !| them, and the root scaled back: squaring a difference neither overflows (past about 1e154)
+    !| nor underflows to zero (below about 1e-162), so two vectors of any finite magnitude get their
+    !| distance. The result is Inf only where the true distance exceeds `huge`, as for `[huge]` and
+    !| `[-huge]`; identical vectors are at distance 0. Differences whose largest magnitude lies in
+    !| \([2^{-470}, 2^{496}]\), as in ordinary data, are not scaled at all.
+    !|
+    !| Differences made only of subnormal numbers can give different results in builds that flush
+    !| subnormals to zero (a fast floating-point model, or a host program that sets flush-to-zero
+    !| or denormals-are-zero): there they read as zero, and the distance as 0.
+    pure real(real64) function distance(vec1, vec2)
+        real(real64), dimension(:), contiguous, intent(in) :: vec1
+            !! First vector, of any finite magnitude
+        real(real64), dimension(size(vec1)), intent(in) :: vec2
+            !! Second vector, of any finite magnitude. It must have `vec1`'s size: it is declared
+            !! with that size, so a shorter one is not detected.
+
+        integer(int32) :: i_dim, n_dims, exponent
+        real(real64) :: largest_difference, scaled_squares_sum
+
+        n_dims = size(vec1, kind=int32)
+
+        largest_difference = 0.0_real64
+        do i_dim = 1, n_dims
+            largest_difference = max(largest_difference, abs(vec1(i_dim) - vec2(i_dim)))
+        end do
+        exponent = scaling_exponent_for_largest(largest_difference)
+
+        scaled_squares_sum = 0.0_real64
+        do i_dim = 1, n_dims
+            scaled_squares_sum = scaled_squares_sum + scale(vec1(i_dim) - vec2(i_dim), exponent)**2
+        end do
+        distance = scale(sqrt(scaled_squares_sum), -exponent)
+    end function distance
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Adds two vectors in-place

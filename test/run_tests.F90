@@ -11,7 +11,7 @@ program main
     use mod_test_get_outliers, only: get_all_tests_get_outliers
     use mod_test_loess_smoothing, only: get_all_tests_loess_smoothing
     use mod_test_tox_normalization, only: get_all_tests_tox_normalization
-    use mod_test_euclidean_distance, only: get_all_tests_euclidean_distance
+    use mod_test_tox_euclidean_distance, only: get_all_tests_tox_euclidean_distance
     use mod_test_tox_relative_axis_plane_tools, only: get_all_tests_tox_relative_axis_plane_tools
     use mod_test_tissue_versatility, only: get_all_tests_tissue_versatility
     use mod_test_tox_data, only: get_all_tests_tox_data
@@ -44,7 +44,7 @@ program main
     call add_suite("get_outliers", get_all_tests_get_outliers)
     call add_suite("loess_smoothing", get_all_tests_loess_smoothing)
     call add_suite("tox_normalization", get_all_tests_tox_normalization)
-    call add_suite("euclidean_distance", get_all_tests_euclidean_distance)
+    call add_suite("tox_euclidean_distance", get_all_tests_tox_euclidean_distance)
     call add_suite("tox_relative_axis_plane_tools", get_all_tests_tox_relative_axis_plane_tools)
     call add_suite("tissue_versatility", get_all_tests_tissue_versatility)
     call add_suite("tox_data", get_all_tests_tox_data)

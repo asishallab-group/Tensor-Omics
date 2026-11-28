@@ -20,7 +20,10 @@ module tox_euclidean_distance_c
 contains
 
     !> summary: C-wrapper for [[tox_euclidean_distance(module):euclidean_distance(subroutine)]]
-    !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
+    !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`, for vectors of any
+    !| finite magnitude: the differences are scaled by a power of two before they are squared, so
+    !| no square overflows or underflows, and the result is Inf only where the true distance
+    !| exceeds `huge`.
     subroutine euclidean_distance_c(&
             vec1,&
             vec2,&
@@ -59,6 +62,8 @@ contains
 
     !> summary: C-wrapper for [[tox_euclidean_distance(module):distance_to_centroid(subroutine)]]
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
+    !| Any finite expression and centroids are measured, as in `euclidean_distance`: a distance is Inf only where the true
+    !| distance exceeds `huge`.
     subroutine distance_to_centroid_c(&
             n_genes,&
             n_families,&

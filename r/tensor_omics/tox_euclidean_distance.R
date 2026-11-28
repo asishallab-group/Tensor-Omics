@@ -2,7 +2,10 @@
 
 #' Compute the Euclidean distance between two vectors.
 #'
-#' Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
+#' Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`, for vectors of any
+#' finite magnitude: the differences are scaled by a power of two before they are squared, so
+#' no square overflows or underflows, and the result is Inf only where the true distance
+#' exceeds `huge`.
 #'
 #' Generated from the Fortran procedure \code{tox_euclidean_distance::euclidean_distance}, whose argument names
 #' are the ones an error message reports.
@@ -28,6 +31,8 @@ euclidean_distance <- function(vec1, vec2) {
 #' Compute distance from each gene to its corresponding family centroid.
 #'
 #' For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
+#' Any finite expression and centroids are measured, as in `euclidean_distance`: a distance is Inf only where the true
+#' distance exceeds `huge`.
 #'
 #' Generated from the Fortran procedure \code{tox_euclidean_distance::distance_to_centroid}, whose argument names
 #' are the ones an error message reports.
