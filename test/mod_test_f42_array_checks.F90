@@ -40,8 +40,10 @@ contains
     !> `all_equal` on int32: `.true.` for no elements and for equal ones, `.false.` when the first
     !| or only the last element differs; the int32 extremes are ordinary values.
     subroutine test_all_equal_int()
-        integer(int32) :: empty(0), values(4)
+        integer(int32), allocatable :: empty(:)
+        integer(int32) :: values(4)
 
+        allocate (empty(0))
         call assert_true(all_equal(empty, 7_int32), "test_all_equal_int: no elements")
         values = 7_int32
         call assert_true(all_equal(values, 7_int32), "test_all_equal_int: [7, 7, 7, 7] vs 7")
@@ -64,10 +66,12 @@ contains
     !> `all_equal` on real64 compares exactly with `==`: `-0.0` equals `0.0`, `tiny` (the smallest
     !| normal number, so no compiler flushes it) does not, and an infinity equals only itself.
     subroutine test_all_equal_real()
-        real(real64) :: empty(0), zeros(3), pair(2), values(4), inf
+        real(real64), allocatable :: empty(:)
+        real(real64) :: zeros(3), pair(2), values(4), inf
 
         inf = ieee_value(1.0_real64, ieee_positive_inf)
 
+        allocate (empty(0))
         call assert_true(all_equal(empty, 1.0_real64), "test_all_equal_real: no elements")
         zeros = [0.0_real64, -0.0_real64, 0.0_real64]
         call assert_true(all_equal(zeros, 0.0_real64), "test_all_equal_real: [0, -0, 0] vs 0")
@@ -91,8 +95,10 @@ contains
     !| `.true.` for one below it at the first or only at the last position; nothing is below -2^31,
     !| and -2^31 is below every other bound.
     subroutine test_any_below_int()
-        integer(int32) :: empty(0), values(4)
+        integer(int32), allocatable :: empty(:)
+        integer(int32) :: values(4)
 
+        allocate (empty(0))
         call assert_false(any_below(empty, 0_int32), "test_any_below_int: no elements")
         values = [5_int32, 3_int32, 4_int32, 3_int32]
         call assert_false(any_below(values, 3_int32), "test_any_below_int: [5, 3, 4, 3] vs 3, equal is not below")
@@ -114,8 +120,10 @@ contains
     !| `.true.` for one above it at the first or only at the last position; nothing is above huge,
     !| and huge is above every other bound.
     subroutine test_any_above_int()
-        integer(int32) :: empty(0), values(4)
+        integer(int32), allocatable :: empty(:)
+        integer(int32) :: values(4)
 
+        allocate (empty(0))
         call assert_false(any_above(empty, 0_int32), "test_any_above_int: no elements")
         values = [1_int32, 3_int32, 2_int32, 3_int32]
         call assert_false(any_above(values, 3_int32), "test_any_above_int: [1, 3, 2, 3] vs 3, equal is not above")
@@ -136,10 +144,12 @@ contains
     !| `-0.0` against `0.0` (equal under IEEE); `.true.` at the first or only the last position.
     !| `-Inf` is below every finite bound, and nothing is below `-Inf`.
     subroutine test_any_below_real()
-        real(real64) :: empty(0), values(4), inf
+        real(real64), allocatable :: empty(:)
+        real(real64) :: values(4), inf
 
         inf = ieee_value(1.0_real64, ieee_positive_inf)
 
+        allocate (empty(0))
         call assert_false(any_below(empty, 0.0_real64), "test_any_below_real: no elements")
         values = [5.0_real64, 3.0_real64, 4.0_real64, 3.0_real64]
         call assert_false(any_below(values, 3.0_real64), "test_any_below_real: [5, 3, 4, 3] vs 3, equal is not below")
@@ -163,10 +173,12 @@ contains
     !| `0.0` against `-0.0` (equal under IEEE); `.true.` at the first or only the last position.
     !| `Inf` is above every finite bound, and nothing is above `Inf`.
     subroutine test_any_above_real()
-        real(real64) :: empty(0), values(4), inf
+        real(real64), allocatable :: empty(:)
+        real(real64) :: values(4), inf
 
         inf = ieee_value(1.0_real64, ieee_positive_inf)
 
+        allocate (empty(0))
         call assert_false(any_above(empty, 0.0_real64), "test_any_above_real: no elements")
         values = [1.0_real64, 3.0_real64, 2.0_real64, 3.0_real64]
         call assert_false(any_above(values, 3.0_real64), "test_any_above_real: [1, 3, 2, 3] vs 3, equal is not above")
@@ -215,8 +227,10 @@ contains
     !| `0 x n` and `n x 0` giving the identity of `all` / `any`, and keyword calls, which resolve
     !| to the rank-2 specific because both ranks name their dummies alike.
     subroutine test_array_checks_rank2()
-        integer(int32) :: ints(3, 4), no_rows_int(0, 4), no_columns_int(3, 0)
-        real(real64) :: reals(3, 4), no_rows_real(0, 4), no_columns_real(3, 0)
+        integer(int32) :: ints(3, 4)
+        real(real64) :: reals(3, 4)
+        integer(int32), allocatable :: no_rows_int(:, :), no_columns_int(:, :)
+        real(real64), allocatable :: no_rows_real(:, :), no_columns_real(:, :)
 
         ! the deciding element only in the last column
         ints = 5_int32
@@ -266,6 +280,7 @@ contains
         call assert_true(any_above(reals(1:2, 2:), 5.0_real64), "test_array_checks_rank2: real block, 9 is above 5")
 
         ! no elements: the identity of `all` and of `any`
+        allocate (no_rows_int(0, 4), no_columns_int(3, 0), no_rows_real(0, 4), no_columns_real(3, 0))
         call assert_true(all_equal(no_rows_int, 1_int32), "test_array_checks_rank2: int, 0 x 4, all_equal")
         call assert_true(all_equal(no_columns_int, 1_int32), "test_array_checks_rank2: int, 3 x 0, all_equal")
         call assert_false(any_below(no_rows_int, 1_int32), "test_array_checks_rank2: int, 0 x 4, any_below")
