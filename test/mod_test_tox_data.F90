@@ -31,7 +31,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
-        allocate (all_tests(23))
+        allocate (all_tests(24))
 
         call setup_global_data()
 
@@ -58,6 +58,8 @@ contains
         all_tests(21) = test_case("test_validate_empty_strings", test_validate_empty_strings)
         all_tests(22) = test_case("test_validate_dimension_mismatch", test_validate_dimension_mismatch)
         all_tests(23) = test_case("test_manual_archive", test_manual_archive)
+        all_tests(24) = test_case("test_validate_shift_vectors_family_bounds", &
+                                  test_validate_shift_vectors_family_bounds)
     end function get_all_tests_tox_data
 
     !> Setup global test data
@@ -1110,4 +1112,37 @@ contains
 
         deallocate (gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
     end subroutine test_validate_dimension_mismatch
+
+    !> `validate_shift_vectors` refuses a family index below 0 or past the number of centroid columns
+    !| before it reads a centroid: the last family is accepted, -1 and one past the last are refused.
+    !| Index 0 is refused too, but by the later check for an unassigned gene, not by this bound, so it
+    !| is not among these cases. The data set is consistent: two genes, two samples, two families,
+    !| and each shift vector is its family's centroid over the gene's expression minus that
+    !| centroid, so only the index decides.
+    subroutine test_validate_shift_vectors_family_bounds()
+        real(real64) :: centroids(2, 2), expression(2, 2), shifts(4, 2)
+        integer(int32) :: families(2), ierr
+
+        ! centroid 1 = (1, 2), centroid 2 = (3, 4); gene 1 = (2, 3), gene 2 = (5, 7)
+        centroids = reshape([1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64], [2, 2])
+        expression = reshape([2.0_real64, 3.0_real64, 5.0_real64, 7.0_real64], [2, 2])
+        ! gene 1 in family 1: (1, 2 | 2 - 1, 3 - 2); gene 2 in family 2: (3, 4 | 5 - 3, 7 - 4)
+        shifts = reshape([1.0_real64, 2.0_real64, 1.0_real64, 1.0_real64, &
+                          3.0_real64, 4.0_real64, 2.0_real64, 3.0_real64], [4, 2])
+
+        families = [1_int32, 2_int32]
+        call validate_shift_vectors(shifts, expression, centroids, families, 2_int32, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_validate_shift_vectors_family_bounds: family 2 of 2 is accepted")
+
+        families = [1_int32, 3_int32]
+        call validate_shift_vectors(shifts, expression, centroids, families, 2_int32, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
+                              "test_validate_shift_vectors_family_bounds: family 3 of 2 is refused")
+
+        families = [1_int32, -1_int32]
+        call validate_shift_vectors(shifts, expression, centroids, families, 2_int32, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
+                              "test_validate_shift_vectors_family_bounds: family -1 is refused")
+    end subroutine test_validate_shift_vectors_family_bounds
 end module mod_test_tox_data
