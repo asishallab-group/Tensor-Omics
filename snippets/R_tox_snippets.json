@@ -662,7 +662,7 @@
   },
   "detect_dosage_effect (call)": {
     "prefix": "tox:detect_dosage_effect",
-    "description": "detect_dosage_effect",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
     "body": [
       "${1:result} <- detect_dosage_effect(",
       "  ancestor = ${2:ancestor},",
@@ -676,16 +676,29 @@
   },
   "detect_subfunctionalization (call)": {
     "prefix": "tox:detect_subfunctionalization",
-    "description": "detect_subfunctionalization",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
     "body": [
       "${1:result} <- detect_subfunctionalization(",
       "  ancestor = ${2:ancestor},",
       "  genes = ${3:genes},",
       "  filtered_paralogs_bitmask = ${4:filtered_paralogs_bitmask},",
       "  max_subset_size = ${5:max_subset_size},",
+      "  rdi_threshold = ${6:rdi_threshold}",
+      ")"
+    ]
+  },
+  "detect_subfunctionalization_expert (call)": {
+    "prefix": "tox:detect_subfunctionalization_expert",
+    "description": "A subset is grown from its genes in index order: it starts from one kept gene and is extended",
+    "body": [
+      "${1:result} <- detect_subfunctionalization_expert(",
+      "  ancestor = ${2:ancestor},",
+      "  genes = ${3:genes},",
+      "  filtered_paralogs_bitmask = ${4:filtered_paralogs_bitmask},",
+      "  max_subset_size = ${5:max_subset_size},",
       "  rdi_threshold = ${6:rdi_threshold},",
       "  paralog_norms = ${7:paralog_norms},",
-      "  sorted_paralog_norms_perm = ${8:sorted_paralog_norms_perm}",
+      "  paralog_norms_perm = ${8:paralog_norms_perm}",
       ")"
     ]
   },
@@ -715,9 +728,18 @@
       ")"
     ]
   },
+  "calc_paralog_norms (call)": {
+    "prefix": "tox:calc_paralog_norms",
+    "description": "Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows",
+    "body": [
+      "${1:result} <- calc_paralog_norms(",
+      "  genes = ${2:genes}",
+      ")"
+    ]
+  },
   "calc_paralog_subsets_bitmasks_size (call)": {
     "prefix": "tox:calc_paralog_subsets_bitmasks_size",
-    "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
+    "description": "The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,",
     "body": [
       "${1:result} <- calc_paralog_subsets_bitmasks_size(",
       "  max_subset_size = ${2:max_subset_size},",

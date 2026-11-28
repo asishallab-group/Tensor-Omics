@@ -3,10 +3,13 @@
 !> Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
 !|
 !| Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
-!| starting from single genes. At every extension step the candidate is scored against the pattern-specific
-!| criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
-!| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
-!| extended further, which keeps the combinatorial subset search tractable.
+!| in index order, starting from single genes. At every extension step the candidate is scored against
+!| the pattern-specific criterion (small angle plus magnitude gain for dosage effect, or bounded
+!| residual distance for subfunctionalization). A candidate is pruned instead of being extended further
+!| by a heuristic rule, issue #64's: for the dosage effect when its summed vector is past the angle
+!| bound, for subfunctionalization when every gene after the candidate's last one (kept by the
+!| filter or not) is longer than its residual. Pruning keeps the combinatorial search tractable, but it can drop a candidate whose
+!| extension would have met the criterion.
 !|
 !| There is a routine per pattern rather than one taking a pattern flag:
 !| `detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
@@ -15,13 +18,13 @@
 !| site, and each routine takes only the thresholds its own pattern needs.
 module tox_paralog_analysis_impl
     use f42_safeguard
-    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int, &
                           clear_err_arg_pos
     use f42_math_impl, only: PI
     use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
-    use f42_bit_masks_impl, only: bitmask_set, bitmask_clear, bitmask_last
+    use f42_bit_masks_impl, only: bitmask_set, bitmask_clear, bitmask_last, bitmask_count
     M_IMPLICIT_NONE
 
     integer(int32), parameter :: MODE_DOSAGE_PATTERN = 0_int32
@@ -76,7 +79,12 @@ contains
 
     !> summary: Identifies subsets of paralogs matching this pattern
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine detect_patterns_impl(ancestor, genes, n_genes, n_dims, pattern_mode, filtered_paralogs_bitmask, n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, n_paralog_subsets, tmp_active_bitmask, tmp_paralog_vector, max_angle, gain_gamma, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+    !| A subset is grown from its genes in index order: it starts from one kept gene and is extended
+    !| only by kept genes after its last one. A single gene is never a result; a result has two genes
+    !| at least, and is not extended further. So which subsets are found depends on the genes' order,
+    !| and a result's superset is found too when the superset's own prefix did not meet the criterion
+    !| (issue #244).
+    pure subroutine detect_patterns_impl(ancestor, genes, n_genes, n_dims, pattern_mode, filtered_paralogs_bitmask, n_mask_chunks, n_results, max_subset_size, paralog_subsets_bitmasks, n_paralog_subsets, tmp_active_bitmask, tmp_paralog_vector, max_angle, gain_gamma, rdi_threshold, paralog_norms, paralog_norms_perm, tmp_work_array, ierr)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(int32), intent(in) :: n_genes
@@ -85,9 +93,16 @@ contains
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bitmask_n_words` computes it
             !! DM_MIN(M_BIT_MASK_N_WORDS(n_genes))
         real(real64), dimension(n_dims), intent(in) :: ancestor
-            !! expression vector of ancestral ortholog
+            !! expression vector of ancestral ortholog. Dosage effect only: it must not be all
+            !! zeros, which have no direction to measure a subset's angle against, and such an
+            !! ancestor is refused with `ERR_INVALID_INPUT`; subfunctionalization takes it.
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
-            !! expression vectors of genes
+            !! expression vectors of genes. Dosage effect only: a subset whose summed vector has
+            !! every component exactly 0.0, bit for bit, has no direction either, and is dropped
+            !! from the search like one past `max_angle`. A sum that only rounds to near zero is
+            !! not dropped: where its length times the ancestor's is at most 1e-12, the angle's
+            !! computation refuses the whole detection with `ERR_DIVISION_BY_ZERO` (pending issue
+            !! #223).
         integer(int32), intent(in) :: pattern_mode
             !! used pattern for detection
             !!
@@ -103,21 +118,27 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_impl(module):calc_paralog_subsets_bitmasks_size_impl(subroutine)]] first.
-            !! Zero is in range and means there is no subset to check -- the sizing routine reports
-            !! it whenever the filtered families hold a single gene each. It reports a work array
-            !! of zero slots along with it, which this routine does not accept, so a caller that
-            !! gets zero back has nothing to detect and should not call here at all.
+            !! Zero is in range and means there is no subset to check; the sizing routine reports it
+            !! when the filter kept no gene. With fewer than two kept genes there is no pair to form:
+            !! the sizing then reports a work array of no subsets (and a size of 1 for one kept
+            !! gene), which this routine takes, finding nothing (`n_results` 0).
             !! DM_MIN(0_int32)
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`.
+            !! number of gene subsets that can be stored in `paralog_subsets_bitmasks`. Every kept
+            !! gene but the last starts a subset, so fewer slots than that are refused with
+            !! `ERR_SIZE_MISMATCH` before any subset is stored, and so is a search that runs out of
+            !! slots later; zero slots are enough when fewer than two genes are kept.
             !! DM_OUTPUT_FROM(work_array_size, calc_paralog_subsets_bitmasks_size, tox_paralog_analysis, AUTO)
+            !! DM_MIN(0_int32)
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: paralog_subsets_bitmasks
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
             !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine.
+            !! A bit set past `n_genes` is refused with `ERR_INVALID_INPUT`; the sizing routine
+            !! ignores such bits.
         integer(int32), dimension(n_mask_chunks), intent(out) :: tmp_active_bitmask
             !! working array to hold the extended subsets
         real(real64), dimension(n_dims), intent(out) :: tmp_paralog_vector
@@ -136,11 +157,21 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(PI)
         real(real64), dimension(n_genes), intent(in), optional :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
+            !! euclidean norm of each gene's vector, used for subset pruning. Where the caller
+            !! passes them, they are trusted to be the genes' own.
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(0.0_real64)
-        integer(int32), dimension(n_genes), intent(in), optional :: sorted_paralog_norms_perm
-            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+            !! DM_OUTPUT_FROM(paralog_norms, calc_paralog_norms, tox_paralog_analysis, AUTO)
+        integer(int32), dimension(n_genes), intent(in), optional :: paralog_norms_perm
+            !! ascending permutation of `paralog_norms`, for subset pruning: a subset is extended only
+            !! while the smallest norm among all genes after its last one -- kept by the filter or
+            !! not -- is at most the length of its residual. Where the caller passes it, the order
+            !! is the caller's job: only the entries' range is checked, so no index is out of
+            !! bounds, and a wrong order gives wrong pruning -- wrong minima for a permutation that
+            !! is not ascending, and for an order with a repeated entry (such as [1, 1, 1]) minima
+            !! never written, read uninitialised. The plain tier builds it itself; for the expert
+            !! tier, `np.argsort(paralog_norms) + 1` in Python and `order(paralog_norms)` in R give
+            !! it, counting genes from 1 as it does.
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(1_int32)
             !! DM_MAX(n_genes)
@@ -157,6 +188,12 @@ contains
 
         call set_ok(ierr)
 
+        ! an ancestor of zeros gives the dosage effect no direction to measure angles against
+        if (pattern_mode == MODE_DOSAGE_PATTERN .and. all(ancestor == 0.0_real64)) then
+            call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
+            return
+        end if
+
         if (max_subset_size == 0) then
             n_results = 0
             return
@@ -168,6 +205,12 @@ contains
 
         if (last_filtered_paralog_idx > n_genes) then
             call set_err(ierr, ERR_INVALID_INPUT)
+            return
+        end if
+
+        ! every kept gene but the last starts a subset, and each needs its slot
+        if (bitmask_count(n_mask_chunks, filtered_paralogs_bitmask) - 1 > n_paralog_subsets) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, arg_pos=11_int32)
             return
         end if
 
@@ -193,7 +236,7 @@ contains
                     return
                 end if
 
-                call generate_subsets_helper(tmp_active_bitmask, filtered_paralogs_bitmask, n_mask_chunks, pattern_mode, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, max_angle, gain_gamma, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+                call generate_subsets_helper(tmp_active_bitmask, filtered_paralogs_bitmask, n_mask_chunks, pattern_mode, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, max_angle, gain_gamma, rdi_threshold, paralog_norms, paralog_norms_perm, tmp_work_array, ierr)
                 if (is_err(ierr)) then
                     call clear_err_arg_pos(ierr)
                     return
@@ -210,7 +253,7 @@ contains
     !| others will be added to the work array, either as new active subset that will be extended in coming iterations or as result.
     !|
     !| Doesn't do any input validation.
-    pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_bitmask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+    pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_bitmask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, paralog_subsets_bitmasks, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_paralog_norms_perm, tmp_subfunc_work_array, ierr)
         integer(int32), intent(in) :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(int32), intent(in) :: n_genes
@@ -255,9 +298,15 @@ contains
         real(real64), intent(in), optional :: dosage_max_angle
             !! maximum angle in radians that a subset candidate must not exceed, otherwise pruned, default is Pi
         real(real64), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
-        integer(int32), dimension(n_genes), intent(in), optional :: subfunc_sorted_paralog_norms_perm
-            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them).
+            !! The routine trusts them to be the genes' own.
+        integer(int32), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms_perm
+            !! ascending permutation of `subfunc_paralog_norms`, for subset pruning: a subset is extended only
+            !! while the smallest norm among all genes after its last one -- kept by the filter or
+            !! not -- is at most the length of its residual. Only the entries' range is checked: a
+            !! permutation that is not ascending gives wrong minima, and an order with a repeated
+            !! entry (such as [1, 1, 1]) leaves part of the work array of minima unwritten, so the
+            !! pruning reads uninitialised values.
         real(real64), dimension(n_genes), intent(out), optional :: tmp_subfunc_work_array
             !! work array for checking the minimum value after a given index efficiently
 
@@ -292,8 +341,13 @@ contains
                         ! compute sum vector of all subset's genes
                         call add_vector(tmp_paralog_vector, genes(:, i_gene))
 
-                        call angle_between(tmp_paralog_vector, ancestor, n_dims, subset_angle, ierr)
-                        if (is_err(ierr)) return
+                        ! a sum of exactly zero has no direction: dropped like a sum past max_angle
+                        if (all(tmp_paralog_vector == 0.0_real64)) then
+                            subset_angle = huge(subset_angle)
+                        else
+                            call angle_between(tmp_paralog_vector, ancestor, n_dims, subset_angle, ierr)
+                            if (is_err(ierr)) return
+                        end if
 
                         ! If angle of the subset vector is close enough, there may be dosage effect
                         if (subset_angle <= max_angle) then
@@ -316,13 +370,13 @@ contains
             block
                 real(real64) :: residual_norm
 
-                if (.not. (present(subfunc_paralog_norms) .and. present(subfunc_sorted_paralog_norms_perm) .and. present(tmp_subfunc_work_array) .and. present(subfunc_rdi_threshold))) then
+                if (.not. (present(subfunc_paralog_norms) .and. present(subfunc_paralog_norms_perm) .and. present(tmp_subfunc_work_array) .and. present(subfunc_rdi_threshold))) then
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
                 end if
 
                 !! initialize work array with min values, so each index i holds the min value in subarray subfunc_paralog_norms(i:n_genes)
-                call fill_array_with_minvals_for_each_idx(tmp_subfunc_work_array, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, n_genes, ierr)
+                call fill_array_with_minvals_for_each_idx(tmp_subfunc_work_array, subfunc_paralog_norms, subfunc_paralog_norms_perm, n_genes, ierr)
                 if (is_err(ierr)) return
 
                 !! also, prepare residual, so the extending gene just needs to be included in one operation and excluded after calculation
@@ -584,7 +638,7 @@ contains
 
         select case (pattern_mode)
         case (MODE_DOSAGE_PATTERN)
-            ! only genes with angles below the gene-family median or lower five percentile are marked active
+            ! only genes with angles at most the threshold (e.g. the gene-family median or lower five percentile) are marked active
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) <= threshold) then
                     family_idx = gene_to_fam(i_gene)
@@ -592,7 +646,7 @@ contains
                 end if
             end do
         case (MODE_SUBFUNC_PATTERN)
-            ! only genes with angles greater than the gene-family median angle are marked active
+            ! only genes with angles at least the threshold (e.g. the gene-family median angle) are marked active
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) >= threshold) then
                     family_idx = gene_to_fam(i_gene)
@@ -602,16 +656,40 @@ contains
         end select
     end subroutine filter_paralogs_by_pattern_impl
 
+    !> summary: The euclidean norm of each gene's vector, which the subfunctionalization prunes by
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| Each norm is f42's scaled `norm`, so no vector of finite components overflows or underflows
+    !| on the way: the result is +Inf only where the true norm exceeds `huge`.
+    pure subroutine calc_paralog_norms_impl(genes, n_dims, n_genes, paralog_norms)
+        integer(int32), intent(in) :: n_dims
+            !! size of the vectors in `genes`
+        integer(int32), intent(in) :: n_genes
+            !! number of vectors in `genes`
+        real(real64), dimension(n_dims, n_genes), intent(in) :: genes
+            !! expression vectors of genes
+        real(real64), dimension(n_genes), intent(out) :: paralog_norms
+            !! euclidean norm of each gene's vector
+
+        integer(int32) :: i_gene
+
+        do i_gene = 1, n_genes
+            paralog_norms(i_gene) = norm(genes(:, i_gene))
+        end do
+    end subroutine calc_paralog_norms_impl
+
     !> summary: Calculates the needed size for the paralog-subsets work array
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| The `detect_*` subroutines need a work array for the to be tested subsets.
-    !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
-    !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
-    !|
-    !| This subroutine calculates the needed size for the work array.
+    !| The `detect_*` subroutines need a work array for the subsets they try. It holds, side by side,
+    !| the results found so far, the subsets still to be grown and the ones grown from them, so it is
+    !| sized for the worst case: every subset of the first F - 1 kept genes stays a candidate, and every
+    !| subset that adds the last kept gene becomes a result. With F genes kept and subsets of at most m
+    !| genes, that is one subset of the first F - 1 genes for each size 1 to m: the sum over
+    !| k = 1 .. min(m, F - 1) of C(F - 1, k), which is 2**(F - 1) - 1 for m = F, and 0 for fewer
+    !| than two kept genes.
     pure subroutine calc_paralog_subsets_bitmasks_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_bitmask, n_mask_chunks)
         integer(int32), intent(in) :: n_genes
-            !! number of genes
+            !! number of genes. It is checked before `n_mask_chunks`, so a mask of too few words, none
+            !! included, is reported as `n_genes` out of range.
             !! DM_MIN(1_int32)
             !! DM_MAX(n_mask_chunks * 32)
         integer(int32), intent(in) :: n_mask_chunks
@@ -621,18 +699,19 @@ contains
             !! nothing to size a work array for, which is reported back as a size of zero.
             !! DM_MIN(0_int32)
             !! @warning
-            !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
-            !!
-            !! Also, size will be set to number of genes in `filtered_paralogs_bitmask` if larger.
+            !! It comes back lowered to the number of kept genes if it is larger, and lowered further
+            !! to the largest size whose work array holds at most 2**31 - 1 (2,147,483,647) subsets, the
+            !! maximum valid size, where the size asked for would need more.
             !! @endwarning
         integer(int32), intent(out) :: work_array_size
-            !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
+            !! The number of subsets the work array must hold in the worst case, for the
+            !! `max_subset_size` handed back
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_bitmask
-            !! Output mask with all genes disabled that did not pass the filter
+            !! bit mask of the genes the filter kept. Only the first `n_genes` bits are counted;
+            !! a bit past them is ignored here, while the detections refuse it.
 
-        integer(int32), parameter :: max_int32 = huge(0_int32)
-        integer(int32) :: i_gene, subset_size, extensions_count, results, previous_results, n_genes_filtered
-
+        integer(int32) :: i_gene, subset_size, n_genes_filtered
+        integer(int64) :: n_subsets, binomial
 
         if (max_subset_size == 0) then
             work_array_size = 0
@@ -645,50 +724,20 @@ contains
                 n_genes_filtered = n_genes_filtered + 1
             end if
         end do
-
-        ! The idea of this calculation is to count the number of leafs in the subset extension tree.
-        ! If a subset has genes to be extended with, it gets child subsets that might be extended either.
-        ! If a subset can't be extended, it is a leaf and in worst case also a result. So in absolute worst case the number of leafs is the number of results.
-        ! As results and candidates share the same array and candidates just become results, the final needed work array size is the number of max possible results
         max_subset_size = min(n_genes_filtered, max_subset_size)
-        work_array_size = 1
-        extensions_count = 1
-        previous_results = 0
-        results = 0
-        do subset_size = 1, max_subset_size
-            ! results holds the number of subsets of current subset size that don't have any succeeding genes to be extended with -> result in worst case
-            ! previous_results holds the number of results that come from previous subset sizes
-            if (previous_results > max_int32 - results) then
+
+        ! Sum C(F - 1, k) for k = 1 .. min(m, F - 1), in int64: each binomial is the previous one
+        ! times (F - k)/k, exactly, and the product stays below 2**62 as long as the sum fits int32.
+        n_subsets = 0_int64
+        binomial = 1_int64
+        do subset_size = 1, min(max_subset_size, n_genes_filtered - 1)
+            binomial = binomial*int(n_genes_filtered - subset_size, int64)/int(subset_size, int64)
+            if (n_subsets + binomial > int(huge(0_int32), int64)) then
                 max_subset_size = subset_size - 1
                 exit
             end if
-            previous_results = previous_results + results
-            results = extensions_count - results
-
-            ! calculate the number of extensions of current subsets
-            ! overflow check
-            if (extensions_count > max_int32/(n_genes_filtered - subset_size + 1)) then
-                max_subset_size = subset_size - 1
-                exit
-            end if
-            extensions_count = extensions_count*(n_genes_filtered - subset_size + 1)
-            extensions_count = extensions_count/subset_size
-
-            ! The current subsets will be replaced by their extensions.
-            ! In worst case all extended subsets won't be pruned.
-            ! Thus, the extensions count will be the work array size, plus the subsets from previous iterations that became results.
-
-            ! if there are less extensions than before, the work array size won't grow anymore
-            if (extensions_count > max_int32 - previous_results) then
-                max_subset_size = subset_size - 1
-                exit
-            end if
-            if (extensions_count + previous_results < work_array_size) exit
-            work_array_size = extensions_count + previous_results
+            n_subsets = n_subsets + binomial
         end do
-
-        ! all subsets with last gene enabled are counted as a result.
-        ! as the subset of size 1 with last gene is not a valid subset, remove it (can not be extended, thus also not part of initialization)
-        work_array_size = work_array_size - 1
+        work_array_size = int(n_subsets, int32)
     end subroutine calc_paralog_subsets_bitmasks_size_impl
 end module tox_paralog_analysis_impl

@@ -88,11 +88,9 @@ mask = np.asarray(family_bitmasks)[:, family - 1]
 sizing = calc_paralog_subsets_bitmasks_size(
     max_subset_size, n_genes, mask)     # it CAPS the size
 
-norms = np.linalg.norm(genes, axis=0)
 res = detect_subfunctionalization(
     ancestor, genes, mask, sizing["max_subset_size"],
-    rdi_threshold,                      # residual tolerated
-    norms, (np.argsort(norms) + 1).astype(np.int32))
+    rdi_threshold)                      # residual tolerated
 
 subsets = np.asarray(res["paralog_subsets_bitmasks"])
 for k in range(res["n_results"]):       # decode the bitmasks

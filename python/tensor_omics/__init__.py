@@ -197,8 +197,10 @@ from .tox_paralog_analysis import (
     detect_neofunctionalization,
     detect_dosage_effect,
     detect_subfunctionalization,
+    detect_subfunctionalization_expert,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
+    calc_paralog_norms,
     calc_paralog_subsets_bitmasks_size,
 )
 from .tox_relative_axis_plane_tools import (
@@ -291,6 +293,7 @@ __all__ = [
     "build_spherical_kd",
     "calc_fchange",
     "calc_neighborhood_size",
+    "calc_paralog_norms",
     "calc_paralog_subsets_bitmasks_size",
     "calc_quantile",
     "calc_quantile_expert",
@@ -331,6 +334,7 @@ __all__ = [
     "detect_neofunctionalization",
     "detect_outliers",
     "detect_subfunctionalization",
+    "detect_subfunctionalization_expert",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
     "determine_study_shared_residual_range",
