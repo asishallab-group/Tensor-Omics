@@ -102,7 +102,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: type_code, ndim
+        integer(int32) :: type_code, ndim, i_dim
         integer(int32), dimension(:), allocatable :: dims
 
         call set_ok(ierr)
@@ -113,8 +113,13 @@ contains
         call validate_type_code(type_code, expected_type_code, unit, ierr)
         if (ndim /= size(expected_shape, kind=int32)) then
             call set_err_once(ierr, ERR_DIM_MISMATCH)
-        else if (any(expected_shape /= dims)) then
-            call set_err_once(ierr, ERR_DIM_MISMATCH)
+        else
+            do i_dim = 1, ndim
+                if (expected_shape(i_dim) /= dims(i_dim)) then
+                    call set_err_once(ierr, ERR_DIM_MISMATCH)
+                    exit
+                end if
+            end do
         end if
         if (is_err(ierr)) then
             close(unit)

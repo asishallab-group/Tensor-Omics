@@ -432,7 +432,7 @@ contains
         integer(int32) :: ios
 
         character(len=1) :: delim
-        integer(int32) :: n, i, start_pos, end_pos, field_count
+        integer(int32) :: n, i, start_pos, end_pos, field_count, longest_field
         integer(int32), allocatable :: field_starts(:), field_ends(:)
 
         call set_ok(ierr)
@@ -452,6 +452,7 @@ contains
         if (is_err(ierr)) return
 
         n = 0
+        longest_field = 0
         start_pos = 1
         do i = 1, len_trim(input)
             if (input(i:i) == delim) then
@@ -459,6 +460,7 @@ contains
                     n = n + 1
                     field_starts(n) = start_pos
                     field_ends(n) = i - 1
+                    longest_field = max(longest_field, field_ends(n) - field_starts(n) + 1)
                 end if
                 start_pos = i + 1
             end if
@@ -469,15 +471,10 @@ contains
             n = n + 1
             field_starts(n) = start_pos
             field_ends(n) = len_trim(input)
+            longest_field = max(longest_field, field_ends(n) - field_starts(n) + 1)
         end if
 
-        ! Allocate output array (guard against empty/degenerate input, where n==0 and
-        ! maxval over the resulting zero-extent slices would be undefined)
-        if (n == 0) then
-            allocate (character(len=0) :: output(0), stat=ios)
-        else
-            allocate (character(len=maxval(field_ends(1:n) - field_starts(1:n) + 1)) :: output(n), stat=ios)
-        end if
+        allocate (character(len=longest_field) :: output(n), stat=ios)
         call check_io_stat(ios, ierr)
         if (is_err(ierr)) return
 

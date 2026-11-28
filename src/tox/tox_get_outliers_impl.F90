@@ -461,13 +461,14 @@ contains
             end if
         end do
 
-        ! Create a copy of RDI for sorting (excluding error values)
-        sorted_rdi = rdi
-
-        ! Filter out error values (negative RDIs)
-        where (sorted_rdi < 0.0_real64)
-            sorted_rdi = 0.0_real64
-        end where
+        ! the copy of the RDIs to sort, error values (negative) set to 0
+        do i = 1, n_genes
+            if (rdi(i) < 0.0_real64) then
+                sorted_rdi(i) = 0.0_real64
+            else
+                sorted_rdi(i) = rdi(i)
+            end if
+        end do
 
         ! the quicksort permutes `perm`, so it has to start as the identity: seeded here
         ! rather than by the caller, since this routine is exported and an binding

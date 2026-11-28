@@ -14,6 +14,7 @@ module tox_data_validation
     use iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, is_ok, set_err_once, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
     use f42_config, only: DEBUG
+    use f42_array_checks_impl, only: any_below, any_above
     M_IMPLICIT_NONE
     private
 
@@ -191,7 +192,7 @@ contains
 
         ! Check for negative values if requested
         if (check_non_negative) then
-            if (any(expression_vectors < 0.0_real64)) then
+            if (any_below(expression_vectors, 0.0_real64)) then
                 call set_err_once(ierr, ERR_INVALID_INPUT)
                 if (DEBUG) write (*, *) 'Error: Negative values found in expression data'
                 return
@@ -272,7 +273,8 @@ contains
             return
         end if
 
-        if (any(gene_to_fam(1:n_genes) < 0) .or. any(gene_to_fam(1:n_genes) > size(family_centroids, 2))) then
+        if (any_below(gene_to_fam(1:n_genes), 0_int32) .or. &
+            any_above(gene_to_fam(1:n_genes), size(family_centroids, 2, kind=int32))) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
             if (DEBUG) write (*, *) 'Error: gene_to_fam contains values out of bounds for family_centroids columns'
             return
