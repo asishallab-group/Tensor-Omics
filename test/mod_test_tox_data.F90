@@ -31,7 +31,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_data() result(all_tests)
         type(test_case), allocatable:: all_tests(:)
-        allocate (all_tests(24))
+        allocate (all_tests(25))
 
         call setup_global_data()
 
@@ -60,6 +60,7 @@ contains
         all_tests(23) = test_case("test_manual_archive", test_manual_archive)
         all_tests(24) = test_case("test_validate_shift_vectors_family_bounds", &
                                   test_validate_shift_vectors_family_bounds)
+        all_tests(25) = test_case("test_split_string_longest_field", test_split_string_longest_field)
     end function get_all_tests_tox_data
 
     !> Setup global test data
@@ -1145,4 +1146,34 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
                               "test_validate_shift_vectors_family_bounds: family -1 is refused")
     end subroutine test_validate_shift_vectors_family_bounds
+
+    !> `split_string` holds every field whole, wherever the longest one stands: "a,bb,ccc" and
+    !| "ccc,bb,a" split into three fields with "ccc" last and first. A line of nothing but
+    !| delimiters has no field. The length of the strings that hold the fields is not pinned.
+    subroutine test_split_string_longest_field()
+        character(len=:), allocatable :: fields(:)
+        integer(int32) :: ierr
+
+        call split_string("a,bb,ccc", fields, ",", ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_split_string_longest_field: last, ierr")
+        call assert_equal_int(size(fields), 3, "test_split_string_longest_field: last, number of fields")
+        if (size(fields) == 3) then
+            call assert_string_equal(fields(1), "a", "test_split_string_longest_field: last, field 1")
+            call assert_string_equal(fields(2), "bb", "test_split_string_longest_field: last, field 2")
+            call assert_string_equal(fields(3), "ccc", "test_split_string_longest_field: last, field 3")
+        end if
+
+        call split_string("ccc,bb,a", fields, ",", ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_split_string_longest_field: first, ierr")
+        call assert_equal_int(size(fields), 3, "test_split_string_longest_field: first, number of fields")
+        if (size(fields) == 3) then
+            call assert_string_equal(fields(1), "ccc", "test_split_string_longest_field: first, field 1")
+            call assert_string_equal(fields(2), "bb", "test_split_string_longest_field: first, field 2")
+            call assert_string_equal(fields(3), "a", "test_split_string_longest_field: first, field 3")
+        end if
+
+        call split_string(",,,", fields, ",", ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_split_string_longest_field: no field, ierr")
+        call assert_equal_int(size(fields), 0, "test_split_string_longest_field: no field")
+    end subroutine test_split_string_longest_field
 end module mod_test_tox_data
