@@ -15,7 +15,7 @@ program main
     use mod_test_tox_relative_axis_plane_tools, only: get_all_tests_tox_relative_axis_plane_tools
     use mod_test_tissue_versatility, only: get_all_tests_tissue_versatility
     use mod_test_tox_data, only: get_all_tests_tox_data
-    use mod_test_shift_vectors, only: get_all_tests_shift_vectors
+    use mod_test_tox_shift_vectors, only: get_all_tests_tox_shift_vectors
     use mod_test_tox_gene_centroids, only: get_all_tests_tox_gene_centroids
     use mod_test_conversions, only: get_all_tests_conversions
     use mod_test_arrays, only: get_all_tests_arrays
@@ -48,7 +48,7 @@ program main
     call add_suite("tox_relative_axis_plane_tools", get_all_tests_tox_relative_axis_plane_tools)
     call add_suite("tissue_versatility", get_all_tests_tissue_versatility)
     call add_suite("tox_data", get_all_tests_tox_data)
-    call add_suite("shift_vectors", get_all_tests_shift_vectors)
+    call add_suite("tox_shift_vectors", get_all_tests_tox_shift_vectors)
     call add_suite("arrays", get_all_tests_arrays)
     call add_suite("tox_gene_centroids", get_all_tests_tox_gene_centroids)
     call add_suite("paralog_analysis", get_all_tests_paralog_analysis)

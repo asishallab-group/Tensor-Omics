@@ -112,7 +112,9 @@ assert_false <- function(expr, msg = "Assertion failed") {
 # strips the argument position before it signals. Omit it to demand an error carrying no tox
 # code -- a plain R error, or one of the binding's own tox_type_error / tox_shape_error
 # conditions, which are tox_error conditions with code = NA by design.
-assert_error <- function(expr, msg = "Expected an error", code = NULL) {
+#
+# `argument`, if given, is the name the error must blame (the condition's `$argument`).
+assert_error <- function(expr, msg = "Expected an error", code = NULL, argument = NULL) {
   if (!is.null(code) && as.integer(code) >= ARG_POS_FACTOR)
     stop(sprintf("assert_error takes a bare error code, not a packed ierr: %d", as.integer(code)),
          call. = FALSE)
@@ -133,6 +135,10 @@ assert_error <- function(expr, msg = "Expected an error", code = NULL) {
     stop(msg, ": expected ", .tox_code_label(code), ", but got ", got, ": ",
          conditionMessage(err), call. = FALSE)
   }
+  if (!is.null(argument) && !identical(err$argument, argument))
+    stop(msg, ": expected '", argument, "' named, but got ",
+         if (is.null(err$argument)) "none" else sprintf("'%s'", toString(err$argument)), ": ",
+         conditionMessage(err), call. = FALSE)
   invisible(TRUE)
 }
 

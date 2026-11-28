@@ -326,11 +326,12 @@ def test_an_array_of_no_strings():
         data = read_tox_data_into("zero_genes.test.zip")
         assert data["gene_ids"] == [] and data["family_ids"] == [], data
 
-        expression, shifts = np.ones((3, 2)), np.ones((6, 2))
+        # genes in no family have zero shift vectors, as compute_shift_vector_field writes them
+        expression, shifts = np.ones((3, 2)), np.zeros((6, 2))
         validate_data_structure(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
                                 expression, np.ones((3, 0)), shifts)
         validate_all_data(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
-                          expression, np.ones((3, 0)), shifts, check_shift_consistency=False)
+                          expression, np.ones((3, 0)), shifts)
 
         with open(scratch("no_genes.test.tsv"), "w") as file:
             file.write("id\tv1\n")
@@ -353,6 +354,19 @@ def test_a_negative_length_or_count_of_the_gene_ids_is_refused_by_name():
                            "gene_ids_strlen = -1", "gene_ids_strlen")
     assert_refused_by_name(lambda: read_gene_ids_from_tsv_file("absent.test.tsv", 8, -1, 1, 1),
                            "n_gene_ids_elements = -1", "n_gene_ids_elements")
+
+
+def test_a_computed_field_with_an_unassigned_gene_validates():
+    # gene 2 is in no family (0): compute_shift_vector_field writes zeros for it, and the
+    # validators accept that field
+    expression = np.asfortranarray([[1.0, 5.0, 3.0], [2.0, 6.0, 4.0]])
+    centroids = np.asfortranarray([[1.5, 3.0], [1.5, 3.0]])
+    small_gene_to_fam = np.array([1, 0, 2], dtype=np.int32)
+    field = compute_shift_vector_field(expression, centroids, small_gene_to_fam)
+    shift_vectors = np.asfortranarray(np.vstack([field[:, 0, :], field[:, 1, :]]))
+    validate_shift_vectors(shift_vectors, expression, centroids, small_gene_to_fam, 2)
+    validate_all_data(3, 2, 2, ["g1", "g2", "g3"], ["f1", "f2"], small_gene_to_fam, expression, centroids,
+                      shift_vectors)
 
 
 if __name__ == "__main__":

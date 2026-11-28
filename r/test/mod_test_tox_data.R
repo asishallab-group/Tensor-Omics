@@ -223,12 +223,13 @@ test_an_array_of_no_strings <- function() {
   data <- read_tox_data_into("zero_genes_R.test.zip")
   assert_true(length(data$gene_ids) == 0 && length(data$family_ids) == 0, "no gene, no family")
 
+  # genes in no family have zero shift vectors, as compute_shift_vector_field writes them
   expression <- matrix(1, 3, 2)
-  shifts <- matrix(1, 6, 2)
+  shifts <- matrix(0, 6, 2)
   validate_data_structure(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
                           expression, matrix(1, 3, 0), shifts)
   validate_all_data(2L, 0L, 3L, c("g1", "g2"), character(0), c(0L, 0L),
-                    expression, matrix(1, 3, 0), shifts, check_shift_consistency = FALSE)
+                    expression, matrix(1, 3, 0), shifts)
 
   writeLines("id\tv1", scratch("no_genes_R.test.tsv"))
   ids <- read_gene_ids_from_tsv_file("no_genes_R.test.tsv", 8L, 0L, n_header_rows = 1L, gene_col = 1L)
@@ -238,6 +239,20 @@ test_an_array_of_no_strings <- function() {
   families <- read_orthofinder_file("no_families_R.test.tsv", character(0), 8L, 0L, 0L)
   assert_true(length(families$family_ids) == 0 && length(families$gene_to_fam) == 0,
               "a family file of no family reads as none")
+}
+
+
+test_a_computed_field_with_an_unassigned_gene_validates <- function() {
+  # gene 2 is in no family (0): compute_shift_vector_field writes zeros for it, and the
+  # validators accept that field
+  expression <- matrix(c(1, 2, 5, 6, 3, 4), nrow = 2)
+  centroids <- matrix(c(1.5, 1.5, 3, 3), nrow = 2)
+  small_gene_to_fam <- c(1L, 0L, 2L)
+  field <- compute_shift_vector_field(expression, centroids, small_gene_to_fam)
+  shift_vectors <- rbind(field[, 1, ], field[, 2, ])
+  validate_shift_vectors(shift_vectors, expression, centroids, small_gene_to_fam, 2L)
+  validate_all_data(3L, 2L, 2L, c("g1", "g2", "g3"), c("f1", "f2"), small_gene_to_fam, expression, centroids,
+                    shift_vectors)
 }
 
 run_all_tests()
