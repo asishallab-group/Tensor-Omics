@@ -116,6 +116,7 @@ contains
     !| - iteration 3: no label changes, so the run stops with those centroids.
     subroutine test_k_means_clustering_values()
         integer(int32), parameter :: n_dims = 2, n_points = 4, n_clusters = 2
+        integer(int32), parameter :: expected_labels(n_points) = [1, 1, 2, 2], expected_counts(n_clusters) = [2, 2]
         real(real64) :: data_points(n_dims, n_points), initial_centroids(n_dims, n_clusters)
         real(real64) :: expected_centroids(n_dims, n_clusters)
 
@@ -124,7 +125,7 @@ contains
         initial_centroids = data_points(:, 1:2)
         expected_centroids = reshape([1.5_real64, 1.5_real64, 9.0_real64, 9.0_real64], shape(expected_centroids))
 
-        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, expected_labels, expected_counts, &
                            expected_centroids, "test_k_means_clustering_values")
     end subroutine test_k_means_clustering_values
 
@@ -139,6 +140,8 @@ contains
     !|   shows only that the default is at least 2; `test_k_means_clustering_many_iterations` needs 6.
     subroutine test_k_means_clustering_max_iterations()
         integer(int32), parameter :: n_dims = 2, n_points = 4, n_clusters = 2
+        integer(int32), parameter :: labels_after_one(n_points) = [1, 2, 2, 2], counts_after_one(n_clusters) = [1, 3]
+        integer(int32), parameter :: converged_labels(n_points) = [1, 1, 2, 2], converged_counts(n_clusters) = [2, 2]
         real(real64) :: data_points(n_dims, n_points), initial_centroids(n_dims, n_clusters)
         real(real64) :: after_one(n_dims, n_clusters), converged(n_dims, n_clusters)
 
@@ -148,11 +151,11 @@ contains
         after_one = reshape([1.0_real64, 1.0_real64, 7.0_real64, 7.0_real64], shape(after_one))
         converged = reshape([1.5_real64, 1.5_real64, 9.5_real64, 9.5_real64], shape(converged))
 
-        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [1, 2, 2, 2], [1, 3], &
+        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, labels_after_one, counts_after_one, &
                            after_one, "test_k_means_clustering_max_iterations: one iteration", max_iterations=1_int32)
-        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, converged_labels, converged_counts, &
                            converged, "test_k_means_clustering_max_iterations: two iterations", max_iterations=2_int32)
-        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, converged_labels, converged_counts, &
                            converged, "test_k_means_clustering_max_iterations: the default")
     end subroutine test_k_means_clustering_max_iterations
 
@@ -170,6 +173,8 @@ contains
     !| 6; a limit of 5 stops at [1, 1, 1, 1, 1, 1, 2, 2], counts [6, 2], with centroid 2 at 33/2
     !| (centroid 1, 13/3, is not exact, and not checked).
     subroutine test_k_means_clustering_many_iterations()
+        integer(int32), parameter :: converged_labels(8) = [1, 1, 1, 1, 1, 1, 1, 2], converged_counts(2) = [7, 1]
+        integer(int32), parameter :: labels_after_five(8) = [1, 1, 1, 1, 1, 1, 2, 2], counts_after_five(2) = [6, 2]
         real(real64) :: data_points(1, 8), initial_centroids(1, 2), converged(1, 2), centroids(1, 2)
         integer(int32) :: labels(8), label_counts(2), ierr
 
@@ -178,18 +183,18 @@ contains
         initial_centroids(1, :) = [1.0_real64, 2.0_real64]
         converged(1, :) = [5.0_real64, 24.0_real64]
 
-        call check_k_means(2_int32, data_points, 8_int32, 1_int32, initial_centroids, [1, 1, 1, 1, 1, 1, 1, 2], [7, 1], &
+        call check_k_means(2_int32, data_points, 8_int32, 1_int32, initial_centroids, converged_labels, converged_counts, &
                            converged, "test_k_means_clustering_many_iterations: the default")
-        call check_k_means(2_int32, data_points, 8_int32, 1_int32, initial_centroids, [1, 1, 1, 1, 1, 1, 1, 2], [7, 1], &
+        call check_k_means(2_int32, data_points, 8_int32, 1_int32, initial_centroids, converged_labels, converged_counts, &
                            converged, "test_k_means_clustering_many_iterations: six iterations", max_iterations=6_int32)
 
         centroids = initial_centroids
         call k_means_clustering(2_int32, data_points, 8_int32, 1_int32, centroids, labels, label_counts, &
                                 max_iterations=5_int32, ierr=ierr)
         call assert_err(ierr, ERR_OK, "test_k_means_clustering_many_iterations: five iterations, ierr")
-        call assert_equal_array_int(labels, [1, 1, 1, 1, 1, 1, 2, 2], 8_int32, &
+        call assert_equal_array_int(labels, labels_after_five, 8_int32, &
                                     "test_k_means_clustering_many_iterations: five iterations, labels")
-        call assert_equal_array_int(label_counts, [6, 2], 2_int32, &
+        call assert_equal_array_int(label_counts, counts_after_five, 2_int32, &
                                     "test_k_means_clustering_many_iterations: five iterations, label_counts")
         call assert_equal_real(centroids(1, 2), 16.5_real64, 0.0_real64, &
                                "test_k_means_clustering_many_iterations: five iterations, centroid 2")
@@ -199,6 +204,7 @@ contains
     !| (1, 2), (3, 6), (5, 10), (7, -2) from (100, -100) give the mean (16/4, 16/4) = (4, 4).
     subroutine test_k_means_clustering_one_cluster()
         integer(int32), parameter :: n_dims = 2, n_points = 4, n_clusters = 1
+        integer(int32), parameter :: expected_labels(n_points) = [1, 1, 1, 1], expected_counts(n_clusters) = [4]
         real(real64) :: data_points(n_dims, n_points), initial_centroids(n_dims, n_clusters)
         real(real64) :: expected_centroids(n_dims, n_clusters)
 
@@ -207,7 +213,7 @@ contains
         initial_centroids(:, 1) = [100.0_real64, -100.0_real64]
         expected_centroids(:, 1) = [4.0_real64, 4.0_real64]
 
-        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [1, 1, 1, 1], [4], &
+        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, expected_labels, expected_counts, &
                            expected_centroids, "test_k_means_clustering_one_cluster")
     end subroutine test_k_means_clustering_one_cluster
 
@@ -216,26 +222,28 @@ contains
     !| every count is 1, and the centroids stay where they started. 1-D points 0, 3, 7, 12.
     subroutine test_k_means_clustering_as_many_clusters_as_points()
         integer(int32), parameter :: n_dims = 1, n_points = 4, n_clusters = 4
+        integer(int32), parameter :: expected_labels(n_points) = [4, 3, 2, 1], expected_counts(n_clusters) = [1, 1, 1, 1]
         real(real64) :: data_points(n_dims, n_points), initial_centroids(n_dims, n_clusters)
 
         data_points(1, :) = [0.0_real64, 3.0_real64, 7.0_real64, 12.0_real64]
         initial_centroids(1, :) = [12.0_real64, 7.0_real64, 3.0_real64, 0.0_real64]
 
-        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, [4, 3, 2, 1], [1, 1, 1, 1], &
+        call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, expected_labels, expected_counts, &
                            initial_centroids, "test_k_means_clustering_as_many_clusters_as_points")
     end subroutine test_k_means_clustering_as_many_clusters_as_points
 
     !> The smallest sizes, one point in one dimension and one cluster: label 1, count 1, and the
     !| centroid moves from -3 onto the point 5.
     subroutine test_k_means_clustering_one_point()
+        integer(int32), parameter :: expected_labels(1) = [1], expected_counts(1) = [1]
         real(real64) :: data_points(1, 1), initial_centroids(1, 1), expected_centroids(1, 1)
 
         data_points = 5.0_real64
         initial_centroids = -3.0_real64
         expected_centroids = 5.0_real64
 
-        call check_k_means(1_int32, data_points, 1_int32, 1_int32, initial_centroids, [1], [1], expected_centroids, &
-                           "test_k_means_clustering_one_point")
+        call check_k_means(1_int32, data_points, 1_int32, 1_int32, initial_centroids, expected_labels, expected_counts, &
+                           expected_centroids, "test_k_means_clustering_one_point")
     end subroutine test_k_means_clustering_one_point
 
     !> Points that are all equal, (5, 5) three times, from (5, 5) and (7, 7): every point is at 0
@@ -243,6 +251,9 @@ contains
     !| cluster 2 keeps its starting centroid (7, 7) (no NaN from its 0 points divided by 0).
     subroutine test_k_means_clustering_equal_points()
         integer(int32), parameter :: n_dims = 2, n_points = 3, n_clusters = 2
+        integer(int32), parameter :: expected_labels(n_points) = [1, 1, 1], expected_counts(n_clusters) = [3, 0]
+        real(real64), parameter :: expected_centroid_1(n_dims) = [5.0_real64, 5.0_real64]
+        real(real64), parameter :: expected_centroid_2(n_dims) = [7.0_real64, 7.0_real64]
         real(real64) :: data_points(n_dims, n_points), centroids(n_dims, n_clusters)
         integer(int32) :: labels(n_points), label_counts(n_clusters), ierr
 
@@ -252,11 +263,12 @@ contains
 
         call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr=ierr)
         call assert_err(ierr, ERR_OK, "test_k_means_clustering_equal_points: ierr")
-        call assert_equal_array_int(labels, [1, 1, 1], n_points, "test_k_means_clustering_equal_points: labels")
-        call assert_equal_array_int(label_counts, [3, 0], n_clusters, "test_k_means_clustering_equal_points: label_counts")
-        call assert_equal_array_real(centroids(:, 1), [5.0_real64, 5.0_real64], n_dims, 0.0_real64, &
+        call assert_equal_array_int(labels, expected_labels, n_points, "test_k_means_clustering_equal_points: labels")
+        call assert_equal_array_int(label_counts, expected_counts, n_clusters, &
+                                    "test_k_means_clustering_equal_points: label_counts")
+        call assert_equal_array_real(centroids(:, 1), expected_centroid_1, n_dims, 0.0_real64, &
                                      "test_k_means_clustering_equal_points: centroid 1")
-        call assert_equal_array_real(centroids(:, 2), [7.0_real64, 7.0_real64], n_dims, 0.0_real64, &
+        call assert_equal_array_real(centroids(:, 2), expected_centroid_2, n_dims, 0.0_real64, &
                                      "test_k_means_clustering_equal_points: the empty cluster keeps its centroid")
     end subroutine test_k_means_clustering_equal_points
 
@@ -270,6 +282,8 @@ contains
     !|   unique", and that this is not checked): every point ties, so all go to cluster 2, which
     !|   ends at their value 4; empty cluster 1 keeps its centroid 4.
     subroutine test_k_means_clustering_ties_go_to_the_later_cluster()
+        integer(int32), parameter :: midpoint_labels(3) = [1, 2, 2], midpoint_counts(2) = [1, 2]
+        integer(int32), parameter :: tied_labels(3) = [2, 2, 2], tied_counts(2) = [0, 3]
         real(real64) :: data_points(1, 3), initial_centroids(1, 2), expected_centroids(1, 2)
         real(real64) :: centroids(1, 2)
         integer(int32) :: labels(3), label_counts(2), ierr
@@ -277,7 +291,7 @@ contains
         data_points(1, :) = [0.0_real64, 5.0_real64, 10.0_real64]
         initial_centroids(1, :) = [0.0_real64, 10.0_real64]
         expected_centroids(1, :) = [0.0_real64, 7.5_real64]
-        call check_k_means(2_int32, data_points, 3_int32, 1_int32, initial_centroids, [1, 2, 2], [1, 2], &
+        call check_k_means(2_int32, data_points, 3_int32, 1_int32, initial_centroids, midpoint_labels, midpoint_counts, &
                            expected_centroids, "test_k_means_clustering_ties_go_to_the_later_cluster: midpoint", &
                            max_iterations=1_int32)
 
@@ -285,9 +299,9 @@ contains
         centroids = 4.0_real64
         call k_means_clustering(2_int32, data_points, 3_int32, 1_int32, centroids, labels, label_counts, ierr=ierr)
         call assert_err(ierr, ERR_OK, "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, ierr")
-        call assert_equal_array_int(labels, [2, 2, 2], 3_int32, &
+        call assert_equal_array_int(labels, tied_labels, 3_int32, &
                                     "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, labels")
-        call assert_equal_array_int(label_counts, [0, 3], 2_int32, &
+        call assert_equal_array_int(label_counts, tied_counts, 2_int32, &
                                     "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, label_counts")
         call assert_equal_real(centroids(1, 2), 4.0_real64, 0.0_real64, &
                                "test_k_means_clustering_ties_go_to_the_later_cluster: equal centroids, centroid 2")
@@ -303,6 +317,7 @@ contains
     !| first assignment is final.
     subroutine test_k_means_clustering_many_points()
         integer(int32), parameter :: n_dims = 3, n_points = 30, n_clusters = 3, n_per_group = 10
+        integer(int32), parameter :: expected_counts(n_clusters) = [n_per_group, n_per_group, n_per_group]
         real(real64) :: data_points(n_dims, n_points), initial_centroids(n_dims, n_clusters)
         real(real64) :: centres(n_dims, n_clusters), offsets(n_dims, n_per_group)
         integer(int32) :: expected_labels(n_points), i_point, i_group
@@ -322,7 +337,7 @@ contains
         initial_centroids = data_points(:, 1:n_clusters)
 
         call check_k_means(n_clusters, data_points, n_points, n_dims, initial_centroids, expected_labels, &
-                           [n_per_group, n_per_group, n_per_group], centres, "test_k_means_clustering_many_points")
+                           expected_counts, centres, "test_k_means_clustering_many_points")
     end subroutine test_k_means_clustering_many_points
 
     !> `n_clusters` lies in [1, n_points] (DM_MIN(1), DM_MAX(n_points)), so 0, -1 and n_points + 1
@@ -421,6 +436,8 @@ contains
     !| centroid 0, which took point -1 here, labels [3, 1, 2, 2], but not when shifted.)
     subroutine test_k_means_clustering_empty_cluster_moves_with_the_data()
         real(real64), parameter :: shift = 1000.0_real64
+        integer(int32), parameter :: expected_labels(4) = [1, 1, 2, 2], expected_counts(3) = [2, 2, 0]
+        real(real64), parameter :: expected_centroids(3) = [1.0_real64, 10.5_real64, 100.0_real64]
         real(real64) :: data_points(1, 4), centroids(1, 3), shifted_points(1, 4), shifted_centroids(1, 3)
         real(real64) :: shifted_back(1, 3)
         integer(int32) :: labels(4), label_counts(3), shifted_labels(4), shifted_counts(3), ierr
@@ -440,11 +457,11 @@ contains
                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted labels")
         call assert_equal_array_int(shifted_counts, label_counts, 3_int32, &
                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: shifted label_counts")
-        call assert_equal_array_int(labels, [1, 1, 2, 2], 4_int32, &
+        call assert_equal_array_int(labels, expected_labels, 4_int32, &
                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: labels")
-        call assert_equal_array_int(label_counts, [2, 2, 0], 3_int32, &
+        call assert_equal_array_int(label_counts, expected_counts, 3_int32, &
                                     "test_k_means_clustering_empty_cluster_moves_with_the_data: label_counts")
-        call assert_equal_array_real(centroids, [1.0_real64, 10.5_real64, 100.0_real64], 3_int32, 0.0_real64, &
+        call assert_equal_array_real(centroids, expected_centroids, 3_int32, 0.0_real64, &
                                      "test_k_means_clustering_empty_cluster_moves_with_the_data: centroids")
         ! the centroids are integers and halves below 2**11, so the shift by 1000 is exact
         shifted_back = shifted_centroids - shift
@@ -459,13 +476,14 @@ contains
     !| power of two is exact, so the expected values are the unscaled ones times 2**600, exactly.
     subroutine test_k_means_clustering_squares_past_huge()
         real(real64), parameter :: factor = 2.0_real64**600
+        integer(int32), parameter :: expected_labels(4) = [1, 1, 2, 2], expected_counts(2) = [2, 2]
         real(real64) :: data_points(1, 4), initial_centroids(1, 2), expected_centroids(1, 2)
 
         data_points(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]*factor
         initial_centroids(1, :) = [0.0_real64, 10.0_real64]*factor
         expected_centroids(1, :) = [1.5_real64, 8.5_real64]*factor
 
-        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, expected_labels, expected_counts, &
                            expected_centroids, "test_k_means_clustering_squares_past_huge")
     end subroutine test_k_means_clustering_squares_past_huge
 
@@ -474,13 +492,14 @@ contains
     !| distance tied at 0, and every point went into the last cluster.
     subroutine test_k_means_clustering_squares_below_tiny()
         real(real64), parameter :: factor = 2.0_real64**(-600)
+        integer(int32), parameter :: expected_labels(4) = [1, 1, 2, 2], expected_counts(2) = [2, 2]
         real(real64) :: data_points(1, 4), initial_centroids(1, 2), expected_centroids(1, 2)
 
         data_points(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]*factor
         initial_centroids(1, :) = [0.0_real64, 10.0_real64]*factor
         expected_centroids(1, :) = [1.5_real64, 8.5_real64]*factor
 
-        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, expected_labels, expected_counts, &
                            expected_centroids, "test_k_means_clustering_squares_below_tiny")
     end subroutine test_k_means_clustering_squares_below_tiny
 
@@ -492,12 +511,13 @@ contains
     !| every point then tied at +Inf, and all went into cluster 2.)
     subroutine test_k_means_clustering_means_past_huge_of_opposite_signs()
         real(real64), parameter :: x = 2.0_real64**1023
+        integer(int32), parameter :: expected_labels(4) = [1, 1, 2, 2], expected_counts(2) = [2, 2]
         real(real64) :: data_points(1, 4), initial_centroids(1, 2)
 
         data_points(1, :) = [x, x, -x, -x]
         initial_centroids(1, :) = [x, -x]
 
-        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(2_int32, data_points, 4_int32, 1_int32, initial_centroids, expected_labels, expected_counts, &
                            initial_centroids, "test_k_means_clustering_means_past_huge_of_opposite_signs")
     end subroutine test_k_means_clustering_means_past_huge_of_opposite_signs
 
@@ -509,13 +529,14 @@ contains
     !| and the tie put every point into cluster 2.
     subroutine test_k_means_clustering_means_past_huge()
         real(real64), parameter :: x = 2.0_real64**1023
+        integer(int32), parameter :: expected_labels(4) = [1, 1, 2, 2], expected_counts(2) = [2, 2]
         real(real64) :: data_points(2, 4), initial_centroids(2, 2), expected_centroids(2, 2)
 
         data_points = reshape([x, 0.0_real64, x, 0.0_real64, x, 4.0_real64, x, 6.0_real64], shape(data_points))
         initial_centroids = reshape([x, 0.0_real64, x, 6.0_real64], shape(initial_centroids))
         expected_centroids = reshape([x, 0.0_real64, x, 5.0_real64], shape(expected_centroids))
 
-        call check_k_means(2_int32, data_points, 4_int32, 2_int32, initial_centroids, [1, 1, 2, 2], [2, 2], &
+        call check_k_means(2_int32, data_points, 4_int32, 2_int32, initial_centroids, expected_labels, expected_counts, &
                            expected_centroids, "test_k_means_clustering_means_past_huge")
     end subroutine test_k_means_clustering_means_past_huge
 
@@ -570,19 +591,21 @@ contains
     !| - points 1, 2, 8, 9 from 0, 10 and a "garbage" starting centroid 1e300 that no point is
     !|   near: labels [1, 1, 2, 2], counts [2, 2, 0], centroids 1.5, 8.5, and 1e300 kept.
     subroutine test_k_means_clustering_one_large_starting_centroid()
+        integer(int32), parameter :: labels_far_point(5) = [1, 1, 2, 2, 3], counts_far_point(3) = [2, 2, 1]
+        integer(int32), parameter :: labels_far_centroid(4) = [1, 1, 2, 2], counts_far_centroid(3) = [2, 2, 0]
         real(real64) :: points_5(1, 5), initial_3(1, 3), expected_3(1, 3), points_4(1, 4)
 
         points_5(1, :) = [0.0_real64, 0.1_real64, 5.0_real64, 5.1_real64, 1.0e150_real64]
         initial_3(1, :) = [0.0_real64, 5.0_real64, 1.0e150_real64]
         expected_3(1, :) = [0.1_real64/2, (5.0_real64 + 5.1_real64)/2, 1.0e150_real64]
-        call check_k_means(3_int32, points_5, 5_int32, 1_int32, initial_3, [1, 1, 2, 2, 3], [2, 2, 1], expected_3, &
+        call check_k_means(3_int32, points_5, 5_int32, 1_int32, initial_3, labels_far_point, counts_far_point, expected_3, &
                            "test_k_means_clustering_one_large_starting_centroid: a point at 1e150")
 
         points_4(1, :) = [1.0_real64, 2.0_real64, 8.0_real64, 9.0_real64]
         initial_3(1, :) = [0.0_real64, 10.0_real64, 1.0e300_real64]
         expected_3(1, :) = [1.5_real64, 8.5_real64, 1.0e300_real64]
-        call check_k_means(3_int32, points_4, 4_int32, 1_int32, initial_3, [1, 1, 2, 2], [2, 2, 0], expected_3, &
-                           "test_k_means_clustering_one_large_starting_centroid: a starting centroid at 1e300")
+        call check_k_means(3_int32, points_4, 4_int32, 1_int32, initial_3, labels_far_centroid, counts_far_centroid, &
+                           expected_3, "test_k_means_clustering_one_large_starting_centroid: a starting centroid at 1e300")
     end subroutine test_k_means_clustering_one_large_starting_centroid
 
     !> A centroid's coordinates are means of different sets of values, one per dimension, each
@@ -591,13 +614,14 @@ contains
     !| numbers. Regression: scaled for the first coordinate, the second coordinate's values used to
     !| underflow, and the centroid came out (1e200, 0).
     subroutine test_k_means_clustering_means_per_dimension()
+        integer(int32), parameter :: expected_labels(2) = [1, 1], expected_counts(1) = [2]
         real(real64) :: data_points(2, 2), initial_centroids(2, 1), expected_centroids(2, 1)
 
         data_points = reshape([1.0e200_real64, 3.0e-200_real64, 1.0e200_real64, 5.0e-200_real64], shape(data_points))
         initial_centroids = 0.0_real64
         expected_centroids(:, 1) = [1.0e200_real64, (3.0e-200_real64 + 5.0e-200_real64)/2]
-        call check_k_means(1_int32, data_points, 2_int32, 2_int32, initial_centroids, [1, 1], [2], expected_centroids, &
-                           "test_k_means_clustering_means_per_dimension")
+        call check_k_means(1_int32, data_points, 2_int32, 2_int32, initial_centroids, expected_labels, expected_counts, &
+                           expected_centroids, "test_k_means_clustering_means_per_dimension")
     end subroutine test_k_means_clustering_means_per_dimension
 
     !> The expert entry takes the centroid work array from the caller and gives the plain entry's
@@ -605,6 +629,7 @@ contains
     !| [1, 1, 2, 2] and centroids (1.5, 1.5) and (9, 9). It validates alike: no clusters (argument 1),
     !| a NaN point (2), and max_iterations 0, which is argument 9 here, after the work array.
     subroutine test_k_means_clustering_expert()
+        integer(int32), parameter :: expected_labels(4) = [1, 1, 2, 2], expected_counts(2) = [2, 2]
         real(real64) :: data_points(2, 4), centroids(2, 2), expected(2, 2), work(2, 2)
         integer(int32) :: labels(4), label_counts(2), ierr
         character(*), parameter :: msg = "test_k_means_clustering_expert: "
@@ -616,8 +641,8 @@ contains
         call k_means_clustering_expert(2_int32, data_points, 4_int32, 2_int32, centroids, labels, label_counts, work, &
                                        ierr=ierr)
         call assert_err(ierr, ERR_OK, msg//"ierr")
-        call assert_equal_array_int(labels, [1, 1, 2, 2], 4_int32, msg//"labels")
-        call assert_equal_array_int(label_counts, [2, 2], 2_int32, msg//"label_counts")
+        call assert_equal_array_int(labels, expected_labels, 4_int32, msg//"labels")
+        call assert_equal_array_int(label_counts, expected_counts, 2_int32, msg//"label_counts")
         call assert_equal_array_real(centroids, expected, 4_int32, 0.0_real64, msg//"centroids", n_rows=2_int32)
 
         call k_means_clustering_expert(0_int32, data_points, 4_int32, 2_int32, centroids, labels, label_counts, work, &

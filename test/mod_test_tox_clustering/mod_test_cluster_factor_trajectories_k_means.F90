@@ -106,6 +106,7 @@ contains
     !| (s1 + s3)/2 = [2, 11, 4, 31, 6, 51] and (s2 + s4)/2 = [20.5, 2.5, 10.5, 1.5, 2, 2], flattened
     !| as documented; the second iteration changes nothing.
     subroutine test_cluster_factor_trajectories_k_means_values()
+        integer(int32), parameter :: expected_labels(SAMPLES) = [1, 2, 1, 2], expected_counts(2) = [2, 2]
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), expected(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES + 1), label_counts(3), ierr
 
@@ -119,7 +120,7 @@ contains
 
         call cluster_factor_trajectories_k_means(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, centroids, &
                                                  labels, label_counts, 300_int32, ierr)
-        call check_result(ierr, labels, label_counts, centroids, [1, 2, 1, 2], [2, 2], expected, &
+        call check_result(ierr, labels, label_counts, centroids, expected_labels, expected_counts, expected, &
                           "test_cluster_factor_trajectories_k_means_values")
     end subroutine test_cluster_factor_trajectories_k_means_values
 
@@ -127,6 +128,7 @@ contains
     !| flattened trajectory in its column of the work array, as the work array's documentation
     !| says ("each sample's trajectory as one column").
     subroutine test_cluster_factor_trajectories_k_means_expert_values()
+        integer(int32), parameter :: expected_labels(SAMPLES) = [1, 2, 1, 2], expected_counts(2) = [2, 2]
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), expected(FLAT_LENGTH, 2)
         real(real64) :: work(FLAT_LENGTH, SAMPLES), factors_work(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES + 1), label_counts(3), ierr
@@ -142,7 +144,7 @@ contains
 
         call cluster_factor_trajectories_k_means_expert(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, &
                                                         centroids, labels, label_counts, work, factors_work, 300_int32, ierr)
-        call check_result(ierr, labels, label_counts, centroids, [1, 2, 1, 2], [2, 2], expected, &
+        call check_result(ierr, labels, label_counts, centroids, expected_labels, expected_counts, expected, &
                           "test_cluster_factor_trajectories_k_means_expert_values")
         call assert_equal_array_real(work, FLAT, FLAT_LENGTH*SAMPLES, 0.0_real64, &
                                      "test_cluster_factor_trajectories_k_means_expert_values: flattened trajectories", &
@@ -154,6 +156,7 @@ contains
     !| 3692), so the labels are [1, 1, 2, 1], and the centroids (s1 + s2 + s4)/3 =
     !| [14, 5, 8, 11, 3, 18] and s3. With more iterations the run would go on to [1, 2, 1, 2].
     subroutine test_cluster_factor_trajectories_k_means_one_iteration()
+        integer(int32), parameter :: expected_labels(SAMPLES) = [1, 1, 2, 1], expected_counts(2) = [3, 1]
         real(real64) :: trajectories(FACTORS, SAMPLES, TIMEPOINTS), centroids(FLAT_LENGTH, 2), expected(FLAT_LENGTH, 2)
         integer(int32) :: labels(SAMPLES + 1), label_counts(3), ierr
 
@@ -167,7 +170,7 @@ contains
 
         call cluster_factor_trajectories_k_means(2_int32, trajectories, FACTORS, SAMPLES, TIMEPOINTS, centroids, &
                                                  labels, label_counts, 1_int32, ierr)
-        call check_result(ierr, labels, label_counts, centroids, [1, 1, 2, 1], [3, 1], expected, &
+        call check_result(ierr, labels, label_counts, centroids, expected_labels, expected_counts, expected, &
                           "test_cluster_factor_trajectories_k_means_one_iteration")
     end subroutine test_cluster_factor_trajectories_k_means_one_iteration
 
