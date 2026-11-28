@@ -1,5 +1,6 @@
 !> General-purpose utilities for data analysis: elementary mathematics, indirect sorting and
-!| searching, randomness, vector geometry, and descriptive statistics.
+!| searching, randomness, vector geometry, descriptive statistics, and checks over an array's
+!| elements.
 !|
 !| It holds nothing itself and only gathers the modules below, so one `use` reaches every
 !| utility and which module a given one is defined in stays out of the way.
